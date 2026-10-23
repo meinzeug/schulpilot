@@ -8,6 +8,7 @@ import 'package:schulpilot/parent_plan_screen.dart';
 import 'package:schulpilot/parent_workspace_ui.dart';
 
 import 'parent_cards_ux88_test.dart' as fixture;
+import 'parent_hierarchy_test_tools.dart';
 
 Finder input(String label) => find.byWidgetPredicate(
   (w) => w is TextField && w.decoration?.labelText == label,
@@ -217,6 +218,7 @@ void main() {
         return null;
       };
       await f.mount(tester, '/parent-plan/child');
+      await openParentDetails103(tester, 'Auftrag verwalten');
       await tap(
         tester,
         find.widgetWithText(TextButton, 'Auftrag entfernen').first,

@@ -307,6 +307,7 @@ void main() {
         t,
         AdminAuditList([event('admin.provider_update')], state: s),
       );
+      await ops.tap(t, find.text('Protokoll durchsuchen & filtern'));
       await t.enterText(find.byType(TextField), 'does-not-match');
       await t.pump();
       expect(find.text('Keine passenden Einträge.'), findsOneWidget);
@@ -331,6 +332,7 @@ void main() {
           event('admin.provider_check'),
         ]),
       );
+      await ops.tap(t, find.text('Protokoll durchsuchen & filtern'));
       await ops.tap(t, find.widgetWithText(ChoiceChip, 'Änderungen'));
       expect(find.text('Aktion: admin.provider_update'), findsOneWidget);
       expect(find.text('Aktion: admin.provider_read'), findsNothing);

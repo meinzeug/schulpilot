@@ -204,6 +204,10 @@ void main() {
       ];
       await f.show(tester, f.mailbox(state, data));
       await f.tap(tester, find.text('Meine Wünsche'));
+      await f.tap(
+        tester,
+        find.byKey(const ValueKey('child-mobile-filter-toggle')),
+      );
       await f.tap(tester, find.text('Lernideen'));
       expect(find.text('Tiere erforschen'), findsOneWidget);
       expect(find.text('Am Mittwoch lernen'), findsNothing);

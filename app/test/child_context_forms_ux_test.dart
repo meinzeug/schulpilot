@@ -352,6 +352,7 @@ void main() {
     );
     await tester.pumpWidget(home(LanguageWorkshop(state, childId: 'child')));
     await tester.pumpAndSettle();
+    await tap(tester, find.text('Neue Sprachübung'));
     await tap(tester, find.text('school'));
     await tester.enterText(field('Dein konkretes Lernziel'), '');
     await tester.pump();
@@ -395,6 +396,7 @@ void main() {
       );
       await tester.pumpWidget(home(LanguageWorkshop(state, childId: 'child')));
       await tester.pumpAndSettle();
+      await tap(tester, find.text('Neue Sprachübung'));
       expect(find.text('school'), findsOneWidget);
       tester
           .widgetList<DropdownButtonFormField<String>>(
@@ -428,6 +430,7 @@ void main() {
       );
       await tester.pumpWidget(home(LanguageWorkshop(state, childId: 'child')));
       await tester.pumpAndSettle();
+      await tap(tester, find.text('Neue Sprachübung'));
       expect(field('Schreibe zuerst deinen Versuch'), findsNothing);
       tester
           .widgetList<DropdownButtonFormField<String>>(
@@ -652,6 +655,7 @@ void main() {
       );
       await tester.pumpWidget(home(LanguageWorkshop(state, childId: 'child')));
       await tester.pumpAndSettle();
+      await tap(tester, find.text('Neue Sprachübung'));
       expect(
         find.text('Wähle zuerst mindestens ein bestätigtes Wort aus.'),
         findsOneWidget,

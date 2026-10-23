@@ -147,6 +147,7 @@ void main() {
             wordListing: data,
           );
           expect(requests.every((request) => request.method == 'GET'), isTrue);
+          await words.tap(tester, find.text('Gespeicherte Runden (1)'));
           await words.tap(tester, find.text('Gespeicherter Wortschatz'));
           expect(find.text('Gespeicherte Wörterrunde'), findsOneWidget);
           expect(

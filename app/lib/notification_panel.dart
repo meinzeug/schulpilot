@@ -677,6 +677,11 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
                 subtitle: 'Freigabe, Geräte und Versandstatus getrennt prüfen.',
                 currentPath: '/admin/push',
                 icon: Icons.notifications_outlined,
+                action: IconButton(
+                  tooltip: 'Push-Status aktualisieren',
+                  onPressed: loading ? null : reload,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
               ),
               SizedBox(height: 16),
               if (loading) const LinearProgressIndicator(),
@@ -969,26 +974,10 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
                               ),
                           ],
                         ),
-                        LayoutBuilder(
-                          builder: (context, constraints) =>
-                              constraints.maxWidth >= 880
-                              ? Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(child: devices),
-                                    SizedBox(width: 22),
-                                    Expanded(child: config),
-                                  ],
-                                )
-                              : Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    devices,
-                                    SizedBox(height: 12),
-                                    config,
-                                  ],
-                                ),
+                        devices,
+                        ExpansionTile(
+                          title: const Text('Konfiguration & Nachweise'),
+                          children: [config],
                         ),
                       ],
                     );

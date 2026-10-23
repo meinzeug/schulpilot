@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 import 'collection_view_tools.dart';
 import 'parent_workspace_ui.dart';
 import 'vocabulary_screen.dart' show vocabularyKey;
@@ -562,14 +563,28 @@ class _GradePdfImportState extends State<GradePdfImport> {
     final fileLabel = fileName == null
         ? null
         : '$fileName · ${((fileSize ?? 0) / 1024).ceil()} KB';
-    final phaseTrack = ImportPhaseTrack(
-      result != null
-          ? 3
+    final phaseTrack = ParentViewDetails(
+      title: 'Importablauf',
+      subtitle: result != null
+          ? 'Übernahme abgeschlossen'
           : preview != null
-          ? 2
+          ? 'Vorschau prüfen · noch nicht übernommen'
           : bytes != null
-          ? 1
-          : 0,
+          ? 'PDF ausgewählt · noch nicht übernommen'
+          : 'PDF auswählen · Vorschau vor dem Speichern',
+      scope: ('grade-import-process', ObjectKey(owner), widget.childId),
+      isCurrent: () => current,
+      children: [
+        ImportPhaseTrack(
+          result != null
+              ? 3
+              : preview != null
+              ? 2
+              : bytes != null
+              ? 1
+              : 0,
+        ),
+      ],
     );
     return PopScope(
       canPop: !busy,

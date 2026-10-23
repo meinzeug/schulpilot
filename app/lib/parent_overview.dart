@@ -11,6 +11,7 @@ import 'parent_insights_panel.dart';
 import 'practice_evidence.dart';
 import 'preparation_card.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 
 /// A read-only projection of saved server evidence, with planning kept separate.
 class ParentOverview extends StatelessWidget {
@@ -125,37 +126,6 @@ class ParentOverview extends StatelessWidget {
             ),
           ],
         ),
-        if (!hasEvidence)
-          const Notice(
-            'Die gespeicherten Übungsbelege wurden nicht vollständig gemeldet. Daraus lässt sich weder kein Lernen noch ein Lernerfolg ableiten. Öffne die Detailansicht oder lade den Stand neu.',
-          ),
-        if (hasEvidence)
-          ParentPracticeSummary(
-            evidence,
-            onCategorySelected: (category) => visit(
-              Uri(
-                path: '/progress/$childId',
-                queryParameters: {'ergebnis': category},
-              ).toString(),
-            ),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => section('progress'),
-            icon: const Icon(Icons.fact_check_outlined),
-            label: const Text('Gespeicherte Übungsbelege im Detail ansehen'),
-          ),
-        ),
-        if (state != null) ...[
-          const SizedBox(height: 16),
-          ParentInsightsPanel(
-            state!,
-            childId: childId,
-            compact: true,
-            revision: revision,
-          ),
-        ],
         const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, size) {
@@ -168,49 +138,71 @@ class ParentOverview extends StatelessWidget {
                       'Konkrete nächste Schritte für eure Lernbegleitung.',
                   icon: Icons.near_me_outlined,
                 ),
-                _OverviewAction(
-                  icon: Icons.volunteer_activism_outlined,
-                  title: help > 0
-                      ? '$help ${help == 1 ? 'offener Hilfewunsch' : 'offene Hilfewünsche'}'
-                      : coachingSupport
-                      ? 'Rückmeldung der Lernbegleitung'
-                      : 'Kein offener Hilfewunsch',
-                  detail: help > 0
-                      ? 'Anliegen und Antworten findet ihr in den Nachrichten.'
-                      : coachingSupport
-                      ? day['support']?.toString() ??
-                            'Gemeinsam den gespeicherten Lernschritt ansehen.'
-                      : 'Ein gemeinsamer Blick auf schwierige Aufgaben bleibt möglich.',
-                  action: help == 0 && coachingSupport
-                      ? 'Verlauf ansehen'
-                      : 'Nachrichten ansehen',
-                  onTap: () => section(
-                    help == 0 && coachingSupport ? 'history' : 'messages',
+                if (help > 0 || coachingSupport)
+                  _OverviewAction(
+                    icon: Icons.volunteer_activism_outlined,
+                    title: help > 0
+                        ? '$help ${help == 1 ? 'offener Hilfewunsch' : 'offene Hilfewünsche'}'
+                        : coachingSupport
+                        ? 'Rückmeldung der Lernbegleitung'
+                        : 'Kein offener Hilfewunsch',
+                    detail: help > 0
+                        ? 'Anliegen und Antworten findet ihr in den Nachrichten.'
+                        : coachingSupport
+                        ? day['support']?.toString() ??
+                              'Gemeinsam den gespeicherten Lernschritt ansehen.'
+                        : 'Ein gemeinsamer Blick auf schwierige Aufgaben bleibt möglich.',
+                    action: help == 0 && coachingSupport
+                        ? 'Verlauf ansehen'
+                        : 'Nachrichten ansehen',
+                    onTap: () => section(
+                      help == 0 && coachingSupport ? 'history' : 'messages',
+                    ),
+                    highlighted: help > 0 || coachingSupport,
+                  )
+                else
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => section('messages'),
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      label: const Text('Kein offener Hilfewunsch'),
+                    ),
                   ),
-                  highlighted: help > 0 || coachingSupport,
-                ),
-                _OverviewAction(
-                  icon: Icons.event_note_rounded,
-                  title: 'Offene Pflichtaufträge: $assignments',
-                  detail: [
-                    assignments == 0
-                        ? 'Keine offenen verbindlichen Aufträge.'
-                        : 'Verbindliche Lernziele und Termine im Plan prüfen.',
-                    if (voluntaryAssignments > 0)
-                      '${counted(voluntaryAssignments, 'freiwilliger Auftrag', 'freiwillige Aufträge')} im Plan.',
-                  ].join(' '),
-                  action: 'Plan ansehen',
-                  onTap: () => visit(
-                    Uri(
-                      path: '/parent-plan/$childId',
-                      queryParameters: {
-                        'ansicht': 'topics',
-                        'obligation': 'mandatory',
-                        'source': 'confirmed',
-                      },
-                    ).toString(),
+                if (assignments > 0 || voluntaryAssignments > 0)
+                  _OverviewAction(
+                    icon: Icons.event_note_rounded,
+                    title: 'Offene Pflichtaufträge: $assignments',
+                    detail: [
+                      assignments == 0
+                          ? 'Keine offenen verbindlichen Aufträge.'
+                          : 'Verbindliche Lernziele und Termine im Plan prüfen.',
+                      if (voluntaryAssignments > 0)
+                        '${counted(voluntaryAssignments, 'freiwilliger Auftrag', 'freiwillige Aufträge')} im Plan.',
+                    ].join(' '),
+                    action: 'Plan ansehen',
+                    onTap: () => visit(
+                      Uri(
+                        path: '/parent-plan/$childId',
+                        queryParameters: {
+                          'ansicht': 'topics',
+                          'obligation': 'mandatory',
+                          'source': 'confirmed',
+                        },
+                      ).toString(),
+                    ),
+                  )
+                else
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => visit(
+                        '/parent-plan/$childId?ansicht=topics&obligation=mandatory&source=confirmed',
+                      ),
+                      icon: const Icon(Icons.event_note_rounded),
+                      label: Text('Offene Pflichtaufträge: $assignments'),
+                    ),
                   ),
-                ),
                 if (changedAssignments > 0)
                   _OverviewAction(
                     icon: Icons.rule_folder_outlined,
@@ -251,13 +243,16 @@ class ParentOverview extends StatelessWidget {
                   ),
               ],
             );
-            final time = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            final time = ParentViewDetails(
+              title: 'Zeit & Mindestziele',
+              scope: ('overview-time', ObjectKey(account), family, childId),
+              isCurrent: current,
+              subtitle: plan['goal_required'] == true
+                  ? plan['daily_goal_met'] == true
+                        ? 'Tagesmindestziel erreicht'
+                        : 'Tagesmindestziel offen'
+                  : null,
               children: [
-                const ParentSectionHeading(
-                  title: 'Zeit & Mindestziele',
-                  icon: Icons.timer_outlined,
-                ),
                 if (plan.isEmpty)
                   const Notice('Noch keine Zeitdaten verfügbar.')
                 else
@@ -287,75 +282,119 @@ class ParentOverview extends StatelessWidget {
             );
           },
         ),
-        const SizedBox(height: 20),
-        ParentSectionHeading(
-          title: 'Fächer im Überblick',
-          subtitle: 'Selbstständige Lösungen, Hilfe und offene Fragen je Fach.',
-          icon: Icons.auto_stories_outlined,
-          action: TextButton.icon(
-            onPressed: () => section('progress'),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-            label: const Text('Alle Fächer'),
-          ),
-        ),
-        if (subjects.isEmpty)
+        if (!hasEvidence)
           const Notice(
-            'Sobald Aufgaben beantwortet sind, erscheint hier der Lernstand je Fach.',
-          )
-        else
-          Column(
-            children: [
-              for (final subject in subjects)
-                _ParentSubjectRow(
-                  childId: childId,
-                  subject: Json.from(subject),
-                ),
-            ],
+            'Die gespeicherten Übungsbelege wurden nicht vollständig gemeldet. Daraus lässt sich weder kein Lernen noch ein Lernerfolg ableiten. Öffne die Detailansicht oder lade den Stand neu.',
           ),
-        if ((data['subject_count'] as num? ?? subjects.length) >
-            subjects.length)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(
-              'Vorschau: ${subjects.length} von ${data['subject_count']} Fächern. Der Lernstand umfasst alle Fächer.',
-              style: TextStyle(color: context.palette.muted),
+        if (hasEvidence)
+          ParentPracticeSummary(
+            evidence,
+            onCategorySelected: (category) => visit(
+              Uri(
+                path: '/progress/$childId',
+                queryParameters: {'ergebnis': category},
+              ).toString(),
             ),
           ),
-        const SizedBox(height: 16),
-        ActionPanel(
-          actionLabel: 'Verlauf der letzten sieben Tage ansehen',
-          onPressed: () => section('history'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const ParentSectionHeading(
-                title: 'Die letzten sieben Tage',
-                icon: Icons.history_rounded,
-              ),
-              Text(
-                '${counted(data['week_summary']?['completed_units'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')}${data['week_summary']?['answer_count'] is num ? ' · ${counted(data['week_summary']['answer_count'], 'gespeicherter Antwortversuch', 'gespeicherte Antwortversuche')}' : ''} · ${counted(data['week_summary']?['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
-              ),
-              if ((data['week_summary']?['topics'] as List? ?? [])
-                  .isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Text('Themen abgeschlossener Runden in diesem Zeitraum:'),
-                for (final topic
-                    in (data['week_summary']['topics'] as List).take(3))
-                  Text(topic.toString()),
-                if ((data['week_summary']['topics'] as List).length > 3)
-                  Text(
-                    '${(data['week_summary']['topics'] as List).length - 3} weitere Themen im Verlauf',
-                  ),
-              ],
-              const SizedBox(height: 8),
-              Text(
-                data['week_summary']?['support'] ?? 'Noch keine Rückmeldung.',
-                style: TextStyle(color: context.palette.muted),
-              ),
-            ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => section('progress'),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('Gespeicherte Übungsbelege im Detail ansehen'),
           ),
         ),
-        const SizedBox(height: 16),
+        if (state != null) ...[
+          const SizedBox(height: 16),
+          ParentInsightsPanel(
+            state!,
+            childId: childId,
+            compact: true,
+            revision: revision,
+          ),
+        ],
+        const SizedBox(height: 20),
+        ParentViewDetails(
+          title: 'Fächer & Wochenrückblick',
+          scope: ('overview-evidence', ObjectKey(account), family, childId),
+          isCurrent: current,
+          subtitle:
+              '${data['subject_count'] ?? subjects.length} Fächer · gespeicherte Ergebnisse',
+          children: [
+            ParentSectionHeading(
+              title: 'Fächer im Überblick',
+              subtitle:
+                  'Selbstständige Lösungen, Hilfe und offene Fragen je Fach.',
+              icon: Icons.auto_stories_outlined,
+              action: TextButton.icon(
+                onPressed: () => section('progress'),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: const Text('Alle Fächer'),
+              ),
+            ),
+            if (subjects.isEmpty)
+              const Notice(
+                'Sobald Aufgaben beantwortet sind, erscheint hier der Lernstand je Fach.',
+              )
+            else
+              Column(
+                children: [
+                  for (final subject in subjects)
+                    _ParentSubjectRow(
+                      childId: childId,
+                      subject: Json.from(subject),
+                    ),
+                ],
+              ),
+            if ((data['subject_count'] as num? ?? subjects.length) >
+                subjects.length)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  'Vorschau: ${subjects.length} von ${data['subject_count']} Fächern. Der Lernstand umfasst alle Fächer.',
+                  style: TextStyle(color: context.palette.muted),
+                ),
+              ),
+            const SizedBox(height: 16),
+            ActionPanel(
+              actionLabel: 'Verlauf der letzten sieben Tage ansehen',
+              onPressed: () => section('history'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const ParentSectionHeading(
+                    title: 'Die letzten sieben Tage',
+                    icon: Icons.history_rounded,
+                  ),
+                  Text(
+                    '${counted(data['week_summary']?['completed_units'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')}${data['week_summary']?['answer_count'] is num ? ' · ${counted(data['week_summary']['answer_count'], 'gespeicherter Antwortversuch', 'gespeicherte Antwortversuche')}' : ''} · ${counted(data['week_summary']?['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
+                  ),
+                  if ((data['week_summary']?['topics'] as List? ?? [])
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Themen abgeschlossener Runden in diesem Zeitraum:',
+                    ),
+                    for (final topic
+                        in (data['week_summary']['topics'] as List).take(3))
+                      Text(topic.toString()),
+                    if ((data['week_summary']['topics'] as List).length > 3)
+                      Text(
+                        '${(data['week_summary']['topics'] as List).length - 3} weitere Themen im Verlauf',
+                      ),
+                  ],
+                  const SizedBox(height: 8),
+                  Text(
+                    data['week_summary']?['support'] ??
+                        'Noch keine Rückmeldung.',
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
         ExpansionTile(
           leading: Icon(
             Icons.event_repeat_rounded,

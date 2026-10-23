@@ -11,6 +11,11 @@ import 'package:schulpilot/installation_screen.dart';
 import 'package:schulpilot/settings_screen.dart';
 import 'package:schulpilot/ui.dart';
 
+Finder adminPageTitle() => find.descendant(
+  of: find.byKey(const ValueKey('compact-admin-heading')),
+  matching: find.text('Betrieb'),
+);
+
 http.Response jsonResponse(Object data) => http.Response(
   jsonEncode(data),
   200,
@@ -150,14 +155,23 @@ void main() {
       (tester) async {
         final requests = <http.Request>[];
         await mount(tester, requests, width: width);
-        expect(find.text('Betriebsübersicht'), findsOneWidget);
+        expect(adminPageTitle(), findsOneWidget);
         expect(find.text('Worker · noch kein Signal'), findsOneWidget);
         expect(find.text('Überfällige Aufträge'), findsOneWidget);
         expect(find.text('3'), findsOneWidget);
         expect(find.text('KI-Anbieter'), findsNothing);
         await tap(tester, find.widgetWithText(ChoiceChip, 'KI-Konfiguration'));
         expect(find.text('KI-Anbieter'), findsOneWidget);
-        expect(find.text('Betriebsübersicht'), findsNothing);
+        expect(adminPageTitle(), findsOneWidget);
+        expect(
+          tester
+              .widget<ChoiceChip>(
+                find.widgetWithText(ChoiceChip, 'KI-Konfiguration'),
+              )
+              .selected,
+          isTrue,
+        );
+        expect(find.text('Worker · noch kein Signal'), findsNothing);
         expect(requests.every((request) => request.method == 'GET'), isTrue);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
@@ -178,7 +192,7 @@ void main() {
       await tester.ensureVisible(field);
       await tester.enterText(field, 'synthetic-unsaved-model');
       await tap(tester, find.widgetWithText(ChoiceChip, 'Übersicht'));
-      expect(find.text('Betriebsübersicht'), findsOneWidget);
+      expect(adminPageTitle(), findsOneWidget);
       expect(find.text('KI-Anbieter'), findsNothing);
       await tap(tester, find.widgetWithText(ChoiceChip, 'KI-Konfiguration'));
       expect(
@@ -399,11 +413,11 @@ void main() {
         find.textContaining('Künstlicher Verbindungsfehler'),
         findsOneWidget,
       );
-      expect(find.text('Betriebsübersicht'), findsOneWidget);
+      expect(adminPageTitle(), findsOneWidget);
       expect(find.text('Worker · noch kein Signal'), findsOneWidget);
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('compact-admin-dashboard-heading')),
+          of: find.byKey(const ValueKey('compact-admin-heading')),
           matching: find.text('Betrieb'),
         ),
         findsOneWidget,

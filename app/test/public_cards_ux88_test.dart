@@ -95,6 +95,18 @@ void main() {
         );
         await tester.pumpWidget(SchulpilotApp(state, initialLocation: '/'));
         await tester.pumpAndSettle();
+        if (const {'RR002', 'RR003', 'RR004'}.contains(target.$1)) {
+          expect(find.text(target.$2), findsNothing);
+          final workflow = find.widgetWithText(
+            ExpansionTile,
+            'So funktioniert der Lernraum',
+          );
+          await tester.ensureVisible(workflow);
+          await tester.pumpAndSettle();
+          expect(workflow.hitTestable(), findsOneWidget);
+          await tester.tap(workflow);
+          await tester.pumpAndSettle();
+        }
         final summary = find.text(target.$2).first;
         await tester.ensureVisible(summary);
         await tester.tap(summary);

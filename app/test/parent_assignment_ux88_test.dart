@@ -10,6 +10,8 @@ import 'package:schulpilot/collection_screen.dart';
 import 'package:schulpilot/dashboard.dart' show assignmentDialog;
 import 'package:schulpilot/ui.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 http.Response response(Object value, [int status = 200]) => http.Response(
   jsonEncode(value),
   status,
@@ -278,6 +280,7 @@ void main() {
       final f = Fixture();
       await f.open(tester);
       expect(tester.widget<TextField>(field('Fach')).controller!.text, isEmpty);
+      await openParentDetails103(tester, 'Vorhandenes Fach übernehmen');
       await tap(tester, find.widgetWithText(ChoiceChip, 'Biologie'));
       expect(
         tester.widget<TextField>(field('Fach')).controller!.text,

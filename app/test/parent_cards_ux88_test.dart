@@ -15,6 +15,7 @@ import 'package:schulpilot/ui.dart';
 
 import 'parent_insights_test.dart' as saved;
 import 'progress_grades_test.dart' as grades;
+import 'parent_hierarchy_test_tools.dart';
 
 http.Response response(Object value) => http.Response(
   jsonEncode(value),
@@ -175,6 +176,20 @@ class Fixture {
       ),
     );
     await tester.pumpAndSettle();
+    if (initial == '/insights') {
+      await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
+    }
+    if (initial.startsWith('/grades/')) {
+      for (final title in [
+        'Suche & Notenfilter',
+        'Schwerpunkte über alle Fächer',
+        'Ansicht & Export',
+      ]) {
+        if (find.text(title).evaluate().isNotEmpty) {
+          await openParentDetails103(tester, title);
+        }
+      }
+    }
     return router;
   }
 }
@@ -213,6 +228,7 @@ void main() {
   ) async {
     final f = Fixture();
     await f.mount(tester, '/overview');
+    await openParentDetails103(tester, 'Fächer & Wochenrückblick');
     await tapBody(tester, 'Die letzten sieben Tage');
     expect(find.text('Ziel /child/child?bereich=verlauf'), findsOneWidget);
   });
@@ -292,7 +308,7 @@ void main() {
         ],
       },
     ];
-    await f.mount(tester, '/parent-plan/child');
+    await f.mount(tester, '/parent-plan/child?ansicht=ai');
     await tapBody(tester, 'Chemie · Atome');
     expect(find.text('Ziel /unit/stored-plan-unit'), findsOneWidget);
   });
@@ -301,7 +317,16 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester, '/grades/child');
-      await tapBody(tester, 'Mathematik');
+      final focus = find.byWidgetPredicate(
+        (widget) =>
+            widget is ActionPanel &&
+            widget.actionLabel == 'Einzelne Noten in Mathematik ansehen',
+      );
+      await tester.ensureVisible(focus);
+      await tester.pumpAndSettle();
+      expect(focus.hitTestable(), findsOneWidget);
+      await tester.tap(focus);
+      await tester.pumpAndSettle();
       expect(f.requests.last.url.queryParameters['subject'], 'Mathematik');
       expect(f.requests.last.url.queryParameters['page'], '1');
       expect(find.text('1 von 1 Eintrag · Mathematik'), findsOneWidget);

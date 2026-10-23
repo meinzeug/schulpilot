@@ -132,13 +132,12 @@ void main() {
               brightness: brightness,
             );
             final back = find.byTooltip('Betriebsübersicht');
-            if (width < 720) {
-              expect(
-                find.byKey(const ValueKey('compact-admin-heading')),
-                findsOneWidget,
-              );
-              await press(tester, find.byTooltip('Über diesen Bereich'));
-            }
+            expect(
+              find.byKey(const ValueKey('compact-admin-heading')),
+              findsOneWidget,
+            );
+            expect(find.text('SCHULPILOT · BETRIEB'), findsNothing);
+            await press(tester, find.byTooltip('Über diesen Bereich'));
             expect(find.text('SCHULPILOT · BETRIEB'), findsOneWidget);
             expect(back, findsOneWidget);
             expect(
@@ -219,6 +218,10 @@ void main() {
       final amount = find.widgetWithText(TextField, 'Betrag in EUR');
       await tester.ensureVisible(amount);
       await tester.enterText(amount, '12,00');
+      await press(
+        tester,
+        find.text('Bestellungen suchen, filtern & exportieren'),
+      );
       await press(tester, find.widgetWithText(FilterChip, 'Beendet (0)'));
       expect(find.text('SCH-SYNTHETIC'), findsNothing);
       await press(tester, find.widgetWithText(FilterChip, 'Zahlung offen (1)'));

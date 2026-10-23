@@ -8,6 +8,7 @@ import 'package:schulpilot/parent_insights_panel.dart';
 import 'package:schulpilot/ui.dart';
 
 import 'parent_insights_test.dart' show insight, response;
+import 'parent_hierarchy_test_tools.dart';
 
 class CompactInsightsFixture {
   final requests = <http.Request>[];
@@ -135,6 +136,8 @@ void main() {
     final f = CompactInsightsFixture();
     await f.mount(tester, compact: false);
     expect(find.text('KI-Lernkompass'), findsOneWidget);
+    expect(find.text('Regelmäßig mit KI auswerten'), findsNothing);
+    await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
     expect(find.text('Regelmäßig mit KI auswerten'), findsOneWidget);
     expect(find.text('Der vorgeschlagene Lernweg'), findsOneWidget);
     expect(compactDetails(), findsNothing);

@@ -15,6 +15,7 @@ import 'parent_insights_panel.dart';
 import 'parent_workspace_ui.dart';
 import 'parent_deadlines_dialog.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 import 'learning_plan_ui.dart';
 
 class ParentPlanScreen extends StatefulWidget {
@@ -39,7 +40,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   String? error;
   late Json? owner;
   late String? family, session;
-  int generation = 0, section = 0, page = 1, refresh = 0, operation = 0;
+  int generation = 0, section = 1, page = 1, refresh = 0, operation = 0;
   bool loading = false, includeCompleted = false, busy = false;
   bool loadFailed = false, compactTopics = false;
   final Map<String, String> preparationKeys = {};
@@ -224,7 +225,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     final savedSection = saved?['section'];
     section = savedSection is int && savedSection >= 0 && savedSection <= 2
         ? savedSection
-        : 0;
+        : 1;
     final savedPage = saved?['page'];
     page = savedPage is int && savedPage > 0 ? savedPage : 1;
     includeCompleted = saved?['include_completed'] == true;
@@ -639,6 +640,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   }
 
   Widget expandedTopicCard(Json topic) {
+    final child = widget.childId;
     final canManage = data!['can_manage'] == true;
     final existing = topic['available_unit'] as Map?;
     final pending = topic['preparation'] as Map?;
@@ -736,32 +738,6 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           : 'KI-Runde vorbereiten',
                     ),
                   ),
-                if (canManage)
-                  OutlinedButton.icon(
-                    onPressed: busy ? null : () => add(existing: topic),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Ziel & Termin bearbeiten'),
-                  ),
-                if (canManage)
-                  TextButton.icon(
-                    onPressed: busy ? null : () => add(copyFrom: topic),
-                    icon: const Icon(Icons.copy_outlined),
-                    label: const Text('Als neues Ziel kopieren'),
-                  ),
-                if (canManage && topic['done'] != true)
-                  TextButton.icon(
-                    onPressed: busy ? null : () => complete(topic),
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Als erledigt markieren'),
-                  ),
-                if (canManage)
-                  TextButton.icon(
-                    onPressed: busy || topic['revision'] is! int
-                        ? null
-                        : () => complete(topic, remove: true),
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    label: const Text('Auftrag entfernen'),
-                  ),
                 if (topic['material_id'] != null)
                   TextButton.icon(
                     onPressed: () =>
@@ -775,6 +751,53 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                   ),
               ],
             ),
+            if (canManage)
+              ParentViewDetails(
+                title: 'Auftrag verwalten',
+                scope: (
+                  'topic-tools',
+                  ObjectKey(owner),
+                  family,
+                  child,
+                  topic['id'],
+                  topic['revision'],
+                ),
+                isCurrent: () => own && child == widget.childId,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (canManage)
+                        OutlinedButton.icon(
+                          onPressed: busy ? null : () => add(existing: topic),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Ziel & Termin bearbeiten'),
+                        ),
+                      if (canManage)
+                        TextButton.icon(
+                          onPressed: busy ? null : () => add(copyFrom: topic),
+                          icon: const Icon(Icons.copy_outlined),
+                          label: const Text('Als neues Ziel kopieren'),
+                        ),
+                      if (canManage && topic['done'] != true)
+                        TextButton.icon(
+                          onPressed: busy ? null : () => complete(topic),
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Als erledigt markieren'),
+                        ),
+                      if (canManage)
+                        TextButton.icon(
+                          onPressed: busy || topic['revision'] is! int
+                              ? null
+                              : () => complete(topic, remove: true),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('Auftrag entfernen'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             if ((topic['recent_units'] as List? ?? []).isNotEmpty)
               ExpansionTile(
                 title: const Text('Gespeicherte Runden zu diesem Auftrag'),
@@ -836,9 +859,9 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                   runSpacing: 8,
                   children: [
                     for (final item in const [
-                      (0, 'KI-Lernweg'),
                       (1, 'Meine Themen'),
                       (2, 'Woche & Vorgaben'),
+                      (0, 'KI-Lernweg'),
                     ])
                       ChoiceChip(
                         label: Text(item.$2),
@@ -951,6 +974,16 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                       ),
                   ],
                   if (section == 1) ...[
+                    if (data!['can_manage'] == true)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.icon(
+                          onPressed: busy || loading ? null : () => add(),
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Eigenes Thema setzen'),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
                     ParentAppliedFilters(
                       enabled: !loading && !busy,
                       filters: [
@@ -1054,15 +1087,19 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           ),
                       ],
                     ),
-                    ExpansionTile(
+                    ParentViewDetails(
                       key: ValueKey(('all-topic-filters', widget.childId)),
-                      initiallyExpanded: filtered,
-                      title: const Text('Suche & alle Themenfilter'),
-                      subtitle: Text(
-                        filtered
-                            ? 'Aktive Bedingungen bleiben oberhalb sichtbar.'
-                            : 'Gespeicherten Bestand eingrenzen',
+                      scope: (
+                        'plan-filters',
+                        ObjectKey(owner),
+                        family,
+                        viewChild,
                       ),
+                      isCurrent: () => own && viewChild == widget.childId,
+                      title: 'Suche & alle Themenfilter',
+                      subtitle: filtered
+                          ? 'Aktive Bedingungen bleiben oberhalb sichtbar.'
+                          : 'Gespeicherten Bestand eingrenzen',
                       children: [
                         ParentCollectionSearch(
                           controller: search,
@@ -1203,70 +1240,15 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           ],
                           onChanged: (v) => filterTopics(() => order = v),
                         ),
+                        SwitchListTile(
+                          title: const Text('Kompakte Auftragsliste'),
+                          value: compactTopics,
+                          onChanged: (value) =>
+                              setState(() => compactTopics = value),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
-                    SwitchListTile(
-                      title: const Text('Kompakte Auftragsliste'),
-                      value: compactTopics,
-                      onChanged: (value) =>
-                          setState(() => compactTopics = value),
-                    ),
-                    const SizedBox(height: 16),
-                    if (data!['can_manage'] == true) ...[
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          FilledButton.icon(
-                            onPressed: busy || loading ? null : () => add(),
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Eigenes Thema setzen'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: busy || loading
-                                ? null
-                                : () async {
-                                    final child = widget.childId;
-                                    final selected = await pickLibraryMaterial(
-                                      context,
-                                      widget.state,
-                                      child,
-                                    );
-                                    if (own &&
-                                        child == widget.childId &&
-                                        selected != null) {
-                                      await add(source: selected);
-                                    }
-                                  },
-                            icon: const Icon(Icons.auto_stories_outlined),
-                            label: const Text('Aus Heftseite übernehmen'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Ein Ziel speichern bereitet noch keine KI-Aufgaben vor. Die Vorbereitung startest du bewusst. Bestehende Antworten bleiben erhalten.',
-                      ),
-                      const SizedBox(height: 16),
-                      if ((data!['recent_round_topics'] as List).isNotEmpty)
-                        ExpansionTile(
-                          title: const Text(
-                            'Thema aus einer vorhandenen Übung übernehmen',
-                          ),
-                          children: [
-                            for (final unit in data!['recent_round_topics'])
-                              ListTile(
-                                title: Text(
-                                  '${unit['subject']} · ${unit['topic']}',
-                                ),
-                                trailing: const Icon(Icons.add_circle_outline),
-                                onTap: busy || loading
-                                    ? null
-                                    : () => add(sourceUnit: Json.from(unit)),
-                              ),
-                          ],
-                        ),
-                    ],
                     if (assignmentId != null)
                       Panel(
                         child: Column(
@@ -1366,70 +1348,152 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         ),
                       ],
                     ),
-                  ],
-                  if (section == 2 && !loading && !loadFailed) ...[
-                    Notice(
-                      data!['ai_guidance'] != null
-                          ? 'KI-Schwerpunkte vom ${reviewDate(data!['ai_guidance']['finished'])} ergänzen diesen Vorschlag. Begonnene Runden, Termine und Elternvorgaben haben Vorrang.'
-                          : 'Der Wochenvorschlag nutzt aktuell deine Vorgaben und gespeicherte Lernbelege. Eine passende aktuelle KI-Auswertung kann zusätzliche Schwerpunkte setzen.',
-                    ),
-                    Panel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+                    ParentViewDetails(
+                      title: 'Weitere Themenwerkzeuge',
+                      scope: (
+                        'plan-tools',
+                        ObjectKey(owner),
+                        family,
+                        viewChild,
+                      ),
+                      isCurrent: () => own && viewChild == widget.childId,
+                      children: [
+                        if (data!['can_manage'] == true) ...[
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: busy || loading
+                                    ? null
+                                    : () async {
+                                        final child = widget.childId;
+                                        final selected =
+                                            await pickLibraryMaterial(
+                                              context,
+                                              widget.state,
+                                              child,
+                                            );
+                                        if (own &&
+                                            child == widget.childId &&
+                                            selected != null) {
+                                          await add(source: selected);
+                                        }
+                                      },
+                                icon: const Icon(Icons.auto_stories_outlined),
+                                label: const Text('Aus Heftseite übernehmen'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
                           const Text(
-                            'Zeit & Rahmen',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            'Ein Ziel speichern bereitet noch keine KI-Aufgaben vor. Die Vorbereitung startest du bewusst. Bestehende Antworten bleiben erhalten.',
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Mindestziel: ${data!['child']['preferences']['daily_minutes']} Minuten pro Tag · ${data!['child']['preferences']['weekly_minutes']} pro Woche',
-                          ),
-                          Text(
-                            'Empfohlene Runde: ${data!['child']['preferences']['session_minutes']} Minuten · Pause: ${data!['child']['preferences']['break_minutes']} Minuten',
-                          ),
-                          const Text(
-                            'Minuten sind Mindestziele, keine Sperre freiwilligen Lernens. Ein Wochenvorschlag erzeugt keine zusätzlichen Pflichtaufgaben.',
-                          ),
-                          if (data!['can_manage'] == true)
-                            TextButton.icon(
-                              onPressed: () async {
-                                await preferencesDialog(
-                                  context,
-                                  widget.state,
-                                  Json.from(data!['child']),
-                                );
-                                if (own) await load();
-                              },
-                              icon: const Icon(Icons.tune_rounded),
-                              label: const Text('Lernvorgaben anpassen'),
+                          const SizedBox(height: 16),
+                          if ((data!['recent_round_topics'] as List).isNotEmpty)
+                            ExpansionTile(
+                              title: const Text(
+                                'Thema aus einer vorhandenen Übung übernehmen',
+                              ),
+                              children: [
+                                for (final unit in data!['recent_round_topics'])
+                                  ListTile(
+                                    title: Text(
+                                      '${unit['subject']} · ${unit['topic']}',
+                                    ),
+                                    trailing: const Icon(
+                                      Icons.add_circle_outline,
+                                    ),
+                                    onTap: busy || loading
+                                        ? null
+                                        : () =>
+                                              add(sourceUnit: Json.from(unit)),
+                                  ),
+                              ],
                             ),
                         ],
+                      ],
+                    ),
+                  ],
+                  if (section == 2 && !loading && !loadFailed) ...[
+                    ParentViewDetails(
+                      title: 'Vorgaben & Kalender',
+                      subtitle:
+                          '${data!['child']['preferences']['daily_minutes']} Min. am Tag · ${data!['child']['preferences']['weekly_minutes']} Min. pro Woche',
+                      scope: (
+                        'plan-week-tools',
+                        ObjectKey(owner),
+                        family,
+                        viewChild,
                       ),
+                      isCurrent: () => own && viewChild == widget.childId,
+                      children: [
+                        Notice(
+                          data!['ai_guidance'] != null
+                              ? 'KI-Schwerpunkte vom ${reviewDate(data!['ai_guidance']['finished'])} ergänzen diesen Vorschlag. Begonnene Runden, Termine und Elternvorgaben haben Vorrang.'
+                              : 'Der Wochenvorschlag nutzt aktuell deine Vorgaben und gespeicherte Lernbelege. Eine passende aktuelle KI-Auswertung kann zusätzliche Schwerpunkte setzen.',
+                        ),
+                        Panel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Text(
+                                'Zeit & Rahmen',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Mindestziel: ${data!['child']['preferences']['daily_minutes']} Minuten pro Tag · ${data!['child']['preferences']['weekly_minutes']} pro Woche',
+                              ),
+                              Text(
+                                'Empfohlene Runde: ${data!['child']['preferences']['session_minutes']} Minuten · Pause: ${data!['child']['preferences']['break_minutes']} Minuten',
+                              ),
+                              const Text(
+                                'Minuten sind Mindestziele, keine Sperre freiwilligen Lernens. Ein Wochenvorschlag erzeugt keine zusätzlichen Pflichtaufgaben.',
+                              ),
+                              if (data!['can_manage'] == true)
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    await preferencesDialog(
+                                      context,
+                                      widget.state,
+                                      Json.from(data!['child']),
+                                    );
+                                    if (own) await load();
+                                  },
+                                  icon: const Icon(Icons.tune_rounded),
+                                  label: const Text('Lernvorgaben anpassen'),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: loading || busy
+                              ? null
+                              : () {
+                                  if (own && viewChild == widget.childId) {
+                                    showParentDeadlines(
+                                      context,
+                                      widget.state,
+                                      widget.childId,
+                                      isCurrent: () =>
+                                          own && viewChild == widget.childId,
+                                      onRoute: (route) => editorRoute = route,
+                                    );
+                                  }
+                                },
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          label: const Text(
+                            'Gespeicherte Termine & Kalenderdatei',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: loading || busy
-                          ? null
-                          : () {
-                              if (own && viewChild == widget.childId) {
-                                showParentDeadlines(
-                                  context,
-                                  widget.state,
-                                  widget.childId,
-                                  isCurrent: () =>
-                                      own && viewChild == widget.childId,
-                                  onRoute: (route) => editorRoute = route,
-                                );
-                              }
-                            },
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      label: const Text('Gespeicherte Termine & Kalenderdatei'),
-                    ),
-                    const SizedBox(height: 16),
                     for (final conflict
                         in data!['plan']['conflicts'] as List? ?? [])
                       Padding(

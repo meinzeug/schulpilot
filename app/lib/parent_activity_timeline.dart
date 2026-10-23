@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 
 /// A bounded local view of already-loaded activity, never a new learning event.
 class ParentActivityTimeline extends StatefulWidget {
@@ -29,7 +30,7 @@ class _ParentActivityTimelineState extends State<ParentActivityTimeline> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    filtersExpanded ??= MediaQuery.sizeOf(context).width >= 720;
+    filtersExpanded ??= false;
   }
 
   late final Json? account;
@@ -149,7 +150,7 @@ class _ParentActivityTimelineState extends State<ParentActivityTimeline> {
           icon: Icons.timeline_rounded,
         ),
         Text(
-          '${widget.activities.length} gespeicherte Ereignisse geladen. Diese Vorschau umfasst höchstens die 200 neuesten Ereignisse; sie ist keine vollständige Aufgabenstatistik.',
+          '${widget.activities.length} Ereignisse · Vorschau der höchstens 200 neuesten',
         ),
         const SizedBox(height: 12),
         ExpansionTile(
@@ -224,6 +225,16 @@ class _ParentActivityTimelineState extends State<ParentActivityTimeline> {
                 : 'Keine geladenen Lernaktivitäten passen zu dieser Auswahl.',
           ),
         for (final row in visible) activity(row),
+        ParentViewDetails(
+          title: 'Umfang dieser Vorschau',
+          scope: ('timeline-info', ObjectKey(account), family, widget.childId),
+          isCurrent: () => current,
+          children: const [
+            Text(
+              'Diese Vorschau umfasst höchstens die 200 neuesten Ereignisse; sie ist keine vollständige Aufgabenstatistik. Technische Ereignisse zählen nicht als bearbeitete Aufgaben.',
+            ),
+          ],
+        ),
         if (widget.activities.any((row) => widget.technical(row['kind'])))
           ExpansionTile(
             title: const Text('Technische Ereignisse'),

@@ -213,6 +213,11 @@ void main() {
       final f = Fixture();
       await f.mount(tester);
       expect(
+        find.textContaining('Vorschau der höchstens 200 neuesten'),
+        findsOneWidget,
+      );
+      await tap(tester, find.text('Umfang dieser Vorschau'));
+      expect(
         find.textContaining('höchstens die 200 neuesten Ereignisse'),
         findsOneWidget,
       );

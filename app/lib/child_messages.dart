@@ -269,17 +269,6 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
           title: 'Deine Familie erreichen.',
           description: 'Eine Frage beim Lernen? Hole deine Eltern live dazu. Für später kannst du auch eine Nachricht oder Idee hinterlassen.',
           icon: Icons.forum_rounded,
-          facts: [
-            if (openHelp > 0)
-              ChildHeroFact(
-                icon: Icons.volunteer_activism_outlined,
-                label: counted(
-                  openHelp,
-                  'offener Hilfewunsch',
-                  'offene Hilfewünsche',
-                ),
-              ),
-          ],
           action: Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -306,6 +295,13 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
             ],
           ),
         ),
+        if (openHelp > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              counted(openHelp, 'offener Hilfewunsch', 'offene Hilfewünsche'),
+            ),
+          ),
         const SizedBox(height: 16),
         ChildSectionTabs(
           tabs: const [
@@ -352,114 +348,131 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
           _ => 'Nachrichten für dich und von dir',
         }),
         const SizedBox(height: 12),
-        TextField(
-          controller: search,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            labelText: 'Nachrichten durchsuchen',
-            prefixIcon: Icon(Icons.search_rounded),
-            suffixIcon: search.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Nachrichtensuche leeren',
-                    onPressed: () {
-                      if (!current) return;
-                      FocusManager.instance.primaryFocus?.unfocus();
-                      setState(search.clear);
-                      remember();
-                    },
-                    icon: Icon(Icons.clear_rounded),
-                  ),
-          ),
-          onChanged: (_) {
-            if (current) {
-              setState(() {});
-              remember();
-            }
-          },
-          onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: 230,
-              child: DropdownButtonFormField<String>(
-                key: ValueKey(('sender', sender)),
-                initialValue: sender,
-                isExpanded: true,
-                decoration: InputDecoration(labelText: 'Absender'),
-                items: [
-                  for (final item in [
-                    ('all', 'Alle Nachrichten'),
-                    ('parent', 'Von meinen Eltern'),
-                    ('child', 'Von mir'),
-                    ('system', 'Von Schulpilot'),
-                  ])
-                    DropdownMenuItem(value: item.$1, child: Text(item.$2)),
-                ],
-                onChanged: (value) {
-                  if (!current || value == null) return;
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  setState(() => sender = value);
-                  remember();
-                },
-              ),
-            ),
-            SizedBox(
-              width: 230,
-              child: DropdownButtonFormField<String>(
-                key: ValueKey(('order', order)),
-                initialValue: order,
-                isExpanded: true,
-                decoration: InputDecoration(labelText: 'Reihenfolge'),
-                items: [
-                  DropdownMenuItem(
-                    value: 'newest',
-                    child: Text('Neueste zuerst'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'oldest',
-                    child: Text('Älteste zuerst'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (!current || value == null) return;
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  setState(() => order = value);
-                  remember();
-                },
-              ),
-            ),
-          ],
-        ),
-        if (isWish) ...[
-          SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+        ChildFilterTools(
+          summary: '${rows.length} Nachrichten in dieser Ansicht',
+          filtered:
+              search.text.trim().isNotEmpty ||
+              sender != 'all' ||
+              order != 'newest' ||
+              (isWish && wishKind != 'all'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final item in [
-                ('all', 'Alle Wünsche'),
-                ('interest', 'Lernideen'),
-                ('plan_change', 'Planwünsche'),
-              ])
-                ChoiceChip(
-                  label: Text(item.$2),
-                  selected: wishKind == item.$1,
-                  onSelected: (_) {
-                    if (!current) return;
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    setState(() => wishKind = item.$1);
-                    remember();
-                  },
+              TextField(
+                controller: search,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  labelText: 'Nachrichten durchsuchen',
+                  prefixIcon: Icon(Icons.search_rounded),
+                  suffixIcon: search.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Nachrichtensuche leeren',
+                          onPressed: () {
+                            if (!current) return;
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            setState(search.clear);
+                            remember();
+                          },
+                          icon: Icon(Icons.clear_rounded),
+                        ),
                 ),
+                onChanged: (_) {
+                  if (current) {
+                    setState(() {});
+                    remember();
+                  }
+                },
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  SizedBox(
+                    width: 230,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey(('sender', sender)),
+                      initialValue: sender,
+                      isExpanded: true,
+                      decoration: InputDecoration(labelText: 'Absender'),
+                      items: [
+                        for (final item in [
+                          ('all', 'Alle Nachrichten'),
+                          ('parent', 'Von meinen Eltern'),
+                          ('child', 'Von mir'),
+                          ('system', 'Von Schulpilot'),
+                        ])
+                          DropdownMenuItem(
+                            value: item.$1,
+                            child: Text(item.$2),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (!current || value == null) return;
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        setState(() => sender = value);
+                        remember();
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 230,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey(('order', order)),
+                      initialValue: order,
+                      isExpanded: true,
+                      decoration: InputDecoration(labelText: 'Reihenfolge'),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'newest',
+                          child: Text('Neueste zuerst'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'oldest',
+                          child: Text('Älteste zuerst'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (!current || value == null) return;
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        setState(() => order = value);
+                        remember();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              if (isWish) ...[
+                SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final item in [
+                      ('all', 'Alle Wünsche'),
+                      ('interest', 'Lernideen'),
+                      ('plan_change', 'Planwünsche'),
+                    ])
+                      ChoiceChip(
+                        label: Text(item.$2),
+                        selected: wishKind == item.$1,
+                        onSelected: (_) {
+                          if (!current) return;
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(() => wishKind = item.$1);
+                          remember();
+                        },
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 12),
             ],
           ),
-        ],
-        const SizedBox(height: 12),
+        ),
         Semantics(
           liveRegion: true,
           child: Text(

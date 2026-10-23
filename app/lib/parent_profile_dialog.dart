@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'parent_form_guard.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 
 /// Only explicit parent profile editing; learning snapshots are never rewritten.
 Future<void> showParentProfileDialog(
@@ -352,43 +353,55 @@ class _ParentProfileEditorState extends State<_ParentProfileEditor> {
                         liveRegion: true,
                         child: Notice(error!, warning: true),
                       ),
-                    OutlinedButton.icon(
-                      onPressed: busy || comparing ? null : compare,
-                      icon: const Icon(Icons.compare_arrows),
-                      label: Text(
-                        comparing
-                            ? 'Vergleich wird geladen …'
-                            : 'Gespeicherten Stand vergleichen',
+                    ParentViewDetails(
+                      title: 'Entwurf & gespeicherter Stand',
+                      scope: (
+                        'profile-comparison',
+                        ObjectKey(account),
+                        family,
+                        widget.child['id'],
                       ),
-                    ),
-                    if (comparison != null) ...[
-                      const Text(
-                        'Gespeicherter Stand und dein Entwurf',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      for (final item in [
-                        (name, 'display_name', 'Anzeigename'),
-                        (grade, 'grade', 'Klassenstufe'),
-                        (subjects, 'subjects', 'Fächer'),
-                        (school, 'school_type', 'Schulform'),
-                        (region, 'region', 'Bundesland'),
-                      ])
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: SelectableText(
-                            '${item.$3}\nGespeichert: ${comparison![item.$2] is List ? (comparison![item.$2] as List).join(', ') : comparison![item.$2]}\nDein Entwurf: ${item.$1.text}',
+                      isCurrent: () => current,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: busy || comparing ? null : compare,
+                          icon: const Icon(Icons.compare_arrows),
+                          label: Text(
+                            comparing
+                                ? 'Vergleich wird geladen …'
+                                : 'Gespeicherten Stand vergleichen',
                           ),
                         ),
-                      const Notice(
-                        'Vergleichen speichert nichts. Der folgende Knopf ersetzt bewusst deinen Entwurf durch den gespeicherten Stand.',
-                      ),
-                      OutlinedButton(
-                        onPressed: busy || comparing ? null : adopt,
-                        child: const Text(
-                          'Gespeicherten Stand in den Entwurf übernehmen',
-                        ),
-                      ),
-                    ],
+                        if (comparison != null) ...[
+                          const Text(
+                            'Gespeicherter Stand und dein Entwurf',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          for (final item in [
+                            (name, 'display_name', 'Anzeigename'),
+                            (grade, 'grade', 'Klassenstufe'),
+                            (subjects, 'subjects', 'Fächer'),
+                            (school, 'school_type', 'Schulform'),
+                            (region, 'region', 'Bundesland'),
+                          ])
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: SelectableText(
+                                '${item.$3}\nGespeichert: ${comparison![item.$2] is List ? (comparison![item.$2] as List).join(', ') : comparison![item.$2]}\nDein Entwurf: ${item.$1.text}',
+                              ),
+                            ),
+                          const Notice(
+                            'Vergleichen speichert nichts. Der folgende Knopf ersetzt bewusst deinen Entwurf durch den gespeicherten Stand.',
+                          ),
+                          OutlinedButton(
+                            onPressed: busy || comparing ? null : adopt,
+                            child: const Text(
+                              'Gespeicherten Stand in den Entwurf übernehmen',
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     if (busy) const LinearProgressIndicator(),
                   ],
                 ),

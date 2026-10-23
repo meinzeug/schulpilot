@@ -61,8 +61,6 @@ class _LandingScreenState extends State<LandingScreen> {
               final hero = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Tag('GEMEINSAM GUT WEITERLERNEN'),
-                  SizedBox(height: 16),
                   Text(
                     'Lernen, das zum\nSchulalltag passt.',
                     style: TextStyle(
@@ -260,20 +258,12 @@ class _LandingScreenState extends State<LandingScreen> {
                             ],
                           ),
                           SizedBox(height: wide ? 40 : 28),
-                          if (wide)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(flex: 6, child: hero),
-                                SizedBox(width: 64),
-                                Expanded(flex: 5, child: flow),
-                              ],
-                            )
-                          else ...[
-                            hero,
-                            SizedBox(height: 24),
-                            flow,
-                          ],
+                          hero,
+                          const SizedBox(height: 16),
+                          ExpansionTile(
+                            title: const Text('So funktioniert der Lernraum'),
+                            children: [flow],
+                          ),
                           SizedBox(height: 24),
                           Wrap(
                             spacing: 20,
@@ -940,15 +930,16 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                             'Die Feststelltaste ist aktiv. Prüfe die Groß- und Kleinschreibung deines Passworts.',
                           ),
                         ),
-                      Text(switch (mode) {
-                        'login' => 'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
-                        'register' => 'Erstelle dein Elternkonto und bestätige deine E-Mail. Hier löst du keine kostenpflichtige Bestellung aus.',
-                        'recovery' => 'Für Eltern: Gib die E-Mail deines Kontos ein. Kinder lassen ihr Passwort von ihren Eltern ändern.',
-                        'resend' => 'Für ein noch unbestätigtes Elternkonto: Fordere bewusst einen neuen E-Mail-Link an. Prüfe auch deinen Spamordner. Die Rückmeldung verrät nicht, ob ein Konto existiert.',
-                        'reset' => 'Wähle ein neues Elternpasswort. Der sichere Code kommt aus deinem E-Mail-Link.',
-                        'invite' => 'Nimm die Einladung zu deiner Familie an. Nutze bei einem vorhandenen Elternkonto dessen Passwort.',
-                        _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
-                      }, style: TextStyle(color: context.palette.muted)),
+                      if (mode != 'login')
+                        Text(switch (mode) {
+                          'login' => 'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
+                          'register' => 'Erstelle dein Elternkonto und bestätige deine E-Mail. Hier löst du keine kostenpflichtige Bestellung aus.',
+                          'recovery' => 'Für Eltern: Gib die E-Mail deines Kontos ein. Kinder lassen ihr Passwort von ihren Eltern ändern.',
+                          'resend' => 'Für ein noch unbestätigtes Elternkonto: Fordere bewusst einen neuen E-Mail-Link an. Prüfe auch deinen Spamordner. Die Rückmeldung verrät nicht, ob ein Konto existiert.',
+                          'reset' => 'Wähle ein neues Elternpasswort. Der sichere Code kommt aus deinem E-Mail-Link.',
+                          'invite' => 'Nimm die Einladung zu deiner Familie an. Nutze bei einem vorhandenen Elternkonto dessen Passwort.',
+                          _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
+                        }, style: TextStyle(color: context.palette.muted)),
                       if (mode == 'register' && !completed) ...[
                         const SizedBox(height: 16),
                         FutureBuilder<Json>(
@@ -1341,6 +1332,10 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                               setState(() => googleBusy = busy);
                             }
                           },
+                        ),
+                      if (mode == 'login')
+                        const Text(
+                          'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
                         ),
                       if (mode == 'login')
                         TextButton.icon(

@@ -13,6 +13,7 @@ import 'package:schulpilot/ui.dart';
 import 'parent_workflows_ux90_test.dart' show field, tap;
 import 'parent_settings_ux88_test.dart' as settings;
 import 'parent_messages_ux88_test.dart' as messages;
+import 'parent_hierarchy_test_tools.dart';
 
 class Fixture {
   final requests = <http.Request>[];
@@ -186,6 +187,7 @@ void main() {
         tester.widget<TextField>(field('Anzeigename')).controller!.text,
         'Mein Entwurf',
       );
+      await openParentDetails103(tester, 'Entwurf & gespeicherter Stand');
       await tap(tester, find.text('Gespeicherten Stand vergleichen'));
       expect(puts, 1);
       expect(
@@ -223,6 +225,7 @@ void main() {
         field('Anzeigename'),
         'Privater künstlicher Entwurf',
       );
+      await openParentDetails103(tester, 'Entwurf & gespeicherter Stand');
       await tester.ensureVisible(find.text('Gespeicherten Stand vergleichen'));
       await tester.tap(find.text('Gespeicherten Stand vergleichen'));
       await tester.pump();
@@ -267,6 +270,7 @@ void main() {
       ],
     });
     await f.open(tester, width: 320, scale: 2);
+    await openParentDetails103(tester, 'Entwurf & gespeicherter Stand');
     await tap(tester, find.text('Gespeicherten Stand vergleichen'));
     await tap(
       tester,

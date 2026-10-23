@@ -117,7 +117,14 @@ void main() {
         true,
       );
       await t.pump();
-      await press(t, 'Aktualisieren');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await t.pumpAndSettle();
+      final reload = find.byTooltip('Aktualisieren');
+      await t.ensureVisible(reload);
+      await t.pumpAndSettle();
+      expect(reload.hitTestable(), findsOneWidget);
+      await t.tap(reload);
+      await t.pumpAndSettle();
       await press(t, 'Zahlung prüfen & freischalten');
       expect(
         t.widget<TextField>(store.field('Betrag in EUR')).controller!.text,
@@ -484,6 +491,9 @@ void main() {
               );
       });
       await mount(t, PushAdminScreen(state));
+      expect(find.textContaining('synthetic-project'), findsNothing);
+      await press(t, 'Konfiguration & Nachweise');
+      expect(find.textContaining('synthetic-project'), findsOneWidget);
       await press(t, 'Status aktualisieren');
       expect(reads, 2);
       expect(

@@ -23,82 +23,7 @@ class ChildSectionHero extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width < 720) {
-      return _CompactChildHero(this);
-    }
-    final palette = context.palette;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (eyebrow.trim().toLowerCase() != title.trim().toLowerCase()) ...[
-          Text(
-            eyebrow,
-            style: TextStyle(
-              color: palette.cyanInk,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-        ],
-        Row(
-          children: [
-            Expanded(
-              child: Semantics(
-                header: true,
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    color: palette.ink,
-                    fontSize: 28,
-                    height: 1.2,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -.5,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            ExcludeSemantics(
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: palette.mint,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: palette.teal, size: 20),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          description,
-          style: TextStyle(color: palette.muted, fontSize: 15, height: 1.45),
-        ),
-        if (facts.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(spacing: 12, runSpacing: 8, children: facts),
-        ],
-        if (action != null) ...[
-          const SizedBox(height: 12),
-          FilledButtonTheme(
-            data: FilledButtonThemeData(
-              style: FilledButton.styleFrom(
-                backgroundColor: palette.actionPurple,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(48, 48),
-              ),
-            ),
-            child: action!,
-          ),
-        ],
-      ],
-    );
-  }
+  Widget build(BuildContext context) => _CompactChildHero(this);
 }
 
 class _CompactChildHero extends StatefulWidget {
@@ -138,7 +63,7 @@ class _CompactChildHeroState extends State<_CompactChildHero> {
                   content.compactTitle ?? content.eyebrow,
                   style: TextStyle(
                     fontFamily: 'Nunito',
-                    fontSize: 24,
+                    fontSize: MediaQuery.sizeOf(context).width < 720 ? 24 : 28,
                     height: 1.2,
                     color: palette.ink,
                     fontWeight: FontWeight.w700,
@@ -592,7 +517,7 @@ class _ChildFilterToolsState extends State<ChildFilterTools> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled || MediaQuery.sizeOf(context).width >= 720) {
+    if (!widget.enabled) {
       return widget.child;
     }
     return Column(
@@ -648,8 +573,19 @@ class _ChildFilterToolsState extends State<ChildFilterTools> {
             ),
           ),
         ),
-        if (expanded)
-          Padding(padding: const EdgeInsets.only(top: 12), child: widget.child),
+        ExcludeFocus(
+          excluding: !expanded,
+          child: Offstage(
+            offstage: !expanded,
+            child: TickerMode(
+              enabled: expanded,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: widget.child,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

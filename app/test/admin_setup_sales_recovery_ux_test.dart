@@ -525,6 +525,10 @@ void main() {
         MaterialApp.router(theme: appTheme(), routerConfig: router),
       );
       await tester.pumpAndSettle();
+      await helper.tap(
+        tester,
+        find.text('Bestellungen suchen, filtern & exportieren'),
+      );
       expect(find.text('Zahlung offen (1)'), findsOneWidget);
       expect(find.text('Beendet (1)'), findsOneWidget);
       expect(find.textContaining('höchstens den 200'), findsOneWidget);

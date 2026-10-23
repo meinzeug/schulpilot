@@ -19,6 +19,7 @@ import 'parent_activity_timeline.dart';
 import 'parent_workspace_ui.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 import 'learning_plan_ui.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -68,6 +69,11 @@ class DashboardScreen extends StatelessWidget {
         key: ValueKey('${state.familyId}-${state.revision}'),
         load: () => state.api.get('/families/${state.familyId}'),
         builder: (family, refresh) {
+          final account = state.user, familyId = state.familyId;
+          bool current() =>
+              context.mounted &&
+              identical(account, state.user) &&
+              familyId == state.familyId;
           final children = (family['children'] as List? ?? [])
               .whereType<Map>()
               .map(Json.from)
@@ -144,19 +150,12 @@ class DashboardScreen extends StatelessWidget {
                           '$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'} heute',
                     ),
                 ],
-                actions: [
-                  if (state.canManage && children.isNotEmpty)
-                    OutlinedButton.icon(
-                      onPressed: () =>
-                          showChildDialog(context, state).then((_) {
-                            if (context.mounted) refresh();
-                          }),
-                      icon: Icon(Icons.person_add_alt_1_rounded, size: 18),
-                      label: Text('Kind hinzufügen'),
-                    ),
-                ],
               ),
               SizedBox(height: 16),
+              if (highlightHelp)
+                const Notice(
+                  'Ein Hilfewunsch wartet auf dich. Öffne das betroffene Kind, um das Anliegen anzusehen.',
+                ),
               ParentSectionHeading(
                 title: 'Deine Kinder',
                 icon: Icons.diversity_1_rounded,
@@ -188,7 +187,24 @@ class DashboardScreen extends StatelessWidget {
                 Column(
                   children: [
                     for (final child in children)
-                      _FamilyChildCard(child: Json.from(child)),
+                      _FamilyChildCard(child: Json.from(child), state: state),
+                  ],
+                ),
+              if (state.canManage && children.isNotEmpty)
+                ParentViewDetails(
+                  title: 'Familie verwalten',
+                  scope: ('family-tools', ObjectKey(account), familyId),
+                  isCurrent: current,
+                  children: [
+                    if (state.canManage && children.isNotEmpty)
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            showChildDialog(context, state).then((_) {
+                              if (context.mounted) refresh();
+                            }),
+                        icon: Icon(Icons.person_add_alt_1_rounded, size: 18),
+                        label: Text('Kind hinzufügen'),
+                      ),
                   ],
                 ),
               SizedBox(height: 16),
@@ -203,7 +219,8 @@ class DashboardScreen extends StatelessWidget {
 
 class _FamilyChildCard extends StatelessWidget {
   final Json child;
-  const _FamilyChildCard({required this.child});
+  final AppState state;
+  const _FamilyChildCard({required this.child, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +230,17 @@ class _FamilyChildCard extends StatelessWidget {
         'Ein Kinderzugang konnte nicht vollständig geladen werden. Bitte erneut laden.',
       );
     }
+    final account = state.user, family = state.familyId;
+    bool current() =>
+        context.mounted &&
+        identical(account, state.user) &&
+        family == state.familyId;
+    void visit(String route) {
+      if (current()) {
+        openRoute(context, route);
+      }
+    }
+
     final palette = context.palette;
     final summary = Json.from(child['summary'] as Map? ?? {});
     final displayName = child['display_name']?.toString().trim();
@@ -296,27 +324,38 @@ class _FamilyChildCard extends StatelessWidget {
           child: ActionButton(
             label: 'Lernüberblick öffnen',
             icon: Icons.arrow_forward_rounded,
-            onPressed: () async => openRoute(context, '/child/$childId'),
+            onPressed: () async => visit('/child/$childId'),
           ),
         ),
         SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
+        ParentViewDetails(
+          title: 'Weitere Bereiche',
+          subtitle: 'Lernstand · Plan · Nachrichten',
+          scope: ('family-child-tools', ObjectKey(account), family, childId),
+          isCurrent: current,
           children: [
-            for (final destination in [
-              ('progress', 'Lernstand', Icons.insights_rounded),
-              ('plan', 'Plan', Icons.event_note_rounded),
-              ('messages', 'Nachrichten', Icons.chat_bubble_outline_rounded),
-            ])
-              TextButton.icon(
-                onPressed: () => openRoute(
-                  context,
-                  ParentChildNavigation.location(childId, destination.$1),
-                ),
-                icon: Icon(destination.$3, size: 18),
-                label: Text(destination.$2),
-              ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final destination in [
+                  ('progress', 'Lernstand', Icons.insights_rounded),
+                  ('plan', 'Plan', Icons.event_note_rounded),
+                  (
+                    'messages',
+                    'Nachrichten',
+                    Icons.chat_bubble_outline_rounded,
+                  ),
+                ])
+                  TextButton.icon(
+                    onPressed: () => visit(
+                      ParentChildNavigation.location(childId, destination.$1),
+                    ),
+                    icon: Icon(destination.$3, size: 18),
+                    label: Text(destination.$2),
+                  ),
+              ],
+            ),
           ],
         ),
       ],
@@ -350,7 +389,25 @@ class _FamilyChildCard extends StatelessWidget {
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [identity, SizedBox(height: 16), measuredTime],
+            children: [
+              identity,
+              ParentViewDetails(
+                title: 'Lernzeit & Mindestziele',
+                subtitle: time is Map && time['goal_required'] == true
+                    ? time['daily_goal_met'] == true
+                          ? 'Tagesmindestziel erreicht'
+                          : 'Tagesmindestziel offen'
+                    : null,
+                scope: (
+                  'family-child-time',
+                  ObjectKey(account),
+                  family,
+                  childId,
+                ),
+                isCurrent: current,
+                children: [measuredTime],
+              ),
+            ],
           );
         },
       ),
@@ -695,44 +752,54 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           ],
                         ),
                       SizedBox(height: 16),
-                      ParentSectionHeading(
+                      ParentViewDetails(
                         title: 'Lernziele & Einstellungen',
-                        icon: Icons.tune_rounded,
-                      ),
-                      Panel(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
-                              style: TextStyle(color: context.palette.muted),
-                            ),
-                            SizedBox(height: 18),
-                            if (state.canManage)
-                              ActionButton(
-                                label: 'Lernvorgaben anpassen',
-                                icon: Icons.tune_rounded,
-                                onPressed: () async {
-                                  await preferencesDialog(
-                                    context,
-                                    state,
-                                    child,
-                                  );
-                                  refresh();
-                                },
-                              ),
-                          ],
+                        scope: (
+                          'parent-child-preferences',
+                          ObjectKey(state.user),
+                          state.familyId,
+                          child['id'],
                         ),
+                        isCurrent: () => sameAccount,
+                        children: [
+                          Panel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(height: 10),
+                                Text(
+                                  'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
+                                  style: TextStyle(
+                                    color: context.palette.muted,
+                                  ),
+                                ),
+                                SizedBox(height: 18),
+                                if (state.canManage)
+                                  ActionButton(
+                                    label: 'Lernvorgaben anpassen',
+                                    icon: Icons.tune_rounded,
+                                    onPressed: () async {
+                                      await preferencesDialog(
+                                        context,
+                                        state,
+                                        child,
+                                      );
+                                      refresh();
+                                    },
+                                  ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                        ],
                       ),
-                      SizedBox(height: 16),
                       ActionPanel(
                         actionLabel: 'Lernaufträge und Klassenarbeiten im Lernplan ansehen',
                         onPressed: () {
@@ -2417,39 +2484,53 @@ class _ParentMessagesState extends State<_ParentMessages> {
           'Bis zu 100 neueste Nachrichten · ${all.length} geladen',
           style: TextStyle(color: context.palette.muted),
         ),
-        ParentCollectionSearch(
-          controller: search,
-          label: 'Geladene Nachrichten durchsuchen',
-          appliedQuery: query,
-          helperText: 'Mit Suchen bestätigen. Durchsucht nur diese höchstens 100 geladenen Nachrichten.',
-          onSearch: applySearch,
-          onClear: () => applySearch(clear: true),
-        ),
-        ParentChoiceFilter(
-          label: 'Anliegenart',
-          value: kindFilter,
-          choices: const [
-            ('all', 'Alle Anliegenarten'),
-            ('help', 'Hilfewünsche'),
-            ('interest', 'Interessen'),
-            ('plan_change', 'Planvorschläge'),
-            ('reply', 'Antworten'),
-            ('system', 'Von Schulpilot'),
+        ParentViewDetails(
+          title: 'Nachrichten suchen & sortieren',
+          subtitle: query.isNotEmpty || kindFilter != 'all' || oldestFirst
+              ? [
+                  if (query.isNotEmpty) 'Suche: $query',
+                  if (kindFilter != 'all') 'Anliegenfilter aktiv',
+                  if (oldestFirst) 'Älteste zuerst',
+                ].join(' · ')
+              : null,
+          scope: ('parent-message-tools', ObjectKey(account), family, childId),
+          isCurrent: () => current,
+          children: [
+            ParentCollectionSearch(
+              controller: search,
+              label: 'Geladene Nachrichten durchsuchen',
+              appliedQuery: query,
+              helperText: 'Mit Suchen bestätigen. Durchsucht nur diese höchstens 100 geladenen Nachrichten.',
+              onSearch: applySearch,
+              onClear: () => applySearch(clear: true),
+            ),
+            ParentChoiceFilter(
+              label: 'Anliegenart',
+              value: kindFilter,
+              choices: const [
+                ('all', 'Alle Anliegenarten'),
+                ('help', 'Hilfewünsche'),
+                ('interest', 'Interessen'),
+                ('plan_change', 'Planvorschläge'),
+                ('reply', 'Antworten'),
+                ('system', 'Von Schulpilot'),
+              ],
+              onChanged: (value) => changeView(() {
+                kindFilter = value;
+                if (value != 'help' && value != 'all') openOnly = false;
+              }),
+            ),
+            ParentChoiceFilter(
+              label: 'Reihenfolge der geladenen Nachrichten',
+              value: oldestFirst ? 'oldest' : 'newest',
+              choices: const [
+                ('newest', 'Neueste zuerst'),
+                ('oldest', 'Älteste der geladenen zuerst'),
+              ],
+              onChanged: (value) =>
+                  changeView(() => oldestFirst = value == 'oldest'),
+            ),
           ],
-          onChanged: (value) => changeView(() {
-            kindFilter = value;
-            if (value != 'help' && value != 'all') openOnly = false;
-          }),
-        ),
-        ParentChoiceFilter(
-          label: 'Reihenfolge der geladenen Nachrichten',
-          value: oldestFirst ? 'oldest' : 'newest',
-          choices: const [
-            ('newest', 'Neueste zuerst'),
-            ('oldest', 'Älteste der geladenen zuerst'),
-          ],
-          onChanged: (value) =>
-              changeView(() => oldestFirst = value == 'oldest'),
         ),
         Wrap(
           spacing: 8,

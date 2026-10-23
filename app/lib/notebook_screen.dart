@@ -1127,28 +1127,24 @@ class _NotebookScreenState extends State<_NotebookContext> {
                     ],
                   ),
                 if (widget.state.isChild) ...[
-                  Text(
-                    pageSummary,
-                    style: TextStyle(color: context.palette.muted),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                  Row(
                     children: [
-                      if (!showSearch)
-                        Tooltip(
-                          message: 'Im Hefter suchen',
-                          child: OutlinedButton.icon(
-                            onPressed: toggleSearch,
-                            icon: const Icon(Icons.search_rounded),
-                            label: const Text('Im Hefter suchen'),
-                          ),
+                      Expanded(
+                        child: Text(
+                          pageSummary,
+                          style: TextStyle(color: context.palette.muted),
                         ),
-                      OutlinedButton.icon(
+                      ),
+                      if (!showSearch)
+                        IconButton(
+                          tooltip: 'Im Hefter suchen',
+                          onPressed: toggleSearch,
+                          icon: const Icon(Icons.search_rounded),
+                        ),
+                      IconButton(
+                        tooltip: 'Filter',
                         onPressed: filters,
                         icon: const Icon(Icons.tune_rounded),
-                        label: const Text('Filter'),
                       ),
                       IconButton(
                         tooltip: 'Seiten aktualisieren',

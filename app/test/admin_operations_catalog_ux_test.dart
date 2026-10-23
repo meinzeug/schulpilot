@@ -179,9 +179,13 @@ void main() {
             find.textContaining('Betriebsdaten zuletzt erfolgreich geladen:'),
           )
           .data;
-      await tap(tester, find.text('Aktualisieren'));
+      await tap(tester, find.byTooltip('Aktualisieren'));
       expect(find.text('Künstlicher Abruffehler'), findsOneWidget);
-      expect(find.text(stamp!), findsOneWidget);
+      final retainedStamp = find.text(stamp!);
+      expect(retainedStamp, findsOneWidget);
+      await tester.ensureVisible(retainedStamp);
+      await tester.pumpAndSettle();
+      expect(retainedStamp.hitTestable(), findsOneWidget);
       expect(operationReads, 2);
       await tester.pumpWidget(const SizedBox());
       router.dispose();
@@ -212,6 +216,7 @@ void main() {
       expect(find.text('KI-Notfallstopp aktiviert'), findsOneWidget);
       expect(find.text('Aktion: future.action'), findsOneWidget);
       expect(find.text('Akteur: synthetic-op-b'), findsOneWidget);
+      await tap(tester, find.text('Protokoll durchsuchen & filtern'));
       final actor = find.byType(DropdownButtonFormField<String>).first;
       await tap(tester, actor);
       await tester.tap(find.text('synthetic-op-b').last);
@@ -238,6 +243,7 @@ void main() {
           {'action': 'future.action', 'actor': 'other-op', 'target': 'target'},
         ]),
       );
+      await tap(tester, find.text('Protokoll durchsuchen & filtern'));
       await tester.enterText(find.byType(TextField), 'gespeichert');
       await tester.pump();
       expect(find.text('1 von 2 geladenen Einträgen'), findsOneWidget);

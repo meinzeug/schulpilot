@@ -181,7 +181,7 @@ void main() {
         },
       );
       await choose(t);
-      await f.tap(t, find.text('Wörter hinzufügen'));
+      await f.tap(t, find.byTooltip('Wörter hinzufügen'));
       expect(t.widget<TextField>(r.input('Sammlung')).readOnly, isTrue);
       await t.enterText(
         find.byWidgetPredicate((w) => w is TextField && w.minLines == 4),

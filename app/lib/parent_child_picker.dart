@@ -190,8 +190,9 @@ class _ChildrenState extends State<_Children> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Der gewählte Bereich bleibt erhalten. Es werden nur Kinder deiner ausgewählten Familie angezeigt.',
+            const Tooltip(
+              message: 'Der gewählte Bereich bleibt erhalten. Es werden nur Kinder deiner ausgewählten Familie angezeigt.',
+              child: Text('Kinder deiner ausgewählten Familie'),
             ),
             if (loading) const LinearProgressIndicator(),
             if (error != null) ...[

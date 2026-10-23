@@ -406,7 +406,41 @@ class _ProgressScreenState extends State<ProgressScreen> {
               ],
               ExpansionTile(
                 title: const Text('Zeitraum, Suche & Reihenfolge'),
+                subtitle: Text(
+                  '${category == null ? 'Alle Ergebnisse' : categories[category]}${viewFiltered ? ' · Ansichtsfilter aktiv' : ''}',
+                ),
                 children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Alle Ergebnisse'),
+                        selected: category == null,
+                        onSelected: loading
+                            ? null
+                            : (_) => choose(
+                                nextSubject: subject,
+                                nextTopic: topic,
+                                changeCategory: true,
+                              ),
+                      ),
+                      for (final entry in categories.entries)
+                        ChoiceChip(
+                          label: Text(entry.value),
+                          selected: category == entry.key,
+                          onSelected: loading
+                              ? null
+                              : (_) => choose(
+                                  nextSubject: subject,
+                                  nextTopic: topic,
+                                  nextCategory: entry.key,
+                                  changeCategory: true,
+                                ),
+                        ),
+                    ],
+                  ),
+
                   TextField(
                     controller: viewSearch,
                     maxLength: 100,
@@ -514,36 +548,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       onPressed: loading ? null : resetView,
                       icon: const Icon(Icons.filter_alt_off_outlined),
                       label: const Text('Ansichtsfilter zurücksetzen'),
-                    ),
-                ],
-              ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: const Text('Alle Ergebnisse'),
-                    selected: category == null,
-                    onSelected: loading
-                        ? null
-                        : (_) => choose(
-                            nextSubject: subject,
-                            nextTopic: topic,
-                            changeCategory: true,
-                          ),
-                  ),
-                  for (final entry in categories.entries)
-                    ChoiceChip(
-                      label: Text(entry.value),
-                      selected: category == entry.key,
-                      onSelected: loading
-                          ? null
-                          : (_) => choose(
-                              nextSubject: subject,
-                              nextTopic: topic,
-                              nextCategory: entry.key,
-                              changeCategory: true,
-                            ),
                     ),
                 ],
               ),

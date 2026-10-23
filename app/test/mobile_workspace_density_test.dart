@@ -174,6 +174,16 @@ Finder content(String page) => switch (page) {
 };
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+  setUpAll(() async {
+    for (final font in ['Nunito', 'SpaceGrotesk', 'Roboto']) {
+      await (FontLoader(font)..addFont(
+            rootBundle.load(
+              'assets/fonts/${font == 'Roboto' ? 'Nunito' : font}.ttf',
+            ),
+          ))
+          .load();
+    }
+  });
   for (final page in [
     'learn',
     'library',
@@ -193,7 +203,13 @@ void main() {
           );
           expect(
             tester.getSize(find.byType(ChildSectionHero)).height,
-            lessThanOrEqualTo(page == 'homework' ? 130 : 120),
+            lessThanOrEqualTo(
+              page == 'homework'
+                  ? 130
+                  : page == 'vocabulary'
+                  ? 144
+                  : 120,
+            ),
           );
           expect(find.text('Demo · nur Beispieldaten'), findsOneWidget);
           final marker = content(page);
@@ -209,7 +225,11 @@ void main() {
                     matching: find.byType(ChildActionTile),
                   )
                   .first,
-            'learn' || 'vocabulary' =>
+            'vocabulary' =>
+              find
+                  .ancestor(of: marker.first, matching: find.byType(ListTile))
+                  .first,
+            'learn' =>
               find
                   .ancestor(of: marker.first, matching: find.byType(Panel))
                   .first,

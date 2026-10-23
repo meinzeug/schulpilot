@@ -435,3 +435,12 @@ standardmäßig verdrängen. Lange Dokumente und Werkzeugbereiche scrollen getre
 Auf großen Bildschirmen bleibt die Textbreite auf760px begrenzt. Vergleiche
 verwenden mobil umschaltbare beschriftete Ansichten und erst bei genügend Platz
 zwei Spalten. Große Schrift und Bildschirmtastatur werden gemeinsam geprüft.
+
+
+## Inhalt vor Werkzeugen — Runde 103
+
+Die [47-Routen-Inventur 103](CLEAR_LAYOUT_103_2026_10_23.md) ergänzt die Abstandsverdichtung aus102 durch eine klare Reihenfolge. Kurzer Titel, tatsächlicher nächster Schritt und gespeicherter Inhalt kommen zuerst. Zusätzliche Suche, Verwaltung und Statistik gezielt öffnen; aktive Filter, Pflichtaufträge, Quelländerungen, Unsicherheit, Budgetwarnungen und Notfallstopp bleiben am Arbeitskontext sichtbar.
+
+Wörter und Lernrunden starten als kompakte Listen; Karten bleiben bewusst wählbar. Sekundäre Aktionen gehören ins beschriftete Elementmenü. Hauptklick und bewusste Prüfung behalten ihre bisherige Bedeutung. Die Bereichsinfo ist auch am Desktop optional; die echte Hauptaktion bleibt beim Öffnen montiert. Geschlossene Formulare behalten ihre lokalen Entwürfe, sind aber aus Fokus, Trefferprüfung und Semantik ausgeschlossen. Nur kontogebundene, routenlokale boolesche Aufklappzustände dürfen wiederhergestellt werden.
+
+Keine Verdichtung durch TextScalergrenzen oder abgeschnittene Pflichttexte. Normale Schrift und200Prozent mit echten lokalen Fonts prüfen, Trefferflächen mindestens48px; lange Titel dürfen wachsen. Bildschirmvergleiche mit künstlichen Inhalten dienen der Gestaltung, nicht als Nachweis einer KI-Ausgabe oder echter Lernaktivität.

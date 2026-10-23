@@ -11,6 +11,7 @@ import 'package:schulpilot/grades_screen.dart';
 import 'package:schulpilot/ui.dart';
 
 import 'progress_grades_test.dart' as fixture;
+import 'parent_hierarchy_test_tools.dart';
 
 Json grade({String id = 'synthetic-grade', bool undated = false}) => {
   'id': id,
@@ -67,6 +68,17 @@ class _Fixture {
       MaterialApp.router(theme: appTheme(), routerConfig: router),
     );
     await tester.pumpAndSettle();
+    if (true) {
+      for (final title in [
+        'Suche & Notenfilter',
+        'Schwerpunkte über alle Fächer',
+        'Ansicht & Export',
+      ]) {
+        if (find.text(title).evaluate().isNotEmpty) {
+          await openParentDetails103(tester, title);
+        }
+      }
+    }
     return router;
   }
 
@@ -340,7 +352,9 @@ void main() {
       expect(find.text('Schwerpunkte über alle Fächer'), findsOneWidget);
       expect(find.textContaining('90 Tagen'), findsOneWidget);
       expect(
-        find.textContaining('Der Fachfilter gilt für diese Liste'),
+        find.textContaining(
+          'Gespeicherte Einzelnoten · getrennt vom Übungsstand.',
+        ),
         findsOneWidget,
       );
       expect(find.text('Note eintragen'), findsNothing);

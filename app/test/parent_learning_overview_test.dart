@@ -15,6 +15,8 @@ import 'package:schulpilot/parent_child_navigation.dart';
 import 'package:schulpilot/parent_overview.dart';
 import 'package:schulpilot/parent_plan_screen.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 Json parentOverview() {
   final data = jsonDecode(
     File('test/fixtures/child_home.json').readAsStringSync(),
@@ -211,6 +213,11 @@ Future<({AppState state, GoRouter router})> mountParent(
     ),
   );
   await tester.pumpAndSettle();
+  for (final title in ['Zeit & Mindestziele', 'Lernzeit & Mindestziele']) {
+    if (find.text(title).evaluate().isNotEmpty) {
+      await openParentDetails103(tester, title);
+    }
+  }
   return (state: state, router: router);
 }
 
@@ -393,6 +400,12 @@ void main() {
     (tester) async {
       final data = parentOverview(), requests = <http.Request>[];
       await mountParent(tester, data, requests);
+      final beforeResume = requests.length;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump();
+      expect(requests.length, beforeResume + 1);
       final before = requests.length;
       data['plan']['daily_active_seconds'] = 780;
       await tester.pump(const Duration(seconds: 14));
@@ -473,6 +486,7 @@ void main() {
       await mountParent(tester, parentOverview(), requests, permission: 'view');
       await tapText(tester, 'Plan ansehen');
       await tapText(tester, 'Woche & Vorgaben');
+      await openParentDetails103(tester, 'Vorgaben & Kalender');
       expect(find.text('Lernvorgaben anpassen'), findsNothing);
       expect(find.text('Auftrag oder Klassenarbeit anlegen'), findsNothing);
       expect(find.textContaining('Mindestziel:'), findsOneWidget);
@@ -508,8 +522,8 @@ void main() {
         expect(find.text('Im ersten Versuch'), findsOneWidget);
         expect(find.text('Oder nach erneutem Versuch'), findsOneWidget);
         expect(
-          tester.getTopLeft(find.byType(ParentPracticeSummary)).dy,
-          lessThan(tester.getTopLeft(find.text('Was jetzt wichtig ist')).dy),
+          tester.getTopLeft(find.text('Was jetzt wichtig ist')).dy,
+          lessThan(tester.getTopLeft(find.byType(ParentPracticeSummary)).dy),
         );
         expect(find.text('Erledigte Aufträge anzeigen'), findsNothing);
         expect(requests.every((r) => r.method == 'GET'), isTrue);

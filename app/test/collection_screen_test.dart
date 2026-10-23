@@ -171,7 +171,8 @@ void main() {
             listing(total: removed ? 0 : 1, learning: true, section: section),
           );
         }, learning: true);
-        await tap(tester, find.byTooltip('Lernrunde löschen'));
+        await tap(tester, find.byTooltip('Weitere Rundenaktionen'));
+        await tap(tester, find.text('Lernrunde löschen'));
         expect(find.text('Lernrunde löschen?'), findsOneWidget);
         expect(
           find.textContaining('3 gespeicherten Antwortversuchen'),
@@ -179,14 +180,15 @@ void main() {
         );
         await tap(tester, find.text('Abbrechen'));
         expect(posts, hasLength(1));
-        await tap(tester, find.byTooltip('Lernrunde löschen'));
+        await tap(tester, find.byTooltip('Weitere Rundenaktionen'));
+        await tap(tester, find.text('Lernrunde löschen'));
         await tap(
           tester,
           find.widgetWithText(FilledButton, 'Lernrunde löschen'),
         );
         await tester.pumpAndSettle();
         expect(removed, true);
-        expect(find.byTooltip('Lernrunde löschen'), findsNothing);
+        expect(find.byTooltip('Weitere Rundenaktionen'), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
@@ -199,7 +201,9 @@ void main() {
       learning: true,
       parent: true,
     );
-    expect(find.byTooltip('Lernrunde löschen'), findsNothing);
+    await tap(tester, find.byTooltip('Weitere Rundenaktionen'));
+    expect(find.text('Details ohne Start'), findsOneWidget);
+    expect(find.text('Lernrunde löschen'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
   for (final width in [320.0, 1280.0]) {

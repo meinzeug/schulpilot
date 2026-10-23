@@ -250,7 +250,13 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('1 Aufgabe geübt'), findsNothing);
-      await tester.tap(find.text('Alle Ergebnisse'));
+      await tester.ensureVisible(find.text('Zeitraum, Suche & Reihenfolge'));
+      await tester.tap(find.text('Zeitraum, Suche & Reihenfolge'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.widgetWithText(ChoiceChip, 'Alle Ergebnisse'),
+      );
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Alle Ergebnisse'));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Dieser Ergebnisfilter steht gerade nicht'),

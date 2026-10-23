@@ -112,71 +112,10 @@ class ParentWorkspaceHero extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width < 720) {
-      return _CompactParentHero(this);
-    }
-    final palette = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (eyebrow.trim().toLowerCase() != title.trim().toLowerCase()) ...[
-            Text(
-              eyebrow,
-              style: TextStyle(
-                color: palette.cyanInk,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontFamily: 'Nunito',
-                      color: palette.ink,
-                      fontSize: 28,
-                      height: 1.2,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -.5,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ExcludeSemantics(
-                child: Icon(icon, color: palette.cyanInk, size: 24),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(color: palette.muted, fontSize: 15, height: 1.45),
-          ),
-          if (facts.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(spacing: 16, runSpacing: 8, children: facts),
-          ],
-          if (actions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: actions),
-          ],
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _CompactParentHero(this);
 }
 
-/// Mobile keeps the actual page title and every supplied action visible.
+/// The page title and supplied actions stay visible; background detail is local.
 class _CompactParentHero extends StatefulWidget {
   final ParentWorkspaceHero content;
   const _CompactParentHero(this.content);
@@ -215,7 +154,9 @@ class _CompactParentHeroState extends State<_CompactParentHero> {
                     content.title,
                     style: TextStyle(
                       fontFamily: 'Nunito',
-                      fontSize: 24,
+                      fontSize: MediaQuery.sizeOf(context).width < 720
+                          ? 24
+                          : 28,
                       height: 1.2,
                       fontWeight: FontWeight.w700,
                       color: context.palette.ink,

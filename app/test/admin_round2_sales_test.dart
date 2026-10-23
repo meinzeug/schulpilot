@@ -121,6 +121,7 @@ void main() {
       });
       await mountStore(t, s);
       final initial = reads;
+      await ops.tap(t, find.text('Bestellungen suchen, filtern & exportieren'));
       final search = field('Verwendungszweck, Bestell-ID oder Tarif suchen');
       for (final query in [
         'fixture-order',
@@ -148,6 +149,7 @@ void main() {
       });
       await mountStore(t, s);
       final initial = reads;
+      await ops.tap(t, find.text('Bestellungen suchen, filtern & exportieren'));
       final search = field('Verwendungszweck, Bestell-ID oder Tarif suchen');
       await t.enterText(search, 'missing');
       await t.pumpAndSettle();

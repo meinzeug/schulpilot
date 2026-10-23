@@ -28,9 +28,16 @@ class AccountDeletionScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              heading('SCHULPILOT: Löschung ohne Android-App'),
               const Text(
                 'Melde dich hier im Web mit deinem Elternkonto an. Unter „Zugänge & Einstellungen“ kannst du einzelne Kinder samt Lernverlauf oder dein Konto und deine eigenen Familien löschen. Bestätige die Löschung mit deinem Elternpasswort.',
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () =>
+                    context.go(state.isParent ? '/settings' : '/login'),
+                child: Text(
+                  state.isParent ? 'Kontoverwaltung öffnen' : 'Im Web anmelden',
+                ),
               ),
               const SizedBox(height: 16),
               if (state.isParent) ...[
@@ -61,13 +68,6 @@ class AccountDeletionScreen extends StatelessWidget {
                 'Passwort vergessen? Nutze die Wiederherstellung auf der Anmeldeseite. Kinder wenden sich zur Löschung an ein berechtigtes Elternteil.',
               ),
               const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () =>
-                    context.go(state.isParent ? '/settings' : '/login'),
-                child: Text(
-                  state.isParent ? 'Kontoverwaltung öffnen' : 'Im Web anmelden',
-                ),
-              ),
               TextButton(
                 onPressed: () => context.go('/recovery'),
                 child: const Text('Elternzugang wiederherstellen'),

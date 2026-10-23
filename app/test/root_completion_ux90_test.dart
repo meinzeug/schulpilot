@@ -215,6 +215,7 @@ void main() {
         return local.reply({'projects': [], 'has_more': false});
       });
       await local.show(t, LanguageWorkshop(state, childId: 'child'));
+      await tap(t, find.text('Neue Sprachübung'));
       await tap(t, workshop.picker('Geladene Wörter ordnen'));
       await tap(t, find.text('Alphabetisch auf dieser Seite').last);
       final chips = t
@@ -349,6 +350,7 @@ void main() {
             ? words.reply(data)
             : review.regular(q),
       );
+      await tap(t, find.textContaining('Prüfen'));
       await tap(t, find.text('Alle Wortlisten finden'));
       await tap(t, collections.picker('Stand der Wortlisten'));
       await tap(t, find.text('Bereits übernommen').last);
@@ -389,6 +391,7 @@ void main() {
             return review.regular(q);
           },
         );
+        await tap(t, find.textContaining('Prüfen'));
         await tap(t, find.text('Alle Wortlisten finden'));
         if (scenario.$2 == 'status') {
           await tap(t, collections.picker('Stand der Wortlisten'));
@@ -433,6 +436,7 @@ void main() {
         return local.reply({'projects': [], 'has_more': false});
       });
       await local.show(t, LanguageWorkshop(state, childId: 'child'));
+      await tap(t, find.text('Neue Sprachübung'));
       await tap(t, find.widgetWithText(FilterChip, 'word1'));
       await tap(t, find.text('Mein eigener Text oder Entwurf'));
       await t.enterText(
@@ -446,6 +450,7 @@ void main() {
       await t.pumpAndSettle();
       removed = true;
       await local.show(t, LanguageWorkshop(state, childId: 'child'));
+      await tap(t, find.text('Neue Sprachübung'));
       expect(
         find.textContaining('1 ausgewählte Wörter sind nicht mehr'),
         findsOneWidget,

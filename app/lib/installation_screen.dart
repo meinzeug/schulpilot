@@ -1455,6 +1455,12 @@ class _InstallationScreenState extends State<InstallationScreen>
           const Notice(
             'Ungespeicherter Betriebsentwurf. Prüfstände beziehen sich auf die zuletzt gespeicherten Einstellungen; Änderungen erst bewusst speichern.',
           ),
+        ],
+        KeyedSubtree(
+          key: const ValueKey('installation-work-area'),
+          child: content(),
+        ),
+        if (unlocked && siteDirty) ...[
           TextButton.icon(
             onPressed: busy ? null : resetSiteDraft,
             icon: const Icon(Icons.undo),
@@ -1467,7 +1473,6 @@ class _InstallationScreenState extends State<InstallationScreen>
           ),
           const SizedBox(height: 16),
         ],
-        content(),
       ],
     );
     if (!widget.initial) {

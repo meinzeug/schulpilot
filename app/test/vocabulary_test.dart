@@ -68,6 +68,9 @@ Future<(AppState, GoRouter)> open(
   bool parent = false,
   bool manage = false,
   bool workshop = false,
+  bool openTools = true,
+  bool cards = true,
+  double textScale = 1,
   Json? wordListing,
   Future<http.Response> Function(http.Request)? respond,
 }) async {
@@ -162,13 +165,32 @@ Future<(AppState, GoRouter)> open(
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    MaterialApp.router(theme: appTheme(), routerConfig: router),
+    MaterialApp.router(
+      theme: appTheme(),
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+    ),
   );
   await tester.pumpAndSettle();
-  // Filter behavior tests explicitly reveal the mobile tool group first.
-  if (!parent && !workshop && width < 720) {
+  // Existing behavior tests deliberately open tools and exercise the optional
+  // card branch. First-impression tests pass openTools:false and cards:false.
+  if (!workshop && (openTools || cards)) {
     final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
     if (filters.evaluate().isNotEmpty) {
+      await tester.ensureVisible(filters);
+      await tester.tap(filters);
+      await tester.pumpAndSettle();
+    }
+    if (cards) {
+      await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Wortkarten'));
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Wortkarten'));
+      await tester.pumpAndSettle();
+    }
+    if (!openTools) {
       await tester.ensureVisible(filters);
       await tester.tap(filters);
       await tester.pumpAndSettle();
@@ -199,7 +221,7 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       await open(tester, requests, width: 390);
-      await tap(tester, find.text('Wörter hinzufügen'));
+      await tap(tester, find.byTooltip('Wörter hinzufügen'));
       final fields = find.descendant(
         of: find.byType(AlertDialog),
         matching: find.byType(TextField),
@@ -223,7 +245,7 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       await open(tester, requests, width: 390);
-      await tap(tester, find.text('Wörter hinzufügen'));
+      await tap(tester, find.byTooltip('Wörter hinzufügen'));
       final fields = find.descendant(
         of: find.byType(AlertDialog),
         matching: find.byType(TextField),
@@ -252,18 +274,11 @@ void main() {
       (tester) async {
         final requests = <http.Request>[];
         await open(tester, requests, width: width);
-        if (width < 720) {
-          expect(
-            find.byKey(const ValueKey('compact-child-heading')),
-            findsOneWidget,
-          );
-          expect(find.text('Wörter entdecken. Sicher anwenden.'), findsNothing);
-        } else {
-          expect(
-            find.text('Wörter entdecken. Sicher anwenden.'),
-            findsOneWidget,
-          );
-        }
+        expect(
+          find.byKey(const ValueKey('compact-child-heading')),
+          findsOneWidget,
+        );
+        expect(find.text('Wörter entdecken. Sicher anwenden.'), findsNothing);
         expect(find.text('Apfel'), findsOneWidget);
         expect(
           find.text('apple'),
@@ -310,6 +325,7 @@ void main() {
     ];
     final requests = <http.Request>[];
     await open(tester, requests, parent: true, wordListing: data);
+    await tap(tester, find.text('Gespeicherte Runden (3)'));
     expect(find.text('Vorbereitet · noch nicht begonnen'), findsOneWidget);
     expect(find.text('Begonnen · fortsetzen'), findsOneWidget);
     expect(find.text('Pausiert · fortsetzen'), findsOneWidget);
@@ -434,6 +450,7 @@ void main() {
     ) async {
       final requests = <http.Request>[];
       await open(tester, requests, width: width, workshop: true);
+      await tap(tester, find.text('Neue Sprachübung'));
       expect(requests.every((r) => r.method == 'GET'), isTrue);
       final action = find.widgetWithText(
         FilledButton,

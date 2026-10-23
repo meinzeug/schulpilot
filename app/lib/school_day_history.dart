@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'child_section_ui.dart';
 import 'ui.dart';
 import 'parent_child_navigation.dart';
 
@@ -362,103 +363,126 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
                     'Du siehst einen geladenen Datumausschnitt. Über „Neueste Tagespakete“ kommst du wieder zum Anfang.',
                   ),
                 SizedBox(height: 12),
-                TextField(
-                  controller: search,
-                  maxLength: 120,
-                  decoration: InputDecoration(
-                    labelText: 'Geladene Tagespakete durchsuchen',
-                    prefixIcon: Icon(Icons.search_rounded),
-                    suffixIcon: search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Tagessuche leeren',
-                            onPressed: () => change(search.clear),
-                            icon: Icon(Icons.close_rounded),
-                          ),
-                  ),
-                  onChanged: (_) {
-                    if (current) {
-                      setState(() {});
-                      remember();
-                    }
-                  },
-                  onSubmitted: (_) =>
-                      FocusManager.instance.primaryFocus?.unfocus(),
-                ),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    SizedBox(
-                      width: 240,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey(('history-status', status)),
-                        initialValue: status,
-                        isExpanded: true,
-                        decoration: InputDecoration(labelText: 'Arbeitsstand'),
-                        items: [
-                          for (final item in [
-                            ('all', 'Alle geladenen Tage'),
-                            ('open', 'Noch offen'),
-                            ('done', 'Runden bearbeitet'),
-                            ('collecting', 'Fotos sammeln'),
-                            ('review', 'Seiten prüfen'),
-                          ])
-                            DropdownMenuItem(
-                              value: item.$1,
-                              child: Text(item.$2),
+                ChildFilterTools(
+                  enabled: widget.state.isChild,
+                  summary: '${days.length} geladene Tagespakete',
+                  filtered:
+                      search.text.trim().isNotEmpty ||
+                      status != 'all' ||
+                      subject != 'all' ||
+                      order != 'newest',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: search,
+                        maxLength: 120,
+                        decoration: InputDecoration(
+                          labelText: 'Geladene Tagespakete durchsuchen',
+                          prefixIcon: Icon(Icons.search_rounded),
+                          suffixIcon: search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Tagessuche leeren',
+                                  onPressed: () => change(search.clear),
+                                  icon: Icon(Icons.close_rounded),
+                                ),
+                        ),
+                        onChanged: (_) {
+                          if (current) {
+                            setState(() {});
+                            remember();
+                          }
+                        },
+                        onSubmitted: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                      ),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: 240,
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey(('history-status', status)),
+                              initialValue: status,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Arbeitsstand',
+                              ),
+                              items: [
+                                for (final item in [
+                                  ('all', 'Alle geladenen Tage'),
+                                  ('open', 'Noch offen'),
+                                  ('done', 'Runden bearbeitet'),
+                                  ('collecting', 'Fotos sammeln'),
+                                  ('review', 'Seiten prüfen'),
+                                ])
+                                  DropdownMenuItem(
+                                    value: item.$1,
+                                    child: Text(item.$2),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) change(() => status = value);
+                              },
                             ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) change(() => status = value);
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width: 240,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey(('history-subject', subject)),
-                        initialValue: subject,
-                        isExpanded: true,
-                        decoration: InputDecoration(labelText: 'Fach'),
-                        items: [
-                          DropdownMenuItem(
-                            value: 'all',
-                            child: Text('Alle Fächer'),
                           ),
-                          for (final name in subjects)
-                            DropdownMenuItem(value: name, child: Text(name)),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) change(() => subject = value);
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width: 240,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey(('history-order', order)),
-                        initialValue: order,
-                        isExpanded: true,
-                        decoration: InputDecoration(labelText: 'Reihenfolge'),
-                        items: [
-                          DropdownMenuItem(
-                            value: 'newest',
-                            child: Text('Neueste zuerst'),
+                          SizedBox(
+                            width: 240,
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey(('history-subject', subject)),
+                              initialValue: subject,
+                              isExpanded: true,
+                              decoration: InputDecoration(labelText: 'Fach'),
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'all',
+                                  child: Text('Alle Fächer'),
+                                ),
+                                for (final name in subjects)
+                                  DropdownMenuItem(
+                                    value: name,
+                                    child: Text(name),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  change(() => subject = value);
+                                }
+                              },
+                            ),
                           ),
-                          DropdownMenuItem(
-                            value: 'oldest',
-                            child: Text('Älteste zuerst'),
+                          SizedBox(
+                            width: 240,
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey(('history-order', order)),
+                              initialValue: order,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Reihenfolge',
+                              ),
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'newest',
+                                  child: Text('Neueste zuerst'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'oldest',
+                                  child: Text('Älteste zuerst'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) change(() => order = value);
+                              },
+                            ),
                           ),
                         ],
-                        onChanged: (value) {
-                          if (value != null) change(() => order = value);
-                        },
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 12),
+                    ],
+                  ),
                 ),
-                SizedBox(height: 12),
                 Semantics(
                   liveRegion: true,
                   child: Text(

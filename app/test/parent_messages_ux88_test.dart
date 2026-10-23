@@ -10,6 +10,8 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/dashboard.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 Json message(
   String id,
   String body, {
@@ -193,6 +195,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
+      await openParentDetails103(tester, 'Nachrichten suchen & sortieren');
       await tester.enterText(
         field('Geladene Nachrichten durchsuchen'),
         'Sterne',
@@ -218,6 +221,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
+      await openParentDetails103(tester, 'Nachrichten suchen & sortieren');
       await choose(tester, 'Anliegenart', 'Interessen');
       expect(find.text('Künstliche Frage zu Brüchen'), findsNothing);
       expect(find.text('Künstliches Interesse an Sternen'), findsOneWidget);
@@ -231,6 +235,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
+      await openParentDetails103(tester, 'Nachrichten suchen & sortieren');
       await choose(
         tester,
         'Reihenfolge der geladenen Nachrichten',

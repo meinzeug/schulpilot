@@ -10,6 +10,7 @@ import 'parent_saved_tools_ux90_test.dart' as saved;
 import 'parent_insights_test.dart' show response;
 import 'parent_workflows_ux90_test.dart' show choose;
 import 'parent_messages_ux88_test.dart' show tap;
+import 'parent_hierarchy_test_tools.dart';
 
 Future<void> reveal(WidgetTester t, Finder target) async {
   if (target.evaluate().isEmpty) {
@@ -34,6 +35,7 @@ Future<void> open(WidgetTester t, saved.Fixture f) async {
     ),
   );
   await tap(t, find.text('Öffnen'));
+  await openParentDetails103(t, 'Protokoll suchen & eingrenzen');
 }
 
 void main() {
@@ -165,6 +167,7 @@ void main() {
       t,
       (_) => SingleChildScrollView(child: AdminAuditList([], state: f.state)),
     );
+    await tap(t, find.text('Protokoll durchsuchen & filtern'));
     await tap(t, find.text('Gesamtes Protokoll gezielt durchsuchen'));
     expect(find.text('Gesamtes Betriebsprotokoll'), findsOneWidget);
     expect(f.requests.single.url.path, '/api/admin/audit-events');

@@ -16,6 +16,7 @@ import 'package:schulpilot/ui.dart';
 import 'parent_insights_test.dart' as insights;
 import 'parent_messages_ux88_test.dart' show tap;
 import 'parent_workflows_ux90_test.dart' show choose;
+import 'parent_hierarchy_test_tools.dart';
 
 class Fixture {
   final requests = <http.Request>[];
@@ -403,6 +404,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await openParentDetails103(tester, 'Protokoll suchen & eingrenzen');
       await tester.scrollUntilVisible(
         find.text('Zeitliche Reihenfolge'),
         160,

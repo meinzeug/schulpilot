@@ -58,6 +58,7 @@ Future<void> open(
     width: 390,
     respond: handle ?? regular,
   );
+  await f.tap(t, find.textContaining('Prüfen'));
   await f.tap(t, find.text('Meine offenen Vorschläge'));
 }
 
@@ -197,6 +198,7 @@ void main() {
           return regular(q);
         },
       );
+      await f.tap(t, find.textContaining('Prüfen'));
       await f.tap(t, find.text('Alle Wortlisten finden'));
       expect(find.text('Alle Wortlisten'), findsOneWidget);
       expect(calls.last.url.queryParameters['status'], 'open');
@@ -220,6 +222,7 @@ void main() {
             ? f.reply({'imports': [], 'open_total': 2})
             : f.reply({...f.listing(), 'supports_import_browser': true}),
       );
+      await f.tap(t, find.textContaining('Prüfen'));
       expect(find.text('Ältere Wortvorschläge finden'), findsOneWidget);
       expect(find.textContaining('Alles geprüft'), findsNothing);
     },
@@ -256,6 +259,7 @@ void main() {
         calls.where((q) => q.url.path.endsWith('/imports/import')),
         isEmpty,
       );
+      await f.tap(t, find.textContaining('Prüfen'));
       await f.tap(t, find.text('Meine offenen Vorschläge'));
       expect(calls.last.url.path, endsWith('/imports/import'));
       expect(find.text('apple → Apfel'), findsOneWidget);
@@ -279,13 +283,13 @@ void main() {
           return regular(q);
         },
       );
-      await f.tap(t, find.text('Wörter hinzufügen'));
+      await f.tap(t, find.byTooltip('Wörter hinzufügen'));
       final pairs = find.byWidgetPredicate(
         (w) => w is TextField && w.minLines == 4,
       );
       await t.enterText(pairs, 'pear = Birne');
       await f.tap(t, find.text('Wortpaare prüfen'));
-      await f.tap(t, find.text('Wörter hinzufügen'));
+      await f.tap(t, find.byTooltip('Wörter hinzufügen'));
       expect(t.widget<TextField>(pairs).controller!.text, 'pear = Birne');
       expect(
         find.textContaining('letzter Sendeversuch ist noch nicht bestätigt'),
@@ -308,7 +312,7 @@ void main() {
     (t) async {
       final calls = <http.Request>[];
       await f.open(t, calls);
-      await f.tap(t, find.text('Wörter hinzufügen'));
+      await f.tap(t, find.byTooltip('Wörter hinzufügen'));
       final pairs = find.byWidgetPredicate(
         (w) => w is TextField && w.minLines == 4,
       );

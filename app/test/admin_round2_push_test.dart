@@ -85,6 +85,11 @@ void main() {
     'AA034 configuration card opens copyable saved evidence without revealing credentials',
     (t) async {
       final fixture = await mount(t, status());
+      expect(find.text('Push-Konfigurationsnachweise ansehen'), findsNothing);
+      await ops.tap(
+        t,
+        find.widgetWithText(ExpansionTile, 'Konfiguration & Nachweise'),
+      );
       await ops.tap(t, find.text('Push-Konfigurationsnachweise ansehen'));
       expect(find.text('Gespeicherte Push-Nachweise'), findsOneWidget);
       expect(
@@ -96,6 +101,7 @@ void main() {
       );
       expect(find.textContaining('private_key'), findsNothing);
       expect(fixture.calls, hasLength(1));
+      expect(fixture.calls.single.method, 'GET');
       await t.pumpWidget(const SizedBox());
     },
   );

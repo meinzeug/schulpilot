@@ -20,6 +20,7 @@ class _Fixture {
   final bool parent;
   final requests = <http.Request>[];
   bool waiting = false, collectionsRemoved = false;
+  int wordCount = 1;
   Completer<http.Response>? pending;
   late final state =
       AppState(
@@ -62,6 +63,18 @@ class _Fixture {
       final data = words.listing();
       data['items'][0]['meaning'] = 'Bedeutung $child';
       data['items'][0]['word'] = 'Wort $child';
+      if (wordCount > 1) {
+        final first = Json.from(data['items'][0]);
+        data['items'] = [
+          for (var index = 0; index < wordCount; index++)
+            {
+              ...first,
+              'id': 'word$index',
+              'word': 'Wort $child $index',
+              'meaning': 'Bedeutung $child $index',
+            },
+        ];
+      }
       data['pagination']['page'] = int.parse(
         request.url.queryParameters['page'] ?? '1',
       );
@@ -221,15 +234,18 @@ void main() {
         if (kind == 'shelf') {
           await _tap(tester, find.byTooltip('Weitere Optionen'));
         }
+        if (kind == 'words') {
+          await _tap(tester, find.byTooltip('Weitere Wörteraktionen'));
+        }
         f.waiting = true;
         f.pending = Completer<http.Response>();
         await _tap(
           tester,
           kind == 'shelf'
               ? find.text('Hefter aktualisieren')
-              : find.byTooltip(
-                  kind == 'words' ? 'Aktualisieren' : 'Liste aktualisieren',
-                ),
+              : kind == 'words'
+              ? find.text('Aktualisieren')
+              : find.byTooltip('Liste aktualisieren'),
           settle: false,
         );
         final pendingRequest = f.requests.lastWhere(
@@ -368,7 +384,7 @@ void main() {
     testWidgets(
       'Word pager stays reachable above page-top action at320px/$scale',
       (tester) async {
-        final f = _Fixture('words');
+        final f = _Fixture('words')..wordCount = 15;
         await f.open(tester, width: 320, scale: scale);
         await _tap(tester, find.text('Fällig oder neu'));
         final nextPage = find.byWidgetPredicate(

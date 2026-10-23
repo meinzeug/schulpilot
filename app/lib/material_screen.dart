@@ -1537,11 +1537,12 @@ class _MaterialReviewState extends State<MaterialReview>
     }
   }
 
-  Widget pageActions() => Wrap(
+  Widget pageActions({bool processing = true, bool maintenance = true}) => Wrap(
     spacing: 8,
     runSpacing: 8,
     children: [
-      if (widget.data['processing_job'] is Map &&
+      if (processing &&
+          widget.data['processing_job'] is Map &&
           [
             'queued',
             'running',
@@ -1555,7 +1556,7 @@ class _MaterialReviewState extends State<MaterialReview>
           icon: Icon(Icons.hourglass_top_rounded),
           label: Text('Einlesen ansehen'),
         ),
-      if (materialCanReprocess(widget.state, widget.data))
+      if (maintenance && materialCanReprocess(widget.state, widget.data))
         ActionButton(
           label: 'Mit KI neu lesen',
           secondary: true,
@@ -1569,7 +1570,8 @@ class _MaterialReviewState extends State<MaterialReview>
             );
           }),
         ),
-      if (materialCanDelete(widget.state, widget.data)) deleteButton(),
+      if (maintenance && materialCanDelete(widget.state, widget.data))
+        deleteButton(),
     ],
   );
 
@@ -2014,7 +2016,7 @@ class _MaterialReviewState extends State<MaterialReview>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        pageActions(),
+        pageActions(maintenance: false),
         if (dirty && !confirmedHere)
           Semantics(
             liveRegion: true,
@@ -2277,6 +2279,7 @@ class _MaterialReviewState extends State<MaterialReview>
             kind: 'material',
             resourceId: d['id'],
           ),
+        pageActions(processing: false),
       ],
     );
   }

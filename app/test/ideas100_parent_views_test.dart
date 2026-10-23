@@ -6,6 +6,7 @@ import 'package:schulpilot/ui.dart';
 
 import 'parent_assignment_ux88_test.dart' as a;
 import 'parent_insights_test.dart' as p;
+import 'parent_hierarchy_test_tools.dart';
 
 void main() {
   testWidgets(
@@ -99,11 +100,12 @@ void main() {
         ),
         findsOneWidget,
       );
-      await p.tap(t, 'Suche & alle Themenfilter');
       await p.tap(t, 'Kompakte Auftragsliste');
+      await p.tap(t, 'Suche & alle Themenfilter');
       expect(find.textContaining('Quelle geändert · prüfen'), findsWidgets);
       expect(find.text('Ziel & Termin bearbeiten'), findsNothing);
       await p.tap(t, 'Mathematik · Bruchaddition');
+      await openParentDetails103(t, 'Auftrag verwalten');
       expect(find.text('Ziel & Termin bearbeiten'), findsOneWidget);
       expect(calls.every((m) => m == 'GET'), isTrue);
       expect(t.takeException(), isNull);

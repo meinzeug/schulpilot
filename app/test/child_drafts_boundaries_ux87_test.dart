@@ -340,6 +340,7 @@ void main() {
       );
       await t.pumpWidget(form.home(LanguageWorkshop(s, childId: 'child')));
       await t.pumpAndSettle();
+      await tap(t, find.text('Neue Sprachübung'));
       final mode = find.byWidgetPredicate(
         (w) =>
             w is DropdownButtonFormField<String> &&
@@ -391,6 +392,7 @@ void main() {
       Widget page() => form.home(LanguageWorkshop(s, childId: 'child'));
       await t.pumpWidget(page());
       await t.pumpAndSettle();
+      await tap(t, find.text('Neue Sprachübung'));
       await t.enterText(
         form.field('Dein konkretes Lernziel'),
         'Mein selbst geschriebenes Lernziel',
@@ -400,6 +402,7 @@ void main() {
       await t.pumpAndSettle();
       await t.pumpWidget(page());
       await t.pumpAndSettle();
+      await tap(t, find.text('Neue Sprachübung'));
       expect(
         t
             .widget<TextField>(form.field('Dein konkretes Lernziel'))
@@ -446,6 +449,7 @@ void main() {
       });
       await t.pumpWidget(form.home(LanguageWorkshop(s, childId: 'child')));
       await t.pumpAndSettle();
+      await tap(t, find.text('Neue Sprachübung'));
       await tap(t, find.byTooltip('Weitere Wörter'));
       expect(find.text('later word'), findsOneWidget);
       await tap(t, find.byTooltip('Weitere Heftseiten'));

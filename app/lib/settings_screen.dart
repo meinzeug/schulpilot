@@ -204,12 +204,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return PageFrame(
       state: state,
       title: 'Zugänge & Einstellungen',
-      showTitle: !state.isParent,
-      subtitle: 'Zugänge, Geräte und Benachrichtigungen.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SettingsSectionFinder(
+      actions: [
+        SizedBox(
+          width: 240,
+          child: SettingsSectionFinder(
             key: ValueKey((
               'settings-find',
               ObjectKey(scope.account),
@@ -225,14 +223,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             isCurrent: () => scope.current && mounted,
             onSelected: openSettingSection,
           ),
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           if (state.isParent) ...[
-            const ParentWorkspaceHero(
-              eyebrow: 'DEIN ELTERNKONTO',
-              title: 'Zugänge & Einstellungen',
-              subtitle: 'Dein Zugang, eure Familie und private Daten. Alles hat seinen eigenen Platz.',
-              icon: Icons.manage_accounts_outlined,
-            ),
-            const SizedBox(height: 18),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -1620,46 +1616,30 @@ class _AdminScreenState extends State<AdminScreen> {
           state: widget.state,
           title: 'Kontrollzentrum',
           showTitle: false,
-          actions: compactHeader ? const [] : headerActions(context),
+          actions: const [],
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (compactHeader) ...[
-                Row(
-                  key: const ValueKey('compact-admin-dashboard-heading'),
+              AdminWorkspaceHeader(
+                title: 'Betrieb',
+                subtitle: 'Aufträge prüfen, Kosten verstehen und den Betrieb sicher steuern.',
+                currentPath: '/admin',
+                action: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: Semantics(
-                        header: true,
-                        child: const Text(
-                          'Betrieb',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
                     IconButton(
                       tooltip: 'Aktualisieren',
-                      constraints: const BoxConstraints(
-                        minWidth: 48,
-                        minHeight: 48,
-                      ),
                       onPressed: refresh,
                       icon: const Icon(Icons.refresh_rounded),
                     ),
                     headerActions(context)[1],
                   ],
                 ),
-                const SizedBox(height: 6),
-                headerActions(context)[2],
-              ] else
-                const AdminWorkspaceHeader(
-                  title: 'Deine Plattform im Blick',
-                  subtitle: 'Aufträge prüfen, Kosten verstehen und den Betrieb sicher steuern.',
-                  currentPath: '/admin',
-                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: headerActions(context)[2],
+              ),
               if (emergencyMessage != null)
                 Semantics(liveRegion: true, child: Notice(emergencyMessage!)),
               SizedBox(height: compactHeader ? 12 : 24),
@@ -1686,15 +1666,6 @@ class _AdminScreenState extends State<AdminScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const AdminSectionHeading(
-                      title: 'Betriebsübersicht',
-                      subtitle: 'Wichtige Signale zuerst. Details und Eingriffe bleiben bewusst steuerbar.',
-                      icon: Icons.monitor_heart_outlined,
-                    ),
-                    if (operationsChecked != null)
-                      Text(
-                        'Betriebsdaten zuletzt erfolgreich geladen: ${_adminEventDate(operationsChecked!.millisecondsSinceEpoch ~/ 1000)} (Gerätezeit)',
-                      ),
                     LoadView<Json>(
                       key: ValueKey('operations-$version'),
                       load: () async {
@@ -1717,6 +1688,10 @@ class _AdminScreenState extends State<AdminScreen> {
                         onOpenPush: () => openRoute(context, '/admin/push'),
                       ),
                     ),
+                    if (operationsChecked != null)
+                      Text(
+                        'Betriebsdaten zuletzt erfolgreich geladen: ${_adminEventDate(operationsChecked!.millisecondsSinceEpoch ~/ 1000)} (Gerätezeit)',
+                      ),
                     const SizedBox(height: 16),
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -2491,6 +2466,7 @@ class AdminAuditList extends StatefulWidget {
 class _AdminAuditListState extends State<AdminAuditList> {
   String query = '', actor = '', period = 'all', actionKind = 'all';
   final search = TextEditingController();
+  bool toolsExpanded = false;
   @override
   void dispose() {
     search.dispose();
@@ -2602,92 +2578,138 @@ class _AdminAuditListState extends State<AdminAuditList> {
               timestamp is num &&
                   timestamp * 1000 >= since.millisecondsSinceEpoch);
     }).toList();
+    final filterSummary = <String>[
+      if (query.isNotEmpty) 'Suche: „${search.text.trim()}“',
+      if (actor.isNotEmpty) 'Akteur: $actor',
+      if (period != 'all')
+        period == 'today' ? 'Heute (Gerätezeit)' : 'Letzte 7 Tage (Gerätezeit)',
+      if (actionKind != 'all')
+        switch (actionKind) {
+          'changes' => 'Änderungen',
+          'checks' => 'Prüfungen',
+          _ => 'Lesezugriffe',
+        },
+    ].join(' · ');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
           'Lokale Suche in höchstens den 200 zuletzt geladenen Ereignissen. Keine vollständige Historie.',
         ),
-        if (widget.state?.isAdmin == true)
-          OutlinedButton.icon(
-            onPressed: () => showAdminAuditExplorer(
-              context,
-              widget.state!,
-              onSelected: details,
-            ),
-            icon: const Icon(Icons.manage_search),
-            label: const Text('Gesamtes Protokoll gezielt durchsuchen'),
-          ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: search,
-          onChanged: (v) => setState(() => query = v.trim().toLowerCase()),
-          decoration: const InputDecoration(
-            labelText: 'Protokoll durchsuchen',
-            prefixIcon: Icon(Icons.search_rounded),
-            hintText: 'Aktion, Ziel- oder Akteurkennung',
-          ),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          key: ValueKey('audit-actor-$actor'),
-          initialValue: actor,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Akteur im geladenen Ausschnitt',
-          ),
-          items: [
-            const DropdownMenuItem(value: '', child: Text('Alle Akteure')),
-            for (final id in actors)
-              DropdownMenuItem(
-                value: id,
-                child: Text(id, overflow: TextOverflow.ellipsis),
-              ),
-          ],
-          onChanged: (v) => setState(() => actor = v ?? ''),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          key: ValueKey('audit-period-$period'),
-          initialValue: period,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Zeitraum im geladenen Ausschnitt',
-          ),
-          items: const [
-            DropdownMenuItem(
-              value: 'all',
-              child: Text('Gesamter geladener Ausschnitt'),
-            ),
-            DropdownMenuItem(value: 'today', child: Text('Heute (Gerätezeit)')),
-            DropdownMenuItem(
-              value: 'week',
-              child: Text('Letzte 7 Tage (Gerätezeit)'),
-            ),
-          ],
-          onChanged: (v) => setState(() => period = v ?? 'all'),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        ExpansionTile(
+          key: const ValueKey('admin-audit-tools'),
+          title: const Text('Protokoll durchsuchen & filtern'),
+          tilePadding: EdgeInsets.zero,
+          maintainState: true,
+          onExpansionChanged: (value) {
+            if (!value) FocusManager.instance.primaryFocus?.unfocus();
+            setState(() => toolsExpanded = value);
+          },
           children: [
-            for (final item in const [
-              ('all', 'Alle Ereignisse'),
-              ('changes', 'Änderungen'),
-              ('checks', 'Prüfungen'),
-              ('reads', 'Lesezugriffe'),
-            ])
-              ChoiceChip(
-                label: Text(item.$2),
-                selected: actionKind == item.$1,
-                onSelected: (_) {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  setState(() => actionKind = item.$1);
-                },
+            ExcludeFocus(
+              excluding: !toolsExpanded,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.state?.isAdmin == true)
+                    OutlinedButton.icon(
+                      onPressed: () => showAdminAuditExplorer(
+                        context,
+                        widget.state!,
+                        onSelected: details,
+                      ),
+                      icon: const Icon(Icons.manage_search),
+                      label: const Text(
+                        'Gesamtes Protokoll gezielt durchsuchen',
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: search,
+                    onChanged: (v) =>
+                        setState(() => query = v.trim().toLowerCase()),
+                    decoration: const InputDecoration(
+                      labelText: 'Protokoll durchsuchen',
+                      prefixIcon: Icon(Icons.search_rounded),
+                      hintText: 'Aktion, Ziel- oder Akteurkennung',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('audit-actor-$actor'),
+                    initialValue: actor,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Akteur im geladenen Ausschnitt',
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text('Alle Akteure'),
+                      ),
+                      for (final id in actors)
+                        DropdownMenuItem(
+                          value: id,
+                          child: Text(id, overflow: TextOverflow.ellipsis),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => actor = v ?? ''),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('audit-period-$period'),
+                    initialValue: period,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Zeitraum im geladenen Ausschnitt',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'all',
+                        child: Text('Gesamter geladener Ausschnitt'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'today',
+                        child: Text('Heute (Gerätezeit)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'week',
+                        child: Text('Letzte 7 Tage (Gerätezeit)'),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => period = v ?? 'all'),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final item in const [
+                        ('all', 'Alle Ereignisse'),
+                        ('changes', 'Änderungen'),
+                        ('checks', 'Prüfungen'),
+                        ('reads', 'Lesezugriffe'),
+                      ])
+                        ChoiceChip(
+                          label: Text(item.$2),
+                          selected: actionKind == item.$1,
+                          onSelected: (_) {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            setState(() => actionKind = item.$1);
+                          },
+                        ),
+                    ],
+                  ),
+                ],
               ),
+            ),
           ],
         ),
+        if (filterSummary.isNotEmpty)
+          Semantics(
+            liveRegion: true,
+            child: Text('Protokollfilter: $filterSummary'),
+          ),
         if (query.isNotEmpty ||
             actor.isNotEmpty ||
             period != 'all' ||
@@ -2833,34 +2855,6 @@ class AdminOperationCards extends StatelessWidget {
       );
     }
 
-    Widget metricContent(
-      String label,
-      num? value,
-      IconData icon,
-      bool warning,
-    ) => Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: warning ? p.warningInk : p.cyanInk, size: 23),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: TextStyle(color: p.muted, fontSize: 14)),
-              const SizedBox(height: 4),
-              Text(
-                value?.toString() ?? 'Unbekannt',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: warning ? p.warningInk : p.ink,
-                  fontSize: value == null ? 16 : 31,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
     Widget metric(
       String label,
       num? value,
@@ -2868,111 +2862,160 @@ class AdminOperationCards extends StatelessWidget {
       bool warning = false,
       VoidCallback? onOpen,
       String? actionLabel,
-    }) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 17),
-      child: onOpen == null
-          ? metricContent(label, value, icon, warning)
-          : ActionPanel(
-              padding: const EdgeInsets.all(16),
-              actionLabel: actionLabel ?? '$label prüfen',
-              onPressed: onOpen,
-              child: metricContent(label, value, icon, warning),
+    }) => MergeSemantics(
+      child: Semantics(
+        button: onOpen != null,
+        label: onOpen == null ? null : actionLabel ?? '$label prüfen',
+        onTap: onOpen,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onOpen,
+            excludeFromSemantics: true,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Icon(
+                      icon,
+                      color: warning ? p.warningInk : p.cyanInk,
+                      size: 23,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        label,
+                        style: TextStyle(color: p.muted, fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      flex: 2,
+                      child: Text(
+                        value?.toString() ?? 'Unbekannt',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: warning ? p.warningInk : p.ink,
+                          fontSize: value == null ? 16 : 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (onOpen != null) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: p.muted,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
+          ),
+        ),
+      ),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: attention || uncertain ? p.warningSurface : p.surfaceLow,
-            borderRadius: BorderRadius.circular(18),
-            border: Border(
-              left: BorderSide(
-                color: attention || uncertain ? p.warningInk : p.cyanInk,
-                width: 4,
+        if (attention || uncertain)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: attention || uncertain ? p.warningSurface : p.surfaceLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border(
+                left: BorderSide(
+                  color: attention || uncertain ? p.warningInk : p.cyanInk,
+                  width: 4,
+                ),
               ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    attention
-                        ? Icons.warning_amber_rounded
-                        : Icons.info_outline_rounded,
-                    color: attention || uncertain ? p.warningInk : p.cyanInk,
-                    size: 23,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      attention
-                          ? 'Bitte zuerst prüfen'
-                          : uncertain
-                          ? 'Betriebsstatus unvollständig'
-                          : 'Betriebsmeldungen',
-                      style: TextStyle(
-                        color: p.ink,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (signals.isEmpty)
-                Text(
-                  'Keine überfälligen Aufträge, Pushfehler oder offenen Löschprotokolle gemeldet.',
-                  style: TextStyle(color: p.muted),
-                ),
-              for (final signal in signals)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 7),
-                  child: Text(
-                    signal,
-                    style: TextStyle(color: p.ink, fontSize: 14),
-                  ),
-                ),
-              if (onOpenProtocol != null && (attention || uncertain)) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: onOpenProtocol,
-                    icon: Icon(Icons.history_rounded, size: 18),
-                    label: const Text('Protokoll ansehen'),
-                  ),
-                ),
-              ],
-              if (onOpenPush != null && (pushErrors ?? 0) > 0)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: onOpenPush,
-                    icon: const Icon(Icons.notifications_outlined),
-                    label: const Text('Push-Versand prüfen'),
-                  ),
-                ),
-              if ((erasures ?? 0) > 0)
-                const ExpansionTile(
-                  title: Text('Offene Löschprotokolle prüfen'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: EdgeInsets.only(bottom: 12),
+                    Icon(
+                      attention
+                          ? Icons.warning_amber_rounded
+                          : Icons.info_outline_rounded,
+                      color: attention || uncertain ? p.warningInk : p.cyanInk,
+                      size: 23,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
                       child: Text(
-                        'Der Worker veröffentlicht liegengebliebene Löschjournal-Einträge erneut. Dienststatus und geschütztes Löschjournal nach docs/OPERATIONS.md prüfen. Vor einer Wiederherstellung das aktuellste authentifizierte Journal abgleichen; keine automatische Rücksicherung ausführen.',
+                        attention
+                            ? 'Bitte zuerst prüfen'
+                            : uncertain
+                            ? 'Betriebsstatus unvollständig'
+                            : 'Betriebsmeldungen',
+                        style: TextStyle(
+                          color: p.ink,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
                 ),
-            ],
+                const SizedBox(height: 12),
+                if (signals.isEmpty)
+                  Text(
+                    'Keine überfälligen Aufträge, Pushfehler oder offenen Löschprotokolle gemeldet.',
+                    style: TextStyle(color: p.muted),
+                  ),
+                for (final signal in signals)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    child: Text(
+                      signal,
+                      style: TextStyle(color: p.ink, fontSize: 14),
+                    ),
+                  ),
+                if (onOpenProtocol != null && (attention || uncertain)) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: onOpenProtocol,
+                      icon: Icon(Icons.history_rounded, size: 18),
+                      label: const Text('Protokoll ansehen'),
+                    ),
+                  ),
+                ],
+                if (onOpenPush != null && (pushErrors ?? 0) > 0)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: onOpenPush,
+                      icon: const Icon(Icons.notifications_outlined),
+                      label: const Text('Push-Versand prüfen'),
+                    ),
+                  ),
+                if ((erasures ?? 0) > 0)
+                  const ExpansionTile(
+                    title: Text('Offene Löschprotokolle prüfen'),
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'Der Worker veröffentlicht liegengebliebene Löschjournal-Einträge erneut. Dienststatus und geschütztes Löschjournal nach docs/OPERATIONS.md prüfen. Vor einer Wiederherstellung das aktuellste authentifizierte Journal abgleichen; keine automatische Rücksicherung ausführen.',
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ),
-        ),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -3097,6 +3140,107 @@ class AdminOperationCards extends StatelessWidget {
                   );
           },
         ),
+        if (!attention && !uncertain)
+          ExpansionTile(
+            title: const Text('Betriebsmeldungen'),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: attention || uncertain
+                      ? p.warningSurface
+                      : p.surfaceLow,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border(
+                    left: BorderSide(
+                      color: attention || uncertain ? p.warningInk : p.cyanInk,
+                      width: 4,
+                    ),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          attention
+                              ? Icons.warning_amber_rounded
+                              : Icons.info_outline_rounded,
+                          color: attention || uncertain
+                              ? p.warningInk
+                              : p.cyanInk,
+                          size: 23,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            attention
+                                ? 'Bitte zuerst prüfen'
+                                : uncertain
+                                ? 'Betriebsstatus unvollständig'
+                                : 'Betriebsmeldungen',
+                            style: TextStyle(
+                              color: p.ink,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (signals.isEmpty)
+                      Text(
+                        'Keine überfälligen Aufträge, Pushfehler oder offenen Löschprotokolle gemeldet.',
+                        style: TextStyle(color: p.muted),
+                      ),
+                    for (final signal in signals)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 7),
+                        child: Text(
+                          signal,
+                          style: TextStyle(color: p.ink, fontSize: 14),
+                        ),
+                      ),
+                    if (onOpenProtocol != null && (attention || uncertain)) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: onOpenProtocol,
+                          icon: Icon(Icons.history_rounded, size: 18),
+                          label: const Text('Protokoll ansehen'),
+                        ),
+                      ),
+                    ],
+                    if (onOpenPush != null && (pushErrors ?? 0) > 0)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: onOpenPush,
+                          icon: const Icon(Icons.notifications_outlined),
+                          label: const Text('Push-Versand prüfen'),
+                        ),
+                      ),
+                    if ((erasures ?? 0) > 0)
+                      const ExpansionTile(
+                        title: Text('Offene Löschprotokolle prüfen'),
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              'Der Worker veröffentlicht liegengebliebene Löschjournal-Einträge erneut. Dienststatus und geschütztes Löschjournal nach docs/OPERATIONS.md prüfen. Vor einer Wiederherstellung das aktuellste authentifizierte Journal abgleichen; keine automatische Rücksicherung ausführen.',
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         const SizedBox(height: 16),
         Wrap(
           spacing: 20,

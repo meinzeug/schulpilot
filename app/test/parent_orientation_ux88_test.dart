@@ -9,6 +9,7 @@ import 'package:schulpilot/ui.dart';
 
 import 'parent_cards_ux88_test.dart' as fixture;
 import 'parent_messages_ux88_test.dart' show tap, settle;
+import 'parent_hierarchy_test_tools.dart';
 
 void week(fixture.Fixture f, List<dynamic> items) {
   f.plan['plan'] = {
@@ -45,6 +46,7 @@ void main() {
         'weekly_goal_minutes': 100,
       };
       await f.mount(tester, '/overview');
+      await openParentDetails103(tester, 'Zeit & Mindestziele');
       final card = find.ancestor(
         of: find.text('Zeitrahmen und Wochenvorschlag ansehen'),
         matching: find.byType(ActionPanel),
@@ -180,6 +182,12 @@ void main() {
       bool delayed = false;
       f.respond = (r) async => delayed ? pending.future : null;
       await f.mount(tester, '/insights');
+      await tester.ensureVisible(find.byTooltip('Lernkompass neu laden'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byTooltip('Lernkompass neu laden').hitTestable(),
+        findsOneWidget,
+      );
       delayed = true;
       await tester.tap(find.byTooltip('Lernkompass neu laden'));
       await tester.pump();

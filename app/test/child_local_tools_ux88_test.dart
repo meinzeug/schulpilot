@@ -92,6 +92,13 @@ Future<void> tap(WidgetTester tester, Finder f) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> showWordCards(WidgetTester tester) async {
+  final tools = find.byKey(const ValueKey('child-mobile-filter-toggle'));
+  await tap(tester, tools);
+  await tap(tester, find.widgetWithText(ChoiceChip, 'Wortkarten'));
+  await tap(tester, tools);
+}
+
 Finder input(String label) => find.byWidgetPredicate(
   (w) => w is TextField && w.decoration?.labelText == label,
 );
@@ -131,6 +138,10 @@ void main() {
         return reply({});
       });
       await show(tester, mailbox(state, mailData()));
+      await tap(
+        tester,
+        find.byKey(const ValueKey('child-mobile-filter-toggle')),
+      );
       await tester.enterText(input('Nachrichten durchsuchen'), 'BRÜCHE');
       await tester.pumpAndSettle();
       expect(find.text('Bitte Brüche weiter üben.'), findsOneWidget);
@@ -147,6 +158,10 @@ void main() {
     (tester) async {
       final state = account((_) async => reply({}));
       await show(tester, mailbox(state, mailData()));
+      await tap(
+        tester,
+        find.byKey(const ValueKey('child-mobile-filter-toggle')),
+      );
       await tap(tester, find.byType(DropdownButtonFormField<String>).first);
       await tap(tester, find.text('Von meinen Eltern').last);
       expect(find.text('Bitte Brüche weiter üben.'), findsOneWidget);
@@ -158,6 +173,7 @@ void main() {
     tester,
   ) async {
     await show(tester, mailbox(account((_) async => reply({})), mailData()));
+    await tap(tester, find.byKey(const ValueKey('child-mobile-filter-toggle')));
     await tap(tester, find.byType(DropdownButtonFormField<String>).last);
     await tap(tester, find.text('Älteste zuerst').last);
     expect(
@@ -237,6 +253,7 @@ void main() {
             : reply(words),
       );
       await show(tester, VocabularyScreen(state, childId: 'child'));
+      await tap(tester, find.byTooltip('Wortaktionen'));
       await tap(tester, find.text('Heftseite zum Wort ansehen'));
       expect(find.text('Ziel /material/${'a' * 32}'), findsOneWidget);
     },
@@ -254,6 +271,7 @@ void main() {
       await show(tester, VocabularyScreen(state, childId: 'child'));
       await tap(tester, find.text('Prüfen'));
       await tap(tester, find.text('Zum Wortschatz'));
+      await showWordCards(tester);
       expect(find.text('Apfel'), findsOneWidget);
       expect(find.text('Wort aufdecken'), findsOneWidget);
       expect(find.text('Zum Wortschatz'), findsNothing);
@@ -272,6 +290,7 @@ void main() {
             : reply(words);
       });
       await show(tester, VocabularyScreen(state, childId: 'child'));
+      await showWordCards(tester);
       await tap(tester, find.text('Wort aufdecken'));
       expect(find.text('apple'), findsOneWidget);
       words['items'][0]['word'] = 'pear';

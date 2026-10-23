@@ -10,6 +10,7 @@ import 'api.dart';
 import 'parent_form_guard.dart';
 import 'grade_import_screen.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 import 'collection_view_tools.dart';
 import 'parent_child_navigation.dart';
 import 'parent_workspace_ui.dart';
@@ -613,107 +614,14 @@ class _GradesScreenState extends State<GradesScreen> {
                     const Notice(
                       'Du kannst diese Noten ansehen. Änderungen sind Eltern mit Verwaltungsrechten vorbehalten.',
                     ),
-                  const ParentSectionHeading(
-                    title: 'Schwerpunkte über alle Fächer',
-                    icon: Icons.assignment_outlined,
-                  ),
-                  for (final focus in data!['focus'] as List)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: ActionPanel(
-                        actionLabel:
-                            'Einzelne Noten in ${focus['subject']} ansehen',
-                        enabled: !loading && !saving,
-                        onPressed: () {
-                          if (viewChild != widget.childId) return;
-                          showSubject(
-                            focus['subject'],
-                            resetOtherFilters: true,
-                          );
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              focus['subject'],
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              focus['average'] == null
-                                  ? 'Unterschiedliche Notensysteme'
-                                  : '${focus['scale'] == 'points_0_15' ? 'Punkteschnitt' : 'Notenschnitt'}: ${gradeNumber(focus['average'])}',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            const Text(
-                              'Basis: bis zu fünf datierte Noten aus 90 Tagen und undatierte PDF-Noten dieses Schuljahres. Keine Zeugnisnote.',
-                            ),
-                            Text(
-                              '${focus['observations']} aktuelle Einträge',
-                              style: TextStyle(
-                                color: context.palette.muted,
-                                fontSize: 12,
-                              ),
-                            ),
-                            if ((focus['undated_observations'] ?? 0) > 0)
-                              Text(
-                                '${focus['undated_observations']} davon ohne Einzeldatum · aktuelles Schuljahr',
-                                style: TextStyle(
-                                  color: context.palette.muted,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            const SizedBox(height: 8),
-                            Text(
-                              data!['planning_enabled'] == true
-                                  ? focus['reason']
-                                  : 'Automatische Gewichtung ausgeschaltet',
-                            ),
-                            if (focus['trend'] != 'not_enough_data')
-                              Text(
-                                switch (focus['trend']) {
-                                  'improving' => 'Zuletzt verbessert',
-                                  'declining' => 'Zuletzt schwächer',
-                                  _ => 'Zuletzt ähnlich',
-                                },
-                                style: TextStyle(
-                                  color: context.palette.muted,
-                                  fontSize: 13,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
                   const SizedBox(height: 16),
                   ParentSectionHeading(
                     key: entriesKey,
                     title: 'Einzelne Noten ansehen',
-                    subtitle: 'Der Fachfilter gilt für diese Liste. Die Schwerpunkte oben zeigen weiterhin alle Fächer.',
+                    subtitle:
+                        'Gespeicherte Einzelnoten · getrennt vom Übungsstand.',
                     icon: Icons.filter_list_rounded,
                   ),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('grade-subject-$subject'),
-                    initialValue: subject,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Fach'),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('Alle Fächer'),
-                      ),
-                      for (final value in data!['subjects'] as List)
-                        DropdownMenuItem(
-                          value: value as String,
-                          child: Text(value),
-                        ),
-                    ],
-                    onChanged: loading || saving ? null : showSubject,
-                  ),
-                  const SizedBox(height: 12),
                   ParentAppliedFilters(
                     enabled: !loading && !saving,
                     filters: [
@@ -822,161 +730,173 @@ class _GradesScreenState extends State<GradesScreen> {
                         ),
                     ],
                   ),
-                  ParentCollectionSearch(
-                    controller: search,
-                    label: 'Noten suchen',
-                    appliedQuery: query,
-                    enabled: !loading && !saving,
-                    onSearch: () => filter(() => query = search.text.trim()),
-                    onClear: () => filter(() {
-                      query = '';
-                      search.clear();
-                    }),
-                  ),
-                  ExpansionTile(
-                    title: const Text('Noten gezielt filtern'),
+                  ParentViewDetails(
+                    title: 'Suche & Notenfilter',
+                    scope: (
+                      'grade-filters',
+                      ObjectKey(owner),
+                      family,
+                      viewChild,
+                    ),
+                    isCurrent: () => current && viewChild == widget.childId,
+                    subtitle: filtered
+                        ? 'Filter aktiv · Auswahl oberhalb zurücksetzen'
+                        : 'Fach, Zeitraum und Herkunft eingrenzen',
                     children: [
-                      ParentChoiceFilter(
-                        label: 'Art der Leistung',
-                        value: kindFilter,
-                        choices: [
-                          ('all', 'Alle Leistungsarten'),
-                          ...gradeKinds.entries.map((e) => (e.key, e.value)),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('grade-subject-$subject'),
+                        initialValue: subject,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Fach'),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('Alle Fächer'),
+                          ),
+                          for (final value in data!['subjects'] as List)
+                            DropdownMenuItem(
+                              value: value as String,
+                              child: Text(value),
+                            ),
                         ],
-                        enabled: !loading && !saving,
-                        onChanged: (v) => filter(() => kindFilter = v),
+                        onChanged: loading || saving ? null : showSubject,
                       ),
                       const SizedBox(height: 12),
-                      ParentChoiceFilter(
-                        label: 'Notensystem',
-                        value: scaleFilter,
-                        choices: const [
-                          ('all', 'Beide Notensysteme'),
-                          ('grade_1_6', 'Noten von 1 bis 6'),
-                          ('points_0_15', 'Punkte von 0 bis 15'),
-                        ],
+                      ParentCollectionSearch(
+                        controller: search,
+                        label: 'Noten suchen',
+                        appliedQuery: query,
                         enabled: !loading && !saving,
-                        onChanged: (v) => filter(() => scaleFilter = v),
-                      ),
-                      const SizedBox(height: 12),
-                      ParentChoiceFilter(
-                        label: 'Datumsangabe',
-                        value: precisionFilter,
-                        choices: const [
-                          ('all', 'Alle Datumsangaben'),
-                          ('day', 'Mit genauem Datum'),
-                          ('semester', 'Nur Schulhalbjahr bekannt'),
-                        ],
-                        enabled: !loading && !saving,
-                        onChanged: (v) => filter(() => precisionFilter = v),
-                      ),
-                      const SizedBox(height: 12),
-                      ParentDateRange(
-                        key: ValueKey('grade-range-${widget.childId}'),
-                        start: start,
-                        end: end,
-                        enabled: !loading && !saving,
-                        onApply: (from, to) => filter(() {
-                          start = from;
-                          end = to;
+                        onSearch: () =>
+                            filter(() => query = search.text.trim()),
+                        onClear: () => filter(() {
+                          query = '';
+                          search.clear();
                         }),
                       ),
-                      const Text(
-                        'Ein Zeitraum berücksichtigt nur belegte Einzeldaten. Noten ohne genaues Datum bleiben über das Schulhalbjahr erreichbar.',
-                      ),
-                      if ((data!['school_years'] as List? ?? [])
-                          .isNotEmpty) ...[
-                        ParentChoiceFilter(
-                          label: 'Belegtes Schuljahr',
-                          value: schoolYear?.toString() ?? 'all',
-                          enabled: !loading && !saving,
-                          choices: [
-                            ('all', 'Alle belegten Schuljahre'),
-                            for (final year in data!['school_years'])
-                              ('$year', '$year/${(year as int) + 1}'),
-                          ],
-                          onChanged: (v) => filter(
-                            () => schoolYear = v == 'all' ? null : int.parse(v),
+                      ExpansionTile(
+                        title: const Text('Noten gezielt filtern'),
+                        children: [
+                          ParentChoiceFilter(
+                            label: 'Art der Leistung',
+                            value: kindFilter,
+                            choices: [
+                              ('all', 'Alle Leistungsarten'),
+                              ...gradeKinds.entries.map(
+                                (e) => (e.key, e.value),
+                              ),
+                            ],
+                            enabled: !loading && !saving,
+                            onChanged: (v) => filter(() => kindFilter = v),
                           ),
-                        ),
-                        ParentChoiceFilter(
-                          label: 'Belegtes Schulhalbjahr',
-                          value: semester?.toString() ?? 'all',
-                          enabled: !loading && !saving,
-                          choices: const [
-                            ('all', 'Beide Schulhalbjahre'),
-                            ('1', '1. Halbjahr'),
-                            ('2', '2. Halbjahr'),
-                          ],
-                          onChanged: (v) => filter(
-                            () => semester = v == 'all' ? null : int.parse(v),
+                          const SizedBox(height: 12),
+                          ParentChoiceFilter(
+                            label: 'Notensystem',
+                            value: scaleFilter,
+                            choices: const [
+                              ('all', 'Beide Notensysteme'),
+                              ('grade_1_6', 'Noten von 1 bis 6'),
+                              ('points_0_15', 'Punkte von 0 bis 15'),
+                            ],
+                            enabled: !loading && !saving,
+                            onChanged: (v) => filter(() => scaleFilter = v),
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  ParentChoiceFilter(
-                    label: 'Gespeicherte Notenherkunft',
-                    value: sourceFilter,
-                    enabled: !loading && !saving,
-                    choices: const [
-                      ('all', 'Alle Herkunftsangaben'),
-                      ('pdf', 'Mit bestätigtem PDF-Beleg'),
-                      ('manual', 'Ohne gespeicherten PDF-Beleg'),
-                    ],
-                    onChanged: (v) => filter(() => sourceFilter = v),
-                  ),
-                  ParentChoiceFilter(
-                    label: 'Verknüpftes Lernziel',
-                    value: goalFilter,
-                    enabled: !loading && !saving,
-                    choices: const [
-                      ('all', 'Mit und ohne Lernziel'),
-                      ('linked', 'Mit zugeordnetem Lernziel'),
-                      ('none', 'Noch ohne zugeordnetes Lernziel'),
-                    ],
-                    onChanged: (v) => filter(() => goalFilter = v),
-                  ),
-                  ParentChoiceFilter(
-                    label: 'Reihenfolge der Noten',
-                    value: order,
-                    enabled: !loading && !saving,
-                    choices: const [
-                      ('default', 'Bisherige Reihenfolge'),
-                      ('newest', 'Neuestes Einzeldatum zuerst'),
-                      ('oldest', 'Ältestes Einzeldatum zuerst'),
-                      ('subject', 'Nach Fach'),
-                    ],
-                    onChanged: (v) => filter(() => order = v),
-                  ),
-                  if ((data!['selected_summary'] as List? ?? []).isNotEmpty)
-                    ExpansionTile(
-                      title: const Text('Diese Auswahl zusammengefasst'),
-                      subtitle: const Text(
-                        'Gewichtet je Fach und Notensystem · keine Zeugnisprognose',
-                      ),
-                      children: [
-                        for (final row in data!['selected_summary'])
-                          ListTile(
-                            title: Text(
-                              '${row['subject']} · ${row['scale'] == 'points_0_15' ? 'Punkte' : 'Noten 1–6'}',
+                          const SizedBox(height: 12),
+                          ParentChoiceFilter(
+                            label: 'Datumsangabe',
+                            value: precisionFilter,
+                            choices: const [
+                              ('all', 'Alle Datumsangaben'),
+                              ('day', 'Mit genauem Datum'),
+                              ('semester', 'Nur Schulhalbjahr bekannt'),
+                            ],
+                            enabled: !loading && !saving,
+                            onChanged: (v) => filter(() => precisionFilter = v),
+                          ),
+                          const SizedBox(height: 12),
+                          ParentDateRange(
+                            key: ValueKey('grade-range-${widget.childId}'),
+                            start: start,
+                            end: end,
+                            enabled: !loading && !saving,
+                            onApply: (from, to) => filter(() {
+                              start = from;
+                              end = to;
+                            }),
+                          ),
+                          const Text(
+                            'Ein Zeitraum berücksichtigt nur belegte Einzeldaten. Noten ohne genaues Datum bleiben über das Schulhalbjahr erreichbar.',
+                          ),
+                          if ((data!['school_years'] as List? ?? [])
+                              .isNotEmpty) ...[
+                            ParentChoiceFilter(
+                              label: 'Belegtes Schuljahr',
+                              value: schoolYear?.toString() ?? 'all',
+                              enabled: !loading && !saving,
+                              choices: [
+                                ('all', 'Alle belegten Schuljahre'),
+                                for (final year in data!['school_years'])
+                                  ('$year', '$year/${(year as int) + 1}'),
+                              ],
+                              onChanged: (v) => filter(
+                                () => schoolYear = v == 'all'
+                                    ? null
+                                    : int.parse(v),
+                              ),
                             ),
-                            subtitle: Text(
-                              '${row['count']} Einträge · Gewichtungssumme ${row['weight_total']}',
+                            ParentChoiceFilter(
+                              label: 'Belegtes Schulhalbjahr',
+                              value: semester?.toString() ?? 'all',
+                              enabled: !loading && !saving,
+                              choices: const [
+                                ('all', 'Beide Schulhalbjahre'),
+                                ('1', '1. Halbjahr'),
+                                ('2', '2. Halbjahr'),
+                              ],
+                              onChanged: (v) => filter(
+                                () =>
+                                    semester = v == 'all' ? null : int.parse(v),
+                              ),
                             ),
-                            trailing: Text('Ø ${gradeNumber(row['average'])}'),
-                          ),
-                      ],
-                    ),
-                  OutlinedButton.icon(
-                    onPressed: loading || saving ? null : exportSelection,
-                    icon: const Icon(Icons.download_outlined),
-                    label: const Text('Diese Notenauswahl als CSV speichern'),
+                          ],
+                        ],
+                      ),
+                      ParentChoiceFilter(
+                        label: 'Gespeicherte Notenherkunft',
+                        value: sourceFilter,
+                        enabled: !loading && !saving,
+                        choices: const [
+                          ('all', 'Alle Herkunftsangaben'),
+                          ('pdf', 'Mit bestätigtem PDF-Beleg'),
+                          ('manual', 'Ohne gespeicherten PDF-Beleg'),
+                        ],
+                        onChanged: (v) => filter(() => sourceFilter = v),
+                      ),
+                      ParentChoiceFilter(
+                        label: 'Verknüpftes Lernziel',
+                        value: goalFilter,
+                        enabled: !loading && !saving,
+                        choices: const [
+                          ('all', 'Mit und ohne Lernziel'),
+                          ('linked', 'Mit zugeordnetem Lernziel'),
+                          ('none', 'Noch ohne zugeordnetes Lernziel'),
+                        ],
+                        onChanged: (v) => filter(() => goalFilter = v),
+                      ),
+                      ParentChoiceFilter(
+                        label: 'Reihenfolge der Noten',
+                        value: order,
+                        enabled: !loading && !saving,
+                        choices: const [
+                          ('default', 'Bisherige Reihenfolge'),
+                          ('newest', 'Neuestes Einzeldatum zuerst'),
+                          ('oldest', 'Ältestes Einzeldatum zuerst'),
+                          ('subject', 'Nach Fach'),
+                        ],
+                        onChanged: (v) => filter(() => order = v),
+                      ),
+                    ],
                   ),
-                  const Text(
-                    'Enthält die gewählten Einträge aller Seiten einschließlich privater Notizen. Kein PDF und keine KI-Verarbeitung.',
-                  ),
-                  const SizedBox(height: 12),
                   Semantics(
                     liveRegion: true,
                     child: Text(
@@ -986,26 +906,6 @@ class _GradesScreenState extends State<GradesScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Notenkarten'),
-                        selected: !monthlyView,
-                        onSelected: loading
-                            ? null
-                            : (_) => setState(() => monthlyView = false),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Monatszeitleiste'),
-                        selected: monthlyView,
-                        onSelected: loading
-                            ? null
-                            : (_) => setState(() => monthlyView = true),
-                      ),
-                    ],
-                  ),
                   if (monthlyView)
                     const Text(
                       'Zeitleiste der geladenen Seite · keine vollständige Notenbasis oder Prognose',
@@ -1063,6 +963,148 @@ class _GradesScreenState extends State<GradesScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  ParentViewDetails(
+                    title: 'Ansicht & Export',
+                    subtitle: monthlyView
+                        ? 'Monatszeitleiste · geladene Seite'
+                        : 'Notenkarten',
+                    scope: ('grade-tools', ObjectKey(owner), family, viewChild),
+                    isCurrent: () => current && viewChild == widget.childId,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Notenkarten'),
+                            selected: !monthlyView,
+                            onSelected: loading
+                                ? null
+                                : (_) => setState(() => monthlyView = false),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Monatszeitleiste'),
+                            selected: monthlyView,
+                            onSelected: loading
+                                ? null
+                                : (_) => setState(() => monthlyView = true),
+                          ),
+                        ],
+                      ),
+                      if ((data!['selected_summary'] as List? ?? []).isNotEmpty)
+                        ExpansionTile(
+                          title: const Text('Diese Auswahl zusammengefasst'),
+                          subtitle: const Text(
+                            'Gewichtet je Fach und Notensystem · keine Zeugnisprognose',
+                          ),
+                          children: [
+                            for (final row in data!['selected_summary'])
+                              ListTile(
+                                title: Text(
+                                  '${row['subject']} · ${row['scale'] == 'points_0_15' ? 'Punkte' : 'Noten 1–6'}',
+                                ),
+                                subtitle: Text(
+                                  '${row['count']} Einträge · Gewichtungssumme ${row['weight_total']}',
+                                ),
+                                trailing: Text(
+                                  'Ø ${gradeNumber(row['average'])}',
+                                ),
+                              ),
+                          ],
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: loading || saving ? null : exportSelection,
+                        icon: const Icon(Icons.download_outlined),
+                        label: const Text(
+                          'Diese Notenauswahl als CSV speichern',
+                        ),
+                      ),
+                      const Text(
+                        'Enthält die gewählten Einträge aller Seiten einschließlich privater Notizen. Kein PDF und keine KI-Verarbeitung.',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                  ParentViewDetails(
+                    title: 'Schwerpunkte über alle Fächer',
+                    subtitle:
+                        '${(data!['focus'] as List).length} Fächer · keine Zeugnisprognose',
+                    scope: ('grade-focus', ObjectKey(owner), family, viewChild),
+                    isCurrent: () => current && viewChild == widget.childId,
+                    children: [
+                      for (final focus in data!['focus'] as List)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ActionPanel(
+                            actionLabel:
+                                'Einzelne Noten in ${focus['subject']} ansehen',
+                            enabled: !loading && !saving,
+                            onPressed: () {
+                              if (viewChild != widget.childId) return;
+                              showSubject(
+                                focus['subject'],
+                                resetOtherFilters: true,
+                              );
+                            },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  focus['subject'],
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  focus['average'] == null
+                                      ? 'Unterschiedliche Notensysteme'
+                                      : '${focus['scale'] == 'points_0_15' ? 'Punkteschnitt' : 'Notenschnitt'}: ${gradeNumber(focus['average'])}',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                const Text(
+                                  'Basis: bis zu fünf datierte Noten aus 90 Tagen und undatierte PDF-Noten dieses Schuljahres. Keine Zeugnisnote.',
+                                ),
+                                Text(
+                                  '${focus['observations']} aktuelle Einträge',
+                                  style: TextStyle(
+                                    color: context.palette.muted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if ((focus['undated_observations'] ?? 0) > 0)
+                                  Text(
+                                    '${focus['undated_observations']} davon ohne Einzeldatum · aktuelles Schuljahr',
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  data!['planning_enabled'] == true
+                                      ? focus['reason']
+                                      : 'Automatische Gewichtung ausgeschaltet',
+                                ),
+                                if (focus['trend'] != 'not_enough_data')
+                                  Text(
+                                    switch (focus['trend']) {
+                                      'improving' => 'Zuletzt verbessert',
+                                      'declining' => 'Zuletzt schwächer',
+                                      _ => 'Zuletzt ähnlich',
+                                    },
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                   ExpansionTile(
                     title: Text('Einfluss auf den Lernplan'),
                     children: [

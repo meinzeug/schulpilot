@@ -304,7 +304,7 @@ void main() {
   ) async {
     final calls = <http.Request>[];
     await f.open(t, calls);
-    await f.tap(t, find.text('Wörter hinzufügen'));
+    await f.tap(t, find.byTooltip('Wörter hinzufügen'));
     final pairField = find.byWidgetPredicate(
       (w) => w is TextField && w.minLines == 4,
     );

@@ -1470,30 +1470,37 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  padding: EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: context.palette.mint,
-                    borderRadius: BorderRadius.circular(16),
+              Row(
+                children: [
+                  ExcludeSemantics(
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: context.palette.mint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.add_a_photo_rounded,
+                        size: 24,
+                        color: context.palette.teal,
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.add_a_photo_rounded,
-                    size: 44,
-                    color: context.palette.teal,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      hasPhotos
+                          ? 'Hast du alle Seiten?'
+                          : 'Zeig mir deine Heftseiten',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                hasPhotos
-                    ? 'Hast du alle Seiten?'
-                    : 'Zeig mir deine Heftseiten',
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                  height: 1.15,
-                ),
+                ],
               ),
               SizedBox(height: 10),
               Text(

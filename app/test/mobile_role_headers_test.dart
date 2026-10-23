@@ -224,9 +224,19 @@ void main() {
         }
       }
     }
-    testWidgets('$role desktop keeps full context', (tester) async {
+    testWidgets('$role desktop opens full context deliberately', (
+      tester,
+    ) async {
       await mount(tester, role, const Size(1280, 900), 1, Brightness.light);
-      expect(find.byTooltip('Über diesen Bereich'), findsNothing);
+      expect(find.byTooltip('Über diesen Bereich'), findsOneWidget);
+      expect(
+        find.text(
+          role == 'parent' ? 'FAMILIENBEREICH' : 'SCHULPILOT · BETRIEB',
+        ),
+        findsNothing,
+      );
+      await tester.tap(find.byTooltip('Über diesen Bereich'));
+      await tester.pumpAndSettle();
       expect(
         find.text(
           role == 'parent' ? 'FAMILIENBEREICH' : 'SCHULPILOT · BETRIEB',

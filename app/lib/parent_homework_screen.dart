@@ -5,6 +5,7 @@ import 'parent_child_navigation.dart';
 import 'parent_insights_panel.dart' show reviewDate;
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 import 'ideas100_local_views.dart';
 
 String parentHomeworkDate(Json photo, String? zone) {
@@ -29,7 +30,7 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    filtersExpanded ??= MediaQuery.sizeOf(context).width >= 720;
+    filtersExpanded ??= false;
   }
 
   final List<Json> photos = [];
@@ -281,8 +282,18 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                   icon: Icons.edit_note_rounded,
                 ),
                 const SizedBox(height: 12),
-                const Notice(
-                  '„Bearbeitet“ ist eine Angabe deines Kindes. Häkchen beweisen keine richtige Lösung. In den Details siehst du Fragen, eigene abgeschickte Versuche und erhaltene Hilfen.',
+                const Text(
+                  'Häkchen sind selbst gemeldet, keine Lösungsbewertung.',
+                ),
+                ParentViewDetails(
+                  title: 'Was bedeuten die Häkchen?',
+                  scope: ('homework-info', ObjectKey(owner), family, viewChild),
+                  isCurrent: () => own && viewChild == widget.childId,
+                  children: const [
+                    Text(
+                      '„Bearbeitet“ ist eine Angabe deines Kindes. Häkchen beweisen keine richtige Lösung. In den Details siehst du Fragen, eigene abgeschickte Versuche und erhaltene Hilfen.',
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 ParentAppliedFilters(

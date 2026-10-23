@@ -18,6 +18,7 @@ import 'package:schulpilot/ui.dart';
 
 import 'parent_insights_test.dart' as fixture;
 import 'parent_learning_overview_test.dart' as overview;
+import 'parent_hierarchy_test_tools.dart';
 
 Json clone(Json value) => Json.from(jsonDecode(jsonEncode(value)));
 
@@ -61,6 +62,7 @@ class _Fixture {
     Brightness brightness = Brightness.dark,
     bool settle = true,
     bool showInsights = false,
+    String? planSection,
   }) async {
     tester.view.physicalSize = Size(width, 900);
     tester.view.devicePixelRatio = 1;
@@ -75,6 +77,7 @@ class _Fixture {
             builder: (_, route) => ParentPlanScreen(
               state,
               childId: route.pathParameters['child']!,
+              initialSection: planSection,
             ),
           ),
         GoRoute(
@@ -155,6 +158,11 @@ class _Fixture {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
     }
+    if (path.startsWith('/insights/') &&
+        settle &&
+        find.text('Regelmäßige KI-Auswertung').evaluate().isNotEmpty) {
+      await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
+    }
     return router;
   }
 }
@@ -212,6 +220,7 @@ void main() {
       await tester.pump();
       router.go('/insights/child-b');
       await tester.pumpAndSettle();
+      await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
       expect(
         tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
         isNotNull,
@@ -243,7 +252,7 @@ void main() {
             .selected,
         isTrue,
       );
-      await click(tester, 'Suche & alle Themenfilter');
+      await openParentDetails103(tester, 'Suche & alle Themenfilter');
       expect(
         tester
             .widget<ParentChoiceFilter>(
@@ -260,7 +269,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'KI-Lernweg'))
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Meine Themen'))
             .selected,
         isTrue,
       );
@@ -272,7 +281,7 @@ void main() {
             .selected,
         isTrue,
       );
-      await click(tester, 'Suche & alle Themenfilter');
+      await openParentDetails103(tester, 'Suche & alle Themenfilter');
       expect(
         tester
             .widget<ParentChoiceFilter>(
@@ -332,7 +341,7 @@ void main() {
           r.url.path.endsWith('/learning-plan') && ++reads > 1
           ? pending.future
           : null;
-      await f.mount(tester);
+      await f.mount(tester, planSection: 'ai');
       expect(
         find.text('Mathematik · Bisheriger künstlicher Kurzplan'),
         findsOneWidget,
@@ -441,7 +450,7 @@ void main() {
           ],
         },
       ];
-      await f.mount(tester);
+      await f.mount(tester, planSection: 'ai');
       expect(find.text('Bereits durchlaufen'), findsOneWidget);
       expect(find.text('Aktueller Schritt'), findsOneWidget);
       expect(find.text('Danach vorgesehen'), findsOneWidget);
@@ -863,6 +872,7 @@ void main() {
         'support': 'Künstliche gespeicherte Beobachtung',
       };
       await f.mount(tester, path: '/overview');
+      await openParentDetails103(tester, 'Fächer & Wochenrückblick');
       expect(
         find.textContaining(
           '0 abgeschlossene Runden · 5 gespeicherte Antwortversuche',

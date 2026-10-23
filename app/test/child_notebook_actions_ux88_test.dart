@@ -67,7 +67,7 @@ void main() {
     tester,
   ) async {
     final (_, _, requests) = await fixture.open(tester, photos: false);
-    await tap(tester, find.text('Filter'));
+    await tap(tester, find.byTooltip('Filter'));
     await tap(tester, find.byType(DropdownButtonFormField<String>).last);
     await tap(tester, find.text('Noch prüfen').last);
     await tap(tester, find.text('Anzeigen'));
@@ -137,7 +137,12 @@ void main() {
       'KK012 fresh same-ID session removes old notebook $dialog dialog and ignores saved callback',
       (tester) async {
         final (state, _, requests) = await fixture.open(tester, photos: false);
-        await tap(tester, find.text(dialog).first);
+        await tap(
+          tester,
+          dialog == 'Filter'
+              ? find.byTooltip('Filter')
+              : find.text(dialog).first,
+        );
         final callback = tester
             .widget<FilledButton>(
               find.widgetWithText(
@@ -190,7 +195,7 @@ void main() {
         photos: false,
       );
       final before = requests.length;
-      await tap(tester, find.text('Filter'));
+      await tap(tester, find.byTooltip('Filter'));
       tester.view.viewInsets = FakeViewPadding(bottom: 300);
       await tester.pumpAndSettle();
       await tap(tester, find.text('Abbrechen'));

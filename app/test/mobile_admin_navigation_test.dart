@@ -132,7 +132,7 @@ void main() {
               brightness: brightness,
             );
             expect(
-              find.byKey(const ValueKey('compact-admin-dashboard-heading')),
+              find.byKey(const ValueKey('compact-admin-heading')),
               findsOneWidget,
             );
             for (final label in ['Aktualisieren', 'Schnellzugriff']) {
@@ -170,7 +170,14 @@ void main() {
             }
             if (scale == 1) {
               expect(
-                tester.getTopLeft(find.text('Betriebsübersicht')).dy,
+                tester
+                    .getTopLeft(
+                      find.descendant(
+                        of: find.byKey(const ValueKey('compact-admin-heading')),
+                        matching: find.text('Betrieb'),
+                      ),
+                    )
+                    .dy,
                 lessThanOrEqualTo(300),
               );
             }

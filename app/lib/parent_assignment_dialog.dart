@@ -8,6 +8,7 @@ import 'parent_form_guard.dart';
 import 'collection_screen.dart' show pickLibraryMaterial;
 import 'homework_screen.dart' show homeworkKey;
 import 'ui.dart';
+import 'parent_view_details.dart';
 
 Future<void> showParentAssignmentDialog(
   BuildContext context,
@@ -452,17 +453,31 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
                   ),
                 ),
               if (subjects.isNotEmpty)
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                ParentViewDetails(
+                  title: 'Vorhandenes Fach übernehmen',
+                  subtitle:
+                      'Die Felder Fach und Lernziel bleiben frei bearbeitbar',
+                  scope: (
+                    'assignment-subjects',
+                    widget.child['id'],
+                    widget.existing?['id'],
+                  ),
+                  isCurrent: () => current,
                   children: [
-                    for (final value in subjects)
-                      ChoiceChip(
-                        label: Text(value),
-                        selected: subject.text.trim() == value,
-                        onSelected: editable
-                            ? (_) => setState(() => subject.text = value)
-                            : null,
+                    if (subjects.isNotEmpty)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final value in subjects)
+                            ChoiceChip(
+                              label: Text(value),
+                              selected: subject.text.trim() == value,
+                              onSelected: editable
+                                  ? (_) => setState(() => subject.text = value)
+                                  : null,
+                            ),
+                        ],
                       ),
                   ],
                 ),

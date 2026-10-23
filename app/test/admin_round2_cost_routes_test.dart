@@ -142,6 +142,11 @@ void main() {
         find.textContaining('nicht gemeldet Aufrufe / Minute'),
         findsOneWidget,
       );
+      expect(find.textContaining('Ziel nicht gemeldet'), findsNothing);
+      await ops.tap(
+        t,
+        find.widgetWithText(ExpansionTile, 'Budgetgrenzen & Kostenstellen'),
+      );
       expect(find.textContaining('Ziel nicht gemeldet'), findsOneWidget);
       expect(t.takeException(), isNull);
       await t.pumpWidget(const SizedBox());

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -88,22 +89,7 @@ class CollectionScreen extends StatelessWidget {
             description: 'Hier geht es mit deinem Heftstoff weiter. Wähle eine Runde und lerne in deinem Tempo.',
             icon: Icons.auto_stories_rounded,
           ),
-          if (MediaQuery.sizeOf(context).width >= 720) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              children: [
-                TextButton.icon(
-                  onPressed: () => openRoute(context, '/progress/$childId'),
-                  icon: const Icon(Icons.insights_rounded),
-                  label: const Text('Lernstand'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ] else
-            const SizedBox(height: 8),
+          const SizedBox(height: 8),
         ],
         if (!learning && state.isChild) ...[
           ChildSectionHero(
@@ -195,7 +181,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
   final searchFocus = FocusNode();
   final recentQueries = <String>[];
   final rememberedRounds = <String, Json>{}, comparedRounds = <String, Json>{};
-  bool compactRows = false;
+  bool compactRows = true;
   late String? family, session;
   final top = GlobalKey();
   Timer? debounce;
@@ -1173,7 +1159,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  if (!compact || toolsExpanded) ...[
+                  if (toolsExpanded) ...[
                     OutlinedButton.icon(
                       onPressed: focusLearningSearch,
                       icon: const Icon(Icons.keyboard),
@@ -1209,7 +1195,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                     ),
                 ],
               ),
-              if (recentQueries.isNotEmpty)
+              if (toolsExpanded && recentQueries.isNotEmpty)
                 ExpansionTile(
                   title: const Text('Letzte Lernsuchbegriffe dieses Besuchs'),
                   children: [
@@ -1457,6 +1443,130 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
     return widgets;
   }
 
+  String? roundItemSnapshot(Json item) {
+    try {
+      return jsonEncode(item);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Iterable<Json> loadedRoundItems() sync* {
+    for (final raw in data?['items'] as List? ?? []) {
+      if (raw is! Map) continue;
+      final item = Json.from(raw);
+      if (item['kind'] == 'topic_group') {
+        for (final entry in item['entries'] as List? ?? []) {
+          if (entry is Map) yield Json.from(entry);
+        }
+      } else {
+        yield item;
+      }
+    }
+  }
+
+  Widget roundActions(Json item) {
+    final snapshot = roundItemSnapshot(item);
+    final shown = snapshot == null
+        ? <String, dynamic>{}
+        : Json.from(jsonDecode(snapshot));
+    final requestAccount = owner,
+        requestFamily = family,
+        requestSession = session;
+    final requestGeneration = generation;
+    final sourceRoute = ModalRoute.of(context);
+    bool current() =>
+        active &&
+        snapshot != null &&
+        identical(widget.state.user, requestAccount) &&
+        widget.state.familyId == requestFamily &&
+        widget.state.api.token == requestSession &&
+        generation == requestGeneration &&
+        !loading &&
+        sourceRoute != null &&
+        sourceRoute == ModalRoute.of(context) &&
+        sourceRoute.isCurrent &&
+        loadedRoundItems().any(
+          (row) =>
+              row['id'] == shown['id'] &&
+              row['kind'] == shown['kind'] &&
+              roundItemSnapshot(row) == snapshot,
+        );
+    PopupMenuItem<String> entry(String value, String label, IconData icon) =>
+        PopupMenuItem(
+          value: value,
+          child: Builder(
+            builder: (menuContext) {
+              final route = ModalRoute.of(menuContext);
+              if (route != null) trackLocalRoute(route);
+              return Row(
+                children: [
+                  Icon(icon, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(label)),
+                ],
+              );
+            },
+          ),
+        );
+    return PopupMenuButton<String>(
+      key: ValueKey('round-actions:${item['kind']}:${item['id']}'),
+      tooltip: 'Weitere Rundenaktionen',
+      enabled:
+          active &&
+          !loading &&
+          snapshot != null &&
+          deletingMaterial == null &&
+          opening == null,
+      icon: const Icon(Icons.more_horiz_rounded),
+      itemBuilder: (_) => !current()
+          ? [
+              const PopupMenuItem<String>(
+                enabled: false,
+                child: Text('Diese Ansicht ist nicht mehr aktuell.'),
+              ),
+            ]
+          : [
+              entry('details', 'Details ohne Start', Icons.info_outline),
+              if (shown['kind'] == 'unit') ...[
+                entry(
+                  'bookmark',
+                  rememberedRounds.containsKey(shown['id'])
+                      ? 'Merker entfernen'
+                      : 'Für diesen Besuch merken',
+                  Icons.bookmark_outline,
+                ),
+                entry(
+                  'compare',
+                  comparedRounds.containsKey(shown['id'])
+                      ? 'Aus Vergleich nehmen'
+                      : 'Runde für Themenvergleich auswählen',
+                  Icons.compare_outlined,
+                ),
+              ],
+              if (canDeleteRound(shown))
+                entry(
+                  'delete',
+                  'Lernrunde löschen',
+                  Icons.delete_outline_rounded,
+                ),
+            ],
+      onSelected: (action) {
+        if (!current() || deletingMaterial != null || opening != null) return;
+        switch (action) {
+          case 'details':
+            roundDetails(shown);
+          case 'bookmark':
+            if (shown['kind'] == 'unit') rememberRound(shown);
+          case 'compare':
+            if (shown['kind'] == 'unit') compareRound(shown);
+          case 'delete':
+            if (canDeleteRound(shown)) deleteRound(shown);
+        }
+      },
+    );
+  }
+
   Widget _tile(Json item, {bool inset = false}) {
     final topic = (item['topic'] as String? ?? '').trim(),
         title = topic.isEmpty ? item['title'] ?? 'Heftseite' : topic;
@@ -1510,7 +1620,9 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                           : (_) => togglePage(item),
                     )
                   : Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(
+                        widget.learning && compactRows ? 6 : 10,
+                      ),
                       decoration: BoxDecoration(
                         color: context.palette.mint,
                         borderRadius: BorderRadius.circular(12),
@@ -1522,7 +1634,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                                   : Icons.auto_stories_outlined
                             : Icons.description_outlined,
                         color: context.palette.teal,
-                        size: 23,
+                        size: widget.learning && compactRows ? 20 : 23,
                       ),
                     ),
               title: Ideas100Highlight(
@@ -1630,6 +1742,14 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
+                  : widget.learning
+                  ? opening == item['id']
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : roundActions(item)
                   : canDeleteMaterial(item) && !selectingPages
                   ? Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1651,14 +1771,6 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                         ),
                       ],
                     )
-                  : canDeleteRound(item)
-                  ? IconButton(
-                      tooltip: 'Lernrunde löschen',
-                      onPressed: deletingMaterial != null
-                          ? null
-                          : () => deleteRound(item),
-                      icon: const Icon(Icons.delete_outline_rounded),
-                    )
                   : opening == item['id']
                   ? const SizedBox(
                       width: 22,
@@ -1675,36 +1787,6 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                   ? () => open(item)
                   : null,
             ),
-            if (widget.learning)
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => roundDetails(item),
-                    icon: const Icon(Icons.info_outline),
-                    label: const Text('Details ohne Start'),
-                  ),
-                  if (item['kind'] == 'unit') ...[
-                    IconButton(
-                      tooltip: rememberedRounds.containsKey(item['id'])
-                          ? 'Merker entfernen'
-                          : 'Für diesen Besuch merken',
-                      isSelected: rememberedRounds.containsKey(item['id']),
-                      onPressed: () => rememberRound(item),
-                      icon: const Icon(Icons.bookmark_outline),
-                    ),
-                    IconButton(
-                      tooltip: comparedRounds.containsKey(item['id'])
-                          ? 'Aus Vergleich nehmen'
-                          : 'Runde für Themenvergleich auswählen',
-                      isSelected: comparedRounds.containsKey(item['id']),
-                      onPressed: () => compareRound(item),
-                      icon: const Icon(Icons.compare_outlined),
-                    ),
-                  ],
-                ],
-              ),
           ],
         ),
       ),

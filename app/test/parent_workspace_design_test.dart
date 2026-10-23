@@ -9,11 +9,11 @@ import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/coaching_panel.dart';
 import 'package:schulpilot/parent_overview.dart';
-import 'package:schulpilot/parent_workspace_ui.dart';
 import 'package:schulpilot/settings_screen.dart';
 import 'package:schulpilot/ui.dart';
 
 import 'parent_learning_overview_test.dart' as overview_fixture;
+import 'parent_hierarchy_test_tools.dart';
 
 http.Response _response(Object value) => http.Response(
   jsonEncode(value),
@@ -142,7 +142,11 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byType(ParentWorkspaceHero), findsOneWidget);
+        expect(find.text('Zugänge & Einstellungen'), findsOneWidget);
+        expect(
+          find.widgetWithText(FilledButton, 'Konto & Geräte'),
+          findsOneWidget,
+        );
         expect(find.text('Hier abmelden'), findsOneWidget);
         expect(find.text('Elternzugänge'), findsNothing);
         expect(find.text('Deine Familiendaten'), findsNothing);
@@ -209,6 +213,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await openParentDetails103(tester, 'Zeit & Mindestziele');
       expect(find.text('Noch keine Zeitdaten verfügbar.'), findsOneWidget);
       expect(find.text('Tagesziel offen'), findsNothing);
       expect(find.text('Gespeicherte Runde ansehen'), findsNothing);

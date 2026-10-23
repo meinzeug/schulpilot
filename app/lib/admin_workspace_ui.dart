@@ -100,74 +100,18 @@ class AdminWorkspaceHeader extends StatelessWidget {
   final String subtitle;
   final String currentPath;
   final IconData icon;
+  final Widget? action;
   const AdminWorkspaceHeader({
     super.key,
     required this.title,
     required this.subtitle,
     required this.currentPath,
     this.icon = Icons.space_dashboard_rounded,
+    this.action,
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width < 720) {
-      return _CompactAdminHeader(this);
-    }
-    final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (currentPath != '/admin') ...[
-            IconButton(
-              tooltip: 'Betriebsübersicht',
-              onPressed: () => openRoute(context, '/admin'),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'SCHULPILOT · BETRIEB',
-                  style: TextStyle(
-                    color: p.cyanInk,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Semantics(
-                  header: true,
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontFamily: 'Nunito',
-                      color: p.ink,
-                      fontSize: 28,
-                      height: 1.2,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: p.muted, fontSize: 15, height: 1.45),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          ExcludeSemantics(child: Icon(icon, color: p.cyanInk, size: 24)),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _CompactAdminHeader(this);
 }
 
 class _CompactAdminHeader extends StatefulWidget {
@@ -213,7 +157,7 @@ class _CompactAdminHeaderState extends State<_CompactAdminHeader> {
                   content.title,
                   style: TextStyle(
                     fontFamily: 'Nunito',
-                    fontSize: 24,
+                    fontSize: MediaQuery.sizeOf(context).width < 720 ? 24 : 28,
                     height: 1.2,
                     fontWeight: FontWeight.w700,
                     color: context.palette.ink,
@@ -221,6 +165,7 @@ class _CompactAdminHeaderState extends State<_CompactAdminHeader> {
                 ),
               ),
             ),
+            if (content.action != null) content.action!,
             Semantics(
               expanded: expanded,
               child: IconButton(

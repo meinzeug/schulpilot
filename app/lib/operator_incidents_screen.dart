@@ -492,10 +492,6 @@ class _OperatorIncidentsScreenState extends State<OperatorIncidentsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Fehler prüfen und einen kontrollierten Reparaturvorschlag anfordern. Keine Kinderinhalte; kein automatisches Einspielen von Änderungen.',
-          ),
-          const SizedBox(height: 16),
           Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -686,6 +682,14 @@ class _OperatorIncidentsScreenState extends State<OperatorIncidentsScreen> {
           ],
           if (reading) const LinearProgressIndicator(),
           if (detail != null) ...[const SizedBox(height: 12), detailView()],
+          ExpansionTile(
+            title: const Text('Wie Reparaturvorschläge geprüft werden'),
+            children: [
+              const Text(
+                'Fehler prüfen und einen kontrollierten Reparaturvorschlag anfordern. Keine Kinderinhalte; kein automatisches Einspielen von Änderungen.',
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -11,6 +11,8 @@ import 'package:schulpilot/parent_insights_panel.dart';
 import 'package:schulpilot/parent_plan_screen.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 http.Response response(Object body, [int status = 200]) => http.Response(
   jsonEncode(body),
   status,
@@ -190,6 +192,15 @@ Future<GoRouter> open(
 }
 
 Future<void> tap(WidgetTester tester, String label) async {
+  const management = {
+    'Als erledigt markieren',
+    'Ziel & Termin bearbeiten',
+    'Als neues Ziel kopieren',
+    'Auftrag entfernen',
+  };
+  if (management.contains(label) && find.text(label).evaluate().isEmpty) {
+    await openParentDetails103(tester, 'Auftrag verwalten');
+  }
   final target = find.text(label).first;
   await tester.ensureVisible(target);
   await tester.pumpAndSettle();
@@ -269,6 +280,7 @@ void main() {
       );
       await open(tester, state, 'insights');
       expect(calls.where((r) => r.method != 'GET'), isEmpty);
+      await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
       await tap(tester, 'Regelmäßig mit KI auswerten');
       await tap(tester, 'Jetzt mit KI auswerten');
       expect(calls.where((r) => r.method == 'PUT').length, 1);
@@ -414,6 +426,7 @@ void main() {
       }),
     );
     await open(tester, state, 'plan');
+    await tap(tester, 'KI-Lernweg');
     expect(find.text('KI-Lernkompass'), findsOneWidget);
     expect(find.text('Lernplan öffnen'), findsNothing);
   });

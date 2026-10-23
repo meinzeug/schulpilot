@@ -9,6 +9,7 @@ import 'package:schulpilot/collection_view_tools.dart';
 import 'package:schulpilot/grades_screen.dart';
 import 'package:schulpilot/grade_import_screen.dart';
 import 'package:schulpilot/ui.dart';
+import 'package:schulpilot/vocabulary_screen.dart';
 
 import 'vocabulary_test.dart' as v;
 import 'homework_screen_test.dart' as h;
@@ -16,6 +17,7 @@ import 'progress_grades_test.dart' as g;
 import 'parent_grades_ux87_test.dart' as gp;
 import 'grade_pdf_test.dart' as pdf;
 import 'child_history_ux90_test.dart' as hy;
+import 'parent_hierarchy_test_tools.dart';
 
 Future<void> tap(WidgetTester tester, Finder finder) async {
   await Scrollable.ensureVisible(tester.element(finder), alignment: .5);
@@ -52,7 +54,7 @@ void main() {
       await tap(tester, mobileTools);
       expect(find.text('Kompakte Wortliste'), findsNothing);
       expect(find.text('Wortkarten'), findsNothing);
-      expect(find.text('Wort einzeln ansehen'), findsNWidgets(2));
+      expect(find.byTooltip('Wort einzeln ansehen'), findsNWidgets(2));
       await tap(tester, mobileTools);
       expect(
         tester
@@ -69,8 +71,9 @@ void main() {
             .any((w) => w.text == 'apple'),
         isFalse,
       );
-      await tap(tester, find.text('Wort einzeln ansehen').first);
+      await tap(tester, find.byTooltip('Wort einzeln ansehen').first);
       expect(find.text('Wort 1 von 2'), findsOneWidget);
+      await tap(tester, find.text('Lernstand & Wortdetails'));
       expect(find.text('Gespeicherte Modusstände'), findsOneWidget);
       await tap(tester, find.text('Nächstes Wort'));
       expect(find.text('Wort 2 von 2'), findsOneWidget);
@@ -88,7 +91,7 @@ void main() {
     tester,
   ) async {
     final requests = <http.Request>[];
-    await v.open(tester, requests);
+    await v.open(tester, requests, cards: false);
     await tester.enterText(input('Wörter suchen'), 'apple');
     await tester.pump();
     await tap(tester, find.byTooltip('Wort einzeln ansehen'));
@@ -194,7 +197,7 @@ void main() {
               })
             : v.reply(v.listing()),
       );
-      await tap(tester, find.text('Prüfen').first);
+      await tap(tester, find.textContaining('Prüfen').first);
       await tap(tester, find.text('Künstliche Paarliste'));
       await tap(tester, find.text('Zum nächsten offenen Wortpaar'));
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'Wortpaar 1');
@@ -286,6 +289,7 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       await pdf.mount(tester, requests);
+      await openParentDetails103(tester, 'Importablauf');
       expect(find.text('1 · Datei'), findsOneWidget);
       await pdf.pick(tester);
       expect(find.text('3 · Auswahl'), findsOneWidget);
@@ -312,6 +316,7 @@ void main() {
         }),
       );
       await h.open(tester, state, width: 320, scale: 2);
+      await tap(tester, find.text('Ansicht anpassen'));
       await tap(tester, find.text('Aufgabenfokus'));
       await tester.ensureVisible(input('Mein eigener Versuch'));
       await tester.enterText(input('Mein eigener Versuch'), 'Mein erster Weg');
@@ -457,15 +462,20 @@ void main() {
         return v.reply(listing);
       },
     );
-    final refresh = tester
-        .widget<IconButton>(
-          find.widgetWithIcon(IconButton, Icons.refresh_rounded).last,
-        )
-        .onPressed!;
+    // Exercise an incoming same-scope refresh independently of covered UI.
+    // The header menu intentionally refuses actions while a reader covers it.
+    final dynamic screen = tester.state(
+      find
+          .descendant(
+            of: find.byType(VocabularyScreen),
+            matching: find.byWidgetPredicate((w) => w is StatefulWidget),
+          )
+          .first,
+    );
     await tap(tester, find.byTooltip('Wort einzeln ansehen'));
     expect(find.text('Wort 1 von 1'), findsOneWidget);
     revision = 2;
-    refresh();
+    await screen.load();
     await tester.pumpAndSettle();
     expect(find.text('Wort 1 von 1'), findsNothing);
     expect(requests.every((r) => r.method == 'GET'), isTrue);

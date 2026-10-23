@@ -53,6 +53,11 @@ Future<(dynamic, List<http.Request>)> collection(
   return (state, calls);
 }
 
+Future<void> roundAction(WidgetTester t, String id, String label) async {
+  await c.tap(t, find.byKey(ValueKey('round-actions:unit:$id')));
+  await c.tap(t, find.text(label));
+}
+
 void main() {
   testWidgets(
     'keyboard opens the search and highlights original visible titles',
@@ -117,7 +122,7 @@ void main() {
     t,
   ) async {
     final (state, calls) = await collection(t);
-    await c.tap(t, find.text('Details ohne Start').first);
+    await roundAction(t, 'm0', 'Details ohne Start');
     expect(find.text('Gespeicherte Rundendetails'), findsOneWidget);
     expect(find.textContaining('Metadatenansicht'), findsOneWidget);
     expect(calls.every((r) => r.method == 'GET'), isTrue);
@@ -132,10 +137,13 @@ void main() {
   for (final width in [320.0, 390.0, 1440.0]) {
     testWidgets('compact rows remain usable at $width', (t) async {
       final (state, calls) = await collection(t, width: width);
-      if (width < 720) {
-        expect(find.text('Kompakte Zeilen'), findsNothing);
-        await c.tap(t, find.byTooltip('Suchen & filtern'));
-      }
+      expect(find.text('Kompakte Zeilen'), findsNothing);
+      await c.tap(
+        t,
+        width < 720
+            ? find.byTooltip('Suchen & filtern')
+            : find.text('Suchen & filtern'),
+      );
       await c.tap(t, find.text('Kompakte Zeilen'));
       final tiles = t.widgetList<ListTile>(
         find.descendant(
@@ -153,8 +161,8 @@ void main() {
   }
   testWidgets('same-topic metadata comparison remains local', (t) async {
     final (state, calls) = await collection(t, sameTopic: true);
-    await c.tap(t, find.byTooltip('Runde für Themenvergleich auswählen').first);
-    await c.tap(t, find.byTooltip('Runde für Themenvergleich auswählen').first);
+    await roundAction(t, 'm0', 'Runde für Themenvergleich auswählen');
+    await roundAction(t, 'm1', 'Runde für Themenvergleich auswählen');
     await c.tap(t, find.text('Metadaten vergleichen'));
     expect(find.text('Zwei Runden desselben Themas'), findsOneWidget);
     await c.tap(t, find.text('Zweite Auswahl'));
@@ -181,12 +189,9 @@ void main() {
           width: 390,
           learning: true,
         );
-        await c.tap(
-          t,
-          find.byTooltip('Runde für Themenvergleich auswählen').first,
-        );
+        await roundAction(t, 'm0', 'Runde für Themenvergleich auswählen');
         final before = calls.length;
-        await c.tap(t, find.byTooltip('Runde für Themenvergleich auswählen'));
+        await roundAction(t, 'm1', 'Runde für Themenvergleich auswählen');
         expect(
           find.text(
             otherTopic.isEmpty
@@ -217,7 +222,7 @@ void main() {
     'bookmarks and eight recent applied searches clear with session change',
     (t) async {
       final (state, calls) = await collection(t);
-      await c.tap(t, find.byTooltip('Für diesen Besuch merken').first);
+      await roundAction(t, 'm0', 'Für diesen Besuch merken');
       expect(find.text('Für diesen Besuch gemerkt (1/12)'), findsOneWidget);
       for (var i = 0; i < 10; i++) {
         await enterSearch(t, 'Begriff$i');
@@ -282,7 +287,7 @@ void main() {
     await n.tap(t, find.text('Liste'));
     expect(find.text('Geladene Seiten nach Schultag gliedern'), findsNothing);
     final beforeGrouping = calls.length;
-    await n.tap(t, find.text('Filter'));
+    await n.tap(t, find.byTooltip('Filter'));
     await n.tap(t, find.text('Geladene Seiten nach Schultag gliedern'));
     await n.tap(t, find.text('Anzeigen'));
     expect(calls.length, beforeGrouping);

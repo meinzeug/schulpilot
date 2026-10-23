@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
+import 'parent_view_details.dart';
 
 Future<void> showAdminAuditExplorer(
   BuildContext context,
@@ -293,71 +294,86 @@ class _AdminAuditExplorerState extends State<AdminAuditExplorer> {
                           const Notice(
                             'Ausschließlich berechtigte Betriebsmetadaten. Filtern oder Öffnen führt keine frühere Aktion erneut aus und zeigt keine privaten Lerninhalte.',
                           ),
-                          ParentCollectionSearch(
-                            controller: search,
-                            label: 'Gesamtes Protokoll durchsuchen',
-                            appliedQuery: query,
-                            enabled: !loading && !exporting,
-                            helperText: 'Sucht nach Aktionscode, Ziel- oder Akteurkennung, auch außerhalb der200er-Vorschau.',
-                            onSearch: () =>
-                                filter(() => query = search.text.trim()),
-                            onClear: () => filter(() {
-                              query = '';
-                              search.clear();
-                            }),
-                          ),
-                          ExpansionTile(
-                            title: const Text(
-                              'Akteur, Aktion und UTC-Zeitraum eingrenzen',
-                            ),
+                          ParentViewDetails(
+                            title: 'Protokoll suchen & eingrenzen',
+                            subtitle:
+                                query.isNotEmpty ||
+                                    actor.isNotEmpty ||
+                                    action.isNotEmpty ||
+                                    start != null ||
+                                    end != null
+                                ? 'Filter aktiv · betrifft den vollständigen berechtigten Zeitbereich'
+                                : 'Suche, Akteur, Aktion und UTC-Zeitraum',
+                            scope: ('audit-filters', ObjectKey(account)),
+                            isCurrent: () => current,
                             children: [
-                              ParentChoiceFilter(
-                                label: 'Exakter Aktionscode',
-                                value: action,
+                              ParentCollectionSearch(
+                                controller: search,
+                                label: 'Gesamtes Protokoll durchsuchen',
+                                appliedQuery: query,
                                 enabled: !loading && !exporting,
-                                choices: [
-                                  ('', 'Alle Aktionen'),
-                                  for (final code in actions) (code, code),
-                                ],
-                                onChanged: (v) => filter(() => action = v),
-                              ),
-                              ParentChoiceFilter(
-                                label: 'Exakte Akteurkennung',
-                                value: actor,
-                                enabled: !loading && !exporting,
-                                choices: [
-                                  ('', 'Alle Akteure'),
-                                  for (final code in actors) (code, code),
-                                ],
-                                onChanged: (v) => filter(() => actor = v),
-                              ),
-                              if (optionsTruncated)
-                                const Text(
-                                  'Die Auswahl zeigt höchstens200 unterschiedliche Kennungen. Weitere Kennungen findest du über die Suche.',
-                                ),
-                              const Text(
-                                'Die folgenden Kalendertage gelten in UTC, damit sie mit Serverprotokollen übereinstimmen.',
-                              ),
-                              ParentDateRange(
-                                start: start,
-                                end: end,
-                                enabled: !loading && !exporting,
-                                onApply: (from, to) => filter(() {
-                                  start = from;
-                                  end = to;
+                                helperText: 'Sucht nach Aktionscode, Ziel- oder Akteurkennung, auch außerhalb der200er-Vorschau.',
+                                onSearch: () =>
+                                    filter(() => query = search.text.trim()),
+                                onClear: () => filter(() {
+                                  query = '';
+                                  search.clear();
                                 }),
                               ),
+                              ExpansionTile(
+                                title: const Text(
+                                  'Akteur, Aktion und UTC-Zeitraum eingrenzen',
+                                ),
+                                children: [
+                                  ParentChoiceFilter(
+                                    label: 'Exakter Aktionscode',
+                                    value: action,
+                                    enabled: !loading && !exporting,
+                                    choices: [
+                                      ('', 'Alle Aktionen'),
+                                      for (final code in actions) (code, code),
+                                    ],
+                                    onChanged: (v) => filter(() => action = v),
+                                  ),
+                                  ParentChoiceFilter(
+                                    label: 'Exakte Akteurkennung',
+                                    value: actor,
+                                    enabled: !loading && !exporting,
+                                    choices: [
+                                      ('', 'Alle Akteure'),
+                                      for (final code in actors) (code, code),
+                                    ],
+                                    onChanged: (v) => filter(() => actor = v),
+                                  ),
+                                  if (optionsTruncated)
+                                    const Text(
+                                      'Die Auswahl zeigt höchstens200 unterschiedliche Kennungen. Weitere Kennungen findest du über die Suche.',
+                                    ),
+                                  const Text(
+                                    'Die folgenden Kalendertage gelten in UTC, damit sie mit Serverprotokollen übereinstimmen.',
+                                  ),
+                                  ParentDateRange(
+                                    start: start,
+                                    end: end,
+                                    enabled: !loading && !exporting,
+                                    onApply: (from, to) => filter(() {
+                                      start = from;
+                                      end = to;
+                                    }),
+                                  ),
+                                ],
+                              ),
+                              ParentChoiceFilter(
+                                label: 'Zeitliche Reihenfolge',
+                                value: order,
+                                enabled: !loading && !exporting,
+                                choices: const [
+                                  ('newest', 'Neueste Ereignisse zuerst'),
+                                  ('oldest', 'Älteste Ereignisse zuerst'),
+                                ],
+                                onChanged: (v) => filter(() => order = v),
+                              ),
                             ],
-                          ),
-                          ParentChoiceFilter(
-                            label: 'Zeitliche Reihenfolge',
-                            value: order,
-                            enabled: !loading && !exporting,
-                            choices: const [
-                              ('newest', 'Neueste Ereignisse zuerst'),
-                              ('oldest', 'Älteste Ereignisse zuerst'),
-                            ],
-                            onChanged: (v) => filter(() => order = v),
                           ),
                           if (query.isNotEmpty ||
                               actor.isNotEmpty ||

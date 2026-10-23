@@ -85,49 +85,109 @@ class _AiCostPanelState extends State<AiCostPanel> {
                 child: Text('Noch kein zuordenbarer Modellverbrauch erfasst.'),
               ),
             ),
-          if (data['budget_policy'] is Map) ...[
-            Text(
-              'Pro Kind und Monat: Ziel ${eur(data['budget_policy']['target_eur_micros'])} · Warnung ${eur(data['budget_policy']['warning_eur_micros'])} · Grenze ${eur(data['budget_policy']['hard_eur_micros'])}',
-            ),
-            for (final row in data['child_budgets'] as List? ?? [])
-              Material(
-                type: MaterialType.transparency,
-                child: ListTile(
-                  onTap: () => showAdminDetails(
-                    context,
-                    state,
-                    title: 'Kostenstelle ${row['cost_centre']}',
-                    notice: 'Anonyme Kostenstelle. Diese Ansicht öffnet keine privaten Familien- oder Lerninhalte.',
-                    rows: [
-                      (
-                        'Gespeicherter Budgetstatus',
-                        _budgetState(row['state']),
+          if (data['budget_policy'] is Map)
+            if ((data['child_budgets'] as List? ?? []).whereType<Map>().any(
+              (row) => row['state'] != 'within_target',
+            ))
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Pro Kind und Monat: Ziel ${eur(data['budget_policy']['target_eur_micros'])} · Warnung ${eur(data['budget_policy']['warning_eur_micros'])} · Grenze ${eur(data['budget_policy']['hard_eur_micros'])}',
+                  ),
+                  for (final row in data['child_budgets'] as List? ?? [])
+                    Material(
+                      type: MaterialType.transparency,
+                      child: ListTile(
+                        onTap: () => showAdminDetails(
+                          context,
+                          state,
+                          title: 'Kostenstelle ${row['cost_centre']}',
+                          notice: 'Anonyme Kostenstelle. Diese Ansicht öffnet keine privaten Familien- oder Lerninhalte.',
+                          rows: [
+                            (
+                              'Gespeicherter Budgetstatus',
+                              _budgetState(row['state']),
+                            ),
+                            (
+                              'Mit Reservierungen gebunden',
+                              eur(row['held_eur_micros']),
+                            ),
+                            (
+                              'Offene Abrechnungen',
+                              number(row['unsettled_calls']),
+                            ),
+                          ],
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          row['state'] == 'within_target'
+                              ? Icons.check_circle_outline
+                              : Icons.warning_amber_rounded,
+                          color: row['state'] == 'within_target'
+                              ? context.palette.successInk
+                              : context.palette.warningInk,
+                        ),
+                        title: Text('Kostenstelle ${row['cost_centre']}'),
+                        subtitle: Text(
+                          '${_budgetState(row['state'])} · ${eur(row['held_eur_micros'])} einschließlich Reservierungen · ${number(row['unsettled_calls'])} Abrechnungen offen',
+                        ),
                       ),
-                      (
-                        'Mit Reservierungen gebunden',
-                        eur(row['held_eur_micros']),
+                    ),
+                  const SizedBox(height: 10),
+                ],
+              )
+            else
+              ExpansionTile(
+                title: const Text('Budgetgrenzen & Kostenstellen'),
+                children: [
+                  Text(
+                    'Pro Kind und Monat: Ziel ${eur(data['budget_policy']['target_eur_micros'])} · Warnung ${eur(data['budget_policy']['warning_eur_micros'])} · Grenze ${eur(data['budget_policy']['hard_eur_micros'])}',
+                  ),
+                  for (final row in data['child_budgets'] as List? ?? [])
+                    Material(
+                      type: MaterialType.transparency,
+                      child: ListTile(
+                        onTap: () => showAdminDetails(
+                          context,
+                          state,
+                          title: 'Kostenstelle ${row['cost_centre']}',
+                          notice: 'Anonyme Kostenstelle. Diese Ansicht öffnet keine privaten Familien- oder Lerninhalte.',
+                          rows: [
+                            (
+                              'Gespeicherter Budgetstatus',
+                              _budgetState(row['state']),
+                            ),
+                            (
+                              'Mit Reservierungen gebunden',
+                              eur(row['held_eur_micros']),
+                            ),
+                            (
+                              'Offene Abrechnungen',
+                              number(row['unsettled_calls']),
+                            ),
+                          ],
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          row['state'] == 'within_target'
+                              ? Icons.check_circle_outline
+                              : Icons.warning_amber_rounded,
+                          color: row['state'] == 'within_target'
+                              ? context.palette.successInk
+                              : context.palette.warningInk,
+                        ),
+                        title: Text('Kostenstelle ${row['cost_centre']}'),
+                        subtitle: Text(
+                          '${_budgetState(row['state'])} · ${eur(row['held_eur_micros'])} einschließlich Reservierungen · ${number(row['unsettled_calls'])} Abrechnungen offen',
+                        ),
                       ),
-                      ('Offene Abrechnungen', number(row['unsettled_calls'])),
-                    ],
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    row['state'] == 'within_target'
-                        ? Icons.check_circle_outline
-                        : Icons.warning_amber_rounded,
-                    color: row['state'] == 'within_target'
-                        ? context.palette.successInk
-                        : context.palette.warningInk,
-                  ),
-                  title: Text('Kostenstelle ${row['cost_centre']}'),
-                  subtitle: Text(
-                    '${_budgetState(row['state'])} · ${eur(row['held_eur_micros'])} einschließlich Reservierungen · ${number(row['unsettled_calls'])} Abrechnungen offen',
-                  ),
-                ),
+                    ),
+                  const SizedBox(height: 10),
+                ],
               ),
-            const SizedBox(height: 10),
-          ],
           Wrap(
             spacing: 8,
             runSpacing: 8,

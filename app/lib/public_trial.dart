@@ -103,11 +103,7 @@ class TrialOfferCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Tag('EURE ZEIT ZUM AUSPROBIEREN'),
-        const SizedBox(height: 16),
         if (offer.available) ...[
-          heading('Erst kennenlernen. Dann entscheiden.'),
-          const SizedBox(height: 8),
           TrialTermsSummary(offer),
           const SizedBox(height: 16),
           FilledButton.icon(
@@ -116,8 +112,6 @@ class TrialOfferCard extends StatelessWidget {
             label: Text(actionLabel),
           ),
         ] else ...[
-          heading('Euer Einstieg wird vorbereitet'),
-          const SizedBox(height: 8),
           TrialTermsSummary(offer),
         ],
       ],

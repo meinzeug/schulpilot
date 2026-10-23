@@ -175,19 +175,24 @@ void main() {
         path: '/admin/verkauf',
         width: 320,
       );
-      expect(
-        find.text(
-          'Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
-        ),
-        findsOneWidget,
+      final explanation = find.text(
+        'Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
       );
+      expect(explanation, findsNothing);
       await admin.press(tester, find.byTooltip('Über diesen Bereich'));
+      expect(explanation, findsOneWidget);
+      await admin.press(tester, find.byTooltip('Bereichsinfo schließen'));
+      await admin.press(tester, find.text('Zahlung prüfen & freischalten'));
       expect(
-        find.text(
-          'Überweisungen manuell mit dem Bankkonto abgleichen. Online-Zahlungsbelege werden automatisch geprüft.',
-        ),
+        find.textContaining('Den tatsächlichen Bankbetrag selbst eintragen.'),
         findsOneWidget,
       );
+      final bankConfirmation = find.widgetWithText(
+        CheckboxListTile,
+        'Ich habe diesen Zahlungseingang im tatsächlichen Bankkonto geprüft.',
+      );
+      expect(bankConfirmation, findsOneWidget);
+      expect(tester.widget<CheckboxListTile>(bankConfirmation).value, isFalse);
       expect(requests.every((request) => request.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);
     },

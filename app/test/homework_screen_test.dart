@@ -452,21 +452,38 @@ void main() {
             scale: width == 320 ? 2 : 1,
           );
           expect(find.byType(ChildSectionHero), findsOneWidget);
-          if (width < 720) {
-            expect(
-              find.byKey(const ValueKey('compact-child-heading')),
-              findsOneWidget,
-            );
-            expect(find.text('Was hast du heute auf?'), findsNothing);
-          } else {
-            expect(find.text('Was hast du heute auf?'), findsOneWidget);
-          }
+          final heading = find.byKey(const ValueKey('compact-child-heading'));
+          expect(heading, findsOneWidget);
+          expect(
+            find.descendant(of: heading, matching: find.text('Hausaufgaben')),
+            findsOneWidget,
+          );
+          expect(find.text('Was hast du heute auf?'), findsNothing);
           final photoAction = find.widgetWithText(
             FilledButton,
             'Hausaufgaben fotografieren',
           );
           expect(photoAction, findsOneWidget);
+          expect(photoAction.hitTestable(), findsOneWidget);
           expect(tester.getSize(photoAction).height, greaterThanOrEqualTo(48));
+          if (width >= 720) {
+            final info = find.byTooltip('Über diesen Bereich');
+            await tester.ensureVisible(info);
+            await tester.tap(info);
+            await tester.pumpAndSettle();
+            expect(find.text('Was hast du heute auf?'), findsOneWidget);
+            expect(
+              find.text(
+                'Buch, Arbeitsblatt oder Hefter: Fotografiere die Aufgabe. Dann schauen wir gemeinsam, was zu tun ist.',
+              ),
+              findsOneWidget,
+            );
+            expect(photoAction.hitTestable(), findsOneWidget);
+            await tester.tap(find.byTooltip('Bereichsinfo schließen'));
+            await tester.pumpAndSettle();
+            expect(find.text('Was hast du heute auf?'), findsNothing);
+            expect(photoAction.hitTestable(), findsOneWidget);
+          }
           expect(find.byTooltip('Aktualisieren'), findsOneWidget);
           expect(methods.every((m) => m == 'GET'), isTrue);
           expect(tester.takeException(), isNull);

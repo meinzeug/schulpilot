@@ -21,6 +21,7 @@ Future<void> mode(WidgetTester t, String name) async {
 Future<AppState> form(WidgetTester t, List<http.Request> calls) async {
   final state = old.account(calls);
   await f.show(t, LanguageWorkshop(state, childId: 'child'));
+  await f.tap(t, find.text('Neue Sprachübung'));
   return state;
 }
 
@@ -163,6 +164,10 @@ void main() {
       (t) async {
         final calls = <http.Request>[];
         await form(t, calls);
+        await f.tap(
+          t,
+          find.byKey(const ValueKey('child-mobile-filter-toggle')),
+        );
         await f.tap(t, find.text('Projektansicht anpassen'));
         final control = scenario.$1 == 'RQ066'
             ? picker(scenario.$2)
@@ -195,6 +200,7 @@ void main() {
       t.testTextInput.hide();
       FocusManager.instance.primaryFocus?.unfocus();
       await t.pumpAndSettle();
+      await f.tap(t, find.byKey(const ValueKey('child-mobile-filter-toggle')));
       await f.tap(t, find.text('Projektansicht anpassen'));
       await f.tap(t, find.text('Nur Projekte mit Heftquellen'));
       expect(find.text('Meine Schulwörter'), findsNothing);

@@ -13,6 +13,8 @@ import 'package:schulpilot/grades_screen.dart';
 import 'package:schulpilot/progress_screen.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 http.Response reply(Object value, [int code = 200]) => http.Response(
   jsonEncode(value),
   code,
@@ -131,6 +133,17 @@ Future<({AppState state, GoRouter router})> mount(
     MaterialApp.router(theme: appTheme(), routerConfig: router),
   );
   await tester.pumpAndSettle();
+  if (gradePage) {
+    for (final title in [
+      'Suche & Notenfilter',
+      'Schwerpunkte über alle Fächer',
+      'Ansicht & Export',
+    ]) {
+      if (find.text(title).evaluate().isNotEmpty) {
+        await openParentDetails103(tester, title);
+      }
+    }
+  }
   return (state: state, router: router);
 }
 
@@ -394,6 +407,9 @@ void main() {
           }
           return reply({'id': 'new-grade'}, 201);
         }, gradePage: true);
+        await tester.ensureVisible(find.text('Note eintragen'));
+        await tester.pumpAndSettle();
+        expect(find.text('Note eintragen').hitTestable(), findsOneWidget);
         await tester.tap(find.text('Note eintragen'));
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextFormField).at(0), 'Mathematik');

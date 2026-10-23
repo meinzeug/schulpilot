@@ -272,14 +272,18 @@ void main() {
             lessThanOrEqualTo(64),
           );
         }
-        if (width < 720) {
-          expect(
-            find.byKey(const ValueKey('compact-child-heading')),
-            findsOneWidget,
-          );
-          expect(find.text('Dein Stoff. Gut sortiert.'), findsNothing);
-        } else {
+        final heading = find.byKey(const ValueKey('compact-child-heading'));
+        expect(heading, findsOneWidget);
+        expect(
+          find.descendant(of: heading, matching: find.text('Hefte')),
+          findsOneWidget,
+        );
+        expect(find.text('Dein Stoff. Gut sortiert.'), findsNothing);
+        if (width >= 720) {
+          await tap(tester, find.byTooltip('Über diesen Bereich'));
           expect(find.text('Dein Stoff. Gut sortiert.'), findsOneWidget);
+          await tap(tester, find.byTooltip('Bereichsinfo schließen'));
+          expect(find.text('Dein Stoff. Gut sortiert.'), findsNothing);
         }
         expect(find.byType(SubjectBadge), findsWidgets);
         expect(find.byType(NotebookCover), findsNothing);
@@ -990,7 +994,7 @@ void main() {
             'list',
           );
           expect(find.byType(ListView), findsOneWidget);
-          await tap(tester, find.text('Filter'));
+          await tap(tester, find.byTooltip('Filter'));
           expect(find.text('Seitenstatus'), findsOneWidget);
           if (width == 1280) {
             await tap(tester, find.text('Zeitraum wählen'));

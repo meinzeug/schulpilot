@@ -304,7 +304,7 @@ void main() {
         }
         await surface(tester, header, width: width, scale: 2);
         expect(tester.takeException(), isNull);
-        if (width < 720) {
+        {
           final info = find.byTooltip('Über diesen Bereich');
           expect(tester.getSize(info).shortestSide, greaterThanOrEqualTo(48));
           expect(

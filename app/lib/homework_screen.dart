@@ -552,9 +552,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
               ),
             ),
           ),
-          if (MediaQuery.sizeOf(context).width >= 720 ||
-              widget.state.recoveredPhoto != null &&
-                  widget.state.recoveredPhotoPurpose == 'homework') ...[
+          if (widget.state.recoveredPhoto != null &&
+              widget.state.recoveredPhotoPurpose == 'homework') ...[
             SizedBox(height: 10),
             Wrap(
               spacing: 12,
@@ -569,12 +568,6 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                         : recoverPhoto,
                     icon: Icon(Icons.restore_rounded),
                     label: Text('Wiedergefundenes Foto prüfen'),
-                  ),
-                if (MediaQuery.sizeOf(context).width >= 720)
-                  IconButton(
-                    tooltip: 'Aktualisieren',
-                    onPressed: loading || photoBusy ? null : load,
-                    icon: Icon(Icons.refresh_rounded),
                   ),
               ],
             ),
@@ -2709,19 +2702,6 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
             ),
             SizedBox(height: 12),
           ],
-          if (analysis != null)
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Aufgabenfokus'),
-              subtitle: const Text(
-                'Aufgabe, eigener Versuch und jüngste Hilfe im Mittelpunkt',
-              ),
-              value: taskFocusMode,
-              onChanged: (value) => setState(() {
-                taskFocusMode = value;
-                if (value) helpKind = 'all';
-              }),
-            ),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -3318,6 +3298,28 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                 ),
               ),
           ],
+          if (analysis != null)
+            ExpansionTile(
+              key: const ValueKey('homework-reading-options'),
+              title: const Text('Ansicht anpassen'),
+              subtitle: taskFocusMode
+                  ? const Text('Aufgabenfokus aktiv')
+                  : null,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Aufgabenfokus'),
+                  subtitle: const Text(
+                    'Aufgabe, eigener Versuch und jüngste Hilfe im Mittelpunkt',
+                  ),
+                  value: taskFocusMode,
+                  onChanged: (value) => setState(() {
+                    taskFocusMode = value;
+                    if (value) helpKind = 'all';
+                  }),
+                ),
+              ],
+            ),
         ],
       ),
     );

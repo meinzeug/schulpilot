@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'child_section_ui.dart';
 import 'lesson_voice.dart';
 import 'learning_content.dart';
 import 'ui.dart';
@@ -635,451 +636,462 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
             children: [
               if (error != null) Notice(error!, warning: true),
               if (loading || busy) LinearProgressIndicator(),
+              if (selectionNotice != null)
+                Notice(selectionNotice!, warning: true),
               if (project != null)
                 projectView(project!)
               else if (widget.projectId == null) ...[
                 if (widget.state.isChild)
-                  Panel(
-                    color: context.palette.mint,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Wörter anwenden. Zusammenhänge verstehen.',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Wähle dein Ziel und ein paar bestätigte Wörter. Daraus entsteht eine kleine Übung mit Hilfe.',
-                        ),
-                        SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          key: ValueKey(
-                            'workshop-locale-$locale-$localePickerRevision',
-                          ),
-                          initialValue: locale,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-                            labelText: 'Lernsprache bestätigen',
-                          ),
-                          items: [
-                            for (final entry in learningLocales.entries)
-                              DropdownMenuItem(
-                                value: entry.key,
-                                child: Text(entry.value),
-                              ),
-                          ],
-                          onChanged: busy || loading
-                              ? null
-                              : (v) {
-                                  changeLocale(v!);
-                                },
-                        ),
-                        SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          initialValue: mode,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-                            labelText: 'Was möchtest du üben?',
-                          ),
-                          items: [
-                            for (final e in workshopModes.entries)
-                              DropdownMenuItem(
-                                value: e.key,
-                                child: Text(e.value),
-                              ),
-                          ],
-                          onChanged: busy || loading
-                              ? null
-                              : (v) => setState(() {
-                                  if (goal.text == workshopGoal(mode)) {
-                                    goal.text = workshopGoal(v!);
-                                  }
-                                  mode = v!;
-                                }),
-                        ),
-                        SizedBox(height: 16),
-                        TextField(
-                          controller: goal,
-                          maxLength: 500,
-                          minLines: 1,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            labelText: 'Dein konkretes Lernziel',
-                            hintText: mode == 'summary'
-                                ? 'Was möchtest du zusammenfassen?'
-                                : mode == 'translation'
-                                ? 'Welche Übersetzung möchtest du prüfen?'
-                                : mode == 'presentation' || mode == 'speech'
-                                ? 'Was möchtest du erklären oder vorstellen?'
-                                : 'Was möchtest du mit deinem Stoff können?',
-                          ),
-                        ),
-                        DropdownButtonFormField<String>(
-                          key: ValueKey('$material:${materials.length}'),
-                          initialValue:
-                              materials.any((m) => m['id'] == material)
-                              ? material
-                              : '',
-                          isExpanded: true,
-                          decoration: InputDecoration(
-                            labelText: 'Passende bestätigte Heftseite',
-                          ),
-                          items: [
-                            DropdownMenuItem(
-                              value: '',
-                              child: Text('Nur ausgewählte Wörter'),
-                            ),
-                            for (final m in materials)
-                              DropdownMenuItem(
-                                value: m['id'],
-                                child: Text(
-                                  '${m['subject']} · ${m['topic']}',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                          ],
-                          onChanged: busy || loading
-                              ? null
-                              : (v) => setState(() {
-                                  material = v == '' ? null : v;
-                                  chosenSource = materials
-                                      .where((m) => m['id'] == material)
-                                      .firstOrNull;
-                                }),
-                        ),
-                        SizedBox(height: 16),
-                        if (chosenSource != null &&
-                            material == chosenSource!['id'] &&
-                            !loading)
-                          ActionPanel(
-                            actionLabel: 'Ausgewählte Heftseite ansehen',
-                            onPressed: () {
-                              if (current && material == chosenSource?['id']) {
-                                openRoute(context, '/material/$material');
-                              }
-                            },
-                            child: Text(
-                              '${chosenSource!['subject']} · ${chosenSource!['topic']}',
-                            ),
-                          ),
-                        if (sourceTotal > 50)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                tooltip: 'Vorherige Heftseiten',
-                                onPressed: busy || loading || sourcePage <= 1
-                                    ? null
-                                    : () {
-                                        sourcePage--;
-                                        load();
-                                      },
-                                icon: Icon(Icons.chevron_left),
-                              ),
-                              Flexible(
-                                child: Text(
-                                  'Heftseiten · Seite $sourcePage von ${(sourceTotal / 50).ceil()}',
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Weitere Heftseiten',
-                                onPressed:
-                                    busy ||
-                                        loading ||
-                                        sourcePage * 50 >= sourceTotal
-                                    ? null
-                                    : () {
-                                        sourcePage++;
-                                        load();
-                                      },
-                                icon: Icon(Icons.chevron_right),
-                              ),
-                            ],
-                          ),
-                        Text(
-                          'Welche Wörter gehören dazu? ${selected.length} von höchstens 10 ausgewählt.',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        SizedBox(height: 8),
-                        if (words.isEmpty)
-                          TextButton(
-                            onPressed: () => openRoute(
-                              context,
-                              '/vocabulary/${widget.childId}',
-                            ),
-                            child: Text('Zuerst Schulwörter bestätigen'),
-                          ),
-                        if (selectionNotice != null)
-                          Notice(selectionNotice!, warning: true),
-                        if ((selected.isNotEmpty || undoneWords != null) &&
-                            !loading)
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: busy ? null : toggleSelection,
-                              icon: Icon(
-                                selected.isNotEmpty
-                                    ? Icons.deselect
-                                    : Icons.undo,
-                              ),
-                              label: Text(
-                                selected.isNotEmpty
-                                    ? 'Wortauswahl leeren'
-                                    : 'Wortauswahl wiederherstellen',
-                              ),
-                            ),
-                          ),
-                        if (selected.isNotEmpty && !loading)
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              for (final id in selected)
-                                InputChip(
-                                  label: Text(
-                                    wordLabels[id] ?? 'Ausgewähltes Wort',
-                                  ),
-                                  onDeleted: busy || loading
-                                      ? null
-                                      : () =>
-                                            setState(() => selected.remove(id)),
-                                ),
-                            ],
-                          ),
-                        if (words.length > 5) ...[
-                          TextField(
-                            controller: wordSearch,
-                            textInputAction: TextInputAction.search,
-                            onSubmitted: (_) =>
-                                FocusManager.instance.primaryFocus?.unfocus(),
-                            decoration: InputDecoration(
-                              labelText: 'Geladene Schulwörter finden',
-                              helperText:
-                                  'Suche in den ${words.length} Wörtern dieser Seite.',
-                              suffixIcon: wordSearch.text.isEmpty
-                                  ? null
-                                  : IconButton(
-                                      tooltip: 'Schulwortsuche löschen',
-                                      onPressed: wordSearch.clear,
-                                      icon: Icon(Icons.close_rounded),
-                                    ),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          if (visibleWords.isEmpty)
-                            Text(
-                              'Kein geladenes Wort passt. Deine bereits gewählten Wörter bleiben erhalten.',
-                            ),
-                        ],
-                        if (words.length > 1)
-                          DropdownButtonFormField<String>(
-                            initialValue: wordSort,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Geladene Wörter ordnen',
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'saved',
-                                child: Text('Wie geladen'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'name',
-                                child: Text('Alphabetisch auf dieser Seite'),
-                              ),
-                            ],
-                            onChanged: busy || loading
-                                ? null
-                                : (v) => setState(() => wordSort = v!),
-                          ),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final word
-                                in (wordSort == 'name'
-                                    ? (visibleWords.toList()..sort(
-                                        (a, b) => a['word']
-                                            .toString()
-                                            .toLowerCase()
-                                            .compareTo(
-                                              b['word']
-                                                  .toString()
-                                                  .toLowerCase(),
-                                            ),
-                                      ))
-                                    : visibleWords))
-                              FilterChip(
-                                label: Text(word['word']),
-                                selected: selected.contains(word['id']),
-                                onSelected: busy || loading
-                                    ? null
-                                    : (v) {
-                                        if (!v || selected.length < 10) {
-                                          setState(() {
-                                            if (v) {
-                                              selected.add(word['id']);
-                                            } else {
-                                              selected.remove(word['id']);
-                                            }
-                                          });
-                                        } else {
-                                          toast(
-                                            context,
-                                            'Du hast schon 10 Wörter ausgewählt. Wähle erst eines ab.',
-                                          );
-                                        }
-                                      },
-                              ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        if (wordTotal > 50)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                tooltip: 'Vorherige Wörter',
-                                onPressed: busy || loading || wordPage <= 1
-                                    ? null
-                                    : () {
-                                        wordPage--;
-                                        load();
-                                      },
-                                icon: Icon(Icons.chevron_left),
-                              ),
-                              Flexible(
-                                child: Text(
-                                  'Wörter · Seite $wordPage von ${(wordTotal / 50).ceil()}',
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Weitere Wörter',
-                                onPressed:
-                                    busy ||
-                                        loading ||
-                                        wordPage * 50 >= wordTotal
-                                    ? null
-                                    : () {
-                                        wordPage++;
-                                        load();
-                                      },
-                                icon: Icon(Icons.chevron_right),
-                              ),
-                            ],
-                          ),
-                        if (mode == 'grammar') ...[
-                          DropdownButtonFormField<String>(
-                            initialValue: grammar,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'Dieses Thema ist im ausgewählten Heft bestätigt',
-                            ),
-                            items: [
-                              DropdownMenuItem(
-                                value: 'simple_present',
-                                child: Text('Simple Present'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'simple_past',
-                                child: Text('Simple Past'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'progressive',
-                                child: Text('Progressive / Verlaufsform'),
-                              ),
-                            ],
-                            onChanged: busy || loading
-                                ? null
-                                : (v) => setState(() => grammar = v!),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Text(
-                              'Nur beginnen, wenn ihr dieses Thema wirklich im Unterricht hattet. Die Heftquelle wird geprüft.',
-                            ),
-                          ),
-                        ],
-                        ExpansionTile(
-                          key: ValueKey(('draft-editor', mode)),
-                          initiallyExpanded: [
-                            'writing_feedback',
-                            'model_text',
-                            'translation',
-                            'email',
-                          ].contains(mode),
-                          title: Text('Mein eigener Text oder Entwurf'),
-                          children: [
-                            TextField(
-                              controller: draft,
-                              minLines: 4,
-                              maxLines: 9,
-                              maxLength: 4000,
-                              decoration: InputDecoration(
-                                labelText: 'Schreibe zuerst deinen Versuch',
-                              ),
-                            ),
-                            VoiceInputButton(
-                              controller: draft,
-                              locale: locale,
-                              maxLength: 4000,
-                            ),
-                            if (draft.text.isNotEmpty || clearedDraft != null)
-                              TextButton.icon(
-                                onPressed: busy || loading
-                                    ? null
-                                    : () => setState(() {
-                                        if (draft.text.isNotEmpty) {
-                                          clearedDraft = draft.text;
-                                          draft.clear();
-                                        } else if (clearedDraft != null) {
-                                          draft.text = clearedDraft!;
-                                          clearedDraft = null;
-                                        }
-                                      }),
-                                icon: Icon(
-                                  draft.text.isNotEmpty
-                                      ? Icons.clear
-                                      : Icons.undo,
-                                ),
-                                label: Text(
-                                  draft.text.isNotEmpty
-                                      ? 'Entwurf leeren'
-                                      : 'Entwurf wiederherstellen',
-                                ),
-                              ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        FilledButton.icon(
-                          onPressed: busy || loading || formIssue != null
-                              ? null
-                              : () => create(),
-                          icon: Icon(Icons.auto_awesome_rounded),
-                          label: Text(
-                            busy
-                                ? 'Wird vorbereitet …'
-                                : 'Mein Lernprojekt vorbereiten',
-                          ),
-                        ),
-                        if (formIssue != null)
-                          Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text(formIssue!),
-                          ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Ein KI-Auftrag. Danach übst du mit gespeicherten Aufgaben. Neue Beispiele sind Übungen, keine neuen Heftquellen.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: context.palette.muted,
-                          ),
-                        ),
-                      ],
+                  ExpansionTile(
+                    key: const ValueKey('language-new-project'),
+                    initiallyExpanded: widget.materialId != null,
+                    leading: const Icon(Icons.add_rounded),
+                    title: const Text('Neue Sprachübung'),
+                    subtitle: const Text(
+                      'Bestätigte Wörter verwenden · ein KI-Auftrag',
                     ),
+                    children: [
+                      Panel(
+                        color: context.palette.mint,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Wähle dein Ziel und ein paar bestätigte Wörter. Daraus entsteht eine kleine Übung mit Hilfe.',
+                            ),
+                            SizedBox(height: 16),
+                            DropdownButtonFormField<String>(
+                              key: ValueKey(
+                                'workshop-locale-$locale-$localePickerRevision',
+                              ),
+                              initialValue: locale,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Lernsprache bestätigen',
+                              ),
+                              items: [
+                                for (final entry in learningLocales.entries)
+                                  DropdownMenuItem(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  ),
+                              ],
+                              onChanged: busy || loading
+                                  ? null
+                                  : (v) {
+                                      changeLocale(v!);
+                                    },
+                            ),
+                            SizedBox(height: 16),
+                            DropdownButtonFormField<String>(
+                              initialValue: mode,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Was möchtest du üben?',
+                              ),
+                              items: [
+                                for (final e in workshopModes.entries)
+                                  DropdownMenuItem(
+                                    value: e.key,
+                                    child: Text(e.value),
+                                  ),
+                              ],
+                              onChanged: busy || loading
+                                  ? null
+                                  : (v) => setState(() {
+                                      if (goal.text == workshopGoal(mode)) {
+                                        goal.text = workshopGoal(v!);
+                                      }
+                                      mode = v!;
+                                    }),
+                            ),
+                            SizedBox(height: 16),
+                            TextField(
+                              controller: goal,
+                              maxLength: 500,
+                              minLines: 1,
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                labelText: 'Dein konkretes Lernziel',
+                                hintText: mode == 'summary'
+                                    ? 'Was möchtest du zusammenfassen?'
+                                    : mode == 'translation'
+                                    ? 'Welche Übersetzung möchtest du prüfen?'
+                                    : mode == 'presentation' || mode == 'speech'
+                                    ? 'Was möchtest du erklären oder vorstellen?'
+                                    : 'Was möchtest du mit deinem Stoff können?',
+                              ),
+                            ),
+                            DropdownButtonFormField<String>(
+                              key: ValueKey('$material:${materials.length}'),
+                              initialValue:
+                                  materials.any((m) => m['id'] == material)
+                                  ? material
+                                  : '',
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Passende bestätigte Heftseite',
+                              ),
+                              items: [
+                                DropdownMenuItem(
+                                  value: '',
+                                  child: Text('Nur ausgewählte Wörter'),
+                                ),
+                                for (final m in materials)
+                                  DropdownMenuItem(
+                                    value: m['id'],
+                                    child: Text(
+                                      '${m['subject']} · ${m['topic']}',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                              ],
+                              onChanged: busy || loading
+                                  ? null
+                                  : (v) => setState(() {
+                                      material = v == '' ? null : v;
+                                      chosenSource = materials
+                                          .where((m) => m['id'] == material)
+                                          .firstOrNull;
+                                    }),
+                            ),
+                            SizedBox(height: 16),
+                            if (chosenSource != null &&
+                                material == chosenSource!['id'] &&
+                                !loading)
+                              ActionPanel(
+                                actionLabel: 'Ausgewählte Heftseite ansehen',
+                                onPressed: () {
+                                  if (current &&
+                                      material == chosenSource?['id']) {
+                                    openRoute(context, '/material/$material');
+                                  }
+                                },
+                                child: Text(
+                                  '${chosenSource!['subject']} · ${chosenSource!['topic']}',
+                                ),
+                              ),
+                            if (sourceTotal > 50)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Vorherige Heftseiten',
+                                    onPressed:
+                                        busy || loading || sourcePage <= 1
+                                        ? null
+                                        : () {
+                                            sourcePage--;
+                                            load();
+                                          },
+                                    icon: Icon(Icons.chevron_left),
+                                  ),
+                                  Flexible(
+                                    child: Text(
+                                      'Heftseiten · Seite $sourcePage von ${(sourceTotal / 50).ceil()}',
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Weitere Heftseiten',
+                                    onPressed:
+                                        busy ||
+                                            loading ||
+                                            sourcePage * 50 >= sourceTotal
+                                        ? null
+                                        : () {
+                                            sourcePage++;
+                                            load();
+                                          },
+                                    icon: Icon(Icons.chevron_right),
+                                  ),
+                                ],
+                              ),
+                            Text(
+                              'Welche Wörter gehören dazu? ${selected.length} von höchstens 10 ausgewählt.',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            SizedBox(height: 8),
+                            if (words.isEmpty)
+                              TextButton(
+                                onPressed: () => openRoute(
+                                  context,
+                                  '/vocabulary/${widget.childId}',
+                                ),
+                                child: Text('Zuerst Schulwörter bestätigen'),
+                              ),
+                            if ((selected.isNotEmpty || undoneWords != null) &&
+                                !loading)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: busy ? null : toggleSelection,
+                                  icon: Icon(
+                                    selected.isNotEmpty
+                                        ? Icons.deselect
+                                        : Icons.undo,
+                                  ),
+                                  label: Text(
+                                    selected.isNotEmpty
+                                        ? 'Wortauswahl leeren'
+                                        : 'Wortauswahl wiederherstellen',
+                                  ),
+                                ),
+                              ),
+                            if (selected.isNotEmpty && !loading)
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  for (final id in selected)
+                                    InputChip(
+                                      label: Text(
+                                        wordLabels[id] ?? 'Ausgewähltes Wort',
+                                      ),
+                                      onDeleted: busy || loading
+                                          ? null
+                                          : () => setState(
+                                              () => selected.remove(id),
+                                            ),
+                                    ),
+                                ],
+                              ),
+                            if (words.length > 5) ...[
+                              TextField(
+                                controller: wordSearch,
+                                textInputAction: TextInputAction.search,
+                                onSubmitted: (_) => FocusManager
+                                    .instance
+                                    .primaryFocus
+                                    ?.unfocus(),
+                                decoration: InputDecoration(
+                                  labelText: 'Geladene Schulwörter finden',
+                                  helperText:
+                                      'Suche in den ${words.length} Wörtern dieser Seite.',
+                                  suffixIcon: wordSearch.text.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          tooltip: 'Schulwortsuche löschen',
+                                          onPressed: wordSearch.clear,
+                                          icon: Icon(Icons.close_rounded),
+                                        ),
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              if (visibleWords.isEmpty)
+                                Text(
+                                  'Kein geladenes Wort passt. Deine bereits gewählten Wörter bleiben erhalten.',
+                                ),
+                            ],
+                            if (words.length > 1)
+                              DropdownButtonFormField<String>(
+                                initialValue: wordSort,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'Geladene Wörter ordnen',
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'saved',
+                                    child: Text('Wie geladen'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'name',
+                                    child: Text(
+                                      'Alphabetisch auf dieser Seite',
+                                    ),
+                                  ),
+                                ],
+                                onChanged: busy || loading
+                                    ? null
+                                    : (v) => setState(() => wordSort = v!),
+                              ),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final word
+                                    in (wordSort == 'name'
+                                        ? (visibleWords.toList()..sort(
+                                            (a, b) => a['word']
+                                                .toString()
+                                                .toLowerCase()
+                                                .compareTo(
+                                                  b['word']
+                                                      .toString()
+                                                      .toLowerCase(),
+                                                ),
+                                          ))
+                                        : visibleWords))
+                                  FilterChip(
+                                    label: Text(word['word']),
+                                    selected: selected.contains(word['id']),
+                                    onSelected: busy || loading
+                                        ? null
+                                        : (v) {
+                                            if (!v || selected.length < 10) {
+                                              setState(() {
+                                                if (v) {
+                                                  selected.add(word['id']);
+                                                } else {
+                                                  selected.remove(word['id']);
+                                                }
+                                              });
+                                            } else {
+                                              toast(
+                                                context,
+                                                'Du hast schon 10 Wörter ausgewählt. Wähle erst eines ab.',
+                                              );
+                                            }
+                                          },
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            if (wordTotal > 50)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Vorherige Wörter',
+                                    onPressed: busy || loading || wordPage <= 1
+                                        ? null
+                                        : () {
+                                            wordPage--;
+                                            load();
+                                          },
+                                    icon: Icon(Icons.chevron_left),
+                                  ),
+                                  Flexible(
+                                    child: Text(
+                                      'Wörter · Seite $wordPage von ${(wordTotal / 50).ceil()}',
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Weitere Wörter',
+                                    onPressed:
+                                        busy ||
+                                            loading ||
+                                            wordPage * 50 >= wordTotal
+                                        ? null
+                                        : () {
+                                            wordPage++;
+                                            load();
+                                          },
+                                    icon: Icon(Icons.chevron_right),
+                                  ),
+                                ],
+                              ),
+                            if (mode == 'grammar') ...[
+                              DropdownButtonFormField<String>(
+                                initialValue: grammar,
+                                isExpanded: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Dieses Thema ist im ausgewählten Heft bestätigt',
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'simple_present',
+                                    child: Text('Simple Present'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'simple_past',
+                                    child: Text('Simple Past'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'progressive',
+                                    child: Text('Progressive / Verlaufsform'),
+                                  ),
+                                ],
+                                onChanged: busy || loading
+                                    ? null
+                                    : (v) => setState(() => grammar = v!),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Text(
+                                  'Nur beginnen, wenn ihr dieses Thema wirklich im Unterricht hattet. Die Heftquelle wird geprüft.',
+                                ),
+                              ),
+                            ],
+                            ExpansionTile(
+                              key: ValueKey(('draft-editor', mode)),
+                              initiallyExpanded: [
+                                'writing_feedback',
+                                'model_text',
+                                'translation',
+                                'email',
+                              ].contains(mode),
+                              title: Text('Mein eigener Text oder Entwurf'),
+                              children: [
+                                TextField(
+                                  controller: draft,
+                                  minLines: 4,
+                                  maxLines: 9,
+                                  maxLength: 4000,
+                                  decoration: InputDecoration(
+                                    labelText: 'Schreibe zuerst deinen Versuch',
+                                  ),
+                                ),
+                                VoiceInputButton(
+                                  controller: draft,
+                                  locale: locale,
+                                  maxLength: 4000,
+                                ),
+                                if (draft.text.isNotEmpty ||
+                                    clearedDraft != null)
+                                  TextButton.icon(
+                                    onPressed: busy || loading
+                                        ? null
+                                        : () => setState(() {
+                                            if (draft.text.isNotEmpty) {
+                                              clearedDraft = draft.text;
+                                              draft.clear();
+                                            } else if (clearedDraft != null) {
+                                              draft.text = clearedDraft!;
+                                              clearedDraft = null;
+                                            }
+                                          }),
+                                    icon: Icon(
+                                      draft.text.isNotEmpty
+                                          ? Icons.clear
+                                          : Icons.undo,
+                                    ),
+                                    label: Text(
+                                      draft.text.isNotEmpty
+                                          ? 'Entwurf leeren'
+                                          : 'Entwurf wiederherstellen',
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: busy || loading || formIssue != null
+                                  ? null
+                                  : () => create(),
+                              icon: Icon(Icons.auto_awesome_rounded),
+                              label: Text(
+                                busy
+                                    ? 'Wird vorbereitet …'
+                                    : 'Mein Lernprojekt vorbereiten',
+                              ),
+                            ),
+                            if (formIssue != null)
+                              Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(formIssue!),
+                              ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Ein KI-Auftrag. Danach übst du mit gespeicherten Aufgaben. Neue Beispiele sind Übungen, keine neuen Heftquellen.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: context.palette.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 SizedBox(height: 16),
                 heading('Deine gespeicherten Lernprojekte'),
@@ -1088,112 +1100,131 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                     projectFilter != 'all' ||
                     projectDays != null ||
                     sourceProjectsOnly) ...[
-                  TextField(
-                    controller: projectSearch,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
-                    decoration: InputDecoration(
-                      labelText: 'Geladene Projekte durchsuchen',
-                      helperText:
-                          'Suche in ${projects.length} Projekten auf dieser Seite.',
-                      suffixIcon: projectSearch.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Projektsuche löschen',
-                              onPressed: projectSearch.clear,
-                              icon: Icon(Icons.close_rounded),
+                  ChildFilterTools(
+                    summary: '${projects.length} geladene Projekte',
+                    filtered:
+                        projectSearch.text.trim().isNotEmpty ||
+                        projectFilter != 'all' ||
+                        projectDays != null ||
+                        sourceProjectsOnly ||
+                        projectSort != 'newest',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: projectSearch,
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) =>
+                              FocusManager.instance.primaryFocus?.unfocus(),
+                          decoration: InputDecoration(
+                            labelText: 'Geladene Projekte durchsuchen',
+                            helperText:
+                                'Suche in ${projects.length} Projekten auf dieser Seite.',
+                            suffixIcon: projectSearch.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Projektsuche löschen',
+                                    onPressed: projectSearch.clear,
+                                    icon: Icon(Icons.close_rounded),
+                                  ),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: projectFilter,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Projektstand',
+                          ),
+                          items: [
+                            for (final option in [
+                              ('all', 'Alle Projektstände'),
+                              ('ready', 'Bereit zum Üben'),
+                              ('pending', 'Wird vorbereitet'),
+                              ('failed', 'Vorbereitung fehlgeschlagen'),
+                            ])
+                              DropdownMenuItem(
+                                value: option.$1,
+                                child: Text(option.$2),
+                              ),
+                          ],
+                          onChanged: (value) {
+                            if (current) {
+                              setState(() => projectFilter = value ?? 'all');
+                            }
+                          },
+                        ),
+                        ExpansionTile(
+                          title: const Text('Projektansicht anpassen'),
+                          children: [
+                            const Text(
+                              'Diese Auswahl gilt für die geladenen Projekte dieser Seite.',
                             ),
+                            DropdownButtonFormField<String>(
+                              initialValue: projectSort,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Geladene Projekte ordnen',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'newest',
+                                  child: Text('Zuletzt gespeichert'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'goal',
+                                  child: Text('Nach Lernziel A–Z'),
+                                ),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => projectSort = v!),
+                            ),
+                            DropdownButtonFormField<int>(
+                              initialValue: projectDays ?? 0,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Gespeichert im Zeitraum',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 0,
+                                  child: Text('Alle gespeicherten Daten'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 7,
+                                  child: Text('Letzte 7 Tage'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 30,
+                                  child: Text('Letzte 30 Tage'),
+                                ),
+                              ],
+                              onChanged: (v) => setState(
+                                () => projectDays = v == 0 ? null : v,
+                              ),
+                            ),
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Nur Projekte mit Heftquellen'),
+                              value: sourceProjectsOnly,
+                              onChanged: (v) => setState(
+                                () => sourceProjectsOnly = v == true,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => setState(() {
+                                projectFilter = 'all';
+                                projectSort = 'newest';
+                                projectDays = null;
+                                sourceProjectsOnly = false;
+                                projectSearch.clear();
+                              }),
+                              child: const Text('Projektansicht zurücksetzen'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: projectFilter,
-                    isExpanded: true,
-                    decoration: InputDecoration(labelText: 'Projektstand'),
-                    items: [
-                      for (final option in [
-                        ('all', 'Alle Projektstände'),
-                        ('ready', 'Bereit zum Üben'),
-                        ('pending', 'Wird vorbereitet'),
-                        ('failed', 'Vorbereitung fehlgeschlagen'),
-                      ])
-                        DropdownMenuItem(
-                          value: option.$1,
-                          child: Text(option.$2),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      if (current) {
-                        setState(() => projectFilter = value ?? 'all');
-                      }
-                    },
-                  ),
-                  ExpansionTile(
-                    title: const Text('Projektansicht anpassen'),
-                    children: [
-                      const Text(
-                        'Diese Auswahl gilt für die geladenen Projekte dieser Seite.',
-                      ),
-                      DropdownButtonFormField<String>(
-                        initialValue: projectSort,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Geladene Projekte ordnen',
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'newest',
-                            child: Text('Zuletzt gespeichert'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'goal',
-                            child: Text('Nach Lernziel A–Z'),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => projectSort = v!),
-                      ),
-                      DropdownButtonFormField<int>(
-                        initialValue: projectDays ?? 0,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Gespeichert im Zeitraum',
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 0,
-                            child: Text('Alle gespeicherten Daten'),
-                          ),
-                          DropdownMenuItem(
-                            value: 7,
-                            child: Text('Letzte 7 Tage'),
-                          ),
-                          DropdownMenuItem(
-                            value: 30,
-                            child: Text('Letzte 30 Tage'),
-                          ),
-                        ],
-                        onChanged: (v) =>
-                            setState(() => projectDays = v == 0 ? null : v),
-                      ),
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Nur Projekte mit Heftquellen'),
-                        value: sourceProjectsOnly,
-                        onChanged: (v) =>
-                            setState(() => sourceProjectsOnly = v == true),
-                      ),
-                      TextButton(
-                        onPressed: () => setState(() {
-                          projectFilter = 'all';
-                          projectSort = 'newest';
-                          projectDays = null;
-                          sourceProjectsOnly = false;
-                          projectSearch.clear();
-                        }),
-                        child: const Text('Projektansicht zurücksetzen'),
-                      ),
-                    ],
                   ),
                   if (!loading && visibleProjects.isEmpty)
                     Padding(

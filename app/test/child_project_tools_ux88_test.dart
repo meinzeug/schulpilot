@@ -119,6 +119,10 @@ void main() {
     (tester) async {
       final calls = <http.Request>[];
       await f.show(tester, LanguageWorkshop(account(calls), childId: 'child'));
+      await f.tap(
+        tester,
+        find.byKey(const ValueKey('child-mobile-filter-toggle')),
+      );
       final before = calls.length;
       await tester.enterText(f.input('Geladene Projekte durchsuchen'), 'Tiere');
       await tester.pumpAndSettle();
@@ -138,6 +142,10 @@ void main() {
     (tester) async {
       final calls = <http.Request>[];
       await f.show(tester, LanguageWorkshop(account(calls), childId: 'child'));
+      await f.tap(
+        tester,
+        find.byKey(const ValueKey('child-mobile-filter-toggle')),
+      );
       await f.tap(
         tester,
         find.byWidgetPredicate(
@@ -163,6 +171,7 @@ void main() {
     (tester) async {
       final calls = <http.Request>[];
       await f.show(tester, LanguageWorkshop(account(calls), childId: 'child'));
+      await f.tap(tester, find.text('Neue Sprachübung'));
       await f.tap(tester, find.widgetWithText(FilterChip, 'word1'));
       await tester.enterText(
         f.input('Geladene Schulwörter finden'),
