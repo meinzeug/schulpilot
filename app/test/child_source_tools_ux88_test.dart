@@ -45,6 +45,7 @@ void main() {
     (tester) async {
       final calls = <http.Request>[];
       await open(tester, calls);
+      await f.tap(tester, find.byTooltip('Weitere Seitentextwerkzeuge'));
       await f.tap(tester, find.text('Zugehörigen Fachhefter öffnen'));
       expect(
         find.text('Ziel /library/child/subject/${'b' * 32}'),
@@ -91,18 +92,19 @@ void main() {
     },
   );
   testWidgets(
-    'KK088 source lookup finds whole verified blocks and has a clear zero result at 200 percent',
+    'KK088 source lookup finds whole verified lines and has a clear zero result at 200 percent',
     (tester) async {
       final calls = <http.Request>[];
       await open(tester, calls, scale: 2, saved: true);
       await f.tap(tester, find.text('Im Seitentext nachsehen'));
+      await f.tap(tester, find.byKey(const ValueKey('source-reader-search')));
       await tester.enterText(f.input('Wort oder Textstelle finden'), 'Volumen');
       await tester.pumpAndSettle();
-      expect(find.text('Treffer 1 von 1 Textabschnitten'), findsOneWidget);
+      expect(find.text('Treffer 1 von 1'), findsOneWidget);
       await tester.enterText(f.input('Wort oder Textstelle finden'), 'nichts');
       await tester.pumpAndSettle();
-      expect(find.text('Kein passender Textabschnitt'), findsOneWidget);
-      await f.tap(tester, find.text('Zurück zur Heftseite'));
+      expect(find.text('Keine passende Textstelle gefunden.'), findsOneWidget);
+      await f.tap(tester, find.byTooltip('Zurück zur Heftseite'));
       expect(tester.takeException(), isNull);
       expect(calls.where((r) => r.method != 'GET'), isEmpty);
     },
@@ -128,6 +130,7 @@ void main() {
       );
       await open(tester, []);
       expect(copied, isEmpty);
+      await f.tap(tester, find.byTooltip('Weitere Seitentextwerkzeuge'));
       await f.tap(tester, find.text('Aktuellen Seitentext kopieren'));
       expect(copied.single, contains('Volumen = Länge mal Breite mal Höhe'));
     },
@@ -150,8 +153,12 @@ void main() {
         final state = await open(tester, []);
         await f.tap(tester, find.text('Im Seitentext nachsehen'));
         final close = tester
-            .widget<TextButton>(
-              find.widgetWithText(TextButton, 'Zurück zur Heftseite'),
+            .widget<IconButton>(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is IconButton &&
+                    widget.tooltip == 'Zurück zur Heftseite',
+              ),
             )
             .onPressed!;
         if (familyChange) {
@@ -161,7 +168,7 @@ void main() {
         }
         state.notifyListeners();
         await tester.pumpAndSettle();
-        expect(find.text('In deinem Seitentext nachsehen'), findsNothing);
+        expect(find.byTooltip('Zurück zur Heftseite'), findsNothing);
         close();
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);

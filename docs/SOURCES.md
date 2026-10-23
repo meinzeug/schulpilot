@@ -890,3 +890,12 @@ Mustern; keine Behauptung vollständiger Untersuchung sämtlicher Fachaufgaben.
 Prüf- und Veröffentlichungsstand: [RELEASE_100_2026_10_23.md](RELEASE_100_2026_10_23.md).
 In dieser Runde keine zusätzliche Modellanfrage; künstliche Rendererbeispiele
 und Widgettests bleiben von einem echten KI-Erzeugungsnachweis getrennt.
+
+
+### Ergänzung101 ·23.10.2026
+
+Eigene Korrektur nach der konkret gemeldeten blockierten Lernrunde und der
+Materialansicht im Browser. Keine neuen Fremdassets oder Anbieteraufträge.
+Der bestehende Quellen-/Darstellungsvertrag bleibt maßgeblich; Quellenblöcke
+werden nur bei exakter Rekonstruktion des unveränderten Originaltexts verwendet.
+Nachweise und Grenzen: [RELEASE_101_2026_10_23.md](RELEASE_101_2026_10_23.md).

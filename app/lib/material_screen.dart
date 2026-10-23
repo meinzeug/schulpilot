@@ -14,7 +14,6 @@ import 'material_actions.dart';
 import 'learning_tips.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
-import 'ideas100_local_views.dart';
 import 'ideas100_source_tools.dart';
 import 'material_words.dart';
 import 'subject_picker.dart';
@@ -879,7 +878,8 @@ class MaterialReview extends StatefulWidget {
   State<MaterialReview> createState() => _MaterialReviewState();
 }
 
-class _MaterialReviewState extends State<MaterialReview> {
+class _MaterialReviewState extends State<MaterialReview>
+    with WidgetsBindingObserver {
   late final subject = TextEditingController(text: widget.data['subject']);
   late final topic = TextEditingController(text: widget.data['topic']);
   late final content = TextEditingController(text: widget.data['content']);
@@ -892,11 +892,42 @@ class _MaterialReviewState extends State<MaterialReview> {
   String get correctionKey =>
       'source_correction:${widget.data['child_id']}:${widget.data['id']}';
   DialogRoute<List<Json>>? taskPreviewRoute;
-  final sourceToolRoutes = <DialogRoute<dynamic>>{};
+  final sourceToolRoutes = <DialogRoute<dynamic>, String>{};
+  bool foreground = true;
+  GoRouter? toolRouter;
+  String? toolLocation;
+  void toolRouteChanged() {
+    if (sourceToolRoutes.isNotEmpty &&
+        toolRouter?.routeInformationProvider.value.uri.toString() !=
+            toolLocation) {
+      closeSourceTools();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final router = GoRouter.maybeOf(context);
+    if (!identical(router, toolRouter)) {
+      toolRouter?.routeInformationProvider.removeListener(toolRouteChanged);
+      if (toolRouter != null) closeSourceTools();
+      toolRouter = router;
+      toolRouter?.routeInformationProvider.addListener(toolRouteChanged);
+    }
+  }
+
+  String get sourceToolSnapshot => jsonEncode([
+    widget.data['id'],
+    widget.data['revision'],
+    widget.data['content'],
+    widget.data['source_blocks'],
+    widget.data['uncertainties'],
+    content.text,
+  ]);
   void closeSourceTools() {
-    final routes = sourceToolRoutes.toList();
+    final routes = sourceToolRoutes.keys.toList();
     sourceToolRoutes.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future<void>.microtask(() {
       for (final route in routes) {
         if (route.isActive) route.navigator?.removeRoute(route);
       }
@@ -906,17 +937,40 @@ class _MaterialReviewState extends State<MaterialReview> {
   Future<T?> showSourceTool<T>(
     Widget Function(BuildContext, DialogRoute<T>) builder,
   ) async {
-    if (!current) return null;
+    if (!current || !foreground || ModalRoute.of(context)?.isCurrent == false) {
+      return null;
+    }
+    final snapshot = sourceToolSnapshot;
+    toolLocation = toolRouter?.routeInformationProvider.value.uri.toString();
     late DialogRoute<T> route;
     route = DialogRoute<T>(
       context: context,
-      builder: (ctx) => builder(ctx, route),
+      builder: (ctx) {
+        if (!current || !foreground || snapshot != sourceToolSnapshot) {
+          return const SizedBox.shrink();
+        }
+        return builder(ctx, route);
+      },
     );
-    sourceToolRoutes.add(route);
+    sourceToolRoutes[route] = snapshot;
     try {
       return await Navigator.of(context, rootNavigator: true).push(route);
     } finally {
+      await route.completed;
       sourceToolRoutes.remove(route);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState value) {
+    foreground = value == AppLifecycleState.resumed;
+    if (!foreground) {
+      closeSourceTools();
+      final route = taskPreviewRoute;
+      taskPreviewRoute = null;
+      Future<void>.microtask(() {
+        if (route?.isActive == true) route!.navigator?.removeRoute(route);
+      });
     }
   }
 
@@ -995,142 +1049,142 @@ class _MaterialReviewState extends State<MaterialReview> {
     }
   }
 
+  List<dynamic>? readingBlocks(Json data, String text) {
+    if (text != data['content'] || data['source_blocks'] is! List) return null;
+    // Freeze this exact source snapshot. LearningContent still verifies that
+    // every supplied block reconstructs the complete visible text exactly.
+    return List<dynamic>.from(jsonDecode(jsonEncode(data['source_blocks'])));
+  }
+
   Widget sourceReadingTools() {
     final data = widget.data;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    final hasText = content.text.trim().isNotEmpty;
+    final hasNotebook =
+        data['subject_id'] is String &&
+        RegExp(r'^[a-f0-9]{32}$').hasMatch(data['subject_id']);
+    final actions = <String, String>{
+      if (data['has_image'] == true && hasText)
+        'photo': 'Foto und Text vergleichen',
+      if (dirty) 'correction': 'Korrektur mit gespeichertem Text vergleichen',
+      if (hasText) 'copy': 'Aktuellen Seitentext kopieren',
+      if (hasNotebook) 'notebook': 'Zugehörigen Fachhefter öffnen',
+    };
+    return Row(
       children: [
-        if (data['has_image'] == true && content.text.trim().isNotEmpty)
-          TextButton.icon(
-            icon: const Icon(Icons.compare_outlined),
-            label: const Text('Foto und Text vergleichen'),
-            onPressed: () {
+        if (hasText)
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.find_in_page_outlined),
+                label: const Text('Im Seitentext nachsehen'),
+                onPressed: () {
+                  if (!sourceCurrent(data)) return;
+                  final text = content.text, snapshot = sourceToolSnapshot;
+                  showSourceTool<void>(
+                    (ctx, route) => _SourceTextReader(
+                      text: text,
+                      blocks: readingBlocks(data, text),
+                      uncertainties: data['uncertainties'] as List? ?? [],
+                      isCurrent: () =>
+                          sourceCurrent(data) && snapshot == sourceToolSnapshot,
+                      onClose: () {
+                        if (ctx.mounted &&
+                            sourceCurrent(data) &&
+                            snapshot == sourceToolSnapshot &&
+                            route.isCurrent) {
+                          Navigator.pop(ctx);
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        if (actions.isNotEmpty)
+          PopupMenuButton<String>(
+            tooltip: 'Weitere Seitentextwerkzeuge',
+            icon: const Icon(Icons.more_horiz),
+            itemBuilder: (_) => [
+              for (final entry in actions.entries)
+                PopupMenuItem(value: entry.key, child: Text(entry.value)),
+            ],
+            onSelected: (action) {
               if (!sourceCurrent(data)) return;
-              showSourceTool<void>(
-                (ctx, route) => Dialog(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: 960,
-                      maxHeight: MediaQuery.sizeOf(ctx).height * .9,
-                    ),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Ideas100ComparePanels(
-                            firstLabel: 'Dein Heftfoto',
-                            secondLabel: 'Aktueller Seitentext',
-                            first: SizedBox(
-                              height: 400,
-                              child: NotebookPhoto(
-                                widget.state,
-                                materialId: data['id'],
-                                zoomable: true,
-                              ),
-                            ),
-                            second: LearningContent(content.text),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              if (ctx.mounted &&
-                                  sourceCurrent(data) &&
-                                  route.isCurrent) {
-                                Navigator.pop(ctx);
-                              }
-                            },
-                            child: const Text('Vergleich schließen'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        if (dirty)
-          TextButton.icon(
-            icon: const Icon(Icons.difference_outlined),
-            label: const Text('Korrektur mit gespeichertem Text vergleichen'),
-            onPressed: () {
-              if (!sourceCurrent(data)) return;
-              final before = '${data['content'] ?? ''}', after = content.text;
-              showSourceTool<void>(
-                (ctx, route) => Dialog(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: 900,
-                      maxHeight: MediaQuery.sizeOf(ctx).height * .9,
-                    ),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text('Vergleich speichert keine Korrektur.'),
-                          Ideas100TextCompare(before, after),
-                          TextButton(
-                            onPressed: () {
-                              if (ctx.mounted &&
-                                  sourceCurrent(data) &&
-                                  route.isCurrent) {
-                                Navigator.pop(ctx);
-                              }
-                            },
-                            child: const Text('Zum Korrigieren zurück'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-
-        if (content.text.trim().isNotEmpty)
-          TextButton.icon(
-            onPressed: () {
-              if (!sourceCurrent(data)) return;
-              final text = content.text;
-              showSourceTool<void>(
-                (ctx, route) => _SourceTextReader(
-                  text: text,
-                  uncertainties: data['uncertainties'] as List? ?? [],
-                  onClose: () {
-                    if (ctx.mounted && sourceCurrent(data) && route.isCurrent) {
-                      Navigator.pop(ctx);
-                    }
-                  },
-                ),
-              );
-            },
-            icon: Icon(Icons.find_in_page_outlined),
-            label: Text('Im Seitentext nachsehen'),
-          ),
-        if (content.text.trim().isNotEmpty)
-          TextButton.icon(
-            onPressed: () {
-              if (sourceCurrent(data)) copySourceText();
-            },
-            icon: Icon(Icons.copy_outlined),
-            label: Text('Aktuellen Seitentext kopieren'),
-          ),
-        if (data['subject_id'] is String &&
-            RegExp(r'^[a-f0-9]{32}$').hasMatch(data['subject_id']))
-          TextButton.icon(
-            onPressed: () {
-              if (sourceCurrent(data)) {
+              if (action == 'copy') {
+                copySourceText();
+                return;
+              }
+              if (action == 'notebook') {
                 openRoute(
                   context,
                   '/library/${data['child_id']}/subject/${data['subject_id']}',
                 );
+                return;
+              }
+              final snapshot = sourceToolSnapshot;
+              void close(BuildContext ctx, DialogRoute<void> route) {
+                if (ctx.mounted &&
+                    sourceCurrent(data) &&
+                    snapshot == sourceToolSnapshot &&
+                    route.isCurrent) {
+                  Navigator.pop(ctx);
+                }
+              }
+
+              if (action == 'photo') {
+                final text = content.text;
+                showSourceTool<void>(
+                  (ctx, route) => _MaterialCompareDialog(
+                    title: 'Foto und Seitentext',
+                    onClose: () => close(ctx, route),
+                    firstLabel: 'Dein Heftfoto',
+                    secondLabel: 'Aktueller Seitentext',
+                    firstChoice: 'Foto',
+                    secondChoice: 'Text',
+                    first: LayoutBuilder(
+                      builder: (context, constraints) => SizedBox(
+                        height: (MediaQuery.sizeOf(context).height * .45).clamp(
+                          120.0,
+                          400.0,
+                        ),
+                        child: NotebookPhoto(
+                          widget.state,
+                          materialId: data['id'],
+                          zoomable: true,
+                        ),
+                      ),
+                    ),
+                    second: LearningContent(
+                      text,
+                      blocks: readingBlocks(data, text),
+                    ),
+                  ),
+                );
+              } else if (action == 'correction') {
+                final before = '${data['content'] ?? ''}', after = content.text;
+                showSourceTool<void>(
+                  (ctx, route) => _MaterialCompareDialog(
+                    title: 'Korrektur vergleichen',
+                    onClose: () => close(ctx, route),
+                    firstLabel: 'Gespeicherter Seitentext',
+                    secondLabel: 'Dein Korrekturentwurf',
+                    firstChoice: 'Original',
+                    secondChoice: 'Entwurf',
+                    first: LearningContent(
+                      before,
+                      blocks: readingBlocks(data, before),
+                    ),
+                    second: LearningContent(
+                      after,
+                      blocks: readingBlocks(data, after),
+                    ),
+                    notice: 'Der Vergleich speichert keine Korrektur.',
+                  ),
+                );
               }
             },
-            icon: Icon(Icons.folder_open_outlined),
-            label: Text('Zugehörigen Fachhefter öffnen'),
           ),
       ],
     );
@@ -1191,14 +1245,20 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   late final account = widget.state.user;
   late final family = widget.state.familyId;
+  late final sessionToken = widget.state.api.token;
   bool get current =>
       mounted &&
       account != null &&
       identical(account, widget.state.user) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      sessionToken == widget.state.api.token;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     correctionRevision = widget.data['revision'] as int?;
     widget.state.addListener(accountChanged);
     final saved = widget.state.collectionViews[correctionKey];
@@ -1253,6 +1313,11 @@ class _MaterialReviewState extends State<MaterialReview> {
   @override
   void didUpdateWidget(covariant MaterialReview oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (sourceToolRoutes.values.any(
+      (snapshot) => snapshot != sourceToolSnapshot,
+    )) {
+      closeSourceTools();
+    }
     if (oldWidget.data['id'] != widget.data['id'] ||
         oldWidget.data['revision'] != widget.data['revision']) {
       closeSourceTools();
@@ -1289,6 +1354,8 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   bool sourceCurrent(Json source) =>
       current &&
+      foreground &&
+      ModalRoute.of(context)?.isActive != false &&
       source['id'] == widget.data['id'] &&
       source['revision'] == widget.data['revision'];
 
@@ -1519,6 +1586,8 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    toolRouter?.routeInformationProvider.removeListener(toolRouteChanged);
     closeSourceTools();
     retainCorrection();
     final old = taskPreviewRoute;
@@ -2213,30 +2282,200 @@ class _MaterialReviewState extends State<MaterialReview> {
   }
 }
 
+/// Only material tools use this surface: unrelated notebook/collection dialogs
+/// retain their existing layout and contract.
+class _MaterialReadingSurface extends StatelessWidget {
+  final Widget child;
+  const _MaterialReadingSurface({required this.child});
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    if (size.width < 720) {
+      return Dialog.fullscreen(child: SafeArea(child: child));
+    }
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: SizedBox(
+        width: 1000,
+        height: math.min(900.0, size.height - 48),
+        child: child,
+      ),
+    );
+  }
+}
+
 class _SourceTextReader extends StatelessWidget {
   final String text;
+  final List<dynamic>? blocks;
   final List uncertainties;
   final VoidCallback onClose;
+  final bool Function() isCurrent;
   const _SourceTextReader({
     required this.text,
     required this.onClose,
+    required this.isCurrent,
+    this.blocks,
     this.uncertainties = const [],
   });
   @override
-  Widget build(BuildContext context) => Dialog(
-    child: ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: 760,
-        maxHeight: MediaQuery.sizeOf(context).height * .9,
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Ideas100SourceReader(
-          text: text,
-          uncertainties: uncertainties,
-          onClose: onClose,
+  Widget build(BuildContext context) => _MaterialReadingSurface(
+    child: Ideas100SourceReader(
+      text: text,
+      blocks: blocks,
+      uncertainties: uncertainties,
+      onClose: onClose,
+      isCurrent: isCurrent,
+    ),
+  );
+}
+
+class _MaterialCompareDialog extends StatefulWidget {
+  final String title, firstLabel, secondLabel, firstChoice, secondChoice;
+  final String? notice;
+  final Widget first, second;
+  final VoidCallback onClose;
+  const _MaterialCompareDialog({
+    required this.title,
+    required this.firstLabel,
+    required this.secondLabel,
+    required this.firstChoice,
+    required this.secondChoice,
+    required this.first,
+    required this.second,
+    required this.onClose,
+    this.notice,
+  });
+  @override
+  State<_MaterialCompareDialog> createState() => _MaterialCompareState();
+}
+
+class _MaterialCompareState extends State<_MaterialCompareDialog> {
+  int side = 0;
+  @override
+  Widget build(BuildContext context) => _MaterialReadingSurface(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Vergleich schließen',
+                icon: const Icon(Icons.close),
+                onPressed: widget.onClose,
+              ),
+            ],
+          ),
         ),
-      ),
+        const Divider(height: 1),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              Widget pane(String label, Widget child) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  child,
+                ],
+              );
+              final wide =
+                  constraints.maxWidth >= 760 &&
+                  MediaQuery.textScalerOf(context).scale(1) <= 1.3;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!wide)
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          for (final (i, label) in [
+                            widget.firstChoice,
+                            widget.secondChoice,
+                          ].indexed)
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: Semantics(
+                                  selected: side == i,
+                                  child: OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      backgroundColor: side == i
+                                          ? context.palette.mint
+                                          : null,
+                                      minimumSize: const Size(48, 48),
+                                    ),
+                                    onPressed: () {
+                                      if (mounted &&
+                                          ModalRoute.of(context)?.isCurrent ==
+                                              true) {
+                                        setState(() => side = i);
+                                      }
+                                    },
+                                    child: Text(label),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (widget.notice != null) ...[
+                            Text(widget.notice!),
+                            const SizedBox(height: 12),
+                          ],
+                          if (wide)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: pane(widget.firstLabel, widget.first),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  child: pane(
+                                    widget.secondLabel,
+                                    widget.second,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            pane(
+                              side == 0
+                                  ? widget.firstLabel
+                                  : widget.secondLabel,
+                              side == 0 ? widget.first : widget.second,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     ),
   );
 }

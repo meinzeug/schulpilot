@@ -297,6 +297,8 @@ def decide(db, unit, memory=None):
 
 def projection(db, unit, *, include_draft=True):
     from . import adaptive_plan, instructional_decisions
+    from .coaching import support_check_context
+    from .providers import ProviderError
 
     memory = db.get(LearningMemory, unit.id)
     decision, data = decide(db, unit, memory.working if memory else None)
@@ -318,6 +320,15 @@ def projection(db, unit, *, include_draft=True):
         decision_preparation = {"id": decision_job.id, "status": decision_job.status}
     decision_jobs = list(db.scalars(select(Job.id).where(Job.child_id == unit.child_id, Job.kind == "decision",
         Job.payload["unit_id"].as_string() == unit.id)))
+    can_request_support_check = False
+    if (not unit.synthetic and data["source_valid"] and preparation is None
+            and any(e.kind == "explanation" for e in data["activities"])):
+        try:
+            support_check_context(db, unit)
+        except ProviderError:
+            pass
+        else:
+            can_request_support_check = True
     return {"version": 2 if adaptive_plan.enabled(db, unit) else 1, "strategy_version": STRATEGY, "revision": memory.revision if memory else 0,
         "updated": memory.updated if memory else 0, "draft_revision": working.get("draft_revision", 0),
         "plan_revision": memory.plan_revision if memory else 0, "source_signature": data["source_signature"],
@@ -325,8 +336,7 @@ def projection(db, unit, *, include_draft=True):
         "working_memory": working, "preparation": preparation, "short_plan": adaptive_plan.public_plan(db, unit),
         "instructional_plan": instructional_decisions.public(db, unit),
         "decision_preparation": decision_preparation,
-        "can_request_support_check": not unit.synthetic and data["source_valid"] and preparation is None
-            and any(e.kind == "explanation" for e in data["activities"]),
+        "can_request_support_check": can_request_support_check,
         "can_request_decision": unit.status == "active" and not unit.synthetic and data["source_valid"]
             and decision["kind"] != "finish_round" and bool(data["attempts"]) and len(decision_jobs) < 2,
         "observations": {"answered_tasks": len({a.question_id for a in data["attempts"]}),

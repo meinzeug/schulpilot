@@ -62,6 +62,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   bool loading = false;
   late DateTime lastInteraction;
   bool visible = true;
+  int explanationScopeRevision = 0;
   bool routeVisible = true;
   bool needsTimeBaseline = true;
   bool sendingHeartbeat = false;
@@ -105,6 +106,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? groupedInputSignature;
   String? answerRequestKey, answerRequestBody;
   String? hintRequestKey;
+  Object? savedExplanationPracticeKey;
   bool hintExhausted = false;
   final usedBank = <int>{};
   String? resetBankText, resetBankQuestion;
@@ -247,6 +249,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     if (oldWidget.unitId != widget.unitId) {
       closePrivateRoutes();
+      savedExplanationPracticeKey = null;
       explanationPositions.clear();
       resetInput = null;
       readParentView();
@@ -312,6 +315,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     visible = lifecycle == AppLifecycleState.resumed;
+    if (!visible) explanationScopeRevision++;
     needsTimeBaseline = true;
     if (visible) {
       lastInteraction = interactionNow;
@@ -546,6 +550,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return;
     }
     resetInput = null;
+    savedExplanationPracticeKey = null;
     matchUndo.clear();
     matchUndoSignature = null;
     parentQuestionSearch.clear();
@@ -645,6 +650,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ? 'practice'
             : 'visual_example';
     }
+    // Keep the regular introduction action ahead of an optional generic help
+    // suggestion. The mandatory saved plan steps above retain precedence.
+    if (unit?['introduction_seen'] == false) return null;
     final session = unit?['learning_session'];
     if ([
       'change_explanation',
@@ -655,6 +663,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       if (session?['can_request_decision'] == false) {
         // A spent planning allowance does not hide the already saved help.
         // Existing plan steps above remain available without another model.
+        final question = currentQuestion;
+        if (question != null &&
+            savedExplanationPracticeKey == toolKey(question) &&
+            [
+              'explain',
+              'visual_example',
+            ].contains(session?['action']?['kind'])) {
+          return null;
+        }
         return switch (session?['action']?['kind']) {
           'explain' || 'visual_example' => 'saved_explanation',
           'hint' => 'model_hint',
@@ -3788,11 +3805,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final introduction = u['introduction_seen'] == false;
     final q = introduction ? null : currentQuestion;
     final token = state.api.token, family = state.familyId;
+    final foregroundRevision = explanationScopeRevision;
     final source = unit?['learning_session']?['source_signature'];
     final questionSignature = q == null ? null : inputSignature(q);
     bool currentExplanation() =>
         requestIsCurrent(u['id'], requestedOwner) &&
         visible &&
+        explanationScopeRevision == foregroundRevision &&
         state.api.token == token &&
         state.familyId == family &&
         unit?['learning_session']?['source_signature'] == source &&
@@ -3886,8 +3905,22 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       ),
     );
     if (continuePractice == true &&
+        !introduction &&
+        q != null &&
+        currentExplanation() &&
+        context.mounted &&
+        ModalRoute.of(context)?.isCurrent != false &&
+        unit?['status'] == 'active' &&
+        !awaitingContinue &&
+        adaptiveAction == 'saved_explanation') {
+      // The saved generic suggestion is not a mandatory plan step. Return to
+      // this same open question only after the child's explicit Weiter üben.
+      // The key expires with the account, token, family, source or question.
+      setState(() => savedExplanationPracticeKey = toolKey(q));
+    }
+    if (continuePractice == true &&
         introduction &&
-        requestIsCurrent(u['id'], requestedOwner) &&
+        currentExplanation() &&
         context.mounted &&
         ModalRoute.of(context)?.isCurrent != false &&
         unit?['status'] == 'active' &&

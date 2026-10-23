@@ -628,6 +628,25 @@ def context(db, unit):
     return signature, payload, [{"id": m["id"], "revision": m["revision"]} for m in materials]
 
 
+def support_check_context(db, unit):
+    """Read the same source-bound prerequisites for capability and enqueue.
+
+    A saved explanation alone cannot supply a missing learning-goal catalogue.
+    This never creates goals, changes learning data or reserves a model call.
+    """
+    result = context(db, unit)
+    if not result[1]["learning_goals"]:
+        if unit.round_kind == "vocabulary":
+            raise ProviderError(
+                "Für diese Wortschatzrunde gibt es keine zusätzliche Lernprobe. "
+                "Kehre zur offenen Aufgabe zurück und übe dort weiter."
+            )
+        raise ProviderError(
+            "Beende zuerst deine gespeicherte Runde. Ihr Rückblick legt die nächste passende Lernprobe fest."
+        )
+    return result
+
+
 def report_projection(db, unit, stored):
     """Every screen uses saved verdicts; model prose cannot claim bookkeeping."""
     if not stored:

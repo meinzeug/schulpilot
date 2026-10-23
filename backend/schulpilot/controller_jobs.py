@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 
 from . import schemas as s
-from .coaching import context, root_and_units, validate_new_round
+from .coaching import context, root_and_units, support_check_context, validate_new_round
 from .db import DB, Child, Family, Job, LearningMemory, LearningUnit, Session, UnitSource, Usage, User, get_db, now
 from .learning import get_unit, record
 from .learning_controller import ChooseAction, observe
@@ -61,12 +61,10 @@ def prepare(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(
     if data.kind != "check_understanding":
         raise HTTPException(422, "Hier wird eine neue kleine Verständnisrunde vorbereitet.")
     try:
-        signature, payload, _ = context(db, unit)
+        signature, payload, _ = support_check_context(db, unit)
     except ProviderError as error:
         raise HTTPException(409, str(error)) from None
     goals = payload["learning_goals"]
-    if not goals:
-        raise HTTPException(409, "Beende zuerst deine gespeicherte Runde. Ihr Rückblick legt die nächste passende Lernprobe fest.")
     question_id = media.get("question_id") if media_valid else support.detail.get("question_id")
     question = next((q for q in unit.questions if q["id"] == question_id), None)
     target = question.get("learning_goal_id") if question else None

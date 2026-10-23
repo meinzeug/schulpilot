@@ -402,3 +402,15 @@ acht plus zwei betroffener Dateien ohne Befund. Künstliche1440px-/390px-Probe
 mit Abspielen, Schrittwechsel, Reglergeste und Tippzuordnung abgeschlossen.
 Physische Geräteabnahme und erfolgreiche echte KI-Szenenerzeugung bleiben offen;
 Build/Deployment ausschließlich gemäß RELEASE_97_2026_10_23.md bewerten.
+
+
+## Material lesen
+
+Auf schmalen Displays stehen Materialtext und eine klare Leseaktion vor weiteren
+Werkzeugen. Quellenleser nutzen die verfügbare Bildschirmfläche, einen festen
+Titel und einen jederzeit erreichbaren Schließenknopf. Suche, Inhaltsverzeichnis
+und Schriftoptionen werden bewusst geöffnet; sie dürfen den Dokumenttext nicht
+standardmäßig verdrängen. Lange Dokumente und Werkzeugbereiche scrollen getrennt.
+Auf großen Bildschirmen bleibt die Textbreite auf760px begrenzt. Vergleiche
+verwenden mobil umschaltbare beschriftete Ansichten und erst bei genügend Platz
+zwei Spalten. Große Schrift und Bildschirmtastatur werden gemeinsam geprüft.

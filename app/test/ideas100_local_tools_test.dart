@@ -84,22 +84,25 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
-      expect(find.byType(LearningHeadingIndex), findsOneWidget);
+      expect(find.byType(LearningHeadingIndex), findsNothing);
+      await tap(t, find.byKey(const ValueKey('source-reader-search')));
       await t.enterText(find.byType(TextField), 'gesuchter Begriff');
       await t.pumpAndSettle();
-      expect(find.text('Treffer 1 von 2 Textabschnitten'), findsOneWidget);
+      expect(find.text('Treffer 1 von 2'), findsOneWidget);
       await tap(t, find.byTooltip('Nächster Texttreffer'));
-      expect(find.text('Treffer 2 von 2 Textabschnitten'), findsOneWidget);
+      expect(find.text('Treffer 2 von 2'), findsOneWidget);
       expect(find.text('Unveränderter Abschluss.'), findsOneWidget);
-      await tap(t, find.text('Leseansicht anpassen'));
+      await tap(t, find.byKey(const ValueKey('source-reader-type')));
       await tap(t, find.text('24 px'));
-      await tap(t, find.text('Zeilenabstand 1.8'));
+      await tap(t, find.byTooltip('Zeilenabstand 1.8'));
       expect(
         t
             .widgetList<LearningContent>(find.byType(LearningContent))
             .every((w) => w.style?.fontSize == 24 && w.style?.height == 1.8),
         isTrue,
       );
+      await tap(t, find.byKey(const ValueKey('source-reader-contents')));
+      expect(find.byType(LearningHeadingIndex), findsOneWidget);
       await tap(t, find.text('Unsichere Angaben nachsehen (1)'));
       await tap(t, find.byType(CheckboxListTile));
       expect(
