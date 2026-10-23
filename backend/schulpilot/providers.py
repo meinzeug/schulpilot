@@ -404,13 +404,15 @@ def indexed_choice_schema(schema, *, bounded_matches=False):
             grouped["properties"]["answer"] = {"type": "string", "minLength": 1, "maxLength": 600,
                 "description": 'JSON-String {"version":1,"fields":{"id":"Wert"}} mit exakt allen privaten Feldlösungen.'}
             other["properties"]["type"]["enum"].remove("grouped")
-        choice["properties"]["field_group"] = {"type": "null"}
-        other["properties"]["field_group"] = {"type": "null"}
+        if "field_group" in properties:
+            choice["properties"]["field_group"] = {"type": "null"}
+            other["properties"]["field_group"] = {"type": "null"}
         matching = None
         if bounded_matches and "match" in other["properties"]["type"]["enum"]:
             matching = copy.deepcopy(definition)
             matching["properties"]["type"] = {"type": "string", "enum": ["match"]}
-            matching["properties"]["field_group"] = {"type": "null"}
+            if "field_group" in properties:
+                matching["properties"]["field_group"] = {"type": "null"}
             matching["properties"]["options"].update(minItems=2, maxItems=4)
             matching["properties"]["accepted"]["maxItems"] = 0
             # A grounded short answer has a stricter 80-character/no-semicolon

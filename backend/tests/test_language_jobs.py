@@ -589,3 +589,41 @@ def test_admin_denied_private_vocabulary_and_view_parent_cannot_manage(api, hous
         db.get(User, parent["id"]).role = "admin"
     for path in ("vocabulary", "vocabulary/imports", "language-projects"):
         assert api.get(f"/api/children/{child['id']}/{path}").status_code == 403
+
+
+def test_indexed_language_choices_do_not_invent_group_fields_or_question_types():
+    from schulpilot.language_tasks import LanguageProjectOutput
+
+    schema = strict_schema(LanguageProjectOutput, preserve_limits=True)
+    original = schema["$defs"]["LanguageGeneratedQuestion"]
+    fields = set(original["properties"])
+    types = set(original["properties"]["type"]["enum"])
+    assert "field_group" not in fields and types == {"choice", "gap", "short"}
+    indexed_choice_schema(schema)
+    prune_schema(schema)
+    branches = schema["$defs"]["LanguageGeneratedQuestion"]["anyOf"]
+    assert len(branches) == 2
+    assert {kind for branch in branches for kind in branch["properties"]["type"]["enum"]} == types
+    for branch in branches:
+        assert set(branch["properties"]) == set(branch["required"]) == fields
+        assert "field_group" not in branch["properties"]
+        assert branch["additionalProperties"] is False
+    assert "FieldGroup" not in schema["$defs"]
+
+
+def test_indexed_normal_questions_keep_group_field_required_and_nullable_only_outside_grouped():
+    from schulpilot.schemas import UnitOutput
+
+    schema = strict_schema(UnitOutput, preserve_limits=True)
+    indexed_choice_schema(schema, bounded_matches=True)
+    prune_schema(schema)
+    branches = schema["$defs"]["Question"]["anyOf"]
+    for branch in branches:
+        props = branch["properties"]
+        assert set(props) == set(branch["required"])
+        assert "field_group" in branch["required"]
+        if props["type"]["enum"] == ["grouped"]:
+            assert props["field_group"] == {"$ref": "#/$defs/FieldGroup"}
+        else:
+            assert props["field_group"] == {"type": "null"}
+    assert "FieldGroup" in schema["$defs"]
