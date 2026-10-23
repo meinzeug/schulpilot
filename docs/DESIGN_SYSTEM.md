@@ -1,6 +1,6 @@
 # Schulpilot: gemeinsame Lernoberfläche
 
-Gestaltungsstand 23.10.2026, geplant für **1.25.0+96**. Die angemeldete
+Gestaltungsstand 23.10.2026, veröffentlicht als **1.25.0+96**. Die angemeldete
 simpleclub-App wurde auf ausdrücklichen Nutzerauftrag direkt bei
 1440×1000 px und mobil bei 390×844 px betrachtet. Die Beobachtung umfasst das
 Thema „Brüche“, den Planerstellungsassistenten und die Vorlagenvorschau

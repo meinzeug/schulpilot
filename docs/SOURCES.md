@@ -1,4 +1,4 @@
-Gestaltungsfortsetzung 23.10.2026, geplante Version 1.25.0+96: tatsächliche
+Gestaltungsfortsetzung 23.10.2026, veröffentlichte Version 1.25.0+96: tatsächliche
 visuelle Primärreferenz war die auf Nutzerauftrag angemeldete
 [simpleclub-Webapp](https://app.simpleclub.com/search), direkt bedient bei
 1440×1000 px und 390×844 px. Angesehen wurden die Themenübersicht „Brüche“,

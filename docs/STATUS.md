@@ -1,4 +1,22 @@
-# Produktionsstand 1.24.1+95 · 23.10.2026
+# Produktionsstand 1.25.0+96 · 23.10.2026
+
+Live `20261023T061617Z-a02314d`, Produktcommit
+`a02314d4076bbe9a66ccd30e604f0319937e32c7`, Schema0031. Lernpläne mit gemeinsamen
+Themen-/Tageskarten, Fach-/Datumszeichen und Zeit-/Statuspills; beschriftete
+Desktopsidebar, ruhiger Aufgabenraum, klare Antwortkarten und adaptive
+Grafikrahmen mit Zoom. Kontowechsel schließt den Grafikzoom auch im untätigen UI.
+
+717Flutterfälle grün, Analyse ohne Befund, künstliche1440px-/390px-Browserprobe
+bestanden. Gebundener regulärer Web-/Direct-/Play-Build, Signaturen und
+öffentlicher Web-/APK-Bytevergleich geprüft. Alle fünf Dienste aktiv,
+Konfiguration/Schema/Google-Nachweis erhalten, verschlüsselte Sicherungen
+bestätigt. Kontrollierter Rückweg auf95; kein Storeupload oder tatsächliche
+native Updateinstallation. Referenz- und Abnahmegrenzen sowie vollständige
+Nachweise: [RELEASE_96_2026_10_23.md](RELEASE_96_2026_10_23.md).
+
+---
+
+# Historischer Produktionsstand 1.24.1+95 · 23.10.2026
 
 Live `20261023T054250Z-4ae6f3e`, Produktcommit
 `4ae6f3e48d56ba225616b2fdc15fb32aad681cbd`, Schema0031. Schulbuddy klappt

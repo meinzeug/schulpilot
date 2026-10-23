@@ -1,5 +1,15 @@
 # Betrieb
 
+## Lernpläne und Aufgabenraum1.25.0+96 · 23.10.2026
+
+Aktiv `20261023T061617Z-a02314d`, Schema0031, alle fünf Dienste aktiv.
+Gebundener regulärer Build und öffentlicher Web-/APK-Bytevergleich bestanden.
+Konfigurationssicherung `learning96-config-20261023T040915Z`,
+verschlüsselte Datenbank-/Uploadbackups `20261023T041754Z.tar.enc, 20261023T041756Z.tar.enc`, Result=success.
+Konfiguration und Google-Nachweis erhalten; vorheriger Release95 nach
+Quellen-/Schema-/Jobprüfung kompatibel aktivierbar. Details und Grenzen:
+[RELEASE_96_2026_10_23.md](RELEASE_96_2026_10_23.md).
+
 ## Schulbuddy1.24.1+95 · 23.10.2026
 
 Aktiv `20261023T054250Z-4ae6f3e`, Schema0031. Alle fünf Dienste aktiv,
