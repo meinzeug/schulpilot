@@ -1219,3 +1219,14 @@ Grafikeinstieg verdrängte auf kleinen Bildschirmen den ersten Inhalt und die
 dritte Runde. Der Einstieg wurde deshalb in das bestehende Drei-Punkte-Menü
 verlegt; die bestehenden Dichtegrenzen bleiben unverändert. Ein zusätzlicher
 Test prüft den bewusst geöffneten Menüeinstieg ohne neue API-Aufträge.
+
+Das vollständige Backendlog desselben Laufs erreichte vor dessen Abbruch
+2963Erfolge und37übersprungene Fälle. Ein Migrationstest scheiterte, weil sein
+Python-Unterprozess den nur pytest-intern gesetzten Importpfad nicht erbte.
+Der Test setzt nun den absoluten Backendpfad ausdrücklich für den Unterprozess;
+Migrations-DDL und Produktcode bleiben dabei unverändert. Lokale Prüfläufe mit
+geerbtem PYTHONPATH hatten diesen Testumgebungsfehler zuvor verdeckt.
+Der korrigierte tatsächliche SQLite-Upgradefall bestand anschließend mit
+ausdrücklich entferntem äußerem PYTHONPATH. Die54gezielten UI-Fälle zu Dichte,
+Runden und Entdecken bestanden nach Korrektur des neuen nativen
+Navigationstestfinders; Flutter-Analyse ohne Befund.

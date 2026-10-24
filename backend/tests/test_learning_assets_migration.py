@@ -61,9 +61,12 @@ def test_actual_upgrade_preserves_old_child_attempt_and_reminder_data(tmp_path):
         url = make_url(original).update_query_dict({"options": "-csearch_path=" + schema}).render_as_string(hide_password=False)
     else:
         url = "sqlite:///" + str(tmp_path / "migration.sqlite")
-    environment = {**os.environ, "DATABASE_URL": url, "DATA_DIR": str(tmp_path / "data"), "TEST_DATABASE_URL": ""}
+    root = Path(__file__).resolve().parents[2]
+    pythonpath = os.pathsep.join(filter(None, (str(root / "backend"), os.environ.get("PYTHONPATH"))))
+    environment = {**os.environ, "DATABASE_URL": url, "DATA_DIR": str(tmp_path / "data"),
+                   "TEST_DATABASE_URL": "", "PYTHONPATH": pythonpath}
     try:
-        run = subprocess.run([sys.executable, "-c", SCRIPT], cwd=Path(__file__).parents[2], env=environment,
+        run = subprocess.run([sys.executable, "-c", SCRIPT], cwd=root, env=environment,
                              capture_output=True, text=True, timeout=90)
         assert run.returncode == 0, run.stdout + run.stderr
         assert "schema: PASS" in run.stdout
