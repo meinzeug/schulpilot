@@ -139,8 +139,25 @@ void main() {
               findsOneWidget,
             );
             expect(find.text('SCHULPILOT · BETRIEB'), findsNothing);
+            if (path == '/admin/verkauf') {
+              expect(
+                find.descendant(
+                  of: find.byKey(const ValueKey('compact-admin-heading')),
+                  matching: find.text('Verkauf'),
+                ),
+                findsOneWidget,
+              );
+            }
             await press(tester, find.byTooltip('Über diesen Bereich'));
             expect(find.text('SCHULPILOT · BETRIEB'), findsOneWidget);
+            if (path == '/admin/verkauf') {
+              expect(
+                find.textContaining(
+                  'Verkauf & Zahlungseingänge: Nur Überweisungen',
+                ),
+                findsOneWidget,
+              );
+            }
             expect(back, findsOneWidget);
             expect(
               requests.every((request) => request.method == 'GET'),

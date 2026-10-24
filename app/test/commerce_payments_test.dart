@@ -176,7 +176,7 @@ void main() {
         width: 320,
       );
       final explanation = find.text(
-        'Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
+        'Verkauf & Zahlungseingänge: Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
       );
       expect(explanation, findsNothing);
       await admin.press(tester, find.byTooltip('Über diesen Bereich'));

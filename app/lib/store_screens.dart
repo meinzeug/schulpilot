@@ -1684,15 +1684,15 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
       ? const SizedBox.shrink()
       : PageFrame(
           state: widget.state,
-          title: 'Verkauf & Zahlungseingänge',
+          title: 'Verkauf',
           showTitle: false,
           actions: const [],
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AdminWorkspaceHeader(
-                title: 'Verkauf & Zahlungseingänge',
-                subtitle: 'Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
+                title: 'Verkauf',
+                subtitle: 'Verkauf & Zahlungseingänge: Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
                 action: IconButton(
                   tooltip: 'Aktualisieren',
                   onPressed: pendingPayments.isNotEmpty ? null : refresh,
