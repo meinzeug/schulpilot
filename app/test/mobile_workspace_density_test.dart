@@ -15,6 +15,7 @@ import 'package:schulpilot/child_account.dart';
 import 'package:schulpilot/child_section_ui.dart';
 import 'package:schulpilot/collection_screen.dart';
 import 'package:schulpilot/homework_screen.dart';
+import 'package:schulpilot/profile_photo_settings.dart';
 import 'package:schulpilot/subject_badge.dart';
 import 'package:schulpilot/ui.dart';
 import 'package:schulpilot/vocabulary_screen.dart';
@@ -271,6 +272,47 @@ void main() {
         expect(calls.every((r) => r.method == 'GET'), isTrue);
         expect(tester.takeException(), isNull);
       });
+    }
+  }
+  for (final size in [const Size(390, 844), const Size(320, 568)]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'settings opens profile deliberately at $size and $scale text',
+        (tester) async {
+          final calls = await mount(tester, 'settings', size, scale);
+          expect(find.text('Dieses Testgerät'), findsOneWidget);
+          expect(find.byType(ProfilePhotoSettings), findsNothing);
+          final beforeProfile = calls.length;
+          final profileTab = find.widgetWithText(OutlinedButton, 'Profil');
+          await tester.ensureVisible(profileTab);
+          await tester.pumpAndSettle();
+          expect(profileTab.hitTestable(), findsOneWidget);
+          expect(
+            tester.getSize(profileTab).shortestSide,
+            greaterThanOrEqualTo(48),
+          );
+          await tester.tap(profileTab);
+          await tester.pumpAndSettle();
+          expect(find.byType(ProfilePhotoSettings), findsOneWidget);
+          expect(find.text('Dein Profilbild'), findsOneWidget);
+          expect(find.text('Dieses Testgerät'), findsNothing);
+          final choose = find.byKey(const ValueKey('profile-photo-select'));
+          await tester.ensureVisible(choose);
+          await tester.pumpAndSettle();
+          expect(choose.hitTestable(), findsOneWidget);
+          expect(tester.getSize(choose).height, greaterThanOrEqualTo(48));
+          expect(calls.length, beforeProfile);
+          final devicesTab = find.widgetWithText(OutlinedButton, 'Geräte');
+          await tester.ensureVisible(devicesTab);
+          await tester.pumpAndSettle();
+          await tester.tap(devicesTab);
+          await tester.pumpAndSettle();
+          expect(find.byType(ProfilePhotoSettings), findsNothing);
+          expect(find.text('Dieses Testgerät'), findsOneWidget);
+          expect(calls.every((request) => request.method == 'GET'), isTrue);
+          expect(tester.takeException(), isNull);
+        },
+      );
     }
   }
   testWidgets('word filters expand locally and retain unsubmitted text', (

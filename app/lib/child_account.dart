@@ -38,7 +38,13 @@ class _ChildAccountState extends State<ChildAccount> {
     final saved = identical(memory?['account'], ownerAccount)
         ? (memory?['section'])
         : null;
-    if (['devices', 'notifications', 'photos', 'about'].contains(saved)) {
+    if ([
+      'devices',
+      'profile',
+      'notifications',
+      'photos',
+      'about',
+    ].contains(saved)) {
       section = saved;
     }
   }
@@ -371,24 +377,17 @@ class _ChildAccountState extends State<ChildAccount> {
                 SizedBox(
                   height: MediaQuery.sizeOf(context).width < 720 ? 8 : 24,
                 ),
-                Panel(
-                  child: ProfilePhotoSettings(
-                    state,
-                    key: ValueKey((
-                      ObjectKey(state),
-                      ObjectKey(state.user),
-                      state.familyId,
-                      state.api.token,
-                    )),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 ChildSectionTabs(
                   tabs: const [
                     (
                       id: 'devices',
                       label: 'Geräte',
                       icon: Icons.devices_rounded,
+                    ),
+                    (
+                      id: 'profile',
+                      label: 'Profil',
+                      icon: Icons.account_circle_outlined,
                     ),
                     (
                       id: 'notifications',
@@ -420,6 +419,18 @@ class _ChildAccountState extends State<ChildAccount> {
                 SizedBox(
                   height: MediaQuery.sizeOf(context).width < 720 ? 12 : 20,
                 ),
+                if (section == 'profile')
+                  Panel(
+                    child: ProfilePhotoSettings(
+                      state,
+                      key: ValueKey((
+                        ObjectKey(state),
+                        ObjectKey(state.user),
+                        state.familyId,
+                        state.api.token,
+                      )),
+                    ),
+                  ),
                 if (section == 'devices') ...[
                   if (kIsWeb && MediaQuery.sizeOf(context).width >= 720) ...[
                     AndroidDownload(state.api),
