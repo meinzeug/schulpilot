@@ -38,7 +38,9 @@ def verify(raw, key):
     expected = json.loads(signed(record, key))["signature"]
     if not hmac.compare_digest(value["signature"], expected):
         raise ValueError("Erasure journal authentication failed")
-    if record.get("resource_kind") not in (None, "assignment") or (record.get("resource_kind") and record["scope"] != "unit"):
+    if record.get("resource_kind") not in (None, "assignment") or (
+        record.get("resource_kind") and record["scope"] != "unit"
+    ):
         raise ValueError("Invalid erasure resource kind")
     if record["scope"] not in SCOPES:
         raise ValueError("Invalid erasure scope")
@@ -104,16 +106,26 @@ def reconcile(db, records):
     """Apply verified IDs in an isolated restore DB; return obsolete image paths."""
     from .families import remove_child, remove_family
 
-    records = [{**record, "scope": "assignment"}
-               if record["scope"] == "unit" and record.get("resource_kind") == "assignment" else record
-               for record in records]
+    records = [
+        {**record, "scope": "assignment"}
+        if record["scope"] == "unit" and record.get("resource_kind") == "assignment"
+        else record
+        for record in records
+    ]
     paths = []
     # Collect image paths before user cascades can remove their Material rows.
     order = {"family": 0, "child": 1, "unit": 2, "assignment": 3, "material": 4, "membership": 5, "user": 6}
     for record in sorted(records, key=lambda record: order[record["scope"]]):
         scope, target = record["scope"], record["target"]
-        model = {"family": Family, "child": Child, "user": User, "material": Material,
-                 "membership": Membership, "unit": LearningUnit, "assignment": Assignment}[scope]
+        model = {
+            "family": Family,
+            "child": Child,
+            "user": User,
+            "material": Material,
+            "membership": Membership,
+            "unit": LearningUnit,
+            "assignment": Assignment,
+        }[scope]
         row = db.get(model, target)
         if row is None:
             continue
@@ -122,6 +134,9 @@ def reconcile(db, records):
         elif scope == "child":
             paths.extend(remove_child(db, row))
         elif scope == "user":
+            from .profile_images import deletion_paths
+
+            paths.extend(deletion_paths(db, target))
             db.execute(delete(User).where(User.id == target))
         elif scope == "membership":
             db.delete(row)
@@ -154,16 +169,33 @@ def reconcile(db, records):
     return paths
 
 
+def retained_image_names(db):
+    """Current private file pointers, including own-account profile images."""
+    from .db import UserAvatar
+    from .profile_images import filename
+
+    known = set(db.scalars(select(Material.path).where(Material.path.is_not(None))))
+    known.update(
+        filename(row.user_id, row.revision)
+        for row in db.scalars(select(UserAvatar).where(UserAvatar.image_digest.is_not(None)))
+    )
+    return known
+
+
+def valid_image_name(name):
+    return bool(re.fullmatch(r"(?:[a-f0-9]{32}|avatar-[a-f0-9]{64}-[a-f0-9]{32})\.jpg", name))
+
+
 def prune_orphan_images(db):
     """Remove interrupted upload writes after a grace period, within our directory."""
-    known = set(db.scalars(select(Material.path).where(Material.path.is_not(None))))
+    known = retained_image_names(db)
     removed = 0
     for path in (settings.data_dir / "uploads").glob("*.jpg"):
         try:
             modified = path.lstat().st_mtime
         except FileNotFoundError:
             continue
-        if re.fullmatch(r"[a-f0-9]{32}\.jpg", path.name) and path.name not in known and modified < now() - 3600:
+        if valid_image_name(path.name) and path.name not in known and modified < now() - 3600:
             path.unlink(missing_ok=True)
             removed += 1
     return removed

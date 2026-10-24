@@ -128,6 +128,16 @@ class User(Base):
     created = Column(Integer, default=lambda: int(now()), nullable=False)
 
 
+class UserAvatar(Base):
+    __tablename__ = "user_avatars"
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    revision = Column(String(32), nullable=False)
+    image_digest = Column(String(64))
+    updated = Column(Integer, nullable=False)
+    request_key = Column(String(100), nullable=False)
+    request_digest = Column(String(64), nullable=False)
+
+
 class Installation(Base):
     __tablename__ = "installation"
     id = Column(Integer, primary_key=True)

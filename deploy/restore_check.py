@@ -42,6 +42,24 @@ def decrypt(backup, destination):
             output.write(decryptor.finalize())
 
 
+def cleanup_images(directory, retained, paths):
+    # Only the two server-generated private JPEG filename families are accepted.
+    if any(not re.fullmatch(r"(?:[a-f0-9]{32}|avatar-[a-f0-9]{64}-[a-f0-9]{32})\.jpg", name) for name in paths):
+        raise RuntimeError("Unexpected private image path")
+    erased_images = 0
+    for filename in paths:
+        image = directory / filename
+        if image.exists():
+            image.unlink()
+            erased_images += 1
+    orphans = 0
+    for photo in directory.glob("*.jpg"):
+        if photo.name not in retained:
+            photo.unlink()
+            orphans += 1
+    return erased_images, orphans
+
+
 def main():
     if os.geteuid() != 0:
         raise SystemExit("Operator access required")
@@ -91,7 +109,7 @@ def main():
             code = """import json,sys
 from sqlalchemy import select,func,text,update
 from schulpilot.db import DB,Family,Child,Material,LearningUnit,Attempt,UnitCoaching,Session,Token,ProviderConfig
-from schulpilot.erasure import verify,reconcile
+from schulpilot.erasure import verify,reconcile,retained_image_names
 from schulpilot.config import settings
 from schulpilot.migrate import upgrade
 upgrade()
@@ -105,7 +123,7 @@ with DB.begin() as db:
  db.execute(update(ProviderConfig).values(emergency_stop=True))
  after={m.__tablename__:db.scalar(select(func.count()).select_from(m)) for m in models}
  version=db.scalar(text('SELECT version_num FROM alembic_version'))
- retained=list(db.scalars(select(Material.path).where(Material.path.is_not(None))))
+ retained=list(retained_image_names(db))
 print(json.dumps({'schema':version,'before':before,'after':after,'paths':paths,'retained_images':retained,'verified_erasure_records':len(records)}))
 """
             result = command(
@@ -116,19 +134,7 @@ print(json.dumps({'schema':version,'before':before,'after':after,'paths':paths,'
             )
             data = json.loads(result.stdout)
             retained = set(data.pop("retained_images"))
-            erased_images = 0
-            for filename in data.pop("paths"):
-                if not re.fullmatch(r"[a-f0-9]{32}\.jpg", filename):
-                    raise RuntimeError("Unexpected private image path")
-                image = directory / "unpacked/uploads" / filename
-                if image.exists():
-                    image.unlink()
-                    erased_images += 1
-            orphans = 0
-            for photo in (directory / "unpacked/uploads").glob("*.jpg"):
-                if photo.name not in retained:
-                    photo.unlink()
-                    orphans += 1
+            erased_images, orphans = cleanup_images(directory / "unpacked/uploads", retained, data.pop("paths"))
             data["orphan_images_removed"] = orphans
             data["erasure_images_removed"] = erased_images
             report.update(data)

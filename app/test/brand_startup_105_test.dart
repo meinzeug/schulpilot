@@ -14,7 +14,7 @@ void main() {
   ) async {
     var mounted = 0;
     await tester.pumpWidget(
-      AndroidBrandStartup(
+      BrandStartup(
         application: (_) {
           mounted++;
           return const MaterialApp(
@@ -31,7 +31,7 @@ void main() {
       brandStartupBackground,
     );
     expect(find.text('SCHULPILOT'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 1100));
     expect(mounted, 0);
     expect(
       tester
@@ -69,7 +69,7 @@ void main() {
         addTearDown(tester.platformDispatcher.clearDefaultRouteNameTestValue);
         final state = AppState();
         await tester.pumpWidget(
-          AndroidBrandStartup(
+          BrandStartup(
             application: (incoming) => SchulpilotApp(
               state,
               initialLocation: nativeInitialLocation(incoming ?? cold),
@@ -107,7 +107,7 @@ void main() {
         );
         var mounts = 0;
         await tester.pumpWidget(
-          AndroidBrandStartup(
+          BrandStartup(
             application: (_) {
               mounts++;
               return const MaterialApp(home: Text('Bereit'));
@@ -127,7 +127,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      AndroidBrandStartup(
+      BrandStartup(
         application: (_) =>
             const MaterialApp(home: Text('Sicherer Anmeldelink mit Fragment')),
       ),
@@ -160,7 +160,7 @@ void main() {
               'display_name': 'Beispiel',
             };
       await tester.pumpWidget(
-        AndroidBrandStartup(
+        BrandStartup(
           application: (_) {
             mounts++;
             return SchulpilotApp(state, initialLocation: '/settings');
@@ -194,7 +194,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await tester.pumpWidget(
-        AndroidBrandStartup(application: (_) => const SizedBox()),
+        BrandStartup(application: (_) => const SizedBox()),
       );
       await tester.pump(const Duration(milliseconds: 1000));
       final wordmark = tester.getRect(

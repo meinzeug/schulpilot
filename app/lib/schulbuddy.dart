@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 
 import 'api.dart';
 import 'child_section_ui.dart';
+import 'schulbuddy_dock_hint.dart';
 import 'learning_content.dart';
 import 'lesson_voice.dart';
 import 'ui.dart';
@@ -211,7 +212,7 @@ class _SchulbuddyButtonState extends State<SchulbuddyButton> {
               tooltip: 'Schulbuddy in Kopfleiste andocken',
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               onPressed: current() ? () => dock.dock(stamp!) : null,
-              icon: const Icon(Icons.download_rounded),
+              icon: const SchulbuddyDockHint(active: false),
             )
           : SizedBox(width: header ? 48 : 0, height: header ? 48 : 0);
     } else if (!widget.compact) {
@@ -229,6 +230,18 @@ class _SchulbuddyButtonState extends State<SchulbuddyButton> {
       );
     }
     if (dock == null) return button;
+    if (header && !floating && dock.current) {
+      button = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Transform.translate(
+            offset: const Offset(6, 0),
+            child: SchulbuddyDockHint(active: current()),
+          ),
+          button,
+        ],
+      );
+    }
     if (!floating) {
       button = dock.movable(
         context: context,
@@ -578,6 +591,7 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
     }
 
     return Focus(
+      includeSemantics: false,
       canRequestFocus: false,
       skipTraversal: true,
       onKeyEvent: (_, event) {
@@ -591,6 +605,9 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
         return KeyEventResult.ignored;
       },
       child: Semantics(
+        // Give the positioned launcher a local semantics boundary. Without it,
+        // a merged custom-action node can apply the offset twice on Flutter Web.
+        container: true,
         customSemanticsActions: {
           CustomSemanticsAction(
             label: floating ? 'In Kopfleiste' : 'Frei platzieren',
@@ -608,6 +625,7 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
         },
         onLongPress: menu,
         child: GestureDetector(
+          excludeFromSemantics: true,
           onLongPress: menu,
           onSecondaryTapUp: (_) => menu(),
           child: Draggable<_BuddyDrag>(
@@ -622,10 +640,7 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
                 ? const SizedBox(
                     width: 48,
                     height: 48,
-                    child: Icon(
-                      Icons.download_rounded,
-                      semanticLabel: 'Hier in die Kopfleiste ziehen',
-                    ),
+                    child: Center(child: SchulbuddyDockHint(active: false)),
                   )
                 : SizedBox(width: overlay ? 56 : 48, height: overlay ? 56 : 48),
             onDragStarted: () {

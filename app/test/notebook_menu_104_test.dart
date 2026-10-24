@@ -125,7 +125,11 @@ void main() {
           final frame = tester.getRect(
             find.byKey(const ValueKey('notebook-photo-frame')),
           );
-          expect(frame.top, lessThan(150));
+          // The requested persistent app header occupies one toolbar above
+          // the same compact notebook controls. Measure those independently.
+          final header = tester.getRect(find.byType(AppBar));
+          expect(frame.top - header.bottom, lessThan(150));
+          expect(find.byType(NavigationBar), findsOneWidget);
           expect(frame.bottom, lessThanOrEqualTo(844));
         }
         final before = calls.length;

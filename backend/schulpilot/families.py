@@ -379,11 +379,14 @@ def revoke_member(family_id: str, membership_id: str, p=Depends(parent), db=Depe
 
 def remove_child(db, child):
     from .erasure import request
+    from .profile_images import deletion_paths as avatar_deletion_paths
 
     request(db, "child", child.id)
     request(db, "user", child.user_id)
     paths = list(db.scalars(select(Material.path).where(Material.child_id == child.id, Material.path.is_not(None))))
     user = db.get(User, child.user_id)
+    if user:
+        paths.extend(avatar_deletion_paths(db, user.id))
     db.delete(child)
     db.flush()
     from .subject_registry import purge_unused_private
@@ -446,6 +449,9 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
     from .erasure import flush_journal, request
 
     request(db, "user", p.user.id)
+    from .profile_images import deletion_paths as avatar_deletion_paths
+
+    paths.extend(avatar_deletion_paths(db, p.user.id))
     db.execute(delete(User).where(User.id == p.user.id))
     audit(db, p.user.id, "account.delete", p.user.id)
     db.commit()
@@ -476,8 +482,10 @@ def export_child(db, child):
         VocabularyReview,
         VocabularyReviewEvent,
     )
+    from .profile_images import export_metadata as avatar_metadata
 
-    result = {"child": child_data(db, child), "grade_settings": {"planning_enabled": child.grade_planning_enabled}}
+    result = {"child": child_data(db, child), "grade_settings": {"planning_enabled": child.grade_planning_enabled},
+              "profile_image": avatar_metadata(db, child.user_id)}
     for model in (LearningMemory, LearningEvent, ChildCostBucket):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
             for row in db.scalars(select(model).where(model.child_id == child.id))]
@@ -562,6 +570,10 @@ def export_one_child(child_id: str, include_photos: bool = True, p=Depends(paren
     try:
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.writestr("child.json", json.dumps(export_child(db, child) | {"export_scope": {"include_photos": include_photos}}, ensure_ascii=False, indent=2))
+            if include_photos:
+                from .profile_images import add_to_export
+
+                add_to_export(db, child.user_id, archive, "profile/avatar.jpg")
             for material in db.scalars(select(Material).where(Material.child_id == child.id, Material.path.is_not(None))):
                 path = settings.data_dir / "uploads" / material.path
                 if include_photos and path.is_file():
@@ -579,6 +591,8 @@ def export_one_child(child_id: str, include_photos: bool = True, p=Depends(paren
 def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
     from .commerce import orders_export, trial_data
     from .db import FamilyTrial, NotificationRead, SchulbuddyTurn
+    from .profile_images import add_to_export
+    from .profile_images import export_metadata as avatar_metadata
 
     family, membership = family_access(db, p, family_id)
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
@@ -598,6 +612,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                         "email": p.user.email,
                         "display_name": p.user.display_name,
                         "role": p.user.role,
+                        **avatar_metadata(db, p.user.id),
                     },
                     "children": [export_child(db, c) for c in children],
                     "schulbuddy_turns": [{column.name: getattr(row, column.name)
@@ -618,7 +633,9 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                 indent=2,
             ),
         )
+        add_to_export(db, p.user.id, archive, "account/avatar.jpg")
         for c in children:
+            add_to_export(db, c.user_id, archive, f"children/{c.id}/avatar.jpg")
             for m in db.scalars(select(Material).where(Material.child_id == c.id, Material.path.is_not(None))):
                 path = settings.data_dir / "uploads" / m.path
                 if path.is_file():

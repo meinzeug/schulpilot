@@ -50,6 +50,9 @@ def user_data(db, user):
         "email": user.email,
         "real_data_enabled": bool(site.real_data_approved and site.privacy_evidence),
     }
+    from .profile_images import metadata as avatar_metadata
+
+    result.update(avatar_metadata(db, user.id))
     if user.role == "parent":
         result["families"] = [
             {"id": f.id, "name": f.name, "permission": m.permission, "synthetic": f.synthetic}

@@ -506,6 +506,9 @@ def maintenance():
             db.flush()
             for user_id in owners:
                 if not db.scalar(select(Membership.id).where(Membership.user_id == user_id)):
+                    from .profile_images import deletion_paths
+
+                    paths.extend(deletion_paths(db, user_id))
                     db.execute(delete(User).where(User.id == user_id))
         db.execute(delete(Session).where(Session.expires < int(now()) - 7 * 86400))
         db.execute(delete(Token).where(Token.expires < int(now()) - 7 * 86400))

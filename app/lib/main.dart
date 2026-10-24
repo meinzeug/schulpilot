@@ -63,11 +63,13 @@ Future<void> main() async {
     state,
     initialLocation: pendingPlatformLocation == null
         ? initialLocation
+        : kIsWeb
+        ? pendingPlatformLocation
         : nativeInitialLocation(pendingPlatformLocation),
   );
   runApp(
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.android
-        ? AndroidBrandStartup(application: application)
+    kIsWeb || defaultTargetPlatform == TargetPlatform.android
+        ? BrandStartup(application: application)
         : application(null),
   );
 }
@@ -178,7 +180,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
     initialLocation: widget.initialLocation,
     // Android normalizes its initial link and may receive a newer one during
     // the intro; the dispatcher still holds the old cold-start URI.
-    overridePlatformDefaultLocation: !kIsWeb && widget.initialLocation != null,
+    overridePlatformDefaultLocation: widget.initialLocation != null,
     refreshListenable: widget.state,
     redirect: (context, route) {
       if (!kIsWeb && route.uri.scheme == 'schulpilot') {

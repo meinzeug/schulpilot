@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -201,6 +202,137 @@ class Api {
     return response.bodyBytes;
   }
 
+  Map<String, String> _profileAvatarHeaders() {
+    final account = currentAccount?.call();
+    final id = account is Map ? account['id'] : null;
+    if (id is! String || id.isEmpty) {
+      throw ApiError('Bitte dein angemeldetes Konto zuerst neu laden.', 409);
+    }
+    return {...headers, 'X-Schulpilot-Account': id};
+  }
+
+  Future<Json> uploadProfileAvatar(
+    Uint8List bytes, {
+    required String revision,
+    required String requestKey,
+  }) async {
+    if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
+      throw ApiError('Bitte ein Foto bis 5 MB auswählen.');
+    }
+    final request = http.MultipartRequest(
+      'PUT',
+      Uri.parse('$base/auth/me/avatar'),
+    );
+    request.headers.addAll({
+      ..._profileAvatarHeaders(),
+      'If-Match': revision,
+      'Idempotency-Key': requestKey,
+    });
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: 'avatar'),
+    );
+    return _profileAvatarRequest(request);
+  }
+
+  Future<Json> deleteProfileAvatar({
+    required String revision,
+    required String requestKey,
+  }) {
+    final request = http.Request('DELETE', Uri.parse('$base/auth/me/avatar'));
+    request.headers.addAll({
+      ..._profileAvatarHeaders(),
+      'If-Match': revision,
+      'Idempotency-Key': requestKey,
+    });
+    return _profileAvatarRequest(request);
+  }
+
+  Future<Json> profileAvatarMetadata() {
+    final request = http.Request('GET', Uri.parse('$base/auth/me'));
+    request.headers.addAll(_profileAvatarHeaders());
+    return _profileAvatarRequest(request);
+  }
+
+  Future<Json> _profileAvatarRequest(http.BaseRequest request) async {
+    final account = currentAccount?.call(), session = token;
+    try {
+      return Json.from(
+        decode(
+          await http.Response.fromStream(
+            await client.send(request).timeout(const Duration(seconds: 35)),
+          ).timeout(const Duration(seconds: 35)),
+          notifyUnauthorized:
+              token == session &&
+              (currentAccount == null || identical(account, currentAccount!())),
+        ),
+      );
+    } on ApiError {
+      rethrow;
+    } catch (_) {
+      throw ApiError(
+        'Dein Profilfoto konnte nicht gespeichert werden. Versuche es bewusst erneut.',
+      );
+    }
+  }
+
+  Future<Uint8List> profileAvatarBytes(String revision) async {
+    if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(revision)) {
+      throw ApiError('Dieses Profilfoto ist nicht mehr aktuell.', 409);
+    }
+    final account = currentAccount?.call(), session = token;
+    try {
+      final request = http.Request(
+        'GET',
+        Uri.parse('$base/auth/me/avatar')
+            .replace(queryParameters: {'revision': revision}),
+      );
+      request.headers.addAll(_profileAvatarHeaders());
+      final response = await client
+          .send(request)
+          .timeout(const Duration(seconds: 35));
+      const maxBytes = 2 * 1024 * 1024;
+      if ((response.contentLength ?? 0) > maxBytes) {
+        throw ApiError('Das Profilfoto konnte nicht angezeigt werden.');
+      }
+      final bytes = BytesBuilder(copy: false);
+      await for (final chunk in response.stream.timeout(
+        const Duration(seconds: 35),
+      )) {
+        if (bytes.length + chunk.length > maxBytes) {
+          throw ApiError('Das Profilfoto konnte nicht angezeigt werden.');
+        }
+        bytes.add(chunk);
+      }
+      final image = bytes.takeBytes();
+      if (response.statusCode != 200) {
+        decode(
+          http.Response.bytes(
+            image,
+            response.statusCode,
+            headers: response.headers,
+          ),
+          notifyUnauthorized:
+              token == session &&
+              (currentAccount == null || identical(account, currentAccount!())),
+        );
+      }
+      if (image.isEmpty ||
+          response.headers['content-type']
+                  ?.split(';')
+                  .first
+                  .trim()
+                  .toLowerCase() !=
+              'image/jpeg') {
+        throw ApiError('Das Profilfoto konnte nicht angezeigt werden.');
+      }
+      return image;
+    } on ApiError {
+      rethrow;
+    } catch (_) {
+      throw ApiError('Das Profilfoto konnte gerade nicht geladen werden.');
+    }
+  }
+
   Future<Json> job(String path, [Json? body]) async {
     final key =
         '${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}';
@@ -307,6 +439,103 @@ class AppState extends ChangeNotifier {
       (user?['families'] as List? ?? []).any(
         (f) => f['id'] == familyId && f['permission'] == 'owner',
       );
+  Object? _avatarOwner;
+  String? _avatarFamily, _avatarToken, _avatarRevision;
+  Uint8List? _avatarBytes;
+  Future<Uint8List>? _avatarRequest;
+  int _avatarGeneration = 0;
+
+  String get profileAvatarRevision =>
+      user?['avatar_revision'] is String &&
+          RegExp(r'^[a-f0-9]{32}$').hasMatch(user!['avatar_revision'])
+      ? user!['avatar_revision']
+      : 'none';
+  bool get hasProfileAvatar =>
+      user?['has_avatar'] == true && profileAvatarRevision != 'none';
+
+  void clearProfileAvatarMemory() {
+    _avatarGeneration++;
+    _avatarOwner = null;
+    _avatarFamily = _avatarToken = _avatarRevision = null;
+    _avatarBytes = null;
+    _avatarRequest = null;
+  }
+
+  Future<Uint8List> loadProfileAvatar() {
+    if (user == null || !hasProfileAvatar) {
+      return Future.error(ApiError('Kein Profilfoto gespeichert.', 404));
+    }
+    final revision = profileAvatarRevision;
+    if (!identical(_avatarOwner, user) ||
+        _avatarFamily != familyId ||
+        _avatarToken != api.token ||
+        _avatarRevision != revision) {
+      clearProfileAvatarMemory();
+      _avatarOwner = user;
+      _avatarFamily = familyId;
+      _avatarToken = api.token;
+      _avatarRevision = revision;
+    }
+    if (_avatarBytes != null) return Future.value(_avatarBytes!);
+    if (_avatarRequest != null) return _avatarRequest!;
+    final generation = _avatarGeneration;
+    final request = api.profileAvatarBytes(revision);
+    _avatarRequest = request;
+    request.then<void>(
+      (bytes) {
+        if (generation == _avatarGeneration &&
+            identical(_avatarOwner, user) &&
+            _avatarFamily == familyId &&
+            _avatarToken == api.token &&
+            profileAvatarRevision == revision) {
+          _avatarBytes = bytes;
+        }
+      },
+      onError: (Object _, StackTrace _) {
+        if (generation == _avatarGeneration) _avatarRequest = null;
+      },
+    );
+    return request;
+  }
+
+  /// A profile-only projection preserves the session's user-map identity.
+  /// Learning views, drafts and conversations are not a new authentication.
+  bool applyProfileAvatar(
+    Json value, {
+    required Json account,
+    required String? family,
+    required String? token,
+    required String expectedRevision,
+  }) {
+    if (!identical(user, account) ||
+        familyId != family ||
+        api.token != token ||
+        profileAvatarRevision != expectedRevision ||
+        (value['id'] != null && value['id'] != account['id'])) {
+      return false;
+    }
+    final has = value['has_avatar'],
+        revision = value['avatar_revision'],
+        updated = value['avatar_updated_at'];
+    if (has is! bool ||
+        (revision != null &&
+            (revision is! String ||
+                !RegExp(r'^[a-f0-9]{32}$').hasMatch(revision))) ||
+        (has && revision == null) ||
+        (updated != null && (updated is! int || updated < 0))) {
+      return false;
+    }
+    clearProfileAvatarMemory();
+    user!.addAll({
+      'has_avatar': has,
+      'avatar_revision': revision,
+      'avatar_url': has ? '/auth/me/avatar?revision=$revision' : null,
+      'avatar_updated_at': updated,
+    });
+    notifyListeners();
+    return true;
+  }
+
   void refreshState() {
     revision++;
     notifyListeners();
@@ -427,6 +656,7 @@ class AppState extends ChangeNotifier {
     }
     _requireAuthentication(intent);
     collectionViews.clear();
+    clearProfileAvatarMemory();
     user = Map<String, dynamic>.from(response['user']);
     if (response['credentials'] != null) {
       demoCredentials = Map<String, dynamic>.from(response['credentials']);
@@ -500,6 +730,7 @@ class AppState extends ChangeNotifier {
     await LessonVoiceSession.shared.stop();
     if (!currentAccount()) return;
     collectionViews.clear();
+    clearProfileAvatarMemory();
     inbox.clear();
     await push.forget();
     if (!currentAccount()) return;

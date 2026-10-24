@@ -7,6 +7,8 @@ import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/notebook_photo.dart';
+import 'package:schulpilot/notebook_screen.dart';
+import 'package:schulpilot/schulbuddy.dart';
 import 'package:schulpilot/ui.dart';
 
 import 'notebook_test.dart' as n;
@@ -31,19 +33,14 @@ void _minimumTarget(WidgetTester tester, Finder finder) {
   expect(size.height, greaterThanOrEqualTo(48));
 }
 
-void _noGlobalChrome() {
-  expect(find.byType(AppBar), findsNothing);
-  expect(find.byType(NavigationBar), findsNothing);
+void _retainedMobileChrome() {
+  expect(find.byType(AppBar), findsOneWidget);
+  expect(find.byType(NavigationBar), findsOneWidget);
   expect(find.byType(BottomNavigationBar), findsNothing);
-  for (final key in [
-    'workspace-brand-home',
-    'workspace-header',
-    'workspace-home-breadcrumb',
-    'workspace-context-return',
-  ]) {
-    expect(find.byKey(ValueKey(key)), findsNothing);
-  }
-  expect(find.text('SCHULPILOT'), findsNothing);
+  expect(find.byKey(const ValueKey('workspace-brand-home')), findsOneWidget);
+  expect(find.byType(SchulbuddyButton), findsOneWidget);
+  expect(find.byKey(const ValueKey('workspace-header')), findsNothing);
+  expect(find.byKey(const ValueKey('workspace-context-return')), findsNothing);
 }
 
 void _onlyReadRequests(List<http.Request> calls) {
@@ -124,7 +121,7 @@ void main() {
       final (_, _, calls) = await _open(tester, width: width);
       expect(_heading, findsOneWidget);
       expect(find.byType(NotebookPhoto), findsOneWidget);
-      _noGlobalChrome();
+      _retainedMobileChrome();
       final frame = tester.getRect(_frame);
       expect(frame.top, greaterThanOrEqualTo(0));
       expect(frame.top, lessThan(_height * 0.30));
@@ -190,7 +187,7 @@ void main() {
           scale: 2,
           longTitle: true,
         );
-        _noGlobalChrome();
+        _retainedMobileChrome();
         final title = find.descendant(
           of: _heading,
           matching: find.text(_longTitle),
@@ -282,7 +279,7 @@ void main() {
     expect(find.text('200 %'), findsOneWidget);
     await n.tap(tester, find.byTooltip('Schließen'));
     expect(find.byType(InteractiveViewer), findsNothing);
-    _noGlobalChrome();
+    _retainedMobileChrome();
     _onlyReadRequests(calls);
     expect(tester.takeException(), isNull);
   });
@@ -387,7 +384,7 @@ void main() {
   ) async {
     final (_, _, calls) = await _open(tester, width: 1280);
     expect(_heading, findsOneWidget);
-    _noGlobalChrome();
+    _retainedMobileChrome();
     expect(find.byType(NotebookPhoto), findsOneWidget);
     final frame = tester.getRect(_frame);
     expect(frame.top, greaterThanOrEqualTo(0));
@@ -420,93 +417,293 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('browser focus retains the 80px rail and its account action', (
-    tester,
-  ) async {
-    // PageFrame uses kIsWeb, which is false in VM widget tests. Exercise its
-    // browser shell separately instead of nesting artificial workspace shells.
-    tester.view.physicalSize = const Size(1280, _height);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final calls = <http.Request>[];
-    final state =
-        AppState(
-            api: Api(
-              base: 'https://example.invalid/api',
-              client: MockClient((request) async {
-                calls.add(request);
-                expect(request.method, 'GET');
-                return n.jsonReply({'available': false});
-              }),
+  testWidgets(
+    'browser notebook retains the global header, 80px rail and account action',
+    (tester) async {
+      // PageFrame uses kIsWeb, which is false in VM widget tests. Exercise its
+      // browser shell separately instead of nesting artificial workspace shells.
+      tester.view.physicalSize = const Size(1280, _height);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final calls = <http.Request>[];
+      final state =
+          AppState(
+              api: Api(
+                base: 'https://example.invalid/api',
+                client: MockClient((request) async {
+                  calls.add(request);
+                  expect(request.method, 'GET');
+                  return n.jsonReply({'available': false});
+                }),
+              ),
+            )
+            ..user = {
+              'id': 'synthetic-browser-child',
+              'role': 'child',
+              'child_id': 'child',
+              'display_name': 'Beispiel',
+            };
+      final router = GoRouter(
+        initialLocation: '/library/child/subject/${n.mathId}',
+        routes: [
+          GoRoute(
+            path: '/library/:child/subject/:subject',
+            builder: (_, _) => WorkspaceShell(
+              state: state,
+              browser: true,
+              focusContent: true,
+              retainNavigation: true,
+              showTitle: false,
+              title: 'Mathematik',
+              child: const Text('Eigener fokussierter Heftinhalt'),
             ),
-          )
-          ..user = {
-            'id': 'synthetic-browser-child',
-            'role': 'child',
-            'child_id': 'child',
-            'display_name': 'Beispiel',
-          };
-    final router = GoRouter(
-      initialLocation: '/library/child/subject/${n.mathId}',
-      routes: [
-        GoRoute(
-          path: '/library/:child/subject/:subject',
-          builder: (_, _) => WorkspaceShell(
-            state: state,
-            browser: true,
-            focusContent: true,
-            showTitle: false,
-            title: 'Mathematik',
-            child: const Text('Eigener fokussierter Heftinhalt'),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (_, _) => const Scaffold(body: Text('Kontoeinstellungen')),
+          ),
+        ],
+      );
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox());
+        router.dispose();
+        state.inbox.dispose();
+        state.familyCalls.dispose();
+        state.dispose();
+      });
+      await tester.pumpWidget(
+        MaterialApp.router(theme: appTheme(), routerConfig: router),
+      );
+      await tester.pumpAndSettle();
+      final sidebar = find.byKey(const ValueKey('workspace-sidebar'));
+      expect(sidebar, findsOneWidget);
+      final railFace = find
+          .descendant(of: sidebar, matching: find.byType(DecoratedBox))
+          .first;
+      expect(tester.getSize(railFace).width, 80);
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('workspace-brand-home')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('workspace-header')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('workspace-home-breadcrumb')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('workspace-context-return')),
+        findsNothing,
+      );
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
+      final account = find.byTooltip('Konto');
+      _minimumTarget(tester, account);
+      expect(account.hitTestable(), findsOneWidget);
+      await tester.tap(account);
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/settings');
+      expect(find.text('Kontoeinstellungen'), findsOneWidget);
+      _onlyReadRequests(calls);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'other focused pages still omit global navigation without the notebook opt-in',
+    (tester) async {
+      final state =
+          AppState(
+              api: Api(
+                base: 'https://example.invalid/api',
+                client: MockClient(
+                  (_) async => n.jsonReply({'items': [], 'available': false}),
+                ),
+              ),
+            )
+            ..user = {
+              'id': 'synthetic-focus-child',
+              'role': 'child',
+              'child_id': 'child',
+              'display_name': 'Beispiel',
+            };
+      final router = GoRouter(
+        initialLocation: '/focused',
+        routes: [
+          GoRoute(
+            path: '/focused',
+            builder: (_, _) => WorkspaceShell(
+              state: state,
+              browser: false,
+              focusContent: true,
+              title: 'Fokussierte Aufgabe',
+              child: const Text('Aufgabeninhalt'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox());
+        router.dispose();
+        state.inbox.dispose();
+        state.familyCalls.dispose();
+        state.dispose();
+      });
+      await tester.pumpWidget(
+        MaterialApp.router(theme: appTheme(), routerConfig: router),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byKey(const ValueKey('workspace-brand-home')), findsNothing);
+      expect(find.byKey(const ValueKey('workspace-header')), findsNothing);
+      expect(find.text('Aufgabeninhalt'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'a detached Schulbuddy stays floating and opens on the actual notebook route',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, _height);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final calls = <http.Request>[];
+      final png = Uint8List.fromList(
+        img.encodePng(img.Image(width: 24, height: 32)),
+      );
+      final state =
+          AppState(
+              api: Api(
+                base: 'https://example.invalid/api',
+                client: MockClient((request) async {
+                  calls.add(request);
+                  expect(request.method, 'GET');
+                  if (request.url.path.endsWith('/subjects')) {
+                    return n.jsonReply(n.subjects());
+                  }
+                  if (request.url.path.endsWith('/materials')) {
+                    return n.jsonReply(n.pages(request));
+                  }
+                  if (request.url.path.endsWith('/image')) {
+                    return http.Response.bytes(
+                      png,
+                      200,
+                      headers: {'content-type': 'image/png'},
+                    );
+                  }
+                  return n.jsonReply({
+                    'items': [],
+                    'unread_count': 0,
+                    'available': false,
+                    'history': [],
+                    'starters': [],
+                    'notice': 'Künstlicher Bedienkontext ohne Modellaufruf.',
+                  });
+                }),
+              ),
+            )
+            ..user = {
+              'id': 'synthetic-buddy-child',
+              'role': 'child',
+              'child_id': 'child',
+              'display_name': 'Beispiel',
+            };
+      final navigator = GlobalKey<NavigatorState>();
+      final router = GoRouter(
+        navigatorKey: navigator,
+        initialLocation: '/app',
+        routes: [
+          GoRoute(
+            path: '/app',
+            builder: (_, _) => PageFrame(
+              state: state,
+              title: 'Heute',
+              child: const Text('Eigener Startinhalt'),
+            ),
+          ),
+          GoRoute(
+            path: '/library/:id/subject/:subject',
+            builder: (_, route) => NotebookScreen(
+              state,
+              childId: 'child',
+              subjectId: route.pathParameters['subject']!,
+            ),
+          ),
+        ],
+      );
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+        router.dispose();
+        state.inbox.dispose();
+        state.familyCalls.dispose();
+        state.dispose();
+      });
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: appTheme(),
+          routerConfig: router,
+          builder: (_, child) => ListenableBuilder(
+            listenable: router.routeInformationProvider,
+            builder: (_, _) => SchulbuddyHost(
+              state: state,
+              navigatorKey: navigator,
+              location: router.routeInformationProvider.value.uri.toString(),
+              child: child!,
+            ),
           ),
         ),
-        GoRoute(
-          path: '/settings',
-          builder: (_, _) => const Scaffold(body: Text('Kontoeinstellungen')),
-        ),
-      ],
-    );
-    addTearDown(() async {
-      await tester.pumpWidget(const SizedBox());
-      router.dispose();
-      state.inbox.dispose();
-      state.familyCalls.dispose();
-      state.dispose();
-    });
-    await tester.pumpWidget(
-      MaterialApp.router(theme: appTheme(), routerConfig: router),
-    );
-    await tester.pumpAndSettle();
-    final sidebar = find.byKey(const ValueKey('workspace-sidebar'));
-    expect(sidebar, findsOneWidget);
-    final railFace = find
-        .descendant(of: sidebar, matching: find.byType(DecoratedBox))
-        .first;
-    expect(tester.getSize(railFace).width, 80);
-    expect(find.byType(NavigationRail), findsOneWidget);
-    expect(find.byKey(const ValueKey('workspace-brand-home')), findsOneWidget);
-    expect(find.byKey(const ValueKey('workspace-header')), findsNothing);
-    expect(
-      find.byKey(const ValueKey('workspace-home-breadcrumb')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('workspace-context-return')),
-      findsNothing,
-    );
-    expect(find.byType(AppBar), findsNothing);
-    expect(find.byType(NavigationBar), findsNothing);
-    final account = find.byTooltip('Konto');
-    _minimumTarget(tester, account);
-    expect(account.hitTestable(), findsOneWidget);
-    await tester.tap(account);
-    await tester.pumpAndSettle();
-    expect(router.routeInformationProvider.value.uri.path, '/settings');
-    expect(find.text('Kontoeinstellungen'), findsOneWidget);
-    _onlyReadRequests(calls);
-    expect(tester.takeException(), isNull);
-  });
+      );
+      await tester.pumpAndSettle();
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byTooltip('Schulbuddy öffnen')),
+      );
+      await gesture.moveTo(const Offset(90, 410));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+      final floating = find.byKey(const ValueKey('schulbuddy-floating-open'));
+      expect(floating.hitTestable(), findsOneWidget);
+      final before = tester.getRect(floating);
+      expect(
+        calls.where((request) => request.url.path.contains('/schulbuddy/')),
+        isEmpty,
+      );
+      router.go('/library/child/subject/${n.mathId}');
+      await tester.pumpAndSettle();
+      expect(_heading, findsOneWidget);
+      expect(find.byType(NotebookPhoto), findsOneWidget);
+      _retainedMobileChrome();
+      expect(tester.getRect(floating), before);
+      expect(floating.hitTestable(), findsOneWidget);
+      expect(find.byTooltip('Schulbuddy öffnen'), findsOneWidget);
+      expect(
+        calls.where((request) => request.url.path.contains('/schulbuddy/')),
+        isEmpty,
+      );
+      await tester.tap(floating);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Schulbuddy schließen'), findsOneWidget);
+      expect(floating, findsNothing);
+      final contexts = calls
+          .where((request) => request.url.path.endsWith('/schulbuddy/context'))
+          .toList();
+      expect(contexts, hasLength(1));
+      expect(contexts.single.url.queryParameters['page_kind'], 'notebooks');
+      await tester.tap(find.byTooltip('Schulbuddy schließen'));
+      await tester.pumpAndSettle();
+      expect(floating.hitTestable(), findsOneWidget);
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/library/child/subject/${n.mathId}',
+      );
+      _onlyReadRequests(calls);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('parent notebook keeps its complete workspace at 390px', (
     tester,

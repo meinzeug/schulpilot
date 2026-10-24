@@ -1140,6 +1140,7 @@ class _NotebookScreenState extends State<_NotebookContext>
         renderedRoute?.isCurrent == true;
     return PageFrame(
       focusContent: compactNotebook,
+      retainNavigation: true,
       state: widget.state,
       title: subject?['title'] ?? 'Dein Hefter',
       showTitle: false,

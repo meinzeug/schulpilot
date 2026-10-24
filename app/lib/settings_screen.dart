@@ -20,6 +20,7 @@ import 'page_tools.dart';
 import 'google_login.dart';
 import 'public_trial.dart';
 import 'settings_reading_tools.dart';
+import 'profile_photo_settings.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState state;
@@ -273,6 +274,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     state.user?['username'] ?? '',
                     style: TextStyle(color: context.palette.muted),
+                  ),
+                  const SizedBox(height: 18),
+                  ProfilePhotoSettings(
+                    state,
+                    key: ValueKey((
+                      ObjectKey(state),
+                      ObjectKey(state.user),
+                      state.familyId,
+                      state.api.token,
+                    )),
                   ),
                   const SizedBox(height: 18),
                   ActionButton(

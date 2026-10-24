@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'page_tools.dart';
+import 'profile_avatar.dart';
 import 'app_palette.dart';
 export 'app_palette.dart';
 import 'download_panel.dart';
@@ -1085,6 +1086,7 @@ class PageFrame extends StatelessWidget {
   final List<Widget> actions;
   final bool showTitle;
   final bool focusContent;
+  final bool retainNavigation;
   const PageFrame({
     super.key,
     required this.state,
@@ -1094,6 +1096,7 @@ class PageFrame extends StatelessWidget {
     this.actions = const [],
     this.showTitle = true,
     this.focusContent = false,
+    this.retainNavigation = false,
   });
 
   @override
@@ -1106,6 +1109,7 @@ class PageFrame extends StatelessWidget {
       actions: actions,
       showTitle: showTitle,
       focusContent: focusContent,
+      retainNavigation: retainNavigation,
       browser: kIsWeb,
       child: child,
     ),
@@ -1121,6 +1125,7 @@ class WorkspaceShell extends StatefulWidget {
   final List<Widget> actions;
   final bool showTitle;
   final bool focusContent;
+  final bool retainNavigation;
   final bool browser;
 
   const WorkspaceShell({
@@ -1133,6 +1138,7 @@ class WorkspaceShell extends StatefulWidget {
     this.actions = const [],
     this.showTitle = true,
     this.focusContent = false,
+    this.retainNavigation = false,
   });
 
   @override
@@ -1569,6 +1575,8 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     final rail = browser && !sidebar && width >= 720;
     final desktop = sidebar || rail;
     final focusedMobile = widget.focusContent && !desktop;
+    // A compact notebook still belongs to the app's normal navigation shell.
+    final hideNavigation = focusedMobile && !widget.retainNavigation;
     final path = GoRouterState.of(context).uri.path;
     final entries = _entries(sidebar: sidebar);
     final selected = _selected(entries, path);
@@ -1627,10 +1635,11 @@ class _WorkspaceShellState extends State<WorkspaceShell>
         child: Stack(
           children: [
             Scaffold(
-              appBar: desktop || focusedMobile
+              appBar: desktop || hideNavigation
                   ? null
                   : AppBar(
-                      leading: returnEntry == null
+                      automaticallyImplyLeading: !focusedMobile,
+                      leading: returnEntry == null || focusedMobile
                           ? null
                           : IconButton(
                               tooltip: 'Zu ${returnEntry.$2}',
@@ -1667,7 +1676,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                         SizedBox(width: 8),
                       ],
                     ),
-              bottomNavigationBar: desktop || focusedMobile
+              bottomNavigationBar: desktop || hideNavigation
                   ? null
                   : SafeArea(
                       top: false,
@@ -1748,7 +1757,8 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                     Expanded(
                       child: Column(
                         children: [
-                          if (desktop && !widget.focusContent)
+                          if (desktop &&
+                              (!widget.focusContent || widget.retainNavigation))
                             _WorkspaceHeader(
                               state: state,
                               roleLabel: _roleLabel,
@@ -2595,12 +2605,7 @@ class _AccountMenuState extends State<AccountMenu> {
     final snapshot = state.user;
     final rawName = (state.user?['display_name'] as String?)?.trim();
     final name = rawName == null || rawName.isEmpty ? 'Konto' : rawName;
-    final avatar = CircleAvatar(
-      radius: 17,
-      backgroundColor: context.palette.mint,
-      foregroundColor: context.palette.teal,
-      child: Text(name.characters.first.toUpperCase()),
-    );
+    final avatar = ProfileAvatar(state, size: 36);
     return MenuAnchor(
       controller: _menu,
       crossAxisUnconstrained: false,
@@ -2947,22 +2952,19 @@ class _NotificationBellState extends State<NotificationBell> {
             child: Text('Alle anzeigen'),
           ),
         ],
-        builder: (context, menu, _) => IconButton.outlined(
+        builder: (context, menu, _) => IconButton(
           key: ValueKey('notification-bell'),
           tooltip: state.isAdmin ? 'Push-Status' : 'Benachrichtigungen',
           style:
               IconButton.styleFrom(
-                backgroundColor: context.palette.surfaceLow,
+                minimumSize: const Size(48, 48),
+                backgroundColor: Colors.transparent,
                 foregroundColor: context.palette.ink,
-                side: BorderSide(color: context.palette.controlBorder),
               ).copyWith(
                 side: WidgetStateProperty.resolveWith(
-                  (states) => BorderSide(
-                    color: states.contains(WidgetState.focused)
-                        ? context.palette.teal
-                        : context.palette.controlBorder,
-                    width: states.contains(WidgetState.focused) ? 2.5 : 1,
-                  ),
+                  (states) => states.contains(WidgetState.focused)
+                      ? BorderSide(color: context.palette.teal, width: 2)
+                      : BorderSide.none,
                 ),
               ),
           onPressed: () => menu.isOpen ? menu.close() : menu.open(),
@@ -2980,7 +2982,12 @@ class _NotificationBellState extends State<NotificationBell> {
                   '${state.inbox.unread > 99 ? '99+' : state.inbox.unread}',
                 ),
               ),
-              child: Icon(Icons.notifications_none_rounded),
+              child: Image.asset(
+                'assets/brand/schulpilot-bell-header.png',
+                width: 36,
+                height: 36,
+                excludeFromSemantics: true,
+              ),
             ),
           ),
         ),

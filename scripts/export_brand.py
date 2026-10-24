@@ -6,6 +6,15 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 MASTER = Path("app/assets/brand/schulpilot-ai-105.png")
+STARTUP_MASTER = Path("app/assets/brand/schulpilot-startup-105.png")
+STARTUP_EXPORTS = frozenset(
+    {
+        "app/web/brand.png",
+        "app/assets/brand/schulpilot-startup.png",
+        "app/android/app/src/main/res/drawable-nodpi/schulpilot_logo.png",
+        "app/android/app/src/main/res/drawable-nodpi/schulpilot_splash_logo.png",
+    }
+)
 TRANSPARENT = (0, 0, 0, 0)
 BACKGROUND = (16, 30, 36, 255)
 
@@ -14,6 +23,7 @@ BACKGROUND = (16, 30, 36, 255)
 EXPORTS = (
     ("app/assets/brand/schulpilot-mark.png", 512, 1, TRANSPARENT),
     ("app/web/brand.png", 512, 1, TRANSPARENT),
+    ("app/assets/brand/schulpilot-startup.png", 512, 1, TRANSPARENT),
     ("app/web/favicon.png", 64, 0.82, TRANSPARENT),
     ("app/web/icons/icon-192.png", 192, 0.78, BACKGROUND),
     ("app/web/icons/icon-512.png", 512, 0.78, BACKGROUND),
@@ -35,18 +45,23 @@ EXPORTS = (
 
 def export_brand(root=ROOT):
     root = Path(root)
-    with Image.open(root / MASTER) as source:
-        if source.format != "PNG" or source.mode != "RGBA":
-            raise ValueError("The brand master must be an RGBA PNG with its original transparency.")
-        mark = source.copy()
-    minimum, maximum = mark.getchannel("A").getextrema()
-    if minimum != 0 or maximum == 0:
-        raise ValueError("The brand master must contain both transparent and visible pixels.")
+    marks = {}
+    # Both originals are checked before any existing platform PNG is replaced.
+    for master in (MASTER, STARTUP_MASTER):
+        with Image.open(root / master) as source:
+            if source.format != "PNG" or source.mode != "RGBA":
+                raise ValueError("The brand master must be an RGBA PNG with its original transparency.")
+            mark = source.copy()
+        minimum, maximum = mark.getchannel("A").getextrema()
+        if minimum != 0 or maximum == 0:
+            raise ValueError("The brand master must contain both transparent and visible pixels.")
+        marks[master] = mark
 
     exported = []
     for relative, size, fraction, background in EXPORTS:
         canvas = Image.new("RGBA", (size, size), background)
-        icon = mark.copy()
+        master = STARTUP_MASTER if relative in STARTUP_EXPORTS else MASTER
+        icon = marks[master].copy()
         icon.thumbnail((round(size * fraction), round(size * fraction)), Image.Resampling.LANCZOS)
         canvas.alpha_composite(icon, ((size - icon.width) // 2, (size - icon.height) // 2))
         path = root / relative

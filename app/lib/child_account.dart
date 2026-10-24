@@ -12,6 +12,7 @@ import 'child_photo_preview.dart';
 import 'download_panel.dart';
 import 'notification_panel.dart';
 import 'ui.dart';
+import 'profile_photo_settings.dart';
 
 class ChildAccount extends StatefulWidget {
   final AppState state;
@@ -370,6 +371,18 @@ class _ChildAccountState extends State<ChildAccount> {
                 SizedBox(
                   height: MediaQuery.sizeOf(context).width < 720 ? 8 : 24,
                 ),
+                Panel(
+                  child: ProfilePhotoSettings(
+                    state,
+                    key: ValueKey((
+                      ObjectKey(state),
+                      ObjectKey(state.user),
+                      state.familyId,
+                      state.api.token,
+                    )),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 ChildSectionTabs(
                   tabs: const [
                     (

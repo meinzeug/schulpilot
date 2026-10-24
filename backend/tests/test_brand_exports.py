@@ -8,28 +8,39 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from scripts.export_brand import BACKGROUND, EXPORTS, MASTER, TRANSPARENT, export_brand
+from scripts.export_brand import (
+    BACKGROUND,
+    EXPORTS,
+    MASTER,
+    STARTUP_EXPORTS,
+    STARTUP_MASTER,
+    TRANSPARENT,
+    export_brand,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def master_at(root):
-    path = root / MASTER
-    path.parent.mkdir(parents=True)
-    source = Image.new("RGBA", (640, 480), (35, 150, 220, 255))
-    source.putpixel((0, 0), (35, 150, 220, 0))
-    source.save(path)
-    return path
+    for relative, colour in [(MASTER, (35, 150, 220, 255)), (STARTUP_MASTER, (180, 60, 210, 255))]:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        source = Image.new("RGBA", (640, 480), colour)
+        source.putpixel((0, 0), (*colour[:3], 0))
+        source.save(path)
+    return root / MASTER
 
 
 def test_export_preserves_original_bytes_alpha_and_full_canvas_proportions(tmp_path):
     source = master_at(tmp_path)
     before = source.read_bytes()
+    startup_before = (tmp_path / STARTUP_MASTER).read_bytes()
     with Image.open(source) as image:
         before_alpha = image.getchannel("A").tobytes()
     paths = export_brand(tmp_path)
-    assert len(paths) == len(EXPORTS) == 16
+    assert len(paths) == len(EXPORTS) == 17
     assert source.read_bytes() == before
+    assert (tmp_path / STARTUP_MASTER).read_bytes() == startup_before
     with Image.open(source) as image:
         assert image.getchannel("A").tobytes() == before_alpha
     for relative, size, _, background in EXPORTS:
@@ -48,13 +59,30 @@ def test_export_preserves_original_bytes_alpha_and_full_canvas_proportions(tmp_p
     assert first == second
 
 
+@pytest.mark.parametrize("master", [MASTER, STARTUP_MASTER])
 @pytest.mark.parametrize("alpha", [0, 255])
-def test_invalid_master_does_not_partially_replace_exports(tmp_path, alpha):
-    source = master_at(tmp_path)
+def test_invalid_master_does_not_partially_replace_exports(tmp_path, alpha, master):
+    master_at(tmp_path)
+    source = tmp_path / master
     Image.new("RGBA", (32, 32), (35, 150, 220, alpha)).save(source)
     with pytest.raises(ValueError, match="transparent and visible"):
         export_brand(tmp_path)
     assert not (tmp_path / "app/web/brand.png").exists()
+
+
+def test_header_and_installable_icons_use_head_while_startup_targets_use_full_robot(tmp_path):
+    master_at(tmp_path)
+    export_brand(tmp_path)
+    assert STARTUP_EXPORTS == {
+        "app/web/brand.png",
+        "app/assets/brand/schulpilot-startup.png",
+        "app/android/app/src/main/res/drawable-nodpi/schulpilot_logo.png",
+        "app/android/app/src/main/res/drawable-nodpi/schulpilot_splash_logo.png",
+    }
+    for relative, size, _, _ in EXPORTS:
+        with Image.open(tmp_path / relative) as image:
+            expected = (180, 60, 210, 255) if relative in STARTUP_EXPORTS else (35, 150, 220, 255)
+            assert image.getpixel((size // 2, size // 2)) == expected
 
 
 def test_platform_masks_keep_complete_foreground_inside_safe_circles(tmp_path):
@@ -109,3 +137,28 @@ def test_web_startup_keeps_local_role_safe_entry_and_accessible_loading_fallback
     assert "#" + bytes(BACKGROUND[:3]).hex() == manifest["theme_color"].lower()
     outputs = {relative for relative, *_ in EXPORTS}
     assert all("app/web/" + icon["src"] in outputs for icon in manifest["icons"])
+
+
+def test_startup_sheet_has_eight_equal_uv_cells_with_complete_transparent_figures():
+    path = ROOT / "app/assets/brand/schulpilot-startup-frames-105.png"
+    with Image.open(path) as image:
+        assert image.format == "PNG" and image.mode == "RGBA"
+        assert image.width == image.height * 2
+        assert image.getchannel("A").getextrema() == (0, 255)
+        # Fractional equal UV cells are intentional; artwork has clear margins,
+        # so a half-pixel source boundary cannot clip or leak another figure.
+        for row in range(2):
+            for column in range(4):
+                bounds = (
+                    column * image.width // 4,
+                    row * image.height // 2,
+                    (column + 1) * image.width // 4,
+                    (row + 1) * image.height // 2,
+                )
+                cell = image.crop(bounds)
+                alpha = cell.getchannel("A")
+                box = alpha.point(lambda value: 255 if value >= 32 else 0).getbbox()
+                assert box is not None
+                assert 0 < box[0] < box[2] < cell.width
+                assert 0 < box[1] < box[3] < cell.height
+                assert alpha.histogram()[0] > 0

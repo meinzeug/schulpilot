@@ -5,18 +5,18 @@ import 'package:flutter/services.dart';
 
 const brandStartupBackground = Color(0xFF101E24);
 
-/// Android's static native launch screen hands over to this finite intro.
+/// The dark web/native launch surface hands over to this finite intro.
 /// The real app is only created afterwards: no hidden learning route, activity
 /// timer, notification navigation or provider request runs behind the logo.
-class AndroidBrandStartup extends StatefulWidget {
+class BrandStartup extends StatefulWidget {
   final Widget Function(String? pendingPlatformLocation) application;
-  const AndroidBrandStartup({super.key, required this.application});
+  const BrandStartup({super.key, required this.application});
 
   @override
-  State<AndroidBrandStartup> createState() => _AndroidBrandStartupState();
+  State<BrandStartup> createState() => _BrandStartupState();
 }
 
-class _AndroidBrandStartupState extends State<AndroidBrandStartup>
+class _BrandStartupState extends State<BrandStartup>
     with WidgetsBindingObserver {
   bool _finished = false;
   bool _applicationVisible = false;
@@ -101,7 +101,7 @@ class _BrandIntroState extends State<_BrandIntro>
   late final AnimationController _motion =
       AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 1450),
+        duration: const Duration(milliseconds: 2200),
       )..addStatusListener((status) {
         if (status == AnimationStatus.completed) widget.onFinished();
       });
@@ -173,9 +173,21 @@ class _BrandIntroState extends State<_BrandIntro>
                   final appear = Curves.easeOutCubic.transform(
                     (t / .45).clamp(0.0, 1.0),
                   );
-                  final nod = math.sin(
-                    ((t - .2) / .7).clamp(0.0, 1.0) * math.pi * 2,
-                  );
+                  final frame = t < .12
+                      ? 0
+                      : t < .23
+                      ? 1
+                      : t < .32
+                      ? 2
+                      : t < .42
+                      ? 3
+                      : t < .53
+                      ? 4
+                      : t < .65
+                      ? 5
+                      : t < .8
+                      ? 6
+                      : 7;
                   final wordmark = Curves.easeOut.transform(
                     ((t - .22) / .4).clamp(0.0, 1.0),
                   );
@@ -184,29 +196,19 @@ class _BrandIntroState extends State<_BrandIntro>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Transform.translate(
-                          offset: Offset(0, 8 * (1 - appear)),
-                          child: Transform.rotate(
-                            angle: nod * .045,
-                            child: Transform.scale(
-                              scale: .7 + .3 * appear,
-                              child: TextButton(
-                                key: const ValueKey('brand-startup-skip'),
-                                onPressed: widget.onFinished,
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  fixedSize: Size.square(size),
-                                ),
-                                child: Semantics(
-                                  label: 'SCHULPILOT öffnen',
-                                  excludeSemantics: true,
-                                  child: Image.asset(
-                                    'assets/brand/schulpilot-mark.png',
-                                    width: size,
-                                    height: size,
-                                  ),
-                                ),
-                              ),
+                        Transform.scale(
+                          scale: .96 + .04 * appear,
+                          child: TextButton(
+                            key: const ValueKey('brand-startup-skip'),
+                            onPressed: widget.onFinished,
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              fixedSize: Size.square(size),
+                            ),
+                            child: Semantics(
+                              label: 'SCHULPILOT öffnen',
+                              excludeSemantics: true,
+                              child: _StartupFrames(size: size, frame: frame),
                             ),
                           ),
                         ),
@@ -258,6 +260,57 @@ class _BrandIntroState extends State<_BrandIntro>
               ),
             );
           },
+        ),
+      ),
+    ),
+  );
+}
+
+/// Eight authored poses, in reading order on a transparent 4 × 2 sheet.
+/// The clip uses equal UV cells, preserving fractional source dimensions.
+class _StartupFrames extends StatelessWidget {
+  final double size;
+  final int frame;
+  const _StartupFrames({required this.size, required this.frame});
+
+  Widget fallback() => Transform.translate(
+    offset: Offset((frame % 4) * size, (frame ~/ 4) * size),
+    child: Align(
+      alignment: Alignment.topLeft,
+      child: Image.asset(
+        'assets/brand/schulpilot-startup.png',
+        width: size,
+        height: size,
+        excludeFromSemantics: true,
+        errorBuilder: (_, _, _) => SizedBox.square(dimension: size),
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: ClipRect(
+      child: OverflowBox(
+        alignment: Alignment.topLeft,
+        minWidth: size * 4,
+        maxWidth: size * 4,
+        minHeight: size * 2,
+        maxHeight: size * 2,
+        child: Transform.translate(
+          key: const ValueKey('brand-startup-sprite'),
+          offset: Offset(-(frame % 4) * size, -(frame ~/ 4) * size),
+          child: Image.asset(
+            'assets/brand/schulpilot-startup-frames-105.png',
+            width: size * 4,
+            height: size * 2,
+            fit: BoxFit.fill,
+            excludeFromSemantics: true,
+            // Decode errors must not block a sign-in link or app startup.
+            errorBuilder: (_, _, _) => fallback(),
+            frameBuilder: (context, child, imageFrame, synchronous) =>
+                imageFrame == null ? fallback() : child,
+          ),
         ),
       ),
     ),

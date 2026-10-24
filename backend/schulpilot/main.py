@@ -39,6 +39,7 @@ from . import (
     parent_plans,
     payment_documents,
     payments_paypal,
+    profile_images,
     public_privacy,
     releases,
     routing_admin,
@@ -78,6 +79,8 @@ app = FastAPI(
 
 def request_body_limit(path: str) -> int:
     """One policy for declared and received sizes, including multipart overhead."""
+    if path == "/api/auth/me/avatar":
+        return 6 * 1024 * 1024
     if path.startswith("/api/children/"):
         if path.endswith("/materials"):
             return 12 * 1024 * 1024
@@ -252,6 +255,7 @@ def legal():
 for router in (
     operations_router,
     auth.router,
+    profile_images.router,
     google_login.router,
     installation.router,
     families.router,

@@ -192,6 +192,19 @@ void _resume(WidgetTester tester) {
   }
 }
 
+Rect _globalSemanticRect(WidgetTester tester, Finder finder) {
+  final node = tester.getSemantics(finder);
+  var rect = node.rect;
+  for (var current = node; ;) {
+    if (current.transform != null) {
+      rect = MatrixUtils.transformRect(current.transform!, rect);
+    }
+    final parent = current.parent;
+    if (parent == null) return rect;
+    current = parent;
+  }
+}
+
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
@@ -211,6 +224,29 @@ void main() {
       expect(h.answer.text, 'Mein unveränderter eigener Entwurf');
       expect(h.calls, isEmpty);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'floating semantic hit target follows its actual painted position',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await _mount(tester);
+        final gesture = await tester.startGesture(tester.getCenter(_header));
+        await gesture.moveTo(const Offset(330, 520));
+        await tester.pump();
+        await gesture.up();
+        await tester.pumpAndSettle();
+        final painted = tester.getRect(_floating);
+        final accessible = _globalSemanticRect(tester, _floating);
+        expect(accessible.left, closeTo(painted.left, .01));
+        expect(accessible.top, closeTo(painted.top, .01));
+        expect(accessible.width, closeTo(painted.width, .01));
+        expect(accessible.height, closeTo(painted.height, .01));
+      } finally {
+        semantics.dispose();
+      }
     },
   );
 
