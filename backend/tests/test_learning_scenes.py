@@ -9,6 +9,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from package_output_helpers import PackageOutputCapture
 from pydantic import ValidationError
 from schulpilot import providers
 from schulpilot.answer_evaluation import evaluate
@@ -51,7 +52,11 @@ def test_every_subject_can_compose_a_scene_without_weakening_other_profiles():
     for subject, kinds in PROFILES.items():
         assert "scene" in kinds
         schema = bind_graphic_schema(providers.strict_schema(UnitOutput, preserve_limits=True), [subject])
-        assert set(schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]) == set(kinds)
+        assert set(schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]) == set(kinds) - {"lab"}
+        lab_schema = bind_graphic_schema(
+            providers.strict_schema(UnitOutput, preserve_limits=True), [subject], labs_enabled=True
+        )
+        assert set(lab_schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]) == set(kinds)
     assert "molecule" not in PROFILES["Geschichte"]
     assert "scene" in generation_context(["Geschichte"])["graphic_kinds"]
     assert "scene:" in rules_for(["Geschichte"])
@@ -277,6 +282,7 @@ def _config(provider):
 
 
 def _transport(monkeypatch, provider, response, calls):
+    output = PackageOutputCapture(monkeypatch)
     class Client:
         def __init__(self, **kwargs):
             pass
@@ -289,15 +295,18 @@ def _transport(monkeypatch, provider, response, calls):
 
         def post(self, url, **kwargs):
             calls.append(kwargs["json"])
+            data = output.wire(response)
+            if output.binding is not None:
+                calls[-1]["_package_schema"] = output.binding.canonical_schema
             usage = {"input_tokens": 200, "output_tokens": 500, "prompt_tokens": 200, "completion_tokens": 500}
             if provider == "openai":
                 envelope = {"status": "completed", "usage": usage, "output": [{"type": "message",
-                            "content": [{"type": "output_text", "text": json.dumps(response)}]}]}
+                            "content": [{"type": "output_text", "text": json.dumps(data)}]}]}
             elif provider == "openrouter":
                 envelope = {"usage": usage, "choices": [{"finish_reason": "stop",
-                            "message": {"content": json.dumps(response)}}]}
+                            "message": {"content": json.dumps(data)}}]}
             else:
-                envelope = {"usage": usage, "data": response}
+                envelope = {"usage": usage, "data": data}
             return httpx.Response(200, json=envelope)
 
     monkeypatch.setattr(providers.httpx, "Client", Client)
@@ -509,7 +518,7 @@ def test_normal_compact_ai_rounds_can_emit_small_source_bound_matching(monkeypat
     assert actual["options"] == unit["questions"][0]["options"]
     assert actual["answer"] == "Säugetier;Insekt" and actual["accepted"] == []
     assert evaluate(actual, "Insekt;Säugetier")["outcome"] == "incorrect"
-    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    schema = calls[0].get("_package_schema", calls[0]["response_format"]["json_schema"]["schema"])
     definitions = schema["$defs"]
     name = "GroundedQuestion" if context == "package" else "PracticeQuestion" if context == "coach" else "Question"
     from schema_helpers import package_questions, resolved
@@ -591,7 +600,7 @@ def test_codex_factual_packages_keep_the_previous_choice_short_permission(monkey
     unit, source = _matching_unit()
     calls = []
     _transport(monkeypatch, "codex", {"units": [{**unit, "group_id": "g1"}]}, calls)
-    with pytest.raises(providers.ProviderError, match="Antwortvarianten"):
+    with pytest.raises(providers.ProviderError, match="angeforderten Ausgabeformat"):
         providers.request_provider(_config("codex"), "package", {
             "selected_groups": [{"id": "g1", "subject": "Biologie", "estimated_minutes": 5}],
             "materials": [{"group_id": "g1", "subject": "Biologie", "topic": "Tierklassen", "content": source}],
@@ -599,7 +608,7 @@ def test_codex_factual_packages_keep_the_previous_choice_short_permission(monkey
     assert len(calls) == 1
     from schema_helpers import package_questions
 
-    branches = package_questions(calls[0]["schema"])
+    branches = package_questions(calls[0].get("_package_schema", calls[0]["schema"]))
     assert {kind for branch in branches for kind in branch["properties"]["type"]["enum"]} == {"choice", "short"}
 
 

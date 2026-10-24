@@ -15,6 +15,7 @@ import 'notification_panel.dart';
 import 'parent_workspace_ui.dart';
 import 'parent_profile_dialog.dart';
 import 'parent_goal_reminders.dart';
+import 'curriculum_profile_dialog.dart';
 import 'parent_export_dialog.dart';
 import 'parent_operator_audit.dart';
 import 'ui.dart';
@@ -684,6 +685,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               state,
                               childId: child['id'],
                               childName: child['display_name'],
+                            ),
+                            const SizedBox(height: 8),
+                            CurriculumProfileButton(
+                              state,
+                              childId: child['id'],
+                              childName: child['display_name'],
+                              onSaved: () {
+                                if (scope.current) {
+                                  refresh();
+                                }
+                              },
                             ),
                             const SizedBox(height: 12),
                             ActionButton(
@@ -1593,6 +1605,7 @@ class _AdminScreenState extends State<AdminScreen> {
       icon: Icon(Icons.more_horiz_rounded),
       onSelected: (route) => openRoute(context, route),
       itemBuilder: (_) => const [
+        PopupMenuItem(value: '/admin/users', child: Text('Benutzer verwalten')),
         PopupMenuItem(
           value: '/admin/settings',
           child: Text('Betriebseinstellungen'),

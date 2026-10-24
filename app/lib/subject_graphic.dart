@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'fraction_explorer.dart';
 import 'learning_graphic_frame.dart';
 import 'learning_scene_player.dart';
 import 'science_graphic.dart';
+import 'learning_lab.dart';
 import 'text_probe_player.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
@@ -43,6 +45,8 @@ class SubjectPresentation extends StatelessWidget {
             LearningGraphicScope(
               index: entry.$1,
               phase: scope.index == entry.$1 ? scope.phase : 'initial',
+              labView: scope.index == entry.$1 ? scope.labView : null,
+              onLabChanged: scope.onLabChanged,
               onChanged: scope.onChanged,
               buddyReferences: scope.buddyReferences,
               child: SubjectGraphic(
@@ -228,6 +232,9 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
+    if (kind == 'lab') {
+      return LearningLab(block, state: state, action: action);
+    }
     if (kind == 'text_probe') {
       return TextProbePlayer(block, state: state, action: action);
     }
@@ -1280,12 +1287,61 @@ class _ExplanationZoomGraphicState extends State<_ExplanationZoomGraphic> {
   late String phase = widget.scope.index == widget.index
       ? widget.scope.phase
       : 'initial';
+  Json? labView;
+  bool labChanged = false;
+  ModalRoute<dynamic>? ownRoute;
+  @override
+  void initState() {
+    super.initState();
+    labView = widget.scope.index == widget.index ? widget.scope.labView : null;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    ownRoute = ModalRoute.of(context);
+  }
+
+  @override
+  void dispose() {
+    final value = labView == null ? null : Json.from(labView!);
+    final callback = widget.scope.onLabChanged,
+        index = widget.index,
+        closed = ownRoute;
+    if (labChanged && value != null && callback != null) {
+      Future<void>(() async {
+        if (closed != null) {
+          await closed.completed;
+        }
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => callback(index, value, true),
+        );
+        WidgetsBinding.instance.ensureVisualUpdate();
+      });
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final refs = widget.scope.buddyReferences;
     Widget body = LearningGraphicScope(
       index: widget.index,
       phase: phase,
+      labView: labView,
+      onLabChanged: (index, value, persist) {
+        if (!mounted || ModalRoute.of(context)?.isCurrent == false) {
+          return;
+        }
+        setState(() {
+          labView = Json.from(value);
+          labChanged = labChanged || persist;
+        });
+        // Keep the covered explanation's RAM/Tutor snapshot coherent, but do
+        // not queue a position write while this owned zoom route is open.
+        // The final current snapshot is committed once after route.completed.
+        widget.scope.onLabChanged?.call(index, value, false);
+      },
       buddyReferences: refs,
       onChanged: (index, value) {
         if (!mounted || ModalRoute.of(context)?.isCurrent == false) return;
@@ -1313,6 +1369,7 @@ class _ExplanationZoomGraphicState extends State<_ExplanationZoomGraphic> {
           ...refs,
           'graphic_index': '${widget.index}',
           'graphic_phase': phase,
+          if (labView != null) 'lab_view': jsonEncode(labView),
         }),
         child: body,
       );

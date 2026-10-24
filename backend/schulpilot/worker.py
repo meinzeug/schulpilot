@@ -192,6 +192,10 @@ def process(job_id):
                     return
             elif job.kind == "unit":
                 source_pages = unit_sources(db, job)
+                if not source_pages and material:
+                    # The same already checked single source must reach visual,
+                    # curriculum and entry validation before dispatch as well.
+                    source_pages = [material]
             config = job_config(db, job, job.kind)
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage and (
@@ -232,6 +236,7 @@ def process(job_id):
             ]
             payload = {
                 "function": job.kind,
+                **({"labs_enabled": True} if job.kind in ("unit", "package") and job.payload.get("labs_enabled") else {}),
                 "grade": child.grade,
                 "material": {"subject": material.subject, "topic": material.topic, "content": material.content,
                              "uncertainties": material.uncertainties}
@@ -635,6 +640,9 @@ def maintenance():
         period_cutoff = datetime.fromtimestamp(now() - 90 * 86400, timezone.utc).strftime("%Y-%m")
         db.execute(delete(ChildCostBucket).where(ChildCostBucket.period < period_cutoff))
         db.execute(delete(Audit).where(Audit.created < int(now()) - 180 * 86400))
+        from .admin_users import purge_expired as purge_admin_user_operations
+
+        purge_admin_user_operations(db)
         current_month = datetime.now(timezone.utc)
         oldest_period = f"{current_month.year - 1:04d}-{current_month.month:02d}"
         for bucket in db.scalars(select(UsageBucket)):

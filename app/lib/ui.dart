@@ -1540,6 +1540,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
         state.isChild ? '/exams/${state.user!['child_id']}' : '/exams',
       ),
     if (state.isAdmin) ...[
+      (Icons.manage_accounts_outlined, 'Benutzer', '/admin/users'),
       (Icons.tune_rounded, 'Einrichtung', '/admin/settings'),
       (Icons.storefront_outlined, 'Verkauf', '/admin/verkauf'),
       (Icons.notifications_outlined, 'Push', '/admin/push'),

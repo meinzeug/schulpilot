@@ -1135,7 +1135,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     if visual_functions and "Presentation" in schema.get("$defs", {}):
         schema["$defs"]["Presentation"]["properties"]["blocks"]["maxItems"] = 2
     if visual_functions:
-        subject_content.bind_graphic_schema(schema, subjects)
+        subject_content.bind_graphic_schema(schema, subjects, labs_enabled=bool(payload.get("labs_enabled")))
     if function == "coach" and payload.get("learning_goals"):
         # Partial/legacy assignment still needs a closed set. Previously only
         # fully assigned questions omitted the model-selected ID; a model could
@@ -1536,7 +1536,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         content_context = subject_content.generation_context(subjects, schema=schema, compact_matching=compact_openrouter)
         payload = {**payload, "content_context": content_context}
-        instructions += subject_content.rules_for(subjects) + CAPABILITY_RULES
+        instructions += subject_content.rules_for(subjects, labs_enabled=bool(payload.get("labs_enabled"))) + CAPABILITY_RULES
         if "grouped" in content_context["question_types"]:
             instructions += subject_content.grouped_questions.RULES
         if "matching" in content_context:
@@ -1564,6 +1564,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         instructions += exam_transport_rules(config.max_output_tokens)
     wire_schema = schema
+    package_output = None
     if function == "package":
         from .package_transport import payload_projection, schema_projection
         from .package_transport import rules as package_rules
@@ -1575,7 +1576,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             compact_matching=compact_openrouter)}
         outgoing_payload = payload_projection(payload)
         wire_schema = schema_projection(schema)
-        instructions = package_rules(payload, indexed_choices=indexed_choices)
+        from .package_output_transport import bind as bind_package_output
+
+        package_output = bind_package_output(wire_schema)
+        wire_schema = package_output.wire_schema
+        instructions = package_rules(payload, indexed_choices=indexed_choices) + package_output.rules
     else:
         outgoing_payload = transport_payload(function, payload)
         if outgoing_payload is not payload:
@@ -1853,8 +1858,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         indexed_excerpts = config.provider == "openrouter" and excerpt_candidates is not None
-        if indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
+        if package_output is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
             decoded = json.loads(text)
+            if package_output is not None:
+                try:
+                    decoded = package_output.decode(decoded)
+                except ValueError:
+                    raise ProviderError(
+                        "Die Paket-Ausgabe entspricht nicht dem angeforderten Ausgabeformat. Es wurden keine Ersatzaufgaben erstellt."
+                    ) from None
             if homework_quotes is not None:
                 from .homework import decode_sources
 

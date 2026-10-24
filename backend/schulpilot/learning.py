@@ -403,6 +403,17 @@ def vocabulary_result(db, unit):
 
 
 def language_capability(unit, capabilities, db=None):
+    from .learning_labs import contains
+
+    supported = capabilities.split(",") if isinstance(capabilities, str) else []
+    lab_present = contains(unit.questions)
+    if db is not None:
+        from .visual_reference_models import UnitVisualSnapshot
+
+        visuals = db.get(UnitVisualSnapshot, unit.id)
+        lab_present = lab_present or (visuals is not None and (contains(visuals.steps) or contains(visuals.question_steps)))
+    if lab_present and "labs-v1" not in supported:
+        raise HTTPException(409, "Diese Runde enthält neue Lernlabore. Bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
     if db is not None:
         from .db import LearningMemory
 

@@ -74,6 +74,7 @@ def public_spec(db, raw):
     recipe = db.get(VisualReference, (spec.recipe_id, spec.recipe_version))
     if (not subject or not recipe or digest(recipe.recipe) != recipe.digest
             or recipe.recipe.get("scope") == "exploration_only"
+            or recipe.recipe.get("kind") == "lab"
             or (spec.subject not in recipe.recipe["subjects"] and "*" not in recipe.recipe["subjects"])
             or recipe.recipe["kind"] not in PROFILES[spec.subject]):
         raise HTTPException(422, "Darstellungsrezept und öffentliches Fach passen nicht zusammen.")
@@ -222,16 +223,16 @@ def catalogue(topic_subject: str | None = None, page: int = Query(default=1, ge=
     foundations = [value for key in competencies() if (value := resolve_reference(key, VERSION))]
     subject_titles = {row.key: title for title, row in profiles.items()}
     for foundation in foundations:
-        foundation["recommended_recipe_ids"] = [row["id"] for row in candidates(db, subject_titles.get(foundation["subject_key"]), foundation["content"])]
+        foundation["recommended_recipe_ids"] = [row["id"] for row in candidates(db, subject_titles.get(foundation["subject_key"]), foundation["content"]) if row["kind"] != "lab"]
     for topic in public_topics:
-        topic["recommended_recipe_ids"] = [row["id"] for row in candidates(db, topic["subject"], topic["title"])]
+        topic["recommended_recipe_ids"] = [row["id"] for row in candidates(db, topic["subject"], topic["title"]) if row["kind"] != "lab"]
     return {"version": BUILDER_VERSION, "subjects": list(PROFILES), "locale": "de-DE",
             "subject_definitions": [{"key": row.key, "title": title} for title, row in profiles.items()],
             "topics": public_topics,
             "pagination": {"page": page, "page_size": 100, "total": total, "has_more": page * 100 < total},
             "level_bands": ["primary", "lower_secondary", "upper_secondary"],
             "recipes": [{"id": row.id, "version": row.version, "digest": row.digest, **row.recipe}
-                        for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only")).order_by(VisualReference.id, VisualReference.version))
+                        for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only"), VisualReference.recipe["kind"].as_string() != "lab").order_by(VisualReference.id, VisualReference.version))
                         if row.recipe.get("scope") != "exploration_only"],
             "foundations": foundations,
             "notice": NOTICE}

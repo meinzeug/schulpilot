@@ -3952,6 +3952,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final continuePractice = await showUnitDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        insetPadding: MediaQuery.sizeOf(ctx).width < 600
+            ? const EdgeInsets.all(12)
+            : const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        titlePadding: MediaQuery.sizeOf(ctx).width < 600
+            ? const EdgeInsets.fromLTRB(12, 16, 12, 0)
+            : const EdgeInsets.fromLTRB(24, 24, 24, 0),
+        contentPadding: MediaQuery.sizeOf(ctx).width < 600
+            ? const EdgeInsets.fromLTRB(12, 12, 12, 0)
+            : const EdgeInsets.fromLTRB(24, 20, 24, 24),
         title: Text('Kurz erklärt'),
         content: SizedBox(
           width: 720,

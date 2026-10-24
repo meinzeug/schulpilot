@@ -11,7 +11,7 @@ from .visual_references import _hydrate, digest, guard_context, source_binding, 
 router = APIRouter(tags=["Grafische Erklärungen"])
 
 
-def context(db, unit):
+def context(db, unit, *, labs_enabled=False):
     from .learning_controller import source_state
 
     signature, valid, sources = source_state(db, unit)
@@ -22,7 +22,7 @@ def context(db, unit):
     child = db.get(Child, unit.child_id)
     try:
         payload = with_visual_context(db, child, {"material": {"subject": unit.subject, "topic": unit.topic,
-            "content": ""}, "required_subject": unit.subject, "required_topic": unit.topic, "visual_only": True}, sources)
+            "content": ""}, "required_subject": unit.subject, "required_topic": unit.topic, "labs_enabled": labs_enabled, "visual_only": True}, sources)
     except ValueError as error:
         raise HTTPException(409, str(error)) from error
     if not payload["visual_context"]["required"]:
@@ -34,7 +34,7 @@ def context(db, unit):
     payload["saved_questions"] = [{key: question[key] for key in ("id", "type", "prompt", "options", "explanation") if key in question}
                                   for question in unit.questions]
     stamp = digest([unit.id, unit.subject, unit.topic, unit.explanation, unit.questions, signature,
-                    [[row["material_id"], row["revision"], row["content"]] for row in payload["visual_context"]["sources"]]])
+                    [[row.get("material_id") or row.get("reference_id"), row.get("revision") or row.get("version"), row["content"]] for row in payload["visual_context"]["sources"]]])
     return stamp, payload
 
 
@@ -88,9 +88,12 @@ def prepare(unit_id: str, key: str = Header(default="", alias="Idempotency-Key")
         raise HTTPException(409, "Für die vorbereitete Demo wird keine zusätzliche KI gestartet.")
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     child_access(db, p, child.id, write=p.user.role == "parent")
-    signature, _ = context(db, unit)
+    labs_enabled = "labs-v1" in getattr(p.session, "request_capabilities", ())
+    signature, _ = context(db, unit, labs_enabled=labs_enabled)
     values = {"unit_id": unit.id, "signature": signature, "session_id": p.session.id,
               "user_id": p.user.id, "family_id": child.family_id}
+    if labs_enabled:
+        values["labs_enabled"] = True
     previous = db.scalar(select(Job).where(Job.idempotency == p.user.id + ":" + key))
     if previous:
         if previous.kind != "unit_visuals" or previous.child_id != child.id or previous.payload != values:
@@ -127,7 +130,7 @@ def process(job_id):
             unit = db.get(LearningUnit, job.payload["unit_id"])
             if not unit or unit.child_id != job.child_id:
                 raise ProviderError("Die gespeicherte Runde fehlt.")
-            signature, payload = context(db, unit)
+            signature, payload = context(db, unit, labs_enabled=bool(job.payload.get("labs_enabled")))
             if signature != job.payload["signature"]:
                 raise ProviderError("Die Quellen oder Aufgaben wurden geändert.")
             config = job_config(db, job, "unit")
@@ -144,7 +147,7 @@ def process(job_id):
             db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
             db.expire_all()
             authority(db, job)
-            if unit is None or unit.child_id != job.child_id or context(db, unit)[0] != job.payload["signature"]:
+            if unit is None or unit.child_id != job.child_id or context(db, unit, labs_enabled=bool(job.payload.get("labs_enabled")))[0] != job.payload["signature"]:
                 raise ProviderError("Die Runde wurde während der Grafikvorbereitung geändert.")
             current = job_config(db, job, "unit")
             external_allowed(current)

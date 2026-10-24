@@ -946,9 +946,11 @@ Index("jobs_queue", Job.status, Job.created)
 
 # Register additive catalog tables after all referenced private models exist.
 from . import (  # noqa: E402,F401  # noqa: E402,F401
+    admin_user_models,
     catalog_models,
     child_cost_models,
     competence_models,
+    curriculum_models,
     exam_models,
     exam_review_models,
     learning_asset_models,
@@ -997,6 +999,9 @@ def init_db():
         from .visual_references import seed as seed_visual_references
 
         seed_visual_references(db)
+        from .curriculum import seed as seed_curriculum
+
+        seed_curriculum(db)
     from .installation import initialize
 
     initialize()

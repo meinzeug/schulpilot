@@ -94,6 +94,9 @@ def authenticated(request: Request, db=Depends(get_db)):
         session.seen = int(now())
         db.commit()
     request.state.actor = user.id
+    # Request-local rendering capability only, never a stored privilege or a
+    # cross-session opt-in. Explicit jobs may retain this origin snapshot.
+    session.request_capabilities = frozenset(request.headers.get("X-Schulpilot-Capabilities", "").split(","))
     return Principal(user, session)
 
 

@@ -73,7 +73,7 @@ def _phase(block, phase):
 def bind(db, p, scope, unit, payload):
     """No new disclosure, progress, answer, fetch or model request."""
     from . import coaching
-    from .visual_references import projection, question_projection
+    from .visual_references import question_projection
 
     if not scope.explanation_step_id:
         return None
@@ -81,7 +81,9 @@ def bind(db, p, scope, unit, payload):
         _unavailable()
     if scope.explanation_kind == "intro":
         allowed = p.user.role == "parent" or unit.round_kind not in coaching.CHECK_KINDS or unit.status == "completed"
-        steps = projection(db, unit, show_introduction=allowed)["explanation_steps"]
+        from .learning import unit_data
+
+        steps = unit_data(db, unit, include_answers=p.user.role == "parent")["explanation_steps"] if allowed else []
     else:
         question_id = (payload.get("current_question") or {}).get("id")
         question = next((row for row in unit.questions if row["id"] == question_id), None)
@@ -132,6 +134,14 @@ def bind(db, p, scope, unit, payload):
             if key in block
         }
         resolved["graphic_index"] = scope.graphic_index
-        resolved["graphic_state"] = _phase(block, scope.graphic_phase or "initial")
+        if scope.lab_view is not None:
+            from .learning_labs import parse_view, view_facts
+
+            try:
+                resolved["graphic_state"] = view_facts(parse_view(scope.lab_view), block)
+            except ValueError:
+                raise HTTPException(422, "Die Laboransicht gehört nicht zum geöffneten Rezept.") from None
+        else:
+            resolved["graphic_state"] = _phase(block, scope.graphic_phase or "initial")
     payload["current_explanation"] = resolved
     return resolved

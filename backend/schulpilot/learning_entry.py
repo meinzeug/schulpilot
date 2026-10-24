@@ -51,7 +51,10 @@ def _proof(db, child_id, ids):
 
 
 def _known(row):
-    return bool(row and row["independent"] and (row["last_difficulty"] or 0) <= (row["last_independent_success"] or 0))
+    # Reuse the existing dated-recall assessment, not one correct first attempt.
+    # A due review keeps its evidence; scheduling it is a separate existing path.
+    return bool(row and row["confidence"] == "repeated_recall"
+        and row["status"] in ("repeated_independent", "review_due"))
 
 
 def _probe(competence, seed, previous, ordinal):

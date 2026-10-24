@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'lesson_voice.dart';
@@ -10,6 +12,35 @@ import 'learning_tool_scope.dart';
 import 'subject_graphic.dart';
 import 'schulbuddy.dart';
 import 'learning_graphic_scope.dart';
+import 'lab_view.dart';
+
+// JSON lists/maps can be rebuilt while a local dialog covers the reader.
+// Their identity does not mean that the source or saved position changed.
+bool _sameExplanationValue(Object? left, Object? right) {
+  if (identical(left, right)) {
+    return true;
+  }
+  if (left is Map && right is Map) {
+    return left.length == right.length &&
+        left.keys.every(
+          (key) =>
+              right.containsKey(key) &&
+              _sameExplanationValue(left[key], right[key]),
+        );
+  }
+  if (left is List && right is List) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var index = 0; index < left.length; index++) {
+      if (!_sameExplanationValue(left[index], right[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return left == right;
+}
 
 /// The same saved explanation, presented in readable steps, never new AI text.
 class LearningExplanation extends StatefulWidget {
@@ -44,12 +75,15 @@ class LearningExplanation extends StatefulWidget {
   State<LearningExplanation> createState() => _LearningExplanationState();
 }
 
-class _LearningExplanationState extends State<LearningExplanation> {
+class _LearningExplanationState extends State<LearningExplanation>
+    with WidgetsBindingObserver {
   late int step = widget.initialStep;
   final stepTop = GlobalKey();
   bool showAll = false;
   int graphicIndex = 0;
   String graphicPhase = 'initial';
+  Json? labView;
+  bool labNeedsSave = false;
   int scopeRevision = 0;
   List<Json> get savedSteps => (widget.steps ?? const <Json>[])
       .where(
@@ -71,13 +105,42 @@ class _LearningExplanationState extends State<LearningExplanation> {
       step = index;
       graphicIndex = (saved?['graphic_index'] as int? ?? 0).clamp(0, 5);
       graphicPhase = saved?['graphic_phase']?.toString() ?? 'initial';
+      final blocks = savedSteps[index]['presentation']['blocks'] as List;
+      labView = graphicIndex < blocks.length
+          ? LabView.checked(saved?['lab_view'], Json.from(blocks[graphicIndex]))
+          : null;
     }
   }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     restore();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState value) {
+    if (value != AppLifecycleState.resumed || !labNeedsSave) {
+      return;
+    }
+    final expected = scopeRevision;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          expected == scopeRevision &&
+          labNeedsSave &&
+          widget.isCurrent?.call() != false &&
+          ModalRoute.of(context)?.isCurrent != false) {
+        labNeedsSave = false;
+        publishPosition();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   void publishPosition() {
@@ -89,6 +152,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
       'explanation_step_id': values[step.clamp(0, values.length - 1)]['id'],
       'graphic_index': graphicIndex,
       'graphic_phase': graphicPhase,
+      if (labView != null) 'lab_view': labView,
     });
   }
 
@@ -111,6 +175,8 @@ class _LearningExplanationState extends State<LearningExplanation> {
       step = next;
       graphicIndex = 0;
       graphicPhase = 'initial';
+      labView = null;
+      labNeedsSave = false;
     });
     publishPosition();
     widget.onStepChanged?.call(next);
@@ -125,8 +191,11 @@ class _LearningExplanationState extends State<LearningExplanation> {
         oldWidget.text != widget.text ||
         oldWidget.prompt != widget.prompt ||
         oldWidget.initialStep != widget.initialStep ||
-        oldWidget.steps != widget.steps ||
-        oldWidget.initialPosition != widget.initialPosition) {
+        !_sameExplanationValue(oldWidget.steps, widget.steps) ||
+        !_sameExplanationValue(
+          oldWidget.initialPosition,
+          widget.initialPosition,
+        )) {
       scopeRevision++;
       if (sourceChanged ||
           oldWidget.text != widget.text ||
@@ -136,6 +205,8 @@ class _LearningExplanationState extends State<LearningExplanation> {
       step = sourceChanged ? 0 : widget.initialStep;
       graphicIndex = 0;
       graphicPhase = 'initial';
+      labView = null;
+      labNeedsSave = false;
       restore();
       revealBeginning();
     }
@@ -322,7 +393,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
             style: TextStyle(color: context.palette.muted),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if ((selected['source_refs'] as List? ?? []).whereType<Map>().any(
           (ref) => ref['source_kind'] == 'curated_foundation',
         ))
@@ -333,19 +404,10 @@ class _LearningExplanationState extends State<LearningExplanation> {
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ),
-        _QuestionAndExplanation(
-          prompt: widget.prompt,
-          reader: LearningReader(
-            selected['text'],
-            state: widget.state,
-            sourceKey: (widget.sourceKey, selected['id']),
-            isCurrent: widget.isCurrent,
-          ),
-        ),
-        const SizedBox(height: 12),
         LearningGraphicScope(
           index: activeGraphic,
           phase: graphicPhase,
+          labView: labView,
           buddyReferences: widget.unitId == null
               ? null
               : {
@@ -369,8 +431,42 @@ class _LearningExplanationState extends State<LearningExplanation> {
             setState(() {
               graphicIndex = next;
               graphicPhase = phase;
+              labView = null;
+              labNeedsSave = false;
             });
             publishPosition();
+          },
+          onLabChanged: (next, value, persist) {
+            if (!mounted ||
+                epoch != scopeRevision ||
+                widget.isCurrent?.call() == false ||
+                next < 0 ||
+                next >= blocks.length) {
+              return;
+            }
+            final checked = LabView.checked(value, Json.from(blocks[next]));
+            if (checked == null) {
+              return;
+            }
+            final changed =
+                graphicIndex != next ||
+                graphicPhase != 'initial' ||
+                jsonEncode(labView) != jsonEncode(checked);
+            // The first RAM publication describes the initial view and never
+            // writes. Subsequent animation ticks are saved only on a conscious
+            // pause/end or after returning from a lifecycle pause.
+            if (changed) {
+              labNeedsSave = !persist && labView != null;
+              setState(() {
+                graphicIndex = next;
+                graphicPhase = 'initial';
+                labView = checked;
+              });
+            }
+            if (persist) {
+              labNeedsSave = false;
+              publishPosition();
+            }
           },
           child: SubjectPresentation(
             Json.from(selected['presentation']),
@@ -378,6 +474,17 @@ class _LearningExplanationState extends State<LearningExplanation> {
             state: widget.state,
           ),
         ),
+        const SizedBox(height: 8),
+        _QuestionAndExplanation(
+          prompt: widget.prompt,
+          reader: LearningReader(
+            selected['text'],
+            state: widget.state,
+            sourceKey: (widget.sourceKey, selected['id']),
+            isCurrent: widget.isCurrent,
+          ),
+        ),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -448,6 +555,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
           'explanation_step_id': selected['id'],
           'graphic_index': '$activeGraphic',
           'graphic_phase': graphicPhase,
+          if (labView != null) 'lab_view': LabView.encoded(labView!),
         }, '${widget.sourceKey.hashCode}'),
         child: body,
       );

@@ -1230,3 +1230,110 @@ Der korrigierte tatsächliche SQLite-Upgradefall bestand anschließend mit
 ausdrücklich entferntem äußerem PYTHONPATH. Die54gezielten UI-Fälle zu Dichte,
 Runden und Entdecken bestanden nach Korrektur des neuen nativen
 Navigationstestfinders; Flutter-Analyse ohne Befund.
+
+Der abschließende Volltest [40126614437](https://github.com/meinzeug/schulpilot/actions/runs/40126614437)
+auf `47bcc026e538bdd5bdbd5ba3615d9db0c9db5c9b` bestand2964Backendfälle
+(37übersprungen) und3526Flutterfälle (19übersprungen), einschließlich Analyse
+und Webbuild. Genau dieser Stand wurde als1.35.0+111 mit Schema0040
+veröffentlicht. Gebundene Release-/Signatur-/Byteprüfungen liegen lokal unter
+`artifacts/elements111`; Konfigurationen blieben unverändert.
+
+Anschließend wurde der zusätzlich ausdrücklich freigegebene einzelne reale
+Sol-Aufruf ausschließlich mit dem öffentlichen Bruch-Grundwissen ausgeführt.
+Er erzeugte „Brüche: Teile eines Ganzen“ mit dem Beispiel3/8. Im echten
+Produktionsbrowser wurden Kreis/Balken, Nennerphase, Zoom und der erreichbare
+Tutor mit passendem Beispielkontext geprüft; keine Chatfrage und keine
+Aufgabenantwort wurden abgesendet. Die ursprüngliche Balken-/Phasenansicht
+blieb nach dem Schließen von Zoom und Tutor erhalten. Die tatsächlichen
+Kosten dieses Aufrufs betrugen10930µUSD laut Generation-Kostenbeleg.
+Ein zweiter bewusster Abruf derselben öffentlichen Spezifikation verwendete
+denselben Build, dieselbe Referenz und denselben Kostenbeleg: genau ein
+Auftrag/ein Verbrauchsbeleg, zwei private Instanzen, keine weiteren KI-Kosten.
+Damit ist die Wiederverwendung im selben echten Konto belegt;
+familienübergreifende Parallelität wurde ausschließlich künstlich geprüft.
+
+Die technische Validierung ersetzt keine fachliche Redaktion: der Baustein
+bleibt ausdrücklich ungeprüft und auf Erkundung begrenzt. Lokale Grafikphase
+und veränderte Parameter werden derzeit noch nicht vollständig an den Tutor
+übertragen oder geräteübergreifend gespeichert. Die Arbeitseinheit verbrauchte
+insgesamt174994µUSD von ausdrücklich freigegebenen400000µUSD; die Erlaubnis
+für genau diesen zusätzlichen realen Aufruf ist verbraucht. Daraus folgt keine
+Freigabe für weitere Modellaufrufe oder ein erfolgreicher Reparaturnachweis des
+zuvor an4000nativen Ausgabetokens gescheiterten privaten Lernpakets.
+
+## Gemeinsame Integration112 · 24.10.2026
+
+Die vorhandenen Profile, Rollenansichten und Renderer wurden gezielt ergänzt:
+explizites Bundesland-/Schulformprofil, öffentliche Lehrplanmetadaten, zwei
+endliche eigene Lernlabore und administrative Kontometadatenverwaltung.
+Aktuelle Erinnerungs-/Push-, Kosten-, Quellen- und Shared-Assetpfade aus111
+bleiben erhalten. Die additive Kette lautet0039→0040→0041→0042.
+Bestand, Herkunft und erhebliche Abdeckungslücken der58Dokumente/766Zuordnungen
+stehen in [CURRICULUM.md](CURRICULUM.md). Dies ist kein vollständiger Lehrplan
+für alle deutschen Schularten, Fächer und Klassen und keine766Animationen.
+
+Die eigenen Kraft-/Bewegungs- und Satzgliedlabore verwenden finite fachliche
+Modelle mit Touch-/Tastaturbedienung, begrenzter Zustandswiederaufnahme und
+geprüftem Tutorkontext. Vertrag, Quellenbindung, eigene Bildherkunft und Grenzen:
+[LAB_VISUALS_109.md](LAB_VISUALS_109.md). Labrezepte sind im öffentlichen
+Shared-Assetgenerator ausdrücklich ausgeblendet und vor einer kostenpflichtigen
+Reservierung gesperrt, solange dessen eigener Ausgabevertrag sie nicht trägt.
+Der reguläre quellgebundene Laborpfad bleibt erhalten.
+
+Die neue Adminverwaltung zeigt paginierte Eltern-/Kinderverknüpfungen und
+Kontometadaten; sie erteilt keinen privaten Material-, Noten-, Antwort- oder
+Chat-Zugriff. Bearbeiten, Sperren, Sitzungswiderruf und gebundene Löschvorschau
+verwenden frische Rollen-/Sitzungsprüfung, Revision, monotone Kontoversion,
+Idempotenz, stabile Sperrreihenfolge und bestehendes Löschjournal. Auf Produktion
+wurde dafür kein fremdes Konto gesperrt oder gelöscht.
+
+Lokale gemeinsame Gates vor dem Release:163PostgreSQL16-Feature-/Rechte-/Racefälle,
+zusätzlich je sieben echte additive Kettenfälle aufPostgreSQL16 undSQLite.
+Erhalten wurden künstliche Altantworten, Unicode, gemessene Zeit, Erinnerungen
+und nach0040eingefügte gemeinsame Bausteine; wiederholte Seedläufe blieben
+idempotent. Der absolute Alembic-Unterprozessimport wurde danach auch ohne
+geerbtes PYTHONPATH separat geprüft. Ein unabhängiger statischer Review fand
+keinen weiteren konkreten Blocker; dies ist keine umfassende Sicherheitsabnahme.
+
+Die gemeinsame Flutter-Integration bestand zunächst220Fälle. Nach der engen
+Verdichtung geöffneter Grafikbausteine bestanden106gezielte Folgefälle für
+Grafikpriorität,320/390Pixel, große Schrift, Navigation, Zoom und Kontokontext.
+Ein tatsächlich gescrollter Auswahlbereich hatte beim Öffnen das Beispiel
+oberhalb des sichtbaren Bereichs begonnen. Eine an Kind/Instanz gebundene
+Seitenkennung setzt nur beim Instanzwechsel zurück; Aktualisieren derselben
+Instanz und Zoom erhalten Scrollposition und Erkundung. Beide Regressionen sind
+ausgeführt. Analyse nach enger Testklammerkorrektur ohne Befund. Ein erster
+Folgelauf hatte zusätzlich zwei von Root falsch benannte, nicht vorhandene
+Testdateipfade; der vollständige106er-Nachlauf verwendete die echten Dateien.
+
+Im echten lokalen Browser mit ausschließlich künstlichen Konten wurden Profil
+und Adminmetadaten gespeichert sowie beide Labore im normalen Kinderzugang
+bedient. Im Kraftlabor änderte2→2,5kg bei1m/s² die Kraft2→2,5N, während bei
+0,5s der Weg0,125m blieb. Die ganze Wortgruppe „am Morgen“ wechselte an den
+Satzanfang; „liest“ blieb an zweiter Satzgliedposition. Der Tutor öffnete mit dem
+passenden Deutschthema; mangels lokaler Providerkonfiguration wurde keine Frage
+gesendet. Browserfixtures belegen keine echte KI-Erzeugung dieser Labore und
+keine Reparatur von Junas Paket.
+
+Für die tatsächlich belegte Outputbegrenzung wurde zusätzlich
+[package-output-1](PACKAGE_OUTPUT_TRANSPORT.md) integriert: kürzere Feldnamen
+und ausschließlich bewiesene Konstanten werden vor allen bisherigen kanonischen
+Prüfungen verlustfrei rekonstruiert. Medium,4000Ausgabetokens, Quellen, Fragezahl,
+Reservierung und genau ein Anbieteraufruf bleiben unverändert. Künstliche
+sechsfragige Roundtrips mit zwei Fächern sanken13989→9472UTF8bytes; das ist keine
+Token-, Kosten- oder Erfolgszusage für das echte Paket. Der isolierte Codec
+bestand36SQLitefälle und192verschiedenePostgreSQLfälle; letztere bestehen aus
+191Erfolgen im breiten Lauf und einem korrigierten alten Schema-Testfinder im
+gezielten Nachlauf, keinem behaupteten einzelnen192/192-Lauf. Zusätzliche
+Codec/Lab-Adapterfälle prüfen beide Rezepte und die fehlende Clientfähigkeit.
+Es gab keinen neuen realen Anbieteraufruf für diesen Fix.
+
+Der gemeinsame19-Dateien-PostgreSQLlauf erreichte347Erfolge und26Fehler:
+25alte Paketfixtures hatten keinen expliziten Zugriff auf das unkonfigurierte
+Schulprofil; ein alter Szenentest erwartete Labore ohne Clientfähigkeit.
+Nach ausschließlich diesen beiden engen Fixturekorrekturen bestand der frische
+92-Fälle-Nachlauf vollständig. Damit sind373verschiedene Fälle über beide
+Läufe belegt, kein einzelner373/373-Lauf. Ein zuvor extern mitSIGTERM beendeter
+Nachlauf und ein gleichzeitig beendeter Flutterbuild sind ausdrücklich keine
+Erfolgsnachweise. Produkt- und Migrationshashes blieben unverändert; Ruff des
+integrierten Hauptstands ist sauber.

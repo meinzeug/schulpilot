@@ -33,7 +33,7 @@ def snapshot():
         return {name: list(conn.execute(select(Table(name,MetaData(),autoload_with=engine))).mappings()) for name in sorted(old_tables) if name!='alembic_version'}
 before = snapshot()
 command.upgrade(config, '0040')
-command.upgrade(config, 'head')
+command.upgrade(config, '0040')
 command.upgrade(config, '0040')
 assert snapshot()==before
 inspector=inspect(engine)

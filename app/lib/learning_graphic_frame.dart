@@ -33,7 +33,7 @@ class LearningGraphicFrame extends StatelessWidget {
       child: MathText(title, style: headingStyle),
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Material(
         color: palette.surfaceLow,
         shape: RoundedRectangleBorder(
@@ -53,22 +53,26 @@ class LearningGraphicFrame extends StatelessWidget {
                       action is GraphicZoom && (action as GraphicZoom).compact;
                   final actionWidth = compact ? 48.0 : 200.0;
                   final titleWidth = constraints.maxWidth - actionWidth - 12;
-                  final textScaler = MediaQuery.textScalerOf(context);
-                  final titleMeasure = TextPainter(
-                    text: TextSpan(text: title, style: headingStyle),
-                    textDirection: Directionality.of(context),
-                    textScaler: textScaler,
-                    maxLines: 1,
-                  )..layout(maxWidth: titleWidth > 0 ? titleWidth : 0);
-                  final beside =
-                      titleWidth >= 80 &&
-                      textScaler.scale(18) <= 25.2 &&
-                      !titleMeasure.didExceedMaxLines;
-                  titleMeasure.dispose();
+                  var beside = titleWidth >= 80;
+                  if (!compact && beside) {
+                    final textScaler = MediaQuery.textScalerOf(context);
+                    final titleMeasure = TextPainter(
+                      text: TextSpan(text: title, style: headingStyle),
+                      textDirection: Directionality.of(context),
+                      textScaler: textScaler,
+                      maxLines: 1,
+                    )..layout(maxWidth: titleWidth);
+                    beside =
+                        textScaler.scale(18) <= 25.2 &&
+                        !titleMeasure.didExceedMaxLines;
+                    titleMeasure.dispose();
+                  }
                   if (beside) {
                     return Row(
                       key: const ValueKey('learning-graphic-heading-row'),
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: compact
+                          ? CrossAxisAlignment.start
+                          : CrossAxisAlignment.center,
                       children: [
                         Expanded(child: heading),
                         const SizedBox(width: 12),
@@ -87,7 +91,7 @@ class LearningGraphicFrame extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               child,
             ],
           ),

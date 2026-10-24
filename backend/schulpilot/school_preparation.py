@@ -331,6 +331,7 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
         "user_id": p.user.id,
         "session_id": p.session.id,
         "learning_entry_enabled": bool(learning_entry_enabled),
+        "labs_enabled": "labs-v1" in getattr(p.session, "request_capabilities", ()),
         "family_id": child.family_id,
         "sources": snapshot,
         "day_revision": day.revision,
@@ -443,6 +444,7 @@ def _queue(db, day, child, family, state, kind, payload):
         "school_day_id": day.id,
         "preparation_id": state["run_id"],
         "learning_entry_enabled": kind == "package" and bool(state.get("learning_entry_enabled")),
+        **({"labs_enabled": True} if kind == "package" and state.get("labs_enabled") else {}),
         "material_revision": material.revision,
     }
     job = Job(

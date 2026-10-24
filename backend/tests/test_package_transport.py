@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+from package_output_helpers import PackageOutputCapture
 from schulpilot import competences, learning_entry, package_transport, providers, source_lineage, visual_references
 from schulpilot.config import settings
 from schulpilot.db import ProviderConfig
@@ -30,6 +31,13 @@ def artificial(
     ]
 
     class VisualDb:
+        def get(self, model, key):
+            # This synthetic child has no explicit curriculum profile.
+            from schulpilot.curriculum_models import ChildCurriculumProfile
+
+            assert model is ChildCurriculumProfile and key == "c" * 32
+            return None
+
         def scalar(self, statement):
             return None
 
@@ -148,6 +156,7 @@ def config(provider="openrouter"):
 
 def wire(monkeypatch, payload, provider="openrouter"):
     saved = {}
+    output = PackageOutputCapture(monkeypatch)
     real_client = httpx.Client
 
     def handler(request):
@@ -189,6 +198,7 @@ def wire(monkeypatch, payload, provider="openrouter"):
         )
     else:
         saved.update(schema=body["schema"], instructions=body["system"], payload=body["payload"])
+    saved["output_binding"] = output.binding
     return saved
 
 
@@ -246,7 +256,7 @@ def test_real_adapters_keep_all_twenty_three_sources_and_identical_schema_contra
         assert all(material[k] == source[k] for k in ("subject", "topic", "group_id"))
         assert compact["ref"] == source["ref"]
     original = saved["canonical_schema"]
-    assert expanded(original, original["$defs"]) == expanded(saved["schema"], saved["schema"]["$defs"])
+    assert expanded(original, original["$defs"]) == expanded(saved["output_binding"].canonical_schema, saved["output_binding"].canonical_schema["$defs"])
     assert b'"schema":' + package_transport.json_text(saved["schema"]).encode() in saved["raw"]
     if provider == "openrouter":
         assert saved["body"]["provider"]["only"] == ["azure"]
@@ -362,7 +372,7 @@ def test_fixed_prerequisite_prompt_answer_pairs_cannot_cross_bind(monkeypatch):
     )
     saved = wire(monkeypatch, payload)
     original = saved["canonical_schema"]
-    assert expanded(original, original["$defs"]) == expanded(saved["schema"], saved["schema"]["$defs"])
+    assert expanded(original, original["$defs"]) == expanded(saved["output_binding"].canonical_schema, saved["output_binding"].canonical_schema["$defs"])
     data = {
         "units": [
             {
@@ -427,22 +437,23 @@ def test_full_response_validation_still_checks_group_local_literal_answers(monke
         data["units"][0]["questions"][1]["id"] = "q1"
     real_client = httpx.Client
     calls = []
+    output = PackageOutputCapture(monkeypatch)
 
     def handler(request):
         calls.append(request)
         if provider == "openrouter":
             raw = {
-                "choices": [{"message": {"content": json.dumps(data)}, "finish_reason": "stop"}],
+                "choices": [{"message": {"content": json.dumps(output.wire(data))}, "finish_reason": "stop"}],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 10, "cost": 0},
             }
         elif provider == "openai":
             raw = {
                 "status": "completed",
-                "output": [{"type": "message", "content": [{"type": "output_text", "text": json.dumps(data)}]}],
+                "output": [{"type": "message", "content": [{"type": "output_text", "text": json.dumps(output.wire(data))}]}],
                 "usage": {"input_tokens": 10, "output_tokens": 10},
             }
         else:
-            raw = {"data": data, "input_tokens": 10, "output_tokens": 10, "cost_micros": 0, "search_calls": 0}
+            raw = {"data": output.wire(data), "input_tokens": 10, "output_tokens": 10, "cost_micros": 0, "search_calls": 0}
         return httpx.Response(200, json=raw)
 
     monkeypatch.setattr(providers.httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(handler)))
@@ -491,6 +502,7 @@ def test_package_choice_instructions_and_real_response_match_provider_wire_forma
             question["answer"] = 99 if invalid_response else index
     calls = []
     real_client = httpx.Client
+    output = PackageOutputCapture(monkeypatch)
 
     def handler(request):
         body = json.loads(request.content)
@@ -498,7 +510,7 @@ def test_package_choice_instructions_and_real_response_match_provider_wire_forma
             instructions = body["messages"][0]["content"]
             schema = body["response_format"]["json_schema"]["schema"]
             response = {
-                "choices": [{"message": {"content": json.dumps(data)}, "finish_reason": "stop"}],
+                "choices": [{"message": {"content": json.dumps(output.wire(data))}, "finish_reason": "stop"}],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 10, "cost": 0},
             }
         elif provider == "openai":
@@ -506,12 +518,13 @@ def test_package_choice_instructions_and_real_response_match_provider_wire_forma
             schema = body["text"]["format"]["schema"]
             response = {
                 "status": "completed",
-                "output": [{"type": "message", "content": [{"type": "output_text", "text": json.dumps(data)}]}],
+                "output": [{"type": "message", "content": [{"type": "output_text", "text": json.dumps(output.wire(data))}]}],
                 "usage": {"input_tokens": 10, "output_tokens": 10},
             }
         else:
             instructions, schema = body["system"], body["schema"]
-            response = {"data": data, "input_tokens": 10, "output_tokens": 10, "cost_micros": 0, "search_calls": 0}
+            response = {"data": output.wire(data), "input_tokens": 10, "output_tokens": 10, "cost_micros": 0, "search_calls": 0}
+        schema = output.schema(schema)
         actual = expanded(schema, schema["$defs"])
 
         def answer_types(node):

@@ -2,7 +2,7 @@ import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from . import schemas as s
 from .config import runtime_settings, settings
@@ -70,7 +70,41 @@ def user_data(db, user):
     return result
 
 
+def lock_session_user(db, user):
+    # Password/Google verification can precede an operator status change.
+    # Serialize every caller with account administration, then recheck the
+    # actual user before issuing a token. New registrations are flushed first.
+    db.flush()
+    identifier, checked_role, checked_password = user.id, user.role, user.password_hash
+    if db.bind.dialect.name == "postgresql":
+        fresh = db.scalar(select(User).where(User.id == identifier).with_for_update()
+            .execution_options(populate_existing=True))
+    else:
+        db.execute(update(User).where(User.id == identifier).values(disabled=User.disabled))
+        fresh = db.get(User, identifier, populate_existing=True)
+    if (not fresh or fresh.disabled or not fresh.verified or fresh.role != checked_role
+            or fresh.password_hash != checked_password):
+        raise HTTPException(401, "Der Zugang wurde inzwischen geändert oder gesperrt. Bitte erneut anmelden.")
+    return fresh
+
+
+def lock_previous_session(db, session_id):
+    try:
+        return db.scalar(select(Session).where(Session.id == session_id).with_for_update(nowait=True)
+            .execution_options(populate_existing=True))
+    except OperationalError as error:
+        if getattr(error.orig, "sqlstate", None) != "55P03":
+            raise
+        # A concurrent admin action can hold this previous (different-account)
+        # session while waiting for our target user. Never wait in reverse
+        # order or skip its revocation and still log in. Roll back the whole
+        # switch, including a claimed Google flow, and ask for an explicit retry.
+        db.rollback()
+        raise HTTPException(409, "Eine andere Kontoaktion läuft noch. Bitte die Anmeldung erneut versuchen.") from None
+
+
 def create_session(db, user, response, request, device):
+    user = lock_session_user(db, user)
     # At most ten live devices per account. Older sessions are revoked.
     sessions = list(
         db.scalars(
@@ -198,6 +232,7 @@ def login(data: s.Login, request: Request, response: Response, db=Depends(get_db
         raise HTTPException(401, "Benutzername oder Passwort ist nicht richtig.")
     if not user.verified:
         raise HTTPException(403, "Bitte zuerst die E-Mail-Adresse bestätigen.")
+    user = lock_session_user(db, user)
     if user.role == "admin":
         audit(db, user.id, "admin.login", user.id)
     # Successful account switches on a shared browser/device terminate the
@@ -206,6 +241,8 @@ def login(data: s.Login, request: Request, response: Response, db=Depends(get_db
     previous_token = header[7:] if header.startswith("Bearer ") else request.cookies.get("sp_session", "")
     if previous_token:
         previous = db.scalar(select(Session).where(Session.token_hash == digest(previous_token)))
+        if previous:
+            previous = lock_previous_session(db, previous.id)
         if previous:
             previous.revoked = True
             from .exam_review import clear_user_drafts

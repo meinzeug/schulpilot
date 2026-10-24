@@ -30,6 +30,8 @@ class BuddyScope(Strict):
     graphic_phase: str | None = Field(default=None, max_length=40,
         pattern=r"^(?:initial|fraction-(?:circle|bar)-(?:whole|denominator|numerator)|scene-[0-7]|science-(?:[0-9]|[1-9][0-9]))$")
 
+    lab_view: str | None = Field(default=None, max_length=512)
+
     @model_validator(mode="after")
     def graphic_scope(self):
         if self.learning_asset_instance_id and any(getattr(self, key) is not None for key in (
@@ -48,6 +50,12 @@ class BuddyScope(Strict):
             raise ValueError("Eine Grafikauswahl benötigt ihren geöffneten Erklärschritt.")
         if self.graphic_phase is not None and self.graphic_index is None:
             raise ValueError("Eine Grafikphase benötigt die konkrete Grafik.")
+        if self.lab_view is not None:
+            if not self.explanation_step_id or self.graphic_index is None or self.graphic_phase not in (None, "initial"):
+                raise ValueError("Eine Laboransicht benötigt ihr geöffnetes Rezept, keine fremde Grafikphase.")
+            from .learning_labs import parse_view
+
+            parse_view(self.lab_view)
         return self
 
 
@@ -123,3 +131,5 @@ def synthetic_payload():
             "navigation": ["Hefte", "Lernen"], "history": [], "knowledge": {"goals": [], "notice": "Keine Übungsbelege."},
             "sources": [{"ref": "p1", "label": "Künstliches Testblatt", "content":
                          "Der Nenner steht unter dem Bruchstrich und nennt die Anzahl gleich großer Teile."}]}
+
+SYSTEM += "\ncurrent_explanation.graphic_state.lab_view ist eine endliche lokale, unbewertete Laborerkundung. Abgeleitete Kraft/Strecke/Geschwindigkeit oder Satzumstellung sind keine Schülerantwort, kein Kompetenz- oder Zeitbeleg. Nur das ausdrücklich gebundene eigene kuratierte Modell erklären, keine allgemeine Simulation oder Grammatikprüfung erfinden.\n"

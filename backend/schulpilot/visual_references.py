@@ -32,7 +32,9 @@ def seed(db):
     from sqlalchemy.dialects.postgresql import insert as pg_insert
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-    rows = json.loads(BUNDLE.read_text())["references"]
+    from .learning_labs import references as lab_references
+
+    rows = [*json.loads(BUNDLE.read_text())["references"], *lab_references()]
     insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
     for recipe in rows:
         key = recipe["id"], recipe["version"]
@@ -101,9 +103,37 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
     subjects = list(dict.fromkeys(row["subject"] for row in bindings))
     references = [row for subject in subjects for row in candidates(db, subject,
                   "\n".join(item["topic"] + "\n" + item["content"] for item in bindings if item["subject"] == subject))]
+    if not payload.get("labs_enabled"):
+        references = [row for row in references if row["kind"] != "lab"]
+    lab_sources = []
+    if payload.get("labs_enabled"):
+        from .learning_labs import resolve as resolve_lab
+
+        for subject in subjects:
+            group_ids = list(dict.fromkeys(row.get("group_id") for row in bindings if row["subject"] == subject))
+            for group_id in group_ids:
+                text = "\n".join(row["topic"] + "\n" + row["content"] for row in bindings
+                    if row["subject"] == subject and row.get("group_id") == group_id)
+                for candidate in references:
+                    if candidate["subject"] != subject or candidate["kind"] != "lab":
+                        continue
+                    recipe = db.get(VisualReference, (candidate["id"], candidate["version"])).recipe
+                    actual = resolve_lab(recipe["lab_recipe_id"], 1)
+                    if not any(term.casefold() in text.casefold() for term in actual["terms"]):
+                        continue
+                    lab_sources.append({"ref": f"r{len(lab_sources) + 1}", "source_type": "curated_lab",
+                        "reference_id": actual["id"], "version": actual["version"], "digest": actual["digest"],
+                        "subject": subject, "group_id": group_id, "content": actual["content"],
+                        "factual_status": "own_curated_lab_example", "source_refs": []})
     reason = "no_confirmed_source" if not bindings else "subject_unresolved" if not any(s in PROFILES for s in subjects) else "no_reference" if not references else None
+    from .curriculum import planning_context
+
+    curriculum = planning_context(db, child, subjects)
+    if curriculum is not None:
+        value["curriculum_context"] = curriculum
     value["visual_context"] = {"version": 1, "required": reason is None, "reason": reason,
-                               "references": references, "sources": bindings}
+                               "references": references, "sources": [*bindings, *lab_sources],
+                               **({"curriculum_binding": {key: curriculum[key] for key in ("revision", "state_code", "school_form_id", "grade", "profile_signature")}} if curriculum is not None else {})}
     return value
 
 
@@ -119,7 +149,7 @@ def with_foundation_context(db, payload):
         return payload
     value = {**context, "sources": list(context["sources"]), "references": list(context["references"])}
     references = {row["reference_id"]: row for row in entry.get("references", [])}
-    index = 0
+    index = max([int(row["ref"][1:]) for row in value["sources"] if row["ref"].startswith("r")] or [0])
     for plan in entry.get("units", []):
         subject = resolve(db, plan["subject"])
         for probe in plan.get("probes", []):
@@ -137,6 +167,8 @@ def with_foundation_context(db, payload):
                 "content": actual["content"] + "\n" + example,
                 "factual_status": "curated_rule_and_server_example", "source_refs": []})
             for recipe in candidates(db, plan["subject"], actual["content"]):
+                if recipe["kind"] == "lab" and not payload.get("labs_enabled"):
+                    continue
                 if recipe not in value["references"]:
                     value["references"].append(recipe)
     value["required"] = bool(value["sources"] and value["references"])
@@ -169,6 +201,8 @@ def bind_schema(schema, payload):
 def _meaningful(block, recipe):
     if block.kind != recipe["kind"] or (recipe.get("variant") and block.variant != recipe["variant"]):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
+    if block.kind == "lab" and block.lab.recipe_id != recipe.get("lab_recipe_id"):
+        raise ValueError("Laborparameter passen nicht zur gewählten Referenz.")
     if block.kind == "scene":
         scene = block.scene
         if scene is None or len(scene.steps) < 2 or not any(step.edges for step in scene.steps):
@@ -212,7 +246,7 @@ def validate_steps(db, steps, subject, context, *, question=None, group_id=None,
         texts = [refs[ref]["content"] for ref in step.source_refs]
         # The generated prose never serves as new source evidence for its graphic.
         fake = question or {"prompt": "", "type": "short", "answer": "", "accepted": []}
-        validate_question(step.presentation.model_dump(), fake, texts, PROFILES.get(subject, ()))
+        validate_question(step.presentation.model_dump(), fake, texts, PROFILES.get(subject, ()), structured=True, subject=subject)
         for block in step.presentation.blocks:
             _meaningful(block, stored.recipe)
             # All explicitly repeated graphic values must agree with the same
@@ -258,6 +292,10 @@ def validate_output(db, data, payload):
 
 
 def source_binding(value, *, question_source_bound=False):
+    if value.get("source_type") == "curated_lab":
+        return {"source_kind": "curated_lab", "reference_id": value["reference_id"],
+            "version": value["version"], "digest": value["digest"], "label": "Eigenes kuratiertes Laborbeispiel",
+            "_question_source_bound": question_source_bound}
     if value.get("source_type") == "curated_foundation":
         return {"source_kind": "curated_foundation", "reference_id": value["reference_id"],
                 "version": value["version"], "digest": value["digest"],
@@ -315,6 +353,11 @@ def _binding_current(db, unit, ref):
     from .db import Material
     from .source_lineage import learning_source, usable_source
 
+    if ref.get("source_kind") == "curated_lab":
+        from .learning_labs import resolve as resolve_lab
+
+        actual = resolve_lab(ref.get("reference_id"), ref.get("version"), ref.get("digest"))
+        return actual is not None and unit.subject in actual["subjects"]
     if ref.get("source_kind") == "curated_foundation":
         question = next((q for q in unit.questions if q["id"] == ref["example_question_id"]), None)
         return bool(resolve_reference(ref["reference_id"], ref["version"], ref["digest"]) is not None and question
@@ -355,10 +398,24 @@ def projection(db, unit, *, show_introduction=True):
 
 
 def guard_context(db, child_id, context):
-    from .db import Material
+    from .db import Child, Material
     from .source_lineage import learning_source
 
+    if context.get("curriculum_binding") is not None:
+        from .curriculum import guard_planning_context
+
+        child = db.get(Child, child_id, populate_existing=True)
+        if child is None:
+            raise ValueError("Der Kinderzugang wurde geändert.")
+        guard_planning_context(db, child, context["curriculum_binding"])
     for ref in context.get("sources", []):
+        if ref.get("source_type") == "curated_lab":
+            from .learning_labs import resolve as resolve_lab
+
+            actual = resolve_lab(ref.get("reference_id"), ref.get("version"), ref.get("digest"))
+            if actual is None or actual["content"] != ref.get("content") or ref.get("subject") not in actual["subjects"]:
+                raise ValueError("Die eigene Laborgrundlage wurde geändert.")
+            continue
         if ref.get("source_type") == "curated_foundation":
             from .competences import resolve_reference
 

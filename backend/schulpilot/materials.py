@@ -528,6 +528,8 @@ def lock_material_units(db, child_id, material_id):
 
 
 def enqueue(db, p, child, kind, payload, idempotency, *, commit=True):
+    if kind in ("unit", "package") and "labs-v1" in getattr(p.session, "request_capabilities", ()):
+        payload = {**payload, "labs_enabled": True}
     if not idempotency or len(idempotency) > 80:
         raise HTTPException(422, "Ein eindeutiger Idempotency-Key (max. 80 Zeichen) ist erforderlich.")
     key = p.user.id + ":" + idempotency
@@ -540,8 +542,8 @@ def enqueue(db, p, child, kind, payload, idempotency, *, commit=True):
         payload["assignment_revision"] = db.get(Assignment, payload["assignment_id"]).revision
     existing = db.scalar(select(Job).where(Job.idempotency == key))
     if existing:
-        comparable = {k: v for k, v in existing.payload.items() if k not in ("controller_guard", "learning_entry_enabled")}
-        payload_comparable = {k: v for k, v in payload.items() if k != "learning_entry_enabled"}
+        comparable = {k: v for k, v in existing.payload.items() if k not in ("controller_guard", "learning_entry_enabled", "labs_enabled")}
+        payload_comparable = {k: v for k, v in payload.items() if k not in ("learning_entry_enabled", "labs_enabled")}
         if existing.child_id != child.id or existing.kind != kind or comparable != payload_comparable:
             raise HTTPException(409, "Dieser Anfrageschlüssel wurde bereits für einen anderen Auftrag verwendet.")
         return {"id": existing.id, "status": existing.status}

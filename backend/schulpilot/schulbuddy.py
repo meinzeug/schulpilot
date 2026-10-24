@@ -55,7 +55,7 @@ def fingerprint(value):
 def protocol_fields(value):
     """Additive nullable context fields must not change existing history/replay keys."""
     result = value.model_dump()
-    for key in ("exam_id", "exam_session_id", "review_task_id", "exam_tab", "exam_revision", "explanation_kind", "explanation_step_id", "graphic_index", "graphic_phase", "material_revision", "learning_asset_instance_id"):
+    for key in ("exam_id", "exam_session_id", "review_task_id", "exam_tab", "exam_revision", "explanation_kind", "explanation_step_id", "graphic_index", "graphic_phase", "material_revision", "learning_asset_instance_id", "lab_view"):
         if result.get(key) is None:
             result.pop(key, None)
     return result
@@ -353,13 +353,14 @@ def read_context(page_kind: PageKind = "general", child_id: str | None = Query(N
                  explanation_step_id: str | None = Query(None, max_length=32),
                  graphic_index: int | None = Query(None, ge=0, le=5),
                  graphic_phase: str | None = Query(None, max_length=40),
+                 lab_view: str | None = Query(None, max_length=512),
                  p=Depends(authenticated), db=Depends(get_db)):
     try:
         scope = BuddyScope(page_kind=page_kind, child_id=child_id, unit_id=unit_id, material_id=material_id, day_id=day_id,
                           question_id=question_id, exam_id=exam_id, exam_session_id=exam_session_id,
                           review_task_id=review_task_id, exam_tab=exam_tab, explanation_kind=explanation_kind,
                           explanation_step_id=explanation_step_id, graphic_index=graphic_index, graphic_phase=graphic_phase,
-                          material_revision=material_revision, learning_asset_instance_id=learning_asset_instance_id)
+                          material_revision=material_revision, learning_asset_instance_id=learning_asset_instance_id, lab_view=lab_view)
     except ValidationError:
         raise HTTPException(422, "Ungültiger Schulbuddy-Bereich.") from None
     child, _, key, label, payload, _, _ = scope_context(db, p, scope)

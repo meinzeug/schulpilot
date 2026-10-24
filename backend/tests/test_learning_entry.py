@@ -6,11 +6,11 @@ import json
 import pytest
 from schulpilot import competences, learning_entry
 from schulpilot.competence_models import CompetenceSource, QuestionCompetence
-from schulpilot.db import DB, Activity, Attempt, Child, LearningMemory, LearningUnit, Material, UnitSource, Usage
+from schulpilot.db import DB, Activity, Attempt, Child, LearningMemory, LearningUnit, Material, UnitSource, Usage, now
 from schulpilot.learning import unit_data
 from schulpilot.learning_controller import decide, projection, source_state
 from schulpilot.providers import ProviderError, indexed_choice_schema, request_provider
-from schulpilot.schemas import UnitOutput
+from schulpilot.schemas import Question, UnitOutput
 from schulpilot.subject_registry import identity
 from sqlalchemy import func, select
 from test_learning_scenes import _config, _transport
@@ -205,11 +205,14 @@ def test_chat_read_media_and_drafts_never_become_competence_evidence(source):
         assert all(row["attempts"] == 0 and row["confidence"] == "unverified" for row in states)
 
 
-def test_same_competence_new_photo_reuses_actual_legacy_attempt_without_rewriting_it(source):
+@pytest.mark.parametrize("question_type", ["choice", "short"])
+def test_single_success_on_new_upload_keeps_evidence_but_still_checks_prerequisites(source, question_type):
     _, child, mid = source
     with DB.begin() as db:
-        question = {"id": "old", "type": "short", "prompt": "Erweitere 1/2 mit 2.", "answer": "2/4",
-            "options": [], "accepted": [], "hints": ["Beide Teile."], "explanation": CONTENT}
+        question = {"id": "old", "type": question_type, "prompt": "Erweitere 1/2 mit 2.", "answer": "2/4",
+            "options": ["2/4", "1/4", "3/4", "2/2"] if question_type == "choice" else [],
+            "accepted": [], "hints": ["Beide Teile."], "explanation": CONTENT}
+        Question.model_validate(question)
         unit = LearningUnit(child_id=child["id"], material_id=mid, subject="Mathematik", topic="Brüche", explanation=CONTENT,
             questions=[question], status="completed", provider="synthetic-fixture")
         db.add(unit)
@@ -217,19 +220,93 @@ def test_same_competence_new_photo_reuses_actual_legacy_attempt_without_rewritin
         db.add(UnitSource(unit_id=unit.id, material_id=mid, revision=1))
         attempt = Attempt(unit_id=unit.id, question_id="old", answer="2/4", outcome="correct", assisted=False)
         db.add(attempt)
-        second = Material(child_id=child["id"], subject="Mathematik", subject_id=identity("mathematik"),
-            title="Andere neue Seite", topic="Weitere Brüche", content=CONTENT, confirmed=True, status="confirmed")
-        db.add(second)
         db.flush()
         old = attempt.id, attempt.created, copy.deepcopy(unit.questions)
-        value = payload(db, child["id"], second.id)
-        plan = value["learning_entry"]["units"][0]
-        assert plan["entry_mode"] == "reuse_evidence" and plan["probes"] == []
+        for index in range(2):
+            second = Material(child_id=child["id"], subject="Mathematik", subject_id=identity("mathematik"),
+                title=f"Andere neue Seite {index}", topic="Weitere Brüche", content=CONTENT, confirmed=True, status="confirmed")
+            db.add(second)
+            db.flush()
+            plan = payload(db, child["id"], second.id)["learning_entry"]["units"][0]
+            proof = next(row for row in plan["evidence"] if row["id"] == "math.fractions.expand")
+            assert proof["evidence_refs"] == ["attempt:" + attempt.id]
+            assert proof["independent"] == 1 and proof["confidence"] == "initial_evidence"
+            assert proof["status"] == "building"
+            # Previously one correct answer incorrectly bypassed every prerequisite.
+            assert plan["entry_mode"] == "prerequisite_probe" and plan["probes"]
+            assert not learning_entry._known(proof)
+            assert (attempt.id, attempt.created, unit.questions) == old
+            assert db.query(QuestionCompetence).count() == 0  # Legacy discovery is read-only.
+            assert db.query(Attempt).count() == 1
+
+
+def dated_expansion_attempt(db, child_id, material_id, index, created, *, outcome="correct"):
+    numerator, denominator = index + 1, index + 2
+    answer = f"{2 * numerator}/{2 * denominator}"
+    question = {"id": "recall", "type": "choice", "prompt": f"Erweitere {numerator}/{denominator} mit 2.",
+        "answer": answer, "options": [answer, "0/1", "1/1", "2/1"], "accepted": [],
+        "hints": ["Beide Zahlen mit demselben Faktor."], "explanation": CONTENT}
+    Question.model_validate(question)
+    unit = LearningUnit(child_id=child_id, material_id=material_id, subject="Mathematik", topic="Brüche",
+        explanation=CONTENT, questions=[question], status="completed", round_kind="check", provider="synthetic-fixture")
+    db.add(unit)
+    db.flush()
+    db.add(UnitSource(unit_id=unit.id, material_id=material_id, revision=1))
+    attempt = Attempt(unit_id=unit.id, question_id="recall", answer=answer if outcome == "correct" else "0/1",
+        outcome=outcome, assisted=False, created=created)
+    db.add(attempt)
+    db.flush()
+    return attempt
+
+
+@pytest.mark.parametrize("check_days,secure", [((8, 4, 1), True), ((30, 20, 10), True), ((6, 3, 0), False), ((0, 0, 0), False)])
+def test_repeated_recall_evidence_controls_entry_and_survives_further_uploads(source, check_days, secure):
+    _, child, mid = source
+    with DB.begin() as db:
+        stamp = int(now())
+        attempts = [dated_expansion_attempt(db, child["id"], mid, index, stamp - days * 86400)
+            for index, days in enumerate(check_days)]
+        originals = [(attempt.id, attempt.created, attempt.answer, attempt.outcome) for attempt in attempts]
+        state = next(row for row in competences.evidence(db, child["id"]) if row["id"] == "math.fractions.expand")
+        assert len(state["successful_check_dates"]) == len(set(check_days))
+        assert state["independent"] == 3
+        assert (state["confidence"] == "repeated_recall") is secure
+        if check_days == (30, 20, 10):
+            assert state["status"] == "review_due"
+        for index in range(2):
+            material = Material(child_id=child["id"], subject="Mathematik", subject_id=identity("mathematik"),
+                title=f"Weitere künstliche Heftseite {index}", topic="Brüche", content=CONTENT, confirmed=True, status="confirmed")
+            db.add(material)
+            db.flush()
+            plan = payload(db, child["id"], material.id)["learning_entry"]["units"][0]
+            proof = next(row for row in plan["evidence"] if row["id"] == "math.fractions.expand")
+            assert set(proof["evidence_refs"]) == {"attempt:" + attempt.id for attempt in attempts}
+            assert learning_entry._known(proof) is secure
+            assert plan["entry_mode"] == ("reuse_evidence" if secure else "prerequisite_probe")
+            assert bool(plan["probes"]) is not secure
+            assert competences.evidence(db, child["id"], ["math.fractions.expand"])[0] == state
+        assert [(attempt.id, attempt.created, attempt.answer, attempt.outcome) for attempt in attempts] == originals
+        assert db.query(Attempt).count() == 3
+        assert db.query(QuestionCompetence).count() == 0
+
+
+def test_later_difficulty_then_one_success_does_not_restore_secure_entry(source):
+    _, child, mid = source
+    with DB.begin() as db:
+        stamp = int(now())
+        for index, days in enumerate((20, 16, 12)):
+            dated_expansion_attempt(db, child["id"], mid, index, stamp - days * 86400)
+        before = competences.evidence(db, child["id"], ["math.fractions.expand"])[0]
+        assert before["confidence"] == "repeated_recall"
+        dated_expansion_attempt(db, child["id"], mid, 3, stamp - 3 * 86400, outcome="incorrect")
+        dated_expansion_attempt(db, child["id"], mid, 4, stamp - 86400)
+        plan = payload(db, child["id"], mid)["learning_entry"]["units"][0]
         proof = next(row for row in plan["evidence"] if row["id"] == "math.fractions.expand")
-        assert proof["evidence_refs"] == ["attempt:" + attempt.id]
-        assert (attempt.id, attempt.created, unit.questions) == old
-        assert db.query(QuestionCompetence).count() == 0  # Legacy discovery is read-only.
-        assert db.query(Attempt).count() == 1
+        assert proof["last_independent_success"] > proof["last_difficulty"]
+        assert proof["confidence"] == "initial_evidence" and proof["status"] == "building"
+        assert plan["entry_mode"] == "prerequisite_probe" and plan["probes"]
+        assert not learning_entry._known(proof)
+        assert db.query(Attempt).count() == 5
 
 
 @pytest.mark.parametrize("fault", ["source_revision", "source_quality", "answer_evidence"])

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from package_output_helpers import PackageOutputCapture
 from schema_helpers import object_with
 from schulpilot import providers
 from schulpilot.config import settings
@@ -48,6 +49,7 @@ def _config(provider):
 
 def _transport(monkeypatch, provider, response):
     calls = []
+    output = PackageOutputCapture(monkeypatch)
 
     def indexed(value):
         if isinstance(value, dict):
@@ -74,6 +76,9 @@ def _transport(monkeypatch, provider, response):
             data = copy.deepcopy(response)
             if provider in ("openrouter", "codex"):
                 indexed(data)
+            data = output.wire(data)
+            if output.binding is not None:
+                calls[-1]["_package_schema"] = output.binding.canonical_schema
             usage = {"input_tokens": 123, "output_tokens": 234, "prompt_tokens": 123, "completion_tokens": 234}
             if provider == "codex":
                 envelope = {"data": data, "usage": usage}
@@ -93,14 +98,14 @@ def _transport(monkeypatch, provider, response):
 
 def _submitted(provider, body):
     if provider == "codex":
-        return body["payload"], body["schema"], body["system"]
+        return body["payload"], body.get("_package_schema", body["schema"]), body["system"]
     if provider == "openrouter":
         return (
             json.loads(body["messages"][1]["content"][0]["text"]),
-            body["response_format"]["json_schema"]["schema"],
+            body.get("_package_schema", body["response_format"]["json_schema"]["schema"]),
             body["messages"][0]["content"],
         )
-    return json.loads(body["input"][0]["content"][0]["text"]), body["text"]["format"]["schema"], body["instructions"]
+    return json.loads(body["input"][0]["content"][0]["text"]), body.get("_package_schema", body["text"]["format"]["schema"]), body["instructions"]
 
 
 def _scene_unit():

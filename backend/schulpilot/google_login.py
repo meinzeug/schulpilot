@@ -294,8 +294,10 @@ class Result(s.Strict):
 
 def revoke_previous(db, flow):
     if flow.previous_session_id:
-        db.execute(update(Session).where(Session.id == flow.previous_session_id).values(revoked=True))
-        db.execute(delete(PushDevice).where(PushDevice.session_id == flow.previous_session_id))
+        previous = auth.lock_previous_session(db, flow.previous_session_id)
+        if previous:
+            previous.revoked = True
+            db.execute(delete(PushDevice).where(PushDevice.session_id == previous.id))
 
 
 def finish(db, flow):
@@ -429,6 +431,8 @@ def result(data: Result, request: Request, response: Response, db=Depends(get_db
         except IntegrityError:
             db.rollback()
             raise HTTPException(409, FAILURES["conflict"]) from None
+    if not needs_verification:
+        user = auth.lock_session_user(db, user)
     finish(db, flow)
     if needs_verification:
         token = auth.new_token(db, "verify", user.id, ttl=86400)

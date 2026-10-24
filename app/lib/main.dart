@@ -22,6 +22,7 @@ import 'parent_homework_screen.dart';
 import 'parent_plan_screen.dart';
 import 'material_actions.dart';
 import 'settings_screen.dart';
+import 'admin_users_screen.dart';
 import 'operator_incidents_screen.dart';
 import 'installation_screen.dart';
 import 'school_day_screen.dart';
@@ -293,6 +294,13 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       GoRoute(
         path: '/setup',
         builder: (context, s) => InstallationScreen(widget.state),
+      ),
+      GoRoute(
+        path: '/admin/users',
+        builder: (context, s) => AdminUsersScreen(
+          widget.state,
+          userId: s.uri.queryParameters['user'],
+        ),
       ),
       GoRoute(
         path: '/admin/settings',

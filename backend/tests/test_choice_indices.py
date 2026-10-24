@@ -5,6 +5,7 @@ import json
 
 import httpx
 import pytest
+from package_output_helpers import PackageOutputCapture
 from schema_helpers import package_questions
 from schulpilot import providers
 from schulpilot.db import DB, ProviderConfig
@@ -32,6 +33,7 @@ def transport(api, household, monkeypatch):
     choice["options"] = ["1/8", "2/8", "2/4"]
     choice["answer"] = 2
     calls = []
+    encoded = PackageOutputCapture(monkeypatch)
 
     class Client:
         def __init__(self, **kwargs):
@@ -45,10 +47,13 @@ def transport(api, household, monkeypatch):
 
         def post(self, url, headers, **kwargs):
             calls.append(kwargs["json"])
+            wire = encoded.wire(output)
+            if encoded.binding is not None:
+                calls[-1]["_package_schema"] = encoded.binding.canonical_schema
             return httpx.Response(
                 200,
                 json={
-                    "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(output)}}],
+                    "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(wire)}}],
                     "usage": {"prompt_tokens": 100, "completion_tokens": 200, "cost": 0},
                 },
             )
@@ -67,7 +72,7 @@ def test_package_choice_index_becomes_existing_full_answer_without_extra_call(tr
     assert result.data["units"][0]["questions"][1] == output["units"][0]["questions"][1]
     PackageOutput.model_validate(result.data)
     assert result.cost_micros == 0 and len(calls) == 1
-    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    schema = calls[0].get("_package_schema", calls[0]["response_format"]["json_schema"]["schema"])
     choice, written, matching, grouped = package_questions(schema)
     assert choice["properties"]["answer"]["type"] == "integer"
     assert choice["properties"]["options"]["minItems"] == 2
@@ -277,7 +282,7 @@ def test_factual_reasoning_stage_requests_real_explanations_without_an_impossibl
     config, payload, calls = factual_stage(transport, mode)
     result = request_provider(config, "unit", payload)
     assert len(result.data["questions"]) == 2 and all(q["type"] == "choice" for q in result.data["questions"])
-    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    schema = calls[0].get("_package_schema", calls[0]["response_format"]["json_schema"]["schema"])
     question = schema["$defs"]["Question"]
     assert "anyOf" not in question
     assert question["properties"]["type"]["enum"] == ["choice"]
@@ -344,7 +349,7 @@ def test_initial_factual_schema_requests_no_unchecked_aliases_or_math_examples(t
     q2.update(type="short", prompt="Was umkreist die Erde?", options=[], answer="Mond", accepted=[])
     result = request_provider(config, "package", payload)
     assert result.data["units"][0]["questions"][1]["answer"] == "Mond"
-    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    schema = calls[0].get("_package_schema", calls[0]["response_format"]["json_schema"]["schema"])
     choice, written, matching, grouped = package_questions(schema)
     assert choice["properties"]["accepted"]["maxItems"] == 0
     assert written["properties"]["accepted"]["maxItems"] == 0
@@ -413,7 +418,7 @@ def test_practice_schema_binds_each_unique_question_to_its_required_goal_without
     assert [q["source_excerpt"] for q in submitted["practice_tasks"]] == [
         g["source_excerpt"] for g in payload["learning_goals"]
     ]
-    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    schema = calls[0].get("_package_schema", calls[0]["response_format"]["json_schema"]["schema"])
     branches = schema["$defs"]["PracticeQuestion"]["anyOf"]
     assert len(branches) == 8
     assert sum(branch["properties"]["type"]["enum"] == ["grouped"] for branch in branches) == 2

@@ -150,6 +150,7 @@ class _GraphicZoomState extends State<GraphicZoom> {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final responsive = {
+                      'lab',
                       'scene',
                       'process_graph',
                       'process_cycle',

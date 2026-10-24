@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "synthetic_contract": true,
+  "provider_calls": 0,
+  "cases": [
+    {
+      "id": "physics.force_motion",
+      "public_presentation": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": [
+          {
+            "kind": "lab",
+            "title": "physics.force_motion",
+            "disclosure": "hint1",
+            "labels": [
+              "Masse",
+              "Beschleunigung"
+            ],
+            "numbers": [],
+            "connections": [],
+            "marks": [],
+            "unit": "",
+            "variant": "",
+            "lab": {
+              "version": 1,
+              "recipe_id": "physics.force_motion",
+              "recipe_version": 1,
+              "parameters": {
+                "mass_kg": 2.0,
+                "acceleration_m_s2": 1.0
+              }
+            }
+          }
+        ]
+      },
+      "hidden_public_presentation": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": []
+      }
+    },
+    {
+      "id": "german.sentence_shift",
+      "public_presentation": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": [
+          {
+            "kind": "lab",
+            "title": "german.sentence_shift",
+            "disclosure": "hint1",
+            "labels": [
+              "Mira",
+              "liest",
+              "am Morgen",
+              "ein Buch"
+            ],
+            "numbers": [],
+            "connections": [],
+            "marks": [],
+            "unit": "",
+            "variant": "",
+            "lab": {
+              "version": 1,
+              "recipe_id": "german.sentence_shift",
+              "recipe_version": 1,
+              "parameters": {
+                "example_id": "mira_reads"
+              }
+            }
+          }
+        ]
+      },
+      "hidden_public_presentation": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": []
+      }
+    }
+  ]
+}

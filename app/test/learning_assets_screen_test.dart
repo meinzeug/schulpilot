@@ -9,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/learning_assets_screen.dart';
 import 'package:schulpilot/schulbuddy.dart';
+import 'package:schulpilot/subject_graphic.dart';
 import 'package:schulpilot/ui.dart';
 
 Json catalogue() => {
@@ -70,6 +71,8 @@ class Fixture {
   Completer<http.Response>? postWait;
   bool failPost = false;
   bool paged = false;
+  Json? catalogueOverride;
+  String? fullNotice;
   Completer<http.Response>? pageWait;
   String prepareStatus = 'ready';
   int buddyOpens = 0;
@@ -105,7 +108,7 @@ class Fixture {
         return pageWait!.future;
       }
       return reply({
-        ...catalogue(),
+        ...(catalogueOverride ?? catalogue()),
         if (paged) ...{
           'topics': [
             {
@@ -132,15 +135,21 @@ class Fixture {
           'detail': 'Verbindung unklar. Gespeicherten Stand laden.',
         }, 503);
       }
-      return reply(saved(status: prepareStatus), 202);
+      return reply(currentSaved(), 202);
     }
     if (path == '/api/learning-asset-instances/saved-instance') {
-      return reply(saved(status: prepareStatus));
+      return reply(currentSaved());
     }
     if (path.endsWith('/notifications')) {
       return reply({'items': [], 'unread_count': 0});
     }
     return reply({});
+  }
+
+  Json currentSaved() {
+    final result = saved(status: prepareStatus);
+    if (fullNotice != null) result['build']['notice'] = fullNotice;
+    return result;
   }
 
   List<http.Request> get writes =>
@@ -214,6 +223,267 @@ class Fixture {
 }
 
 void main() {
+  testWidgets(
+    'opening a prepared asset resets the scrolled selection without hiding title or close',
+    (tester) async {
+      final f = Fixture()..paged = true;
+      await f.mount(tester, size: const Size(390, 568));
+      await f.choose(tester);
+      final prepare = find.widgetWithText(FilledButton, 'Thema entdecken');
+      await tester.ensureVisible(prepare);
+      await tester.pumpAndSettle();
+      ScrollController scroll() => tester
+          .widget<SingleChildScrollView>(
+            find.byKey(const ValueKey('workspace-scroll')),
+          )
+          .controller!;
+      final selectionScroll = scroll();
+      expect(
+        selectionScroll.offset,
+        greaterThan(0),
+        reason: 'This reproduces a real scrolled selection.',
+      );
+      await tester.tap(prepare);
+      await tester.pumpAndSettle();
+      final assetScroll = scroll();
+      expect(assetScroll, isNot(same(selectionScroll)));
+      expect(assetScroll.offset, 0);
+      final title = find.text('Bruchteile entdecken');
+      final close = find.byTooltip('Anderes Thema auswählen');
+      expect(tester.getTopLeft(title).dy, greaterThanOrEqualTo(0));
+      expect(close.hitTestable(), findsOneWidget);
+      expect(tester.getRect(close).top, greaterThanOrEqualTo(0));
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(scroll().offset, 0);
+      expect(find.text('Themen entdecken').hitTestable(), findsOneWidget);
+      expect(f.writes, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'same instance refresh and zoom preserve its scroll controller and exploration',
+    (tester) async {
+      final f = Fixture(history: [saved()]);
+      await f.mount(tester, size: const Size(390, 568));
+      final item = find.text('Bruchteile entdecken');
+      await tester.ensureVisible(item);
+      await tester.tap(item);
+      await tester.pumpAndSettle();
+      final denominator = find.widgetWithText(ChoiceChip, 'Nenner');
+      await tester.ensureVisible(denominator);
+      await tester.tap(denominator);
+      await tester.pumpAndSettle();
+      ScrollController scroll() => tester
+          .widget<SingleChildScrollView>(
+            find.byKey(const ValueKey('workspace-scroll')),
+          )
+          .controller!;
+      final original = scroll(), offset = scroll().offset;
+      expect(offset, greaterThan(0));
+      expect(tester.widget<ChoiceChip>(denominator).selected, isTrue);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(scroll(), same(original));
+      expect(scroll().offset, offset);
+      expect(tester.widget<ChoiceChip>(denominator).selected, isTrue);
+      final zoom = find.byTooltip('Grafik vergrößern');
+      await tester.ensureVisible(zoom);
+      await tester.pumpAndSettle();
+      final zoomOffset = scroll().offset;
+      await tester.tap(zoom);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Zur Aufgabe zurück'));
+      await tester.pumpAndSettle();
+      expect(scroll(), same(original));
+      expect(scroll().offset, zoomOffset);
+      expect(tester.widget<ChoiceChip>(denominator).selected, isTrue);
+      expect(f.writes, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  for (final width in [320.0, 390.0, 1280.0]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'opened asset prioritizes its graphic at $width px and ${scale}x text',
+        (tester) async {
+          final f = Fixture(history: [saved()]);
+          await f.mount(tester, size: Size(width, 844), scale: scale);
+          expect(find.text('Themen entdecken'), findsOneWidget);
+          expect(
+            find.ancestor(
+              of: find.text('Was möchtest du verstehen?'),
+              matching: find.byType(Panel),
+            ),
+            findsOneWidget,
+          );
+          final savedItem = find.text('Bruchteile entdecken');
+          await tester.ensureVisible(savedItem);
+          await tester.tap(savedItem);
+          await tester.pumpAndSettle();
+          final close = find.byTooltip('Anderes Thema auswählen');
+          await tester.ensureVisible(close);
+          await tester.pumpAndSettle();
+          expect(find.text('Themen entdecken'), findsNothing);
+          expect(find.text('Bruchteile entdecken'), findsOneWidget);
+          final graphic = find.byType(SubjectPresentation);
+          expect(graphic, findsOneWidget);
+          expect(
+            find.ancestor(of: graphic, matching: find.byType(Panel)),
+            findsNothing,
+          );
+          expect(
+            tester.widget<SubjectPresentation>(graphic).data,
+            saved()['build']['asset']['presentation'],
+          );
+          expect(find.byTooltip('Grafik vergrößern'), findsOneWidget);
+          expect(
+            find.text(
+              'KI-Beispiel · fachlich ungeprüft; keine Leistungsbewertung',
+            ),
+            findsOneWidget,
+          );
+          final bounds = tester.getRect(close);
+          expect(close.hitTestable(), findsOneWidget);
+          expect(bounds.width, greaterThanOrEqualTo(48));
+          expect(bounds.height, greaterThanOrEqualTo(48));
+          if (width < 720) {
+            expect(
+              tester.getSize(graphic).width,
+              greaterThanOrEqualTo(width - 40),
+            );
+            if (scale == 1) {
+              expect(tester.getTopLeft(graphic).dy, lessThan(220));
+            }
+          }
+          expect(f.writes, isEmpty);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+  testWidgets(
+    'full original AI notice stays deliberately accessible without any write',
+    (tester) async {
+      const original =
+          'KI-Beispiele können Fehler enthalten. Diese ausführliche gespeicherte Erklärung bleibt vollständig zugänglich. '
+          'Die technische Prüfung ist keine unabhängige fachliche Freigabe. Erkunden bewertet keine Leistung.';
+      final f = Fixture(history: [saved()])..fullNotice = original;
+      await f.mount(tester);
+      final item = find.text('Bruchteile entdecken');
+      await tester.ensureVisible(item);
+      await tester.tap(item);
+      await tester.pumpAndSettle();
+      expect(find.text(original), findsNothing);
+      expect(
+        find.text('KI-Beispiel · fachlich ungeprüft; keine Leistungsbewertung'),
+        findsOneWidget,
+      );
+      final details = find.text('Vollständiger KI-Hinweis');
+      await tester.ensureVisible(details);
+      await tester.tap(details);
+      await tester.pumpAndSettle();
+      expect(find.text(original), findsOneWidget);
+      await tester.ensureVisible(find.text(original));
+      await tester.pumpAndSettle();
+      expect(find.text(original).hitTestable(), findsOneWidget);
+      expect(f.writes, isEmpty);
+      final reads = f.calls.length;
+      await tester.ensureVisible(details);
+      await tester.tap(details);
+      await tester.pumpAndSettle();
+      expect(find.text(original), findsNothing);
+      expect(f.calls, hasLength(reads));
+    },
+  );
+  testWidgets(
+    'closing an open asset restores the selection panel without a request',
+    (tester) async {
+      final f = Fixture(history: [saved()]);
+      await f.mount(tester);
+      await f.choose(tester);
+      final item = find.text('Bruchteile entdecken');
+      await tester.ensureVisible(item);
+      await tester.tap(item);
+      await tester.pumpAndSettle();
+      final before = f.calls.length;
+      final close = find.byTooltip('Anderes Thema auswählen');
+      await tester.ensureVisible(close);
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(find.text('Themen entdecken'), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.text('Was möchtest du verstehen?'),
+          matching: find.byType(Panel),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<DropdownButtonFormField<String>>(
+              find.byKey(
+                const ValueKey(
+                  'asset-source:Mathematik:f:foundation-fractions',
+                ),
+              ),
+            )
+            .initialValue,
+        'f:foundation-fractions',
+      );
+      expect(f.calls, hasLength(before));
+      expect(f.writes, isEmpty);
+    },
+  );
+  testWidgets(
+    'recipe radios use short kind names and a friendly unknown fallback',
+    (tester) async {
+      final data = catalogue();
+      data['recipes'] = [
+        {
+          'id': 'math.fraction',
+          'version': 1,
+          'kind': 'fraction',
+          'purpose': 'INTERNAL_FRACTION_RULE_TEXT',
+        },
+        {
+          'id': 'scene.example',
+          'version': 1,
+          'kind': 'scene',
+          'purpose': 'INTERNAL_SCENE_RULE_TEXT',
+        },
+        {
+          'id': 'future.example',
+          'version': 1,
+          'kind': 'future',
+          'purpose': 'INTERNAL_UNKNOWN_RULE_TEXT',
+        },
+      ];
+      data['foundations'][0]['recommended_recipe_ids'] = [
+        'math.fraction',
+        'scene.example',
+        'future.example',
+      ];
+      final f = Fixture()..catalogueOverride = data;
+      await f.mount(tester);
+      await f.choose(tester);
+      final controls = find.text('Darstellung und Stufe');
+      await tester.ensureVisible(controls);
+      await tester.tap(controls);
+      await tester.pumpAndSettle();
+      for (final title in ['Bruchmodell', 'Interaktive Szene', 'Fachgrafik']) {
+        expect(
+          find.widgetWithText(RadioListTile<String>, title),
+          findsOneWidget,
+        );
+      }
+      expect(find.textContaining('INTERNAL_'), findsNothing);
+      expect(find.text('future.example'), findsNothing);
+      expect(f.writes, isEmpty);
+    },
+  );
   testWidgets(
     'opened public example keeps the same buddy context in graphic zoom',
     (tester) async {
@@ -400,7 +670,10 @@ void main() {
         'level_band': 'lower_secondary',
       });
       expect(find.text('Bruchteile entdecken'), findsOneWidget);
-      expect(find.text('KI-Erklärung · unbewertetes Erkunden'), findsOneWidget);
+      expect(
+        find.text('KI-Beispiel · fachlich ungeprüft; keine Leistungsbewertung'),
+        findsOneWidget,
+      );
       expect(find.byType(TextField), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -422,7 +695,10 @@ void main() {
       ),
       hasLength(1),
     );
-    expect(find.text('KI-Erklärung · unbewertetes Erkunden'), findsOneWidget);
+    expect(
+      find.text('KI-Beispiel · fachlich ungeprüft; keine Leistungsbewertung'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('pending status polling never repeats POST', (tester) async {

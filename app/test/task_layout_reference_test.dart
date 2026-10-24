@@ -163,15 +163,15 @@ void main() {
 
   for (final sample in [
     (390.0, 1.0, 'Anteil', true),
-    (320.0, 2.0, 'Anteil', false),
+    (320.0, 2.0, 'Anteil', true),
     (
       390.0,
       1.0,
       'Eine lange vollständig lesbare Grafiküberschrift ohne Abkürzung',
-      false,
+      true,
     ),
   ]) {
-    testWidgets('graphic heading measures its available space at $sample', (
+    testWidgets('compact zoom shares a wrapping graphic heading at $sample', (
       tester,
     ) async {
       tester.view.devicePixelRatio = 1;
@@ -240,6 +240,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getSize(open).width, greaterThanOrEqualTo(48));
       expect(tester.getSize(open).height, greaterThanOrEqualTo(48));
+      final row = tester.getRect(
+        find.byKey(const ValueKey('learning-graphic-heading-row')),
+      );
+      expect(tester.getTopLeft(open).dy, closeTo(row.top, .1));
+      expect(
+        tester.getBottomLeft(find.text(sample.$3)).dy,
+        lessThanOrEqualTo(row.bottom + .1),
+      );
       await tester.tap(open);
       await tester.pumpAndSettle();
       expect(find.byType(InteractiveViewer), findsOneWidget);

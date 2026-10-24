@@ -7,6 +7,7 @@ from sqlalchemy import delete, select, update
 
 from .db import Child, get_db, now
 from .learning import get_unit, unit_data
+from .learning_labs import ForceLabView, SentenceLabView, checked_view
 from .security import authenticated, child_access
 from .visual_reference_models import UnitVisualPosition, UnitVisualSnapshot
 from .visual_references import projection
@@ -21,6 +22,8 @@ class Position(BaseModel):
     explanation_step_id: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
     graphic_index: int = Field(default=0, ge=0, le=5)
     graphic_phase: str = Field(default="initial", pattern=r"^(initial|fraction-(circle|bar)-(whole|denominator|numerator)|scene-[0-7]|science-[0-9]{1,2})$")
+
+    lab_view: ForceLabView | SentenceLabView | None = None
 
 
 class PositionRequest(BaseModel):
@@ -67,7 +70,17 @@ def checked(db, unit, user, value):
                  or (kind == "logic_table" and index < (2 if block.get("variant") == "not_gate" else 4)))
     if not valid:
         raise HTTPException(422, "Diese Darstellung ist für die Grafik nicht verfügbar.")
-    return value.model_dump()
+    result = value.model_dump()
+    if value.lab_view is not None:
+        if phase != "initial":
+            raise HTTPException(422, "Laboransicht und fremde Grafikphase können nicht kombiniert werden.")
+        try:
+            result["lab_view"] = checked_view(value.lab_view, block)
+        except ValueError:
+            raise HTTPException(422, "Diese Laboransicht gehört nicht zum geöffneten Rezept.") from None
+    else:
+        result.pop("lab_view", None)
+    return result
 
 
 def response(db, unit, user):

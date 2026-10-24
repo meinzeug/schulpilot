@@ -1,0 +1,1097 @@
+{
+  "version": 1,
+  "sourcecheckdate": "2026-10-24",
+  "purpose": "Amtliches Quellenverzeichnis als Recherchegrundlage für eine spätere länderbezogene Lehrplan-Datenbank; keine fertige Themen-, Klassen- oder Kompetenzdatenbank.",
+  "scope": {
+    "states_expected": 16,
+    "states_researched": 16,
+    "public_primary_sources_only": true,
+    "private_child_data_used": false,
+    "provider_calls": 0,
+    "repository_changes": false,
+    "topics_extracted": false,
+    "school_types_exhaustive": false,
+    "grades_1_to_13_complete": false,
+    "all_curricula_currently_in_force_verified": false,
+    "checked_date_meaning": "Datum der URL-/Inhaltsrecherche; kein Gültigkeitsdatum des Lehrplans.",
+    "url_validation_meaning": "opened = Inhalt im Webwerkzeug gelesen. official_search_index_verified_direct_fetch_failed = amtlicher Inhalt/URL über amtlichen Suchindex bzw. KMK belegt, Direktabruf mit dokumentierter Grenze. Keine Zugriffssperre umgangen."
+  },
+  "central_sources": [
+    {
+      "title": "KMK-Länderübersicht Lehrpläne",
+      "url": "https://www.kmk.org/downloads-dokumente/rechtsvorschriften-/-lehrplaene/uebersicht-lehrplaene.html",
+      "validation": "opened",
+      "note": "Amtlicher Einstieg zu allen 16 Ländern; Ziel-URLs wurden zusätzlich geprüft. Alte Zielpfade teils umgezogen."
+    },
+    {
+      "title": "KMK-Bildungsstandards",
+      "url": "https://www.kmk.org/bildungsministerkonferenz/bildungsthemen/bildungsstandards.html",
+      "validation": "opened",
+      "note": "Abschluss-/stufenbezogene Standards; ersetzen weder Länderlehrplan noch individuelle Jahresplanung."
+    }
+  ],
+  "integration_constraints": [
+    "Originale amtliche Schulartbezeichnungen bewahren; gleichlautende Klassenstufen sind zwischen Bildungsgängen nicht automatisch gleichwertig.",
+    "Land, Schulart/Bildungsgang, Fach, Klassenband/Niveau, Kursniveau, Lehrplanversion und Gültigkeits-/Einführungskohorte getrennt speichern.",
+    "Ein Doppeljahrgang oder Kompetenz-Zielende darf ohne weitere amtliche Grundlage nicht künstlich auf einzelne Klassen aufgeteilt werden.",
+    "Einführungs-/Qualifikationsphasen nicht pauschal bundesweit in dieselben absoluten Klassen übersetzen; G8/G9 und Schulart berücksichtigen.",
+    "Fachbezeichnungen und Verbundfächer aus der jeweiligen Quelle übernehmen und über eigene kanonische IDs zuordnen; keine Gleichsetzung allein nach Titel.",
+    "Aktuelle, künftige, archivierte, Anhörungs- und Erprobungsfassungen unterscheiden. Portalabruf allein beweist keine Unterrichtsgültigkeit.",
+    "Sonderpädagogische zieldifferente Bildungsgänge separat behandeln; individuelle Lernentwicklung ist nicht automatisch Klassenstufe 1 bis 13.",
+    "Nur kurze eigene Themenbegriffe und Beleglinks kuratieren; keine fremden Lehrtexte, Aufgaben, Bilder oder Animationen ungeprüft übernehmen.",
+    "Amtliche Curriculumanforderung ist kein Beleg, dass eine konkrete Animation bereits existiert. Eigene Darstellungen als eigene Umsetzung ausweisen."
+  ],
+  "states": [
+    {
+      "statecode": "BW",
+      "iso3166_2": "DE-BW",
+      "label": "Baden-Württemberg",
+      "officialportalURL": "https://www.bildungsplaene-bw.de/,Lde/Startseite",
+      "schooltypesofficialsourceURLs": [
+        "https://km.baden-wuerttemberg.de/de/schule"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Hauptschule/Werkrealschule",
+        "Realschule",
+        "Gymnasium",
+        "Gemeinschaftsschule",
+        "Sonderpädagogische Bildung",
+        "Berufliche Bildung",
+        "Zweiter Bildungsweg"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Klassenbänder und Kompetenz-Zielenden; abhängig von Schulart, Niveau und Planfassung.",
+      "grade_evidence": [
+        {
+          "scope": "Gymnasium Mathematik V3.0",
+          "bands": [
+            "Zielende Klasse 6",
+            "Zielende Klasse 8",
+            "Zielende Klasse 10",
+            "Zielende Klasse 11",
+            "Zielende Klasse 13"
+          ],
+          "sourceURL": "https://www.bildungsplaene-bw.de/,Lde/DE_BW_BILDUNGSPLAENE_GEN2X_BPBW_ALLG_GYM_M(V3.0)",
+          "verified": "Inhalt gelesen; Abschnitt 1.2.6."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "V3.0 und ältere Fassungen stehen parallel; Einführungstabellen nach Schuljahr/Kohorte prüfen.",
+        "Ministerielle allgemeine Schulübersicht enthält noch G8-Modellformulierungen, während der neue Gymnasialplan bis 13 reicht; nicht aus einer Übersichtsseite pauschal das aktuelle Laufbahnmodell ableiten.",
+        "Grundschul- und Sek-I-Niveaubänder wurden hier nicht für alle Fächer einzeln extrahiert."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.bildungsplaene-bw.de/,Lde/Startseite",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://km.baden-wuerttemberg.de/de/schule",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.bildungsplaene-bw.de/,Lde/DE_BW_BILDUNGSPLAENE_GEN2X_BPBW_ALLG_GYM_M(V3.0)",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "BY",
+      "iso3166_2": "DE-BY",
+      "label": "Bayern",
+      "officialportalURL": "https://www.lehrplanplus.bayern.de/",
+      "schooltypesofficialsourceURLs": [
+        "https://www.lehrplanplus.bayern.de/"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Mittelschule",
+        "Förderschule",
+        "Realschule",
+        "Gymnasium",
+        "Wirtschaftsschule",
+        "Fachoberschule",
+        "Berufsoberschule"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Mischung aus einzelnen Jahrgangsstufen und Doppeljahrgangsstufen; Schulart und Fach sind Bestandteil des Datensatzes.",
+      "grade_evidence": [
+        {
+          "scope": "Gymnasium Mathematik",
+          "bands": [
+            "Jahrgangsstufe 5"
+          ],
+          "sourceURL": "https://www.lehrplanplus.bayern.de/fachlehrplan/gymnasium/5/mathematik",
+          "verified": "Konkrete Jahrgangsseite gelesen."
+        },
+        {
+          "scope": "Grundschule Mathematik (Verweise im Beispiel)",
+          "bands": [
+            "1/2",
+            "3/4"
+          ],
+          "sourceURL": "https://www.lehrplanplus.bayern.de/fachlehrplan/gymnasium/5/mathematik",
+          "verified": "Doppeljahrgangs-Verweise auf der gelesenen Fachseite; keine vollständige Primarstufeninventur."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Sichtbare Schulartauswahl ist kein vollständiges Berufsbildungsinventar.",
+        "Neues Portaldesign 2026/27 allein belegt keine neue fachliche Planfassung."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.lehrplanplus.bayern.de/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.lehrplanplus.bayern.de/fachlehrplan/gymnasium/5/mathematik",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "BE",
+      "iso3166_2": "DE-BE",
+      "label": "Berlin",
+      "officialportalURL": "https://www.berlin.de/sen/bildung/unterricht/faecher-rahmenlehrplaene/rahmenlehrplaene/",
+      "schooltypesofficialsourceURLs": [
+        "https://www.berlin.de/sen/bildung/schule/bildungswege/berliner-schulsystem/"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Integrierte Sekundarschule",
+        "Gemeinschaftsschule",
+        "Gymnasium",
+        "Förderschule",
+        "Berufliche Schulen/Oberstufenzentren",
+        "Zweiter Bildungsweg"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Gemeinsamer Rahmenlehrplan 1–10 mit Niveaustufen A–H; Oberstufe separat. Kein Niveau gleich einer festen Klasse.",
+      "grade_evidence": [
+        {
+          "scope": "Gemeinsamer RLP Mathematik 1–10",
+          "bands": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H"
+          ],
+          "sourceURL": "https://bildungsserver.berlin-brandenburg.de/rlp-online/c-faecher/mathematik",
+          "verified": "Niveaufilter und Hinweis zur amtlichen Fassung 2023 gelesen."
+        },
+        {
+          "scope": "Berliner Curriculumeinstieg",
+          "bands": [
+            "1–10",
+            "Oberstufe 11–13"
+          ],
+          "sourceURL": "https://www.berlin.de/sen/bildung/unterricht/faecher-rahmenlehrplaene/rahmenlehrplaene/",
+          "verified": "Stufenangebote gelesen; schulartspezifische Phasen müssen separat zugeordnet werden."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Mathematik-HTML nennt weiterhin Grundlage 2015 und verlinkt die amtliche Fassung 2023; nicht HTML-Materialien mit aktueller Rechtsfassung gleichsetzen.",
+        "Für BE ist die 2023er Mathematikfassung laut Seite seit 2025/26 für 1–10 unterrichtswirksam.",
+        "Gemeinsame Inhalte BE/BB entbinden nicht von landesspezifischen Einführungsterminen."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.berlin.de/sen/bildung/unterricht/faecher-rahmenlehrplaene/rahmenlehrplaene/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildungsserver.berlin-brandenburg.de/rlp-online",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildungsserver.berlin-brandenburg.de/rlp-online/c-faecher/mathematik",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.berlin.de/sen/bildung/schule/bildungswege/berliner-schulsystem/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "BB",
+      "iso3166_2": "DE-BB",
+      "label": "Brandenburg",
+      "officialportalURL": "https://bildungsserver.berlin-brandenburg.de/unterricht/rahmenlehrplaene/",
+      "schooltypesofficialsourceURLs": [
+        "https://mbjs.brandenburg.de/bildung/allgemeinbildende-schulen.html"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Oberschule",
+        "Gesamtschule mit gymnasialer Oberstufe",
+        "Gymnasium",
+        "Förderschule",
+        "Berufliche Bildung",
+        "Zweiter Bildungsweg"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Gemeinsamer RLP 1–10 mit Niveaustufen A–H; schulartspezifische Oberstufe separat.",
+      "grade_evidence": [
+        {
+          "scope": "Gemeinsamer RLP Mathematik 1–10",
+          "bands": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H"
+          ],
+          "sourceURL": "https://bildungsserver.berlin-brandenburg.de/rlp-online/c-faecher/mathematik",
+          "verified": "Niveaufilter gelesen, kein starres Jahrgangsmapping."
+        },
+        {
+          "scope": "Schulstruktur (kein fachlicher Jahresplan)",
+          "bands": [
+            "Grundschule 1–6",
+            "Oberschule 7–10",
+            "Gesamtschule 7–13",
+            "Gymnasium 7–12"
+          ],
+          "sourceURL": "https://mbjs.brandenburg.de/bildung/allgemeinbildende-schulen.html",
+          "verified": "Ministerielle Schulstruktur gelesen; Sonderzugänge nicht vollständig erfasst."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Mathematik-HTML auf Grundlage 2015; amtliche Fassung 2023 separat wählen, für BB laut Seite seit 2024/25 vollständig 1–10.",
+        "Schulstufenbereiche sind keine Aussage, dass jedes Fach in jeder Klasse unterrichtet wird."
+      ],
+      "url_checks": [
+        {
+          "url": "https://bildungsserver.berlin-brandenburg.de/unterricht/rahmenlehrplaene/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildungsserver.berlin-brandenburg.de/rlp-online",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildungsserver.berlin-brandenburg.de/rlp-online/c-faecher/mathematik",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://mbjs.brandenburg.de/bildung/allgemeinbildende-schulen.html",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "HB",
+      "iso3166_2": "DE-HB",
+      "label": "Bremen",
+      "officialportalURL": "https://www.lis.bremen.de/schulqualitaet/bildungsplaene-21942",
+      "schooltypesofficialsourceURLs": [
+        "https://www.bildung.bremen.de/angebote-fur-schuler-innen-363225",
+        "https://www.bildung.bremen.de/berufsbildende-schulen-102584"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Oberschule",
+        "Gymnasium",
+        "Werkschule",
+        "Förderzentren",
+        "Berufliche Schulen"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Bildungspläne nach Primarbereich, Sekundarbereich I (Oberschule/Gymnasium) und Sekundarbereich II; Kompetenz-Zielstände an ausgewählten Jahrgangsenden.",
+      "grade_evidence": [
+        {
+          "scope": "Schulstruktur, nicht Einzelthemen",
+          "bands": [
+            "Grundschule 1–4",
+            "Gymnasium bis Schulbesuchsjahr 12",
+            "Oberschul-Oberstufe bis Schulbesuchsjahr 13"
+          ],
+          "sourceURL": "https://www.bildung.bremen.de/angebote-fur-schuler-innen-363225",
+          "verified": "Ministerielle Seite gelesen."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "LIS-Portal direkt403; amtlicher Suchindex bestätigt Inhalt und URL.",
+        "Sek-I-Liste führt neue und ältere Planstände nebeneinander; einzelne Gültigkeit vor Import prüfen.",
+        "Schulbesuchsjahr, Jahrgangsstufe und Kompetenz-Zielstand nicht gleichsetzen."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.lis.bremen.de/schulqualitaet/bildungsplaene-21942",
+          "result": "official_search_index_verified_direct_fetch_failed",
+          "note": "Direkt403; amtlicher LIS-Suchindex und KMK-Verknüpfung bestätigen Portal.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.lis.bremen.de/schulqualitaet/bildungsplaene/sekundarbereich-i-21953",
+          "result": "official_search_index_verified_direct_fetch_failed",
+          "note": "Amtlicher Suchindex gelesen; Planliste enthält verschiedene Erscheinungsjahre.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.bildung.bremen.de/angebote-fur-schuler-innen-363225",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.bildung.bremen.de/berufsbildende-schulen-102584",
+          "result": "official_search_index_read",
+          "note": "Ministerielle Inhaltsliste inklusive Werkschule9–11 gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "HH",
+      "iso3166_2": "DE-HH",
+      "label": "Hamburg",
+      "officialportalURL": "https://www.hamburg.de/politik-und-verwaltung/behoerden/bsfb/veroeffentlichungen/bildungsplaene",
+      "schooltypesofficialsourceURLs": [
+        "https://www.hamburg.de/politik-und-verwaltung/behoerden/bsfb/schulen/schulformen-589196"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Stadtteilschule",
+        "Gymnasium"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Bildungspläne nach Schulstufe und Schulart; Stadtteilschule 5–11, Gymnasium Sek I und Studienstufe sind getrennte Angebote.",
+      "grade_evidence": [
+        {
+          "scope": "Curriculumportal",
+          "bands": [
+            "Grundschule",
+            "Stadtteilschule 5–11",
+            "Gymnasium Sekundarstufe I",
+            "Studienstufe"
+          ],
+          "sourceURL": "https://www.hamburg.de/politik-und-verwaltung/behoerden/bsfb/veroeffentlichungen/bildungsplaene",
+          "verified": "Portalgliederung gelesen."
+        },
+        {
+          "scope": "Schulstruktur",
+          "bands": [
+            "Grundschule 1–4",
+            "Stadtteilschule 5–13",
+            "Gymnasium 5–12"
+          ],
+          "sourceURL": "https://www.hamburg.de/politik-und-verwaltung/behoerden/bsfb/schulen/schulformen-589196",
+          "verified": "Ministerielle Übersicht gelesen; kein fachspezifischer Einzelklassenplan."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Vorstufe/Studienstufe liegen je Schulart in unterschiedlichen absoluten Klassen.",
+        "Schulversuche und sonderpädagogische/berufliche Bildung nicht vollständig inventarisiert."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.hamburg.de/politik-und-verwaltung/behoerden/bsfb/veroeffentlichungen/bildungsplaene",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.hamburg.de/politik-und-verwaltung/behoerden/bsfb/schulen/schulformen-589196",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ],
+      "reviewed_additional_document_urls": [
+        "https://dokumente.hamburg.de/resource/blob/123018/74c4a49e3a232f59f66f474f8bd63cd1/fsp-spanisch-gyo-2022-data.pdf",
+        "https://dokumente.hamburg.de/resource/blob/123066/390b95918bc023b3cc64885202d99ac8/geschichte-gyo-2022-data.pdf"
+      ],
+      "additional_document_validation": "24.10.2026: konkrete Links vom amtlichen Ministeriumsindex und Original-PDF direkt gelesen; Bytehash in kuratierten Dokumentmetadaten. Keine allgemeine Freigabe anderer Dokumente."
+    },
+    {
+      "statecode": "HE",
+      "iso3166_2": "DE-HE",
+      "label": "Hessen",
+      "officialportalURL": "https://kultus.hessen.de/unterricht/kerncurricula-und-lehrplaene",
+      "schooltypesofficialsourceURLs": [
+        "https://kultus.hessen.de/schulsystem/schulformen-und-bildungsgaenge"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Hauptschule",
+        "Realschule",
+        "Mittelstufenschule",
+        "Gesamtschule",
+        "Gymnasium",
+        "Förderschule",
+        "Berufliche Schulen",
+        "Zweiter Bildungsweg"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Kerncurricula nach Primarstufe, Sek I und Bildungsgang; gymnasiale/berufliche Oberstufe mit Einführungs-/Qualifikationsphasen gesondert.",
+      "grade_evidence": [
+        {
+          "scope": "Kerncurriculum-Einstieg",
+          "bands": [
+            "Primarstufe",
+            "Sekundarstufe I",
+            "Gymnasiale Oberstufe",
+            "Berufliches Gymnasium",
+            "Fachoberschule"
+          ],
+          "sourceURL": "https://kultus.hessen.de/unterricht/kerncurricula-und-lehrplaene/kerncurricula",
+          "verified": "Stufen-/Bildungsgangnavigation und Einführungshinweise gelesen; keine vollständigen Fachbänder extrahiert."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Überarbeitete Oberstufencurricula werden seit E-Phase2024/25 aufsteigend eingeführt; Fassung und Kohorte speichern.",
+        "Schulformseite über amtlichen Suchindex verifiziert, Direktabruf503.",
+        "Kompetenz-Endstände nicht als willkürlichen Klassenjahresplan behandeln."
+      ],
+      "url_checks": [
+        {
+          "url": "https://kultus.hessen.de/unterricht/kerncurricula-und-lehrplaene",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://kultus.hessen.de/unterricht/kerncurricula-und-lehrplaene/kerncurricula",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://kultus.hessen.de/schulsystem/schulformen-und-bildungsgaenge",
+          "result": "official_search_index_verified_direct_fetch_failed",
+          "note": "Amtlicher Suchindex mit Schulformliste gelesen; direkter Abruf503.",
+          "checked_at": "2026-10-24"
+        }
+      ],
+      "reviewed_additional_document_urls": [
+        "https://www.fortbildung.kultus.hessen.de/sites/kultus.hessen.de/files/2021-07/kerncurriculum_latein_gymnasium.pdf",
+        "https://www.fortbildung.kultus.hessen.de/sites/kultus.hessen.de/files/2023-07/2023_-_kerncurriculum_moderne_fremdsprachen_-_sekundarstufe_i_realschule.pdf"
+      ],
+      "additional_document_validation": "24.10.2026: konkrete Links vom amtlichen Ministeriumsindex und Original-PDF direkt gelesen; Bytehash in kuratierten Dokumentmetadaten. Keine allgemeine Freigabe anderer Dokumente."
+    },
+    {
+      "statecode": "MV",
+      "iso3166_2": "DE-MV",
+      "label": "Mecklenburg-Vorpommern",
+      "officialportalURL": "https://www.bildung-mv.de/unterricht/rahmenplaene/rahmenplaene-fuer-die-allgemein-bildenden-faecher/index.html",
+      "schooltypesofficialsourceURLs": [
+        "https://www.bildung-mv.de/schule/schularten/"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Schulartunabhängige Orientierungsstufe",
+        "Regionale Schule",
+        "Gymnasium",
+        "Gesamtschule",
+        "Förderschule",
+        "Berufliche Schulen",
+        "Abendgymnasium"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Rahmenpläne pro Fach/Bildungsgang und Klassenband; schulartunabhängige Orientierungsstufe ist getrennt von nachfolgender Differenzierung.",
+      "grade_evidence": [
+        {
+          "scope": "Regionale Schule, Schulstruktur",
+          "bands": [
+            "5–10",
+            "Orientierungsstufe 5/6",
+            "Differenzierung ab 7"
+          ],
+          "sourceURL": "https://www.bildung-mv.de/schule/schularten/regionale-schule/index.html",
+          "verified": "Amtlicher Suchindex gelesen; keine vollständige fachliche Jahrgangszuordnung."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Rahmenplanportal zeigt gestaffelte Überarbeitungen2025/26,2026/27,2027/28; Gültigkeit je Dokument prüfen.",
+        "Allgemeiner /unterricht/rahmenplaene/-Einstieg lief in Timeout, konkrete Fachindexseite geöffnet."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.bildung-mv.de/unterricht/rahmenplaene/rahmenplaene-fuer-die-allgemein-bildenden-faecher/index.html",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.bildung-mv.de/schule/schularten/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.bildung-mv.de/schule/schularten/regionale-schule/index.html",
+          "result": "official_search_index_read",
+          "note": "Amtliche Regionalschulbeschreibung gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "NI",
+      "iso3166_2": "DE-NI",
+      "label": "Niedersachsen",
+      "officialportalURL": "https://cuvo.nibis.de/",
+      "schooltypesofficialsourceURLs": [
+        "https://www.mk.niedersachsen.de/startseite/schule/unsere_schulen/unsere-schulen-6470.html"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Hauptschule",
+        "Realschule",
+        "Oberschule",
+        "Gymnasium",
+        "Gesamtschule",
+        "Förderschule",
+        "Abendgymnasium",
+        "Kolleg",
+        "Berufsbildende Schulen"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "CuVo-Datenbank nach Schulbereich, Schulform, Fach und Dokumenttyp; Klassenbänder und E-/Q-Phasen dokumentbezogen zu erheben.",
+      "grade_evidence": [
+        {
+          "scope": "Ministerielle Stufengliederung",
+          "bands": [
+            "Primarbereich 1–4",
+            "Sekundarbereich I 5–10",
+            "Sekundarbereich II 11–13"
+          ],
+          "sourceURL": "https://www.mk.niedersachsen.de/startseite/schule/unsere_schulen/unsere-schulen-6470.html",
+          "verified": "Allgemeine Schulübersicht gelesen; nicht für jeden Sonderbildungsgang oder jede Laufbahn identisch."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "CuVo-Suche ist öffentlich; Administrationslogin ist davon getrennt.",
+        "Ältere ministerielle Unterseiten enthalten abweichende G8-Angaben; auf aktuelle Fassung/Kohorte prüfen.",
+        "Bildungsportal verweist auf Verbindlichkeit autorisierter Druckfassungen; Datenbankfund allein nicht als abschließende Rechtsprüfung behandeln."
+      ],
+      "url_checks": [
+        {
+          "url": "https://cuvo.nibis.de/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.mk.niedersachsen.de/startseite/schule/unsere_schulen/unsere-schulen-6470.html",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildungsportal-niedersachsen.de/allgemeinbildung/vorgaben",
+          "result": "official_search_index_verified_direct_fetch_failed",
+          "note": "Direkt403; amtlicher Index bestätigt CuVo und Verbindlichkeitshinweis.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "NW",
+      "iso3166_2": "DE-NW",
+      "label": "Nordrhein-Westfalen",
+      "officialportalURL": "https://lehrplannavigator.nrw.de/",
+      "schooltypesofficialsourceURLs": [
+        "https://lehrplannavigator.nrw.de/"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Hauptschule",
+        "Realschule",
+        "Gesamtschule",
+        "Gymnasium",
+        "Förderschule",
+        "Weiterbildungskolleg"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Kompetenzerwartungen an Stufen-/Abschnittsenden, teils Jahrgangsbänder; Sek II nach Einführungs- und Qualifikationsphase.",
+      "grade_evidence": [
+        {
+          "scope": "Lehrplannavigator-Gliederung",
+          "bands": [
+            "Primarstufe",
+            "Sekundarstufe I",
+            "Sekundarstufe II",
+            "Einführungsphase",
+            "Qualifikationsphase"
+          ],
+          "sourceURL": "https://lehrplannavigator.nrw.de/",
+          "verified": "Portal und Stufenstruktur gelesen; Grundschul-Zielende Schuleingangsphase/4, keine vollständige Einzelfächerinventur."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Portal enthält auch künftig geltende Pläne2027/28; Veröffentlichungsdatum ist nicht Gültigkeitsbeginn.",
+        "Schulartliste hier nur tatsächlich gelesene Portalkategorien; Sekundarschule/Berufskolleg-Zweige vor vollständigem UI-Katalog zusätzlich erheben.",
+        "Alter schulentwicklung.nrw.de-Pfad leitet auf neuen Navigator weiter."
+      ],
+      "url_checks": [
+        {
+          "url": "https://lehrplannavigator.nrw.de/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.schulministerium.nrw/system/files/media/document/file/Sekundarstufe_I.pdf",
+          "result": "official_search_index_read",
+          "note": "Amtliche Strukturübersicht im Suchindex; ergänzt Sekundarschule und Berufskolleg, nicht als vollständiger Curriculuminhalt importiert.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "RP",
+      "iso3166_2": "DE-RP",
+      "label": "Rheinland-Pfalz",
+      "officialportalURL": "https://bildung.rlp.de/lehrplaene",
+      "schooltypesofficialsourceURLs": [
+        "https://bildung.rlp.de/schularten"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Realschule plus",
+        "Integrierte Gesamtschule",
+        "Gymnasium",
+        "Förderschule",
+        "Berufsbildende Schule"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Dokumentbezogene Jahrgangsbänder und Schulstufen; Mathematik-Materialeinstieg unterscheidet5/6,7/8,9/10 und MSS.",
+      "grade_evidence": [
+        {
+          "scope": "Mathematik Sek I/II, Materialeinstieg",
+          "bands": [
+            "5/6",
+            "7/8",
+            "9/10",
+            "MSS"
+          ],
+          "sourceURL": "https://bildung.rlp.de/rfb/faecher/mathematik/materialien",
+          "verified": "Amtliche Seite verlinkt Anregungen nach Doppeljahrgängen und separaten MSS-Lehrplan. Das ist noch keine vollständige verbindliche Themenzuordnung."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Lehrplanportal ist dynamisch; vollständige Filteroptionen und jedes aktuelle Dokument noch nicht extrahiert.",
+        "Alte Downloadpfade lehrplaene.bildung-rp.de teilweise nicht abrufbar; bei späterer Kuratierung konkrete Dokumente/Versionen nachprüfen."
+      ],
+      "url_checks": [
+        {
+          "url": "https://bildung.rlp.de/lehrplaene",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildung.rlp.de/schularten",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildung.rlp.de/rfb/faecher/mathematik/materialien",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "SL",
+      "iso3166_2": "DE-SL",
+      "label": "Saarland",
+      "officialportalURL": "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene",
+      "schooltypesofficialsourceURLs": [
+        "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene",
+        "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/gymnasium.lehrplaene",
+        "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/grundschule.lehrplaene",
+        "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/gemeinschaftsschule.lehrplaene/gemeinschaftsschulen.lehrplaene_node"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Förderschule",
+        "Gemeinschaftsschule",
+        "Gymnasium",
+        "Gymnasiale Oberstufe Saar",
+        "Deutsch-Luxemburgisches Schengen-Lyzeum",
+        "Europäische Schule Saarland",
+        "Berufliche Schulen"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Mischung aus Doppeljahrgängen, Einzelklassen, G-/E-/A-Kursniveaus und jahrgangsübergreifenden Teilen; G8/G9 getrennt.",
+      "grade_evidence": [
+        {
+          "scope": "Gemeinschaftsschule Mathematik, amtlicher Index",
+          "bands": [
+            "5/6",
+            "7/8 G/E",
+            "9 G",
+            "9/10 E/A"
+          ],
+          "sourceURL": "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/gemeinschaftsschule.lehrplaene/gemeinschaftsschulen.lehrplaene_node",
+          "verified": "Amtlicher Suchindex gelesen; direkter Abruf403."
+        },
+        {
+          "scope": "Gymnasium Mathematik G9, amtlicher Index",
+          "bands": [
+            "5/6",
+            "7",
+            "8",
+            "9",
+            "10"
+          ],
+          "sourceURL": "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/gymnasium.lehrplaene",
+          "verified": "Amtlicher Suchindex mit jahrgangsbezogenen2023–2026-Fassungen gelesen; direkter Abruf403."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Portal und Fachlisten über amtlichen Suchindex und KMK verifiziert; direkte Abrufe403.",
+        "Grundschule enthält neue Fassungen ab01.08.2026 neben älteren; Gültigkeit je Fach beachten.",
+        "Keine Vollständigkeit der Oberstufen-/beruflichen Pläne behauptet."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene",
+          "result": "official_search_index_verified_direct_fetch_failed",
+          "note": "Amtlicher Suchindex mit Schulformliste gelesen; direkter Abruf403.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/gymnasium.lehrplaene",
+          "result": "official_search_index_verified_direct_fetch_failed",
+          "note": "Amtlicher Suchindex gelesen, direkter Abruf403.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/grundschule.lehrplaene",
+          "result": "official_search_index_read",
+          "note": "Amtlicher Grundschulindex mit Gültigkeitshinweisen ab2026.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.saarland.de/mbk/DE/portale/bildungsserver/schulen-und-bildungswege/lehrplaene/lehrplaene.allgemeinbildende/gemeinschaftsschule.lehrplaene/gemeinschaftsschulen.lehrplaene_node",
+          "result": "official_search_index_verified_direct_fetch_failed",
+          "note": "Amtlicher Fachindex gelesen, direkter Abruf403.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "SN",
+      "iso3166_2": "DE-SN",
+      "label": "Sachsen",
+      "officialportalURL": "https://www.schulportal.sachsen.de/lplandb/",
+      "schooltypesofficialsourceURLs": [
+        "https://www.schule.sachsen.de/saechsisches-schulsystem-3979.html",
+        "https://schule.sachsen.de/allgemeinbildende-schulen-3988.html"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Oberschule/Oberschule+",
+        "Gemeinschaftsschule",
+        "Gymnasium",
+        "Förderschule",
+        "Berufsbildende Schulen",
+        "Zweiter Bildungsweg"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Einzelklassen mit Lernbereichen und Zeitrichtwerten; Oberstufe teils gemeinsames Band11/12 nach Grund-/Leistungskurs.",
+      "grade_evidence": [
+        {
+          "scope": "Gymnasium Mathematik, Fassung2021",
+          "bands": [
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11/12 Grundkurs",
+            "11/12 Leistungskurs"
+          ],
+          "sourceURL": "https://www.schulportal.sachsen.de/lplandb/index.php?lplanid=461&lplansc=SPos4aG4oIhjKYDcHVW8&lplansearchfield=Mathematik",
+          "verified": "Amtlicher Suchindex mit Inhaltsverzeichnis und aufsteigender Einführung bis2025 gelesen."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Lehrpläne öffentlich, zusätzliche Materialdatenbank-/Digitalangebote teilweise nur mit Lehrkräftezugang.",
+        "Lplanid allein im Werkzeug nicht abrufbar; verifizierter voller öffentlicher URL enthält technischen lplansc-Schlüssel. Dieser ist kein privater Kinder-/Accounttoken.",
+        "Oberschule+ ist ein Profil/verbundene Grundschule; nicht ohne Schulrechtprüfung als völlig separaten Bildungsgang behandeln."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.schulportal.sachsen.de/lplandb/",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.schule.sachsen.de/saechsisches-schulsystem-3979.html",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://schule.sachsen.de/allgemeinbildende-schulen-3988.html",
+          "result": "official_search_index_read",
+          "note": "Amtliche Schulartliste gelesen; www-Linkabruf hatte Fehler.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.schulportal.sachsen.de/lplandb/index.php?lplanid=461&lplansc=SPos4aG4oIhjKYDcHVW8&lplansearchfield=Mathematik",
+          "result": "official_search_index_read",
+          "note": "Amtlicher Fachlehrplan inklusive Klassen-/Kursgliederung gelesen; kurzer ID-Pfad allein nicht abrufbar.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "ST",
+      "iso3166_2": "DE-ST",
+      "label": "Sachsen-Anhalt",
+      "officialportalURL": "https://lisa.sachsen-anhalt.de/schulqualitaet/lehrplaene-rahmenrichtlinien",
+      "schooltypesofficialsourceURLs": [
+        "https://lisa.sachsen-anhalt.de/schulqualitaet/lehrplaene-rahmenrichtlinien",
+        "https://mb.sachsen-anhalt.de/themen/schulsystem/allgemeinbildende-schulen/gesamtschule"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Förderschule",
+        "Sekundarschule",
+        "Gemeinschaftsschule",
+        "Gesamtschule",
+        "Gymnasium",
+        "Berufsbildende Schulen"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Mischung aus Doppeljahrgängen, Einzeljahrgängen sowie E-/Q-Phasen und Anforderungsniveaus.",
+      "grade_evidence": [
+        {
+          "scope": "Gymnasium Mathematik, Anpassung01.08.2022",
+          "bands": [
+            "5/6",
+            "7/8",
+            "9",
+            "10 Einführungsphase",
+            "11/12 Qualifikationsphase grundlegend/erhöht"
+          ],
+          "sourceURL": "https://www.bildung-lsa.de/files/b45de329c361a40a2f0a7211902d5815/FLP_Mathe_Gym_010822_swd.pdf",
+          "verified": "Amtliches PDF, Inhaltsverzeichnis und Fassungsangabe gelesen."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "LISA verweist für aktuell gültige Pläne auf Bildungsserver nach Schulform.",
+        "Die gelesene Mathematikgliederung darf nicht ungeprüft auf alle Schulformen oder Fächer übertragen werden.",
+        "Anhörungsfassungen vor Inkraftsetzung getrennt halten."
+      ],
+      "url_checks": [
+        {
+          "url": "https://lisa.sachsen-anhalt.de/schulqualitaet/lehrplaene-rahmenrichtlinien",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.bildung-lsa.de/informationsportal/unterricht/gymnasium/schulformbezogene_informationen/lehrplan.htm",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.bildung-lsa.de/files/b45de329c361a40a2f0a7211902d5815/FLP_Mathe_Gym_010822_swd.pdf",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://mb.sachsen-anhalt.de/themen/schulsystem/allgemeinbildende-schulen/gesamtschule",
+          "result": "official_search_index_read",
+          "note": "Ministerielle Gesamtschulbeschreibung gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "SH",
+      "iso3166_2": "DE-SH",
+      "label": "Schleswig-Holstein",
+      "officialportalURL": "https://fachportal.lernnetz.de/sh/fachanforderungen.html",
+      "schooltypesofficialsourceURLs": [
+        "https://www.schleswig-holstein.de/DE/landesregierung/themen/bildung-hochschulen/schulsystem"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Gemeinschaftsschule",
+        "Gymnasium",
+        "Förderzentrum",
+        "Berufsbildende Schulen"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Fachanforderungen nach Primarstufe/Sek I/Sek II, Abschluss- und Anforderungsniveau; schulbezogene G8/G9-/Phasenlage beachten.",
+      "grade_evidence": [
+        {
+          "scope": "Schulstruktur",
+          "bands": [
+            "Grundschule 1–4",
+            "Sek I 5–10",
+            "Gemeinschaftsschul-Oberstufe bis13"
+          ],
+          "sourceURL": "https://www.schleswig-holstein.de/DE/landesregierung/themen/bildung-hochschulen/schulsystem",
+          "verified": "Ministerielle Übersicht gelesen; nennt überwiegend G9 mit G8-/Y-Modell-Ausnahmen. Kein fachlicher Klassenplan."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Fachportal enthält umfangreiche ausdrücklich historische/ersetzte Dokumente.",
+        "Anhörung2026 für geplante Einführung2027/28 nicht als bereits geltende Fachanforderung speichern.",
+        "Konkrete Fächer, Niveaus und Zielbänder vor Thema-Jahrgangs-Mapping separat prüfen."
+      ],
+      "url_checks": [
+        {
+          "url": "https://fachportal.lernnetz.de/sh/fachanforderungen.html",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://www.schleswig-holstein.de/DE/landesregierung/themen/bildung-hochschulen/schulsystem",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    },
+    {
+      "statecode": "TH",
+      "iso3166_2": "DE-TH",
+      "label": "Thüringen",
+      "officialportalURL": "https://www.schulportal-thueringen.de/lehrplaene",
+      "schooltypesofficialsourceURLs": [
+        "https://bildung.thueringen.de/schule/schularten",
+        "https://www.schulportal-thueringen.de/lehrplaene",
+        "https://bildung.thueringen.de/fileadmin/ministerium/publikationen/schullaufbahnen_in_thueringen.pdf"
+      ],
+      "sourcecheckdate": "2026-10-24",
+      "schooltypes_observed": [
+        "Grundschule",
+        "Regelschule",
+        "Gymnasium",
+        "Thüringer Gemeinschaftsschule",
+        "Gesamtschule",
+        "Förderschule",
+        "Berufsbildende Schulen"
+      ],
+      "schooltypes_exhaustive": false,
+      "gradeassignmentmode": "Fach-/abschlussbezogene Lehrplandokumente mit Klassenbändern und einzelnen Klassen; aktuelle Gültigkeitstabelle zwingend separat prüfen.",
+      "grade_evidence": [
+        {
+          "scope": "Amtliche Gültigkeitsübersicht2025/26, nur Strukturbeispiel",
+          "bands": [
+            "5/6",
+            "7–10",
+            "Einzelklassen je Fach/Bildungsgang"
+          ],
+          "sourceURL": "https://schulportal-thueringen.de/get-data/cb0fc796-40e8-4305-b4d6-fbae88bdefa4/Uebersicht_Gueltigkeit_Lehrplaene.pdf",
+          "verified": "Amtlicher Suchindex gelesen. Historischer Schuljahresstand2025/26 ist kein Beleg für vollständige Gültigkeit2026/27."
+        }
+      ],
+      "per_grade_subject_coverage_complete": false,
+      "cautions": [
+        "Schulportalinhalt im Werkzeug teilweise älter gecacht; keine vollständige2026/27-Gültigkeitsabnahme.",
+        "Ministerielle Schulartübersicht lieferte Captcha; nicht umgangen.",
+        "Entwurfs-/Erprobungsfassungen und alte sonderpädagogische Kohorten ausdrücklich unterscheiden; Stundentafeln sind kein Themenlehrplan."
+      ],
+      "url_checks": [
+        {
+          "url": "https://www.schulportal-thueringen.de/lehrplaene",
+          "result": "opened",
+          "note": "Amtlicher Seiteninhalt im Webwerkzeug gelesen.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildung.thueringen.de/schule/schularten",
+          "result": "captcha_no_content_read",
+          "note": "Amtlicher Pfad erreichbar, aber keine Inhaltsabnahme wegen Captcha.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://bildung.thueringen.de/fileadmin/ministerium/publikationen/schullaufbahnen_in_thueringen.pdf",
+          "result": "official_search_index_read",
+          "note": "Amtliche Schullaufbahnbroschüre im Suchindex gelesen; keine vollständige aktuelle Planabnahme.",
+          "checked_at": "2026-10-24"
+        },
+        {
+          "url": "https://schulportal-thueringen.de/get-data/cb0fc796-40e8-4305-b4d6-fbae88bdefa4/Uebersicht_Gueltigkeit_Lehrplaene.pdf",
+          "result": "official_search_index_read",
+          "note": "Amtliche Gültigkeitsübersicht2025/26, nicht als2026/27 ausgegeben.",
+          "checked_at": "2026-10-24"
+        }
+      ]
+    }
+  ]
+}

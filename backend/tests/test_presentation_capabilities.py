@@ -19,21 +19,23 @@ from test_math_provider import arithmetic_transport as arithmetic_transport
 from test_math_provider import submitted_request
 
 
-def final_schema(subjects):
-    schema = bind_graphic_schema(providers.strict_schema(UnitOutput, preserve_limits=True), subjects)
+def final_schema(subjects, *, labs_enabled=False):
+    schema = bind_graphic_schema(providers.strict_schema(UnitOutput, preserve_limits=True), subjects, labs_enabled=labs_enabled)
     schema["$defs"]["Presentation"]["properties"]["blocks"]["maxItems"] = 2
     return schema
 
 
 @pytest.mark.parametrize("subject", PROFILES)
-def test_every_actual_subject_profile_has_complete_purpose_and_accurate_interaction_scope(subject):
-    schema = final_schema([subject])
+@pytest.mark.parametrize("labs_enabled", [False, True])
+def test_every_actual_subject_profile_has_complete_purpose_and_accurate_interaction_scope(subject, labs_enabled):
+    schema = final_schema([subject], labs_enabled=labs_enabled)
+    supported = set(PROFILES[subject]) - ({"lab"} if not labs_enabled else set())
     context = generation_context([subject], schema=schema)
-    assert context["graphic_kinds"] == sorted(PROFILES[subject])
-    assert set(context["use_for"]) == set(PROFILES[subject])
-    assert context["subject_profiles"] == [{"subject": subject, "graphic_kinds": sorted(PROFILES[subject]),
+    assert context["graphic_kinds"] == sorted(supported)
+    assert set(context["use_for"]) == supported
+    assert context["subject_profiles"] == [{"subject": subject, "graphic_kinds": sorted(supported),
                                             "question_types": ["choice", "gap", "grouped", "match", "short"]}]
-    assert set(context["local_interactions"]) == set(PROFILES[subject]) & INTERACTIONS.keys()
+    assert set(context["local_interactions"]) == supported & INTERACTIONS.keys()
     assert "function_curve" not in context["local_interactions"]
     assert "matching" not in context
     assert set(context["answer_ui"]) == {"choice", "gap", "grouped", "match", "short"}
@@ -41,6 +43,16 @@ def test_every_actual_subject_profile_has_complete_purpose_and_accurate_interact
     assert context["max_blocks"] == 2
     assert "controls" not in schema["$defs"]["Graphic"]["properties"]
     assert "content_context" not in schema["properties"]
+    def valid_enums(value):
+        if isinstance(value, dict):
+            if "enum" in value:
+                assert value["enum"], "Strict provider schemas reject empty enums."
+            for child in value.values():
+                valid_enums(child)
+        elif isinstance(value, list):
+            for child in value:
+                valid_enums(child)
+    valid_enums(schema)
 
 
 def test_catalog_covers_every_existing_kind_and_does_not_export_one_subject_union_as_another():

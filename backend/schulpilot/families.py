@@ -549,7 +549,7 @@ def export_child(db, child):
                                 for row in db.scalars(select(ChildSubject).where(ChildSubject.child_id == child.id))]
     result["subject_definitions"] = [{c.name: getattr(row, c.name) for c in Subject.__table__.columns}
                                      for row in db.scalars(select(Subject).where(Subject.id.in_(child_subject_ids(db, child.id))))]
-    from . import child_cost_controls, competences, source_lineage, visual_positions, visual_references
+    from . import child_cost_controls, competences, curriculum, source_lineage, visual_positions, visual_references
     from .exam_review import export_review
     from .exams import export_exams
 
@@ -561,6 +561,7 @@ def export_child(db, child):
     result["visual_positions"] = visual_positions.export_user(db, child.user_id)
     result["competences"] = competences.export_child(db, child.id)
     result["child_cost_controls"] = child_cost_controls.export_child(db, child.id)
+    result["curriculum"] = curriculum.export_child(db, child)
     result["exams"] = export_exams(db, child.id)
     result.update(export_review(db, child.id))
     units = [u["id"] for u in result["learning_units"]]

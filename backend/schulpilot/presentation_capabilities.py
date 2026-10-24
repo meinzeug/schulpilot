@@ -5,6 +5,7 @@ second model call. Detailed data/validation rules stay with the existing models.
 """
 
 PURPOSES = {
+    "lab": "Eigenes versioniertes Lehrmodell zur konstanten Kraft/Bewegung oder zu ausdrücklich kuratierten Satzumstellungen; Zusatzwissen, keine Schülerbewertung.",
     "fraction": "Bruchteile und belegte Bruchzahlen vergleichen.",
     "triangle": "Grundseite und senkrechte Höhe eines belegten Dreiecks erkennen.",
     "sentence": "Satzbausteine und ausdrücklich belegte Satzrollen unterscheiden.",
@@ -64,6 +65,7 @@ ANSWER_UI = {
 }
 
 INTERACTIONS = {
+    "lab": "Nur freigegebene eigene Rezepte: physics.force_motion mit begrenzter Masse/Beschleunigung und bewusstem2s-Lauf; german.sentence_shift mit Mira-Beispiel/vier erlaubtenUmstellungen. Tippen/Tastatur/Drag/Reset; keine freienFormeln/Gruppen oder Anbieteraufrufe.",
     "function_graph": "Automatisch Erkunden ab geöffneter Hilfe/Lösung: Punkt mit x=-4..4 in 0,1-Schritten und y-Anzeige; polynomial2 numbers=[a,b,c] bleiben unverändert. Keine Koeffizientenregler.",
     "data_plot": "Automatisch Erkunden ab geöffneter Hilfe/Lösung: nur zwischen den 2..8 exakten Originalpaaren auswählen. Keine neuen Messwerte, Interpolation oder Regression.",
     "logic_table": "Automatisch Erkunden ab geöffneter Hilfe/Lösung: A/B=0 oder1 schalten und Y/Tabellenzeile hervorheben; feste UND/ODER/NICHT-Operation. Kein Schaltungseditor.",
@@ -146,6 +148,12 @@ def context(subjects, profiles, *, schema=None, compact_matching=False, symbol_w
         "use_for": {kind: PURPOSES[kind] for kind in sorted(allowed)},
         "local_interactions": {kind: INTERACTIONS[kind] for kind in sorted(allowed) if kind in INTERACTIONS},
     }
+    if "lab" in allowed:
+        from .learning_labs import RECIPES
+
+        enabled = set(definitions.get("LabV1", {}).get("properties", {}).get("recipe_id", {}).get("enum", []))
+        value["lab_recipes"] = {subject: [key for key, recipe in RECIPES.items() if key in enabled and subject in recipe["subjects"]]
+            for subject in selected}
     if "grouped" in types:
         value["field_group"] = {"version": 1, "fields_min": 2, "fields_max": 4,
                                 "source": "Jede label=answer/label:answer/label→answer-Zuordnung wörtlich in einem Originalbeleg derselben Gruppe.",

@@ -60,7 +60,7 @@ def test_factual_package_allows_new_grouped_only_in_explicit_compact_openrouter_
                "materials": [{"group_id": "g1", "subject": FIELDS["subject"], "topic": "Begriffe", "content": FIELDS["source"]}]}
     calls = _transport(monkeypatch, provider, response)
     if provider == "codex":
-        with pytest.raises(providers.ProviderError, match="nicht übernommen"):
+        with pytest.raises(providers.ProviderError, match="angeforderten Ausgabeformat"):
             providers.request_provider(_config(provider), "package", payload)
     else:
         result = providers.request_provider(_config(provider), "package", payload)

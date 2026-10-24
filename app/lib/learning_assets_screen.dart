@@ -370,6 +370,20 @@ class _LearningAssetsScreenState extends State<LearningAssetsScreen>
     return line.length <= 100 ? line : '${line.substring(0, 97)}…';
   }
 
+  String recipeTitle(Json recipe) => switch (recipe['kind']) {
+    'scene' => 'Interaktive Szene',
+    'fraction' => 'Bruchmodell',
+    'function_graph' => 'Funktionsgraph',
+    'function_curve' => 'Kurvenmodell',
+    'data_plot' => 'Messwertdiagramm',
+    'logic_table' => 'Logiktabelle',
+    'text_probe' => 'Textprobe',
+    'bar_chart' => 'Balkendiagramm',
+    'process_graph' => 'Prozessmodell',
+    'process_cycle' => 'Kreislaufmodell',
+    _ => 'Fachgrafik',
+  };
+
   Widget selection(BuildContext context) {
     final sourceOptions = sources;
     return Column(
@@ -454,7 +468,7 @@ class _LearningAssetsScreenState extends State<LearningAssetsScreen>
                       for (final row in recipes)
                         RadioListTile<String>(
                           enabled: !busy,
-                          title: Text(row['purpose'].toString()),
+                          title: Text(recipeTitle(row)),
                           value: row['id'].toString(),
                         ),
                     ],
@@ -514,16 +528,20 @@ class _LearningAssetsScreenState extends State<LearningAssetsScreen>
           }, build['reference']?['digest']?.toString())
         : null;
     final body = Column(
+      key: const ValueKey('asset-open-content'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             Expanded(
-              child: Text(
-                asset?['title']?.toString() ??
-                    instance?['title']?.toString() ??
-                    'Dein Thema',
-                style: Theme.of(context).textTheme.titleLarge,
+              child: Semantics(
+                header: true,
+                child: Text(
+                  asset?['title']?.toString() ??
+                      instance?['title']?.toString() ??
+                      'Dein Thema',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
             ),
             IconButton(
@@ -554,10 +572,15 @@ class _LearningAssetsScreenState extends State<LearningAssetsScreen>
         ] else if (asset != null && status == 'ready') ...[
           const SizedBox(height: 8),
           Text(
-            'KI-Erklärung · unbewertetes Erkunden',
-            style: TextStyle(color: context.palette.muted, fontSize: 12),
+            'KI-Beispiel · fachlich ungeprüft; keine Leistungsbewertung',
+            key: const ValueKey('asset-unassessed-status'),
+            style: TextStyle(
+              color: context.palette.muted,
+              fontSize: 13,
+              height: 1.3,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SubjectPresentation(
             Json.from(asset['presentation']),
             state: widget.state,
@@ -579,8 +602,21 @@ class _LearningAssetsScreenState extends State<LearningAssetsScreen>
               ),
             ),
           const SizedBox(height: 8),
-          Notice(
-            build['notice']?.toString() ?? 'KI kann Fehler machen. Diese Erkundung bewertet dein Können nicht.',
+          ExpansionTile(
+            key: ValueKey('asset-ai-details:${instance!['id']}'),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            minTileHeight: 48,
+            maintainState: true,
+            title: const Text('Vollständiger KI-Hinweis'),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  build['notice']?.toString() ?? 'KI kann Fehler machen. Diese Erkundung bewertet dein Können nicht.',
+                ),
+              ),
+            ],
           ),
         ] else ...[
           Notice(switch (status) {
@@ -605,8 +641,10 @@ class _LearningAssetsScreenState extends State<LearningAssetsScreen>
 
   @override
   Widget build(BuildContext context) => PageFrame(
+    key: ValueKey((widget.childId, instance?['id'])),
     state: widget.state,
     title: 'Themen entdecken',
+    showTitle: instance == null,
     child: !current
         ? const SizedBox.shrink()
         : Column(
@@ -614,11 +652,10 @@ class _LearningAssetsScreenState extends State<LearningAssetsScreen>
             children: [
               if (loading) const Center(child: CircularProgressIndicator()),
               if (!loading && catalogue != null)
-                Panel(
-                  child: instance == null
-                      ? selection(context)
-                      : savedContent(context),
-                ),
+                if (instance == null)
+                  Panel(child: selection(context))
+                else
+                  savedContent(context),
               if (error != null) ...[
                 Notice(error.toString(), warning: true),
                 if (catalogue == null)
