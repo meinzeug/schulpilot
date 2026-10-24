@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Explicit night/version entry keeps the system splash on the same resource chain. -->
+    <style name="LaunchTheme" parent="@style/SchulpilotSplashTheme"></style>
+</resources>

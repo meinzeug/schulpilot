@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/foundation.dart' show ValueListenable;
 
 import 'api.dart';
@@ -96,8 +98,43 @@ class SchulbuddyScope extends InheritedWidget {
   bool updateShouldNotify(SchulbuddyScope oldWidget) => open != oldWidget.open;
 }
 
+class _BuddyDockEntry {
+  final GlobalKey anchor;
+  final ModalRoute<dynamic>? route;
+  final String? unitId, questionId;
+  final bool wasCurrent;
+  _BuddyDockEntry(this.anchor, this.route, this.unitId, this.questionId)
+    : wasCurrent = route?.isCurrent == true;
+  bool get current =>
+      anchor.currentContext?.mounted == true && route?.isCurrent == true;
+  bool get header => unitId == null;
+}
+
+class _BuddyDrag {
+  final _SchulbuddyHostState host;
+  final int epoch;
+  final ModalRoute<dynamic>? route;
+  const _BuddyDrag(this.host, this.epoch, this.route);
+}
+
+class _BuddyDockScope extends InheritedWidget {
+  final _SchulbuddyHostState host;
+  final int revision;
+  const _BuddyDockScope({
+    required this.host,
+    required this.revision,
+    required super.child,
+  });
+  static _BuddyDockScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_BuddyDockScope>();
+  @override
+  bool updateShouldNotify(_BuddyDockScope oldWidget) =>
+      revision != oldWidget.revision || host != oldWidget.host;
+}
+
 /// One shared entry point for headers and the focused learning room.
-class SchulbuddyButton extends StatelessWidget {
+/// Placement stays in the existing host; these buttons remain its dock targets.
+class SchulbuddyButton extends StatefulWidget {
   final bool compact;
   final String? unitId, questionId;
   const SchulbuddyButton({
@@ -107,40 +144,129 @@ class SchulbuddyButton extends StatelessWidget {
     this.questionId,
   });
   @override
+  State<SchulbuddyButton> createState() => _SchulbuddyButtonState();
+}
+
+class _SchulbuddyButtonState extends State<SchulbuddyButton> {
+  final anchor = GlobalKey();
+  _SchulbuddyHostState? host;
+  ModalRoute<dynamic>? route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final next = _BuddyDockScope.maybeOf(context)?.host;
+    if (next != host) host?.unregister(this);
+    host = next;
+    route = ModalRoute.of(context);
+    host?.register(
+      this,
+      _BuddyDockEntry(anchor, route, widget.unitId, widget.questionId),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant SchulbuddyButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    host?.register(
+      this,
+      _BuddyDockEntry(anchor, route, widget.unitId, widget.questionId),
+    );
+  }
+
+  @override
+  void dispose() {
+    host?.unregister(this);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scope = SchulbuddyScope.maybeOf(context);
     if (scope == null) return const SizedBox.shrink();
+    final dock = host;
+    final original = widget;
+    final stamp = dock?.epoch;
+    bool current() =>
+        mounted &&
+        identical(widget, original) &&
+        route?.isCurrent != false &&
+        (dock == null || dock.validEpoch(stamp!));
     Future<void> activate() async {
-      if (!context.mounted ||
-          !identical(context.widget, this) ||
-          ModalRoute.of(context)?.isCurrent == false) {
-        return;
-      }
-      if (unitId != null && scope.openForUnit != null) {
-        await scope.openForUnit!(unitId!, questionId);
+      if (!current()) return;
+      if (widget.unitId != null && scope.openForUnit != null) {
+        await scope.openForUnit!(widget.unitId!, widget.questionId);
       } else {
         await scope.open();
       }
     }
 
-    if (!compact) {
-      return TextButton.icon(
+    final header = widget.unitId == null;
+    final floating = dock?.floating == true;
+    Widget button;
+    if (floating) {
+      button = header && dock!.dragging
+          ? IconButton(
+              key: const ValueKey('schulbuddy-header-dock'),
+              tooltip: 'Schulbuddy in Kopfleiste andocken',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: current() ? () => dock.dock(stamp!) : null,
+              icon: const Icon(Icons.download_rounded),
+            )
+          : SizedBox(width: header ? 48 : 0, height: header ? 48 : 0);
+    } else if (!widget.compact) {
+      button = TextButton.icon(
         onPressed: activate,
         icon: const LearningCompanionIllustration(size: 36),
         label: const Text('Schulbuddy'),
       );
+    } else {
+      button = IconButton(
+        tooltip: 'Schulbuddy öffnen',
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        onPressed: activate,
+        icon: const LearningCompanionIllustration(size: 36),
+      );
     }
-    return IconButton(
-      tooltip: 'Schulbuddy öffnen',
-      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-      onPressed: activate,
-      icon: const LearningCompanionIllustration(size: 36),
+    if (dock == null) return button;
+    if (!floating) {
+      button = dock.movable(
+        context: context,
+        route: route,
+        header: header,
+        child: button,
+      );
+    }
+    return DragTarget<_BuddyDrag>(
+      key: anchor,
+      onWillAcceptWithDetails: (details) =>
+          header && current() && dock.validDrag(details.data),
+      onAcceptWithDetails: (details) {
+        if (header && current() && dock.validDrag(details.data)) {
+          dock.dock(details.data.epoch);
+        }
+      },
+      builder: (context, candidates, rejected) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: candidates.isEmpty
+              ? Colors.transparent
+              : Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(24),
+          border: candidates.isEmpty
+              ? null
+              : Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+        ),
+        child: button,
+      ),
     );
   }
 }
 
-/// The host retains the chosen conversation across routes. Opening a new page
-/// never changes an existing conversation or starts a provider request.
+/// The host retains the conversation and local placement across routes.
+/// Moving/docking never starts a context request, provider job or learning event.
 class SchulbuddyHost extends StatefulWidget {
   final AppState state;
   final GlobalKey<NavigatorState> navigatorKey;
@@ -159,18 +285,48 @@ class SchulbuddyHost extends StatefulWidget {
   State<SchulbuddyHost> createState() => _SchulbuddyHostState();
 }
 
-class _SchulbuddyHostState extends State<SchulbuddyHost> {
+class _SchulbuddyHostState extends State<SchulbuddyHost>
+    with WidgetsBindingObserver {
   final page = ValueNotifier(const SchulbuddyContext('general'));
+  final surface = GlobalKey();
+  final entries = <Object, _BuddyDockEntry>{};
   DialogRoute<void>? dialog;
+  DialogRoute<String>? placementMenu;
   SchulbuddyContext? conversation;
   Json? owner;
-  String? family;
+  String? family, token;
+  bool floating = false, dragging = false, foreground = true;
+  Offset? position;
+  int epoch = 0, revision = 0;
+  bool refreshPending = false;
+
+  bool get current =>
+      mounted &&
+      owner != null &&
+      identical(owner, widget.state.user) &&
+      family == widget.state.familyId &&
+      token == widget.state.api.token;
+  bool validEpoch(int stamp) => current && foreground && stamp == epoch;
+  _BuddyDockEntry? get currentEntry =>
+      entries.values.where((entry) => entry.current).lastOrNull;
+  bool validDrag(_BuddyDrag data) =>
+      identical(data.host, this) &&
+      validEpoch(data.epoch) &&
+      data.route?.isCurrent == true &&
+      dialog == null &&
+      placementMenu == null;
+
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
     family = widget.state.familyId;
+    token = widget.state.api.token;
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     widget.state.addListener(identity);
+    WidgetsBinding.instance.addObserver(this);
     updatePage();
   }
 
@@ -178,30 +334,352 @@ class _SchulbuddyHostState extends State<SchulbuddyHost> {
     widget.state,
     widget.location,
   );
+  void refreshLater() {
+    if (refreshPending) return;
+    refreshPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      refreshPending = false;
+      if (mounted) setState(() => revision++);
+    });
+  }
+
+  void register(Object key, _BuddyDockEntry entry) {
+    final old = entries[key];
+    entries[key] = entry;
+    if (old != null &&
+        (old.unitId != entry.unitId || old.questionId != entry.questionId)) {
+      epoch++;
+    }
+    // ModalRoute dependency changes also refresh overlay visibility after a cover.
+    if (old == null ||
+        old.route != entry.route ||
+        old.unitId != entry.unitId ||
+        old.questionId != entry.questionId ||
+        old.wasCurrent != entry.wasCurrent) {
+      refreshLater();
+    }
+  }
+
+  void unregister(Object key) {
+    if (entries.remove(key) != null) refreshLater();
+  }
+
+  void removeOwnedRoute(ModalRoute<dynamic>? route) {
+    if (route?.isActive == true) route!.navigator?.removeRoute(route);
+  }
+
   void identity() {
     if (!identical(owner, widget.state.user) ||
-        family != widget.state.familyId) {
+        family != widget.state.familyId ||
+        token != widget.state.api.token) {
       owner = widget.state.user;
       family = widget.state.familyId;
+      token = widget.state.api.token;
+      epoch++;
+      floating = false;
+      dragging = false;
+      position = null;
       conversation = null;
-      final old = dialog;
+      final old = dialog, menu = placementMenu;
       dialog = null;
-      if (old?.isActive == true) old!.navigator?.removeRoute(old);
+      placementMenu = null;
+      removeOwnedRoute(menu);
+      removeOwnedRoute(old);
       updatePage();
-      if (mounted) setState(() {});
+      if (mounted) setState(() => revision++);
     }
   }
 
   @override
   void didUpdateWidget(covariant SchulbuddyHost oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.state != widget.state) {
+    if (!identical(oldWidget.state, widget.state)) {
       oldWidget.state.removeListener(identity);
       widget.state.addListener(identity);
+      // Even shared user-map objects cannot transfer a previous host session.
+      owner = null;
       identity();
     }
-    if (oldWidget.location != widget.location) updatePage();
+    if (oldWidget.location != widget.location) {
+      epoch++;
+      dragging = false;
+      final menu = placementMenu;
+      placementMenu = null;
+      if (menu?.isActive == true) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => removeOwnedRoute(menu),
+        );
+      }
+      updatePage();
+      revision++;
+    }
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    epoch++;
+    dragging = false;
+    final menu = placementMenu;
+    placementMenu = null;
+    removeOwnedRoute(menu);
+    if (mounted) setState(() => revision++);
+  }
+
+  Offset clampPosition(Offset value, Size size, MediaQueryData media) {
+    const diameter = 56.0, gap = 8.0;
+    final left = media.padding.left + gap;
+    final top = media.padding.top + gap;
+    final right = max(left, size.width - media.padding.right - diameter - gap);
+    final bottom = max(
+      top,
+      size.height -
+          max(media.viewInsets.bottom, media.padding.bottom) -
+          diameter -
+          gap,
+    );
+    return Offset(
+      value.dx.clamp(left, right).toDouble(),
+      value.dy.clamp(top, bottom).toDouble(),
+    );
+  }
+
+  Offset localPosition(Offset global) {
+    final box = surface.currentContext?.findRenderObject();
+    return box is RenderBox ? box.globalToLocal(global) : global;
+  }
+
+  void dock(int stamp) {
+    if (!validEpoch(stamp)) return;
+    setState(() {
+      floating = false;
+      dragging = false;
+      revision++;
+    });
+  }
+
+  void finishDrag(_BuddyDrag data, DraggableDetails details) {
+    if (!validDrag(data)) return;
+    final center = details.offset + const Offset(28, 28);
+    final overHeader = entries.values.any((entry) {
+      if (!entry.header || !entry.current) return false;
+      final box = entry.anchor.currentContext?.findRenderObject();
+      return box is RenderBox &&
+          (box.localToGlobal(Offset.zero) & box.size)
+              .inflate(8)
+              .contains(center);
+    });
+    setState(() {
+      dragging = false;
+      if (details.wasAccepted || overHeader) {
+        floating = false;
+      } else {
+        floating = true;
+        position = localPosition(details.offset);
+      }
+      revision++;
+    });
+  }
+
+  Future<void> placement(ModalRoute<dynamic>? hostRoute) async {
+    if (!current ||
+        !foreground ||
+        hostRoute?.isCurrent != true ||
+        dialog != null ||
+        placementMenu != null) {
+      return;
+    }
+    final navigator = widget.navigatorKey.currentState,
+        ctx = widget.navigatorKey.currentContext;
+    if (navigator == null || ctx == null) return;
+    final stamp = epoch;
+    late final DialogRoute<String> menu;
+    bool menuCurrent() =>
+        validEpoch(stamp) && identical(placementMenu, menu) && menu.isCurrent;
+    menu = DialogRoute<String>(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        title: const Text('Schulbuddy platzieren'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const ValueKey('schulbuddy-place-free'),
+              leading: const Icon(Icons.open_with_rounded),
+              title: const Text('Frei platzieren'),
+              selected: floating,
+              onTap: () {
+                if (menuCurrent()) navigator.pop('float');
+              },
+            ),
+            ListTile(
+              key: const ValueKey('schulbuddy-place-header'),
+              leading: const Icon(Icons.vertical_align_top_rounded),
+              title: const Text('In Kopfleiste'),
+              selected: !floating,
+              onTap: () {
+                if (menuCurrent()) navigator.pop('dock');
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (menuCurrent()) navigator.pop();
+            },
+            child: const Text('Abbrechen'),
+          ),
+        ],
+        scrollable: true,
+      ),
+    );
+    setState(() {
+      placementMenu = menu;
+      dragging = false;
+      revision++;
+    });
+    try {
+      final selected = await navigator.push(menu);
+      await menu.completed;
+      if (!validEpoch(stamp) ||
+          !identical(placementMenu, menu) ||
+          hostRoute?.isCurrent != true) {
+        return;
+      }
+      if (selected == 'float') {
+        setState(() {
+          floating = true;
+          revision++;
+        });
+      } else if (selected == 'dock') {
+        dock(stamp);
+      }
+    } finally {
+      if (identical(placementMenu, menu) && mounted) {
+        setState(() {
+          placementMenu = null;
+          revision++;
+        });
+      }
+    }
+  }
+
+  Widget movable({
+    required BuildContext context,
+    required ModalRoute<dynamic>? route,
+    required Widget child,
+    bool header = false,
+    bool overlay = false,
+  }) {
+    final data = _BuddyDrag(this, epoch, route);
+    void menu() {
+      if (validDrag(data)) unawaited(placement(route));
+    }
+
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (_, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.contextMenu ||
+                (event.logicalKey == LogicalKeyboardKey.f10 &&
+                    HardwareKeyboard.instance.isShiftPressed))) {
+          menu();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Semantics(
+        customSemanticsActions: {
+          CustomSemanticsAction(
+            label: floating ? 'In Kopfleiste' : 'Frei platzieren',
+          ): () {
+            if (!validDrag(data)) return;
+            if (floating) {
+              dock(data.epoch);
+            } else {
+              setState(() {
+                floating = true;
+                revision++;
+              });
+            }
+          },
+        },
+        onLongPress: menu,
+        child: GestureDetector(
+          onLongPress: menu,
+          onSecondaryTapUp: (_) => menu(),
+          child: Draggable<_BuddyDrag>(
+            data: data,
+            maxSimultaneousDrags: validDrag(data) ? 1 : 0,
+            dragAnchorStrategy: (_, _, _) => const Offset(28, 28),
+            feedback: Material(
+              type: MaterialType.transparency,
+              child: buddyBubble(),
+            ),
+            childWhenDragging: header
+                ? const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Icon(
+                      Icons.download_rounded,
+                      semanticLabel: 'Hier in die Kopfleiste ziehen',
+                    ),
+                  )
+                : SizedBox(width: overlay ? 56 : 48, height: overlay ? 56 : 48),
+            onDragStarted: () {
+              if (validDrag(data)) {
+                setState(() {
+                  dragging = true;
+                  revision++;
+                });
+              }
+            },
+            onDragEnd: (details) => finishDrag(data, details),
+            onDraggableCanceled: (_, _) {
+              if (mounted && dragging) {
+                setState(() {
+                  dragging = false;
+                  revision++;
+                });
+              }
+            },
+            // IconButton's inner Tooltip otherwise wins the long-press arena.
+            // Hover and the button's accessible label remain available.
+            child: TooltipTheme(
+              data: TooltipTheme.of(context)
+                  .copyWith(triggerMode: TooltipTriggerMode.manual),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buddyBubble({VoidCallback? onPressed}) => Material(
+    color: Theme.of(context).colorScheme.surface,
+    elevation: 5,
+    shape: CircleBorder(
+      side: BorderSide(color: Theme.of(context).colorScheme.outline),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: SizedBox.square(
+      dimension: 56,
+      child: onPressed == null
+          ? const Padding(
+              padding: EdgeInsets.all(8),
+              child: LearningCompanionIllustration(size: 40),
+            )
+          : IconButton(
+              key: const ValueKey('schulbuddy-floating-open'),
+              tooltip: 'Schulbuddy öffnen',
+              onPressed: onPressed,
+              icon: const LearningCompanionIllustration(size: 40),
+            ),
+    ),
+  );
 
   Future<void> openForUnit(String unitId, String? questionId) async {
     if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(unitId) || widget.state.isAdmin) {
@@ -222,14 +700,17 @@ class _SchulbuddyHostState extends State<SchulbuddyHost> {
   }
 
   Future<void> open() async {
-    final account = widget.state.user, selectedFamily = widget.state.familyId;
-    final navigator = widget.navigatorKey.currentState;
-    final ctx = widget.navigatorKey.currentContext;
-    if (!mounted ||
-        account == null ||
+    final account = widget.state.user,
+        selectedFamily = widget.state.familyId,
+        sessionToken = widget.state.api.token;
+    final navigator = widget.navigatorKey.currentState,
+        ctx = widget.navigatorKey.currentContext;
+    if (!current ||
+        !foreground ||
         navigator == null ||
         ctx == null ||
-        dialog?.isActive == true) {
+        dialog != null ||
+        placementMenu != null) {
       return;
     }
     conversation ??= page.value;
@@ -242,32 +723,43 @@ class _SchulbuddyHostState extends State<SchulbuddyHost> {
         currentPage: page,
         onContext: (value) {
           if (identical(widget.state.user, account) &&
-              widget.state.familyId == selectedFamily) {
+              widget.state.familyId == selectedFamily &&
+              widget.state.api.token == sessionToken) {
             conversation = value;
           }
         },
       ),
     );
-    dialog = route;
+    setState(() {
+      dialog = route;
+      revision++;
+    });
     try {
       await navigator.push(route);
       await route.completed;
     } finally {
-      if (identical(dialog, route)) dialog = null;
+      if (identical(dialog, route) && mounted) {
+        setState(() {
+          dialog = null;
+          revision++;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
     widget.state.removeListener(identity);
-    final old = dialog;
-    if (old?.isActive == true) {
-      Future<void>.microtask(() {
-        if (old!.isActive && old.navigator?.mounted == true) {
-          old.navigator?.removeRoute(old);
-        }
-      });
-    }
+    WidgetsBinding.instance.removeObserver(this);
+    final old = dialog, menu = placementMenu;
+    Future<void>.microtask(() {
+      if (old?.isActive == true && old!.navigator?.mounted == true) {
+        old.navigator?.removeRoute(old);
+      }
+      if (menu?.isActive == true && menu!.navigator?.mounted == true) {
+        menu.navigator?.removeRoute(menu);
+      }
+    });
     page.dispose();
     super.dispose();
   }
@@ -276,19 +768,87 @@ class _SchulbuddyHostState extends State<SchulbuddyHost> {
   Widget build(BuildContext context) => SchulbuddyScope(
     open: open,
     openForUnit: openForUnit,
-    child: Column(
-      children: [
-        Expanded(child: widget.child),
-        if (widget.showLauncher && widget.state.user != null)
-          SafeArea(
-            top: false,
-            child: TextButton.icon(
-              onPressed: open,
-              icon: const LearningCompanionIllustration(size: 36),
-              label: const Text('Schulbuddy fragen'),
-            ),
-          ),
-      ],
+    child: _BuddyDockScope(
+      host: this,
+      revision: revision,
+      child: Overlay.wrap(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final entry = currentEntry;
+            final launcherEpoch = epoch;
+            final visible =
+                floating &&
+                current &&
+                foreground &&
+                entry != null &&
+                dialog == null &&
+                placementMenu == null;
+            final media = MediaQuery.of(context);
+            final size = Size(constraints.maxWidth, constraints.maxHeight);
+            final point = clampPosition(
+              position ?? Offset(size.width - 72, size.height - 152),
+              size,
+              media,
+            );
+            return Stack(
+              key: surface,
+              fit: StackFit.expand,
+              children: [
+                Column(
+                  children: [
+                    Expanded(child: widget.child),
+                    if (widget.showLauncher &&
+                        widget.state.user != null &&
+                        !floating)
+                      SafeArea(
+                        top: false,
+                        child: TextButton.icon(
+                          onPressed: open,
+                          icon: const LearningCompanionIllustration(size: 36),
+                          label: const Text('Schulbuddy fragen'),
+                        ),
+                      ),
+                  ],
+                ),
+                if (visible)
+                  Positioned(
+                    left: point.dx,
+                    top: point.dy,
+                    child: movable(
+                      context: context,
+                      route: entry.route,
+                      overlay: true,
+                      child: buddyBubble(
+                        onPressed: () {
+                          if (!validEpoch(launcherEpoch) ||
+                              !entry.current ||
+                              !entries.values.any(
+                                (now) =>
+                                    now.anchor == entry.anchor &&
+                                    now.route == entry.route &&
+                                    now.unitId == entry.unitId &&
+                                    now.questionId == entry.questionId,
+                              ) ||
+                              dialog != null ||
+                              placementMenu != null) {
+                            return;
+                          }
+                          if (entry.unitId != null) {
+                            unawaited(
+                              openForUnit(entry.unitId!, entry.questionId),
+                            );
+                          } else {
+                            unawaited(open());
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
     ),
   );
 }
@@ -321,6 +881,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
     with WidgetsBindingObserver {
   late final owner = widget.state.user;
   late final family = widget.state.familyId;
+  late final sessionToken = widget.state.api.token;
   late SchulbuddyContext scope = widget.contextValue;
   final input = TextEditingController(), inputFocus = FocusNode();
   final scroll = ScrollController();
@@ -344,7 +905,8 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
       mounted &&
       owner != null &&
       identical(widget.state.user, owner) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      sessionToken == widget.state.api.token;
   String get memoryKey => 'schulbuddy:${scope.key}';
   bool get pending =>
       turns.any((t) => ['queued', 'running'].contains(t['status']));
@@ -387,6 +949,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
     views[memoryKey] = {
       'account': owner,
       'family': family,
+      'session_token': sessionToken,
       'updated': now,
       'text': input.text,
       'reply_to': replyTo,
@@ -411,6 +974,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
     if (saved == null ||
         !identical(saved['account'], owner) ||
         saved['family'] != family ||
+        saved['session_token'] != sessionToken ||
         (saved['updated'] as num? ?? 0) <
             DateTime.now().millisecondsSinceEpoch - 86400000) {
       applying = false;
@@ -596,7 +1160,8 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
         'Idempotency-Key': key,
       });
       if (!identical(widget.state.user, owner) ||
-          widget.state.familyId != family) {
+          widget.state.familyId != family ||
+          widget.state.api.token != sessionToken) {
         return;
       }
       if (turn['id'] == null ||

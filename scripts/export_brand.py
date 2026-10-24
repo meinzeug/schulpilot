@@ -1,38 +1,63 @@
-"""Deterministically size the generated master for Flutter, web and Android."""
+"""Resize the untouched generated brand source for Flutter, web and Android."""
 
 from pathlib import Path
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKGROUND = (234, 248, 255, 255)
+MASTER = Path("app/assets/brand/schulpilot-ai-105.png")
+TRANSPARENT = (0, 0, 0, 0)
+BACKGROUND = (16, 30, 36, 255)
+
+# Fractions describe a proportional fit of the complete source canvas. No
+# cropping, recolouring, alpha cleanup or changes to the original are applied.
+EXPORTS = (
+    ("app/assets/brand/schulpilot-mark.png", 512, 1, TRANSPARENT),
+    ("app/web/brand.png", 512, 1, TRANSPARENT),
+    ("app/web/favicon.png", 64, 0.82, TRANSPARENT),
+    ("app/web/icons/icon-192.png", 192, 0.78, BACKGROUND),
+    ("app/web/icons/icon-512.png", 512, 0.78, BACKGROUND),
+    # A square of this size fits entirely in the central 80% safe circle.
+    ("app/web/icons/maskable-192.png", 192, 0.56, BACKGROUND),
+    ("app/web/icons/maskable-512.png", 512, 0.56, BACKGROUND),
+    ("app/android/app/src/main/res/drawable-nodpi/schulpilot_foreground.png", 1080, 0.50, TRANSPARENT),
+    ("app/android/app/src/main/res/drawable-nodpi/schulpilot_logo.png", 512, 0.84, TRANSPARENT),
+    # Android 12's system splash mask has a central two-thirds safe circle.
+    ("app/android/app/src/main/res/drawable-nodpi/schulpilot_splash_logo.png", 512, 0.44, TRANSPARENT),
+    ("app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png", 48, 0.78, BACKGROUND),
+    ("app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png", 72, 0.78, BACKGROUND),
+    ("app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png", 96, 0.78, BACKGROUND),
+    ("app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png", 144, 0.78, BACKGROUND),
+    ("app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", 192, 0.78, BACKGROUND),
+    ("design/brand/play-store-icon.png", 512, 0.78, BACKGROUND),
+)
 
 
-def main():
-    master = Image.open(ROOT / "design/brand/schulpilot-master.png").convert("RGBA")
-    mark = master.crop(master.getchannel("A").getbbox())
+def export_brand(root=ROOT):
+    root = Path(root)
+    with Image.open(root / MASTER) as source:
+        if source.format != "PNG" or source.mode != "RGBA":
+            raise ValueError("The brand master must be an RGBA PNG with its original transparency.")
+        mark = source.copy()
+    minimum, maximum = mark.getchannel("A").getextrema()
+    if minimum != 0 or maximum == 0:
+        raise ValueError("The brand master must contain both transparent and visible pixels.")
 
-    def save(path, size, fraction=1, background=(0, 0, 0, 0)):
+    exported = []
+    for relative, size, fraction, background in EXPORTS:
         canvas = Image.new("RGBA", (size, size), background)
         icon = mark.copy()
         icon.thumbnail((round(size * fraction), round(size * fraction)), Image.Resampling.LANCZOS)
         canvas.alpha_composite(icon, ((size - icon.width) // 2, (size - icon.height) // 2))
-        path = ROOT / path
+        path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         canvas.save(path, optimize=True)
+        exported.append(path)
+    return exported
 
-    save("app/assets/brand/schulpilot-mark.png", 512)
-    save("app/web/brand.png", 512)
-    save("app/web/favicon.png", 64, .82, BACKGROUND)
-    for size in (192, 512):
-        save(f"app/web/icons/icon-{size}.png", size, .78, BACKGROUND)
-        save(f"app/web/icons/maskable-{size}.png", size, .64, BACKGROUND)
-    res = "app/android/app/src/main/res"
-    save(f"{res}/drawable-nodpi/schulpilot_foreground.png", 1080, .50)
-    save(f"{res}/drawable-nodpi/schulpilot_logo.png", 512, .84)
-    for density, size in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192)):
-        save(f"{res}/mipmap-{density}/ic_launcher.png", size, .78, BACKGROUND)
-    save("design/brand/play-store-icon.png", 512, .78, BACKGROUND)
+
+def main():
+    export_brand()
 
 
 if __name__ == "__main__":

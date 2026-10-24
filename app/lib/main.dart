@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api.dart';
+import 'brand_startup.dart';
 import 'schulbuddy.dart';
 import 'account_deletion_screen.dart';
 import 'auth_screens.dart';
@@ -53,15 +54,21 @@ Future<void> main() async {
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     await recoverCameraPhotos(state);
   }
+  final initialLocation = kIsWeb
+      ? null
+      : nativeInitialLocation(
+          WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+        );
+  Widget application(String? pendingPlatformLocation) => SchulpilotApp(
+    state,
+    initialLocation: pendingPlatformLocation == null
+        ? initialLocation
+        : nativeInitialLocation(pendingPlatformLocation),
+  );
   runApp(
-    SchulpilotApp(
-      state,
-      initialLocation: kIsWeb
-          ? null
-          : nativeInitialLocation(
-              WidgetsBinding.instance.platformDispatcher.defaultRouteName,
-            ),
-    ),
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+        ? AndroidBrandStartup(application: application)
+        : application(null),
   );
 }
 
@@ -169,6 +176,9 @@ class _SchulpilotAppState extends State<SchulpilotApp>
   late final GoRouter router = GoRouter(
     navigatorKey: navigator,
     initialLocation: widget.initialLocation,
+    // Android normalizes its initial link and may receive a newer one during
+    // the intro; the dispatcher still holds the old cold-start URI.
+    overridePlatformDefaultLocation: !kIsWeb && widget.initialLocation != null,
     refreshListenable: widget.state,
     redirect: (context, route) {
       if (!kIsWeb && route.uri.scheme == 'schulpilot') {

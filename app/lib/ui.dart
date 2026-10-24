@@ -453,40 +453,62 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
   );
 }
 
-Widget brand({bool light = false}) => Builder(
-  builder: (context) => FittedBox(
-    fit: BoxFit.scaleDown,
-    alignment: Alignment.centerLeft,
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            color: Color(0xFFEAF8FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Image.asset(
-            'assets/brand/schulpilot-mark.png',
-            width: 30,
-            height: 30,
-            excludeFromSemantics: true,
+/// The same transparent head and home action in public and signed-in headers.
+Widget brand({
+  bool light = false,
+  bool compact = false,
+  VoidCallback? onPressed,
+}) => Builder(
+  builder: (context) {
+    final route = ModalRoute.of(context);
+    return TextButton(
+      key: const ValueKey('workspace-brand-home'),
+      onPressed:
+          onPressed ??
+          () {
+            if (!context.mounted || route?.isCurrent == false) return;
+            FocusManager.instance.primaryFocus?.unfocus();
+            GoRouter.maybeOf(context)?.go('/app');
+          },
+      style: TextButton.styleFrom(
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        foregroundColor: light ? Colors.white : context.palette.ink,
+      ),
+      child: Semantics(
+        label: 'SCHULPILOT – zur Startseite',
+        excludeSemantics: true,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/brand/schulpilot-mark.png',
+                width: 44,
+                height: 44,
+                excludeFromSemantics: true,
+              ),
+              if (!compact) ...[
+                const SizedBox(width: 8),
+                Text(
+                  'SCHULPILOT',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .4,
+                    color: light ? Colors.white : context.palette.ink,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        SizedBox(width: 11),
-        Text(
-          'SCHULPILOT',
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 19,
-            fontWeight: FontWeight.w900,
-            letterSpacing: .4,
-            color: light ? Colors.white : context.palette.ink,
-          ),
-        ),
-      ],
-    ),
-  ),
+      ),
+    );
+  },
 );
 
 class Panel extends StatelessWidget {
@@ -1623,25 +1645,14 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                               ),
                               icon: const Icon(Icons.arrow_back_rounded),
                             ),
-                      title: width < 360
-                          ? Semantics(
-                              label: 'SCHULPILOT',
-                              child: ExcludeSemantics(
-                                child: Container(
-                                  padding: EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFEAF8FF),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Image.asset(
-                                    'assets/brand/schulpilot-mark.png',
-                                    width: 24,
-                                    height: 24,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : brand(),
+                      title: brand(
+                        compact: width < 360,
+                        onPressed: _workspaceLink(
+                          context,
+                          state,
+                          state.isAdmin ? '/admin' : '/app',
+                        ),
+                      ),
                       toolbarHeight: 56,
                       actions: [
                         SchulbuddyButton(),
@@ -2077,19 +2088,11 @@ class _WorkspaceIconRail extends StatelessWidget {
                 icon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: expanded ? 40 : 32,
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF8FF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Image.asset(
-                        'assets/brand/schulpilot-mark.png',
-                        width: 28,
-                        height: 28,
-                        excludeFromSemantics: true,
-                      ),
+                    Image.asset(
+                      'assets/brand/schulpilot-mark.png',
+                      width: 32,
+                      height: 32,
+                      excludeFromSemantics: true,
                     ),
                     if (expanded) ...[
                       const SizedBox(width: 10),
