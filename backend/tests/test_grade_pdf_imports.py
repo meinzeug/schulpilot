@@ -76,6 +76,7 @@ def test_real_pdf_reader_with_synthetic_a1_excludes_averages_and_keeps_both_halv
         pdf(2026, [("Englisch", 1, "other", 1, "unklar")]),
         pdf(2026, bad_subject=True),
     ],
+    ids=["not-pdf", "encrypted-pdf", "corrupt-header", "unclear-value", "invalid-subject"],
 )
 def test_untrusted_or_ambiguous_pdf_fails_without_partial_import(raw):
     with pytest.raises(ValueError):
@@ -331,7 +332,11 @@ def test_stale_preview_different_file_same_key_and_deleted_grade_protected(api, 
         assert db.scalar(select(func.count()).select_from(SchoolGrade)) == 2
 
 
-@pytest.mark.parametrize("raw", [pdf(2001), b"%PDF-" + b"x" * (6 * 1024 * 1024), b"PRIVATE invalid document"])
+@pytest.mark.parametrize(
+    "raw",
+    [pdf(2001), b"%PDF-" + b"x" * (6 * 1024 * 1024), b"PRIVATE invalid document"],
+    ids=["invalid-school-year", "oversized-pdf", "invalid-document"],
+)
 def test_invalid_year_size_or_file_leave_no_grades_and_no_document_echo(api, household, raw):
     _, child = household
     response = upload(api, child, raw)

@@ -481,12 +481,14 @@ def test_unconfirmed_page_can_be_replaced_but_confirmed_homework_cannot_be_remov
 @pytest.mark.parametrize("invalid_output", [False, True])
 def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatch, invalid_output):
     import httpx
+    from package_output_helpers import PackageOutputCapture
     from schulpilot import providers
     from schulpilot.fixtures import PACKAGE_FIXTURE_ID
     from test_live_fixture import setup_free
 
     setup_free()
     captured = []
+    output = PackageOutputCapture(monkeypatch)
 
     class Client:
         def __init__(self, **_):
@@ -500,14 +502,22 @@ def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatc
 
         def post(self, url, headers, json):
             captured.append(json)
+            assert output.binding is not None
+            output.schema(json["response_format"]["json_schema"]["schema"])
             data = {"units": [{**sample_unit(), "group_id": "g1"}]}
             data["units"][0]["questions"] = data["units"][0]["questions"][:2]
+            for question in data["units"][0]["questions"]:
+                if question["type"] == "choice":
+                    question["answer"] = question["options"].index(question["answer"])
             if invalid_output:
                 data["units"][0]["PRIVATE-FIELD"] = "PRIVATE-ANSWER"
+            wire_data = output.wire(data)
+            if invalid_output:
+                assert "PRIVATE-FIELD" in __import__("json").dumps(wire_data)
             return httpx.Response(
                 200,
                 json={
-                    "choices": [{"finish_reason": "stop", "message": {"content": __import__("json").dumps(data)}}],
+                    "choices": [{"finish_reason": "stop", "message": {"content": __import__("json").dumps(wire_data)}}],
                     "usage": {"prompt_tokens": 1, "completion_tokens": 1, "cost": 0},
                 },
             )
@@ -529,11 +539,18 @@ def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatc
     if invalid_output:
         with pytest.raises(providers.ProviderError) as error:
             invoke()
-        assert "PRIVATE-" not in str(error.value) and "units.0.field" in str(error.value)
+        assert "PRIVATE-" not in str(error.value)
+        assert "angeforderten Ausgabeformat" in str(error.value)
     else:
         result = invoke()
         assert result.cost_micros == 0 and len(result.data["units"]) == 1
+        unit = result.data["units"][0]
+        assert unit["group_id"] == "g1" and unit["subject"] == "Mathematik"
+        assert [question["id"] for question in unit["questions"]] == ["sum", "reduce"]
+        assert [question["answer"] for question in unit["questions"]] == ["2/4", "1/2"]
+    assert len(captured) == 1
     body = json.dumps(captured[0])
+    assert "package-output-1" in body
     assert "PRIVATE-" not in body
     assert "page_number" in body and "Kürzen" in json.dumps(captured[0], ensure_ascii=False)
 

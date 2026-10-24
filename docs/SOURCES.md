@@ -1363,3 +1363,30 @@ Die drei tatsächlich ausgeführten vollständigen Sammlungen enthalten identisc
 zusammen exakt vollständig. Der gemeinsame Sammlungsdigest lautet
 `0ab50e2c60375bc1421d829251083bf2ae33ccb13c7c8e09c0f054605c84d35a`.
 Diese drei Collect-only-Läufe führen keine Tests oder Datenbankfixtures aus.
+
+Der zweite112-CI-Lauf40134095078 auf `ae61075` bestand erneut3669Flutterfälle
+(19übersprungen), Analyse und Webbuild. Die Backend-Testschritte0und2 waren
+erfolgreich; Gruppe1 stoppte bei einem alten Mock des synthetischen
+Tagespakettests:975bestanden,11übersprungen,1fehlgeschlagen. Die kanonisch
+simulierte Antwort entsprach noch nicht dem tatsächlich angeforderten
+`package-output-1`-Transport. Die nachfolgende Fixturekorrektur betrifft nur
+die simulierte Anbieterantwort; unbekannte private Zusatzfelder müssen
+weiterhin abgewiesen werden und dürfen in Fehlern nicht erscheinen.
+
+Die anschließende Protokollausgabe wurde außerdem durch automatisch aus
+PDF-Bytes gebildete Testnamen verzögert: ein Name enthielt6291571Zeichen.
+Zwei explizite kurze ID-Listen ersetzen nur diese Namen. Alle acht
+Parameterfälle, Bytes, Testkörper und Assertions bleiben identisch; der
+vollständige Sammlungsbeleg kann damit weiterhin ohne zusätzlichen
+Kompressions-/Transportweg exportiert und exakt verglichen werden.
+Die beiden betroffenen gültigen/ungültigen Tagespaketfixtures wurden zunächst
+mit zwei Fehlern reproduziert und nach der reinen Mockkorrektur gemeinsam
+erfolgreich ausgeführt:2bestanden in31,94Sekunden auf isoliertemSQLite.
+Der gültige Fall prüft das erhaltene Fach, die Gruppe und genau beide
+Fragen/Antworten; der ungültige Fall bleibt ausdrücklich abgewiesen und
+sanitisiert. Provider und Codec sind bytegleich zum bereits geprüften Produktstand.
+Die erneuten drei vollständigen Collect-only-Läufe enthalten weiterhin
+3209Tests/167Dateien und1064/1276/869ausgewählte Fälle, exakt disjunkt und
+vollständig. Ihre nur durch kurze Testnamen geänderten Receipts sind je rund
+812KB groß; gemeinsamer neuer Sammlungsdigest:
+`cda5a790acd9b4ddee7d6effcc2814d0112e1243d769e320c65a6ae758d32911`.
