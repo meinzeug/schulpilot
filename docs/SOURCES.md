@@ -974,3 +974,9 @@ der tatsächlich bevorstehenden ausgewählten OCR-/Paketroute. Eine größere
 Basisreserve darf weder den Wiederholungsbutton verdecken noch die kostenlose
 Quellenprüfung sperren. Lernzeit-Mindestziele und finanzielle KI-Limits bleiben
 getrennt; bestehende Grenzen werden durch diese Korrektur nicht angehoben.
+
+## Release 106 – 24.10.2026
+
+Klassenarbeitsvorbereitung, private Arbeitsanalyse und korrekt vorgeprüfte
+Quellenwiederholung: Produkt `8659115f8648d6134937ccd5f63948581abad28f`;
+Live-Abnahme, CI, Signaturen, Hashes und Grenzen in `docs/RELEASE_106.md`.
