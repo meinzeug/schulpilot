@@ -7,6 +7,7 @@ import zipfile
 from conftest import HEADERS, create_child, register
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
+from schulpilot import payment_documents
 from schulpilot.config import settings
 from schulpilot.db import DB, BankOrder, Membership, User
 from schulpilot.installation import SiteUpdate
@@ -26,14 +27,29 @@ def test_public_forms_have_escaped_fields_and_unique_nonce_without_provider(api,
     second = api.get("/api/legal/withdrawal")
     assert first.status_code == second.status_code == 200
     assert 'data-mode="public"' in first.text and 'data-order-id=""' in first.text
-    assert '__' not in first.text
     nonce = re.search(r'nonce="([A-Za-z0-9_-]+)"', first.text).group(1)
     assert len(nonce) >= 32 and nonce in first.headers['content-security-policy']
+    assert not re.search(r'__[A-Z][A-Z0-9_]*__', first.text.replace(nonce, ''))
     assert nonce not in second.text
     assert 'paypal.com' not in first.headers['content-security-policy']
     assert first.headers['cache-control'] == 'no-store'
     assert first.headers['referrer-policy'] == 'no-referrer'
     assert first.headers['x-frame-options'] == 'DENY'
+
+
+def test_public_form_allows_valid_double_underscore_nonces_and_binds_each_csp(api, monkeypatch):
+    object.__setattr__(settings, "web_dir", "")
+    values = ("A" * 14 + "__" + "B" * 16, "C" * 32)
+    nonces = iter(values)
+    monkeypatch.setattr(payment_documents.secrets, "token_urlsafe", lambda _size: next(nonces))
+    responses = (api.get("/api/legal/withdrawal"), api.get("/api/legal/withdrawal"))
+    for nonce, response in zip(values, responses, strict=True):
+        assert response.status_code == 200
+        assert f'nonce="{nonce}"' in response.text
+        assert f"'nonce-{nonce}'" in response.headers['content-security-policy']
+        assert not re.search(r'__[A-Z][A-Z0-9_]*__', response.text.replace(nonce, ''))
+        assert 'data-mode="public"' in response.text and 'data-order-id=""' in response.text
+    assert values[0] not in responses[1].text and values[1] not in responses[0].text
 
 
 def test_checkout_requires_real_cookie_owner_and_safe_id(api, mailbox):

@@ -117,6 +117,7 @@ def test_learning_pipeline_migration_retains_history_seeds_and_scoped_cascades(t
 
     def assert_seeds(con):
         from schulpilot.competences import VERSION, catalogue, seed_connection
+        from schulpilot.learning_labs import references as lab_references
         from schulpilot.visual_references import BUNDLE, digest, seed
 
         definitions = catalogue()
@@ -130,7 +131,7 @@ def test_learning_pipeline_migration_retains_history_seeds_and_scoped_cascades(t
             with Session(bind=con, join_transaction_mode="create_savepoint") as db:
                 seed(db)
                 db.commit()
-        expected = json.loads(BUNDLE.read_text())["references"]
+        expected = [*json.loads(BUNDLE.read_text())["references"], *lab_references()]
         assert {(row["id"], row["version"]): (row["digest"], row["recipe"]) for row in rows(con, "visual_reference_versions")} == {
             (row["id"], row["version"]): (digest(row), row) for row in expected
         }

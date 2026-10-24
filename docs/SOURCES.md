@@ -1337,3 +1337,29 @@ Läufe belegt, kein einzelner373/373-Lauf. Ein zuvor extern mitSIGTERM beendeter
 Nachlauf und ein gleichzeitig beendeter Flutterbuild sind ausdrücklich keine
 Erfolgsnachweise. Produkt- und Migrationshashes blieben unverändert; Ruff des
 integrierten Hauptstands ist sauber.
+
+Der erste vollständige112-CI-Lauf40131354680 auf `b56c6a4` bestand3669Flutterfälle
+(19übersprungen), Analyse und Webbuild. Der Backendlauf wurde nach25Minuten
+bei74Prozent abgebrochen. Vor dem Abbruch waren bereits drei Fehler markiert;
+daraus wird ausdrücklich kein grüner Backendnachweis abgeleitet. Die reine
+Sammlung ordnete diese den Fällen zur Mitelternlöschung, Pipeline-Migration und
+öffentlichen Zahlungsformularen zu. Alle drei Fehler wurden gezielt reproduziert:
+eine globale, zwischen Tests erhaltene signierte Löschhistorie; die zwei zusätzlich
+gesäten Labreferenzen; eine gültige zufällige CSP-Kennung mit doppeltem Unterstrich.
+Die engen Testkorrekturen prüfen nur neu hinzugekommene verifizierte Löschbelege,
+weiterhin die exakte vollständige Referenzliste und tatsächlich unersetzte
+Vorlagenmarker. Ein eigener Fall erhält CSP-Bindung und Eindeutigkeit bei solchen
+Kennungen. Produktcode und Sicherheitsregeln werden dadurch nicht geändert.
+
+Die Backend-Vollprüfung wird im bestehenden25-Minutenlimit auf drei deterministische
+Dateigruppen verteilt. Jede Gruppe sammelt zunächst alle Tests, erhält ihre
+vollständigen unveränderten Testobjekte samt Fixtures und Marken und dokumentiert
+Sammlung, Auswahl und Gegenmenge. Die Gesamtfreigabe benötigt alle drei erfolgreichen
+Läufe und die exakte disjunkte Vereinigungsmenge. Auswahlfilter und unvollständige
+Sammlungen werden abgewiesen; ein Sammlungsbeleg ist kein bestandener Testlauf.
+18datenbankfreie Prüfungen des Runners bestanden vor der echten Gesamtsammlung.
+Die drei tatsächlich ausgeführten vollständigen Sammlungen enthalten identische
+3209Tests in167Dateien:1064/1276/869ausgewählte Fälle, paarweise disjunkt und
+zusammen exakt vollständig. Der gemeinsame Sammlungsdigest lautet
+`0ab50e2c60375bc1421d829251083bf2ae33ccb13c7c8e09c0f054605c84d35a`.
+Diese drei Collect-only-Läufe führen keine Tests oder Datenbankfixtures aus.

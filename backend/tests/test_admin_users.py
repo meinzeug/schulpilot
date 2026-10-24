@@ -365,6 +365,12 @@ def test_coparent_delete_preserves_shared_family_children_and_owner(household, o
     parent, child = household
     with DB.begin() as db:
         other = another_parent(db, parent["families"][0]["id"])
+        membership_id = db.scalar(select(Membership.id).where(
+            Membership.user_id == other, Membership.family_id == parent["families"][0]["id"]
+        ))
+    assert membership_id
+    ledger = settings.data_dir / "erasure-ledger.jsonl"
+    previous_ids = {verify(line, settings.master_key)["id"] for line in ledger.read_text().splitlines()} if ledger.exists() else set()
     value = preview(operator, other)
     assert value["can_delete"] and value["impact"]["counts"]["children"] == 0
     response = confirm(operator, other, value)
@@ -377,8 +383,11 @@ def test_coparent_delete_preserves_shared_family_children_and_owner(household, o
         verify(line, settings.master_key)
         for line in (settings.data_dir / "erasure-ledger.jsonl").read_text().splitlines()
     ]
-    assert any(r["scope"] == "membership" for r in records)
-    assert not any(r["scope"] in ("family", "child") for r in records)
+    current_records = [record for record in records if record["id"] not in previous_ids]
+    assert {(record["scope"], record["target"]) for record in current_records} == {
+        ("membership", membership_id), ("user", other)
+    }
+    assert not any(record["scope"] in ("family", "child") for record in current_records)
 
 
 def test_sole_parent_requires_explicit_scope_and_delete_replay_is_idempotent(household, operator):

@@ -10,8 +10,13 @@ concurrency:
   cancel-in-progress: true
 jobs:
   backend:
+    name: backend-${{ matrix.shard }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -21,7 +26,11 @@ jobs:
           python-version: '3.12.3'
       - run: python -m pip install -r backend/requirements-dev.lock
       - run: ruff check backend deploy scripts
-      - run: pytest -q
+      - name: Run complete backend partition
+        run: python scripts/run_backend_shard.py --shard-index ${{ matrix.shard }} --shard-count 3 --receipt artifacts/backend-shard-${{ matrix.shard }}.json -- -q -x
+      - name: Record collection and partition
+        if: always()
+        run: cat artifacts/backend-shard-${{ matrix.shard }}.json
   flutter:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
