@@ -11,7 +11,9 @@ import 'coaching_panel.dart';
 import 'lesson_voice.dart';
 import 'learning_room.dart';
 import 'learning_round_overview.dart';
-import 'learning_explanation.dart';
+import 'saved_visual_explanation.dart';
+import 'visual_preparation_card.dart';
+import 'learning_path_view.dart';
 import 'learning_next_step.dart';
 import 'vocabulary_screen.dart';
 import 'tutor_sheet.dart';
@@ -620,6 +622,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         : null;
   }
 
+  bool entryProbePending(Json u) {
+    final path = u['learning_session']?['learning_path'];
+    return path is Map &&
+        ['prerequisite_probe', 'source_probe'].contains(path['entry_mode']) &&
+        (path['steps'] as List? ?? []).whereType<Map>().any(
+          (value) =>
+              value['kind'] == 'prior_check' && value['status'] != 'completed',
+        );
+  }
+
   String? get adaptiveAction {
     if (unit?['status'] != 'active') return null;
     final selected = modelStep;
@@ -654,6 +666,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     // suggestion. The mandatory saved plan steps above retain precedence.
     if (unit?['introduction_seen'] == false) return null;
     final session = unit?['learning_session'];
+    if (session?['action']?['reason_code'] == 'entry_probe_followup' &&
+        session?['action']?['kind'] == 'explain') {
+      final question = currentQuestion;
+      if (question == null ||
+          savedExplanationPracticeKey != toolKey(question)) {
+        return 'saved_explanation';
+      }
+    }
     if ([
       'change_explanation',
       'denominators_added',
@@ -929,7 +949,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   void watchCoaching() {
-    if (unit?['coaching']?['status'] == 'pending' ||
+    if ([
+          'queued',
+          'running',
+        ].contains(unit?['visual_preparation']?['status']) ||
+        unit?['coaching']?['status'] == 'pending' ||
         ['queued', 'running'].contains(unit?['coaching']?['practice_status']) ||
         [
           'queued',
@@ -990,6 +1014,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       );
     }
     final u = unit;
+    final viewOwner = ownerAccount;
     final content = error != null
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1004,12 +1029,28 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           )
         : u == null
         ? Center(child: CircularProgressIndicator())
-        : KeyedSubtree(key: stepTop, child: body(context));
+        : KeyedSubtree(
+            key: stepTop,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                VisualPreparationCard(
+                  state: state,
+                  unit: u,
+                  isCurrent: () =>
+                      requestIsCurrent(widget.unitId, ownerAccount) &&
+                      identical(unit, u),
+                  refresh: load,
+                ),
+                body(context),
+              ],
+            ),
+          );
     if (!state.isChild) {
       return PageFrame(
         state: state,
-        title: 'Einblick in die Lerneinheit',
-        subtitle: 'Aufgaben, Antworten und Hilfen.',
+        title: 'Lernübersicht',
+        showTitle: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1085,6 +1126,27 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     questions: questions.map((q) => Json.from(q)).toList(),
                     currentQuestionId: currentQuestion?['id']?.toString(),
                     completed: done,
+                  ),
+            learningPath:
+                u == null || u['learning_session']?['learning_path'] is! Map
+                ? null
+                : LearningPathView(
+                    state: state,
+                    sourceKey: (
+                      widget.unitId,
+                      ObjectKey(ownerAccount),
+                      state.api.token,
+                      u['learning_session']?['source_signature'],
+                    ),
+                    isCurrent: () =>
+                        requestIsCurrent(u['id'], viewOwner) &&
+                        visible &&
+                        unit?['learning_session']?['source_signature'] ==
+                            u['learning_session']?['source_signature'],
+                    data: u['learning_session']?['learning_path'] is Map
+                        ? Json.from(u['learning_session']['learning_path'])
+                        : null,
+                    currentQuestionId: currentQuestion?['id']?.toString(),
                   ),
             scrollController: roomScroll,
             clock: u == null ? null : learningClock(u),
@@ -1219,7 +1281,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       action = () => startUnit(u);
     } else if (u['introduction_seen'] == false) {
       final checkFirst =
-          u['learning_session']?['action']?['kind'] == 'check_prior';
+          u['learning_session']?['action']?['kind'] == 'check_prior' ||
+          entryProbePending(u);
       label = checkFirst ? 'Erst selbst probieren' : 'Weiter zu den Übungen';
       action = checkFirst
           ? () => controllerAction(u, 'check_prior')
@@ -1656,8 +1719,29 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                heading('Erklärung in dieser Einheit'),
-                MathText(u['explanation']),
+                heading('Erklärung'),
+                if ((u['explanation_steps'] as List? ?? []).isEmpty)
+                  MathText(u['explanation'])
+                else
+                  SavedVisualExplanation(
+                    state: state,
+                    unitId: widget.unitId,
+                    text: u['explanation'],
+                    steps: (u['explanation_steps'] as List? ?? [])
+                        .whereType<Map>()
+                        .map((value) => Json.from(value))
+                        .toList(),
+                    sourceKey: (
+                      widget.unitId,
+                      ObjectKey(ownerAccount),
+                      state.familyId,
+                      state.api.token,
+                      u['learning_session']?['source_signature'],
+                      u['explanation'],
+                    ),
+                    isCurrent: () =>
+                        requestIsCurrent(renderedUnit, renderedOwner),
+                  ),
               ],
             ),
           ),
@@ -1803,19 +1887,43 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                           ),
                         ),
                       Divider(height: 28),
-                      SubjectPresentation(
-                        key: ValueKey((
-                          'parent-all',
-                          widget.unitId,
-                          q['id'],
-                          ObjectKey(ownerAccount),
-                        )),
-                        state: state,
-                        q['presentation'] is Map
-                            ? Json.from(q['presentation'])
-                            : null,
-                      ),
-                      MathText('Aufgabenerklärung: ${q['explanation']}'),
+                      if ((q['explanation_steps'] as List? ?? []).isEmpty)
+                        SubjectPresentation(
+                          key: ValueKey((
+                            'parent-all',
+                            widget.unitId,
+                            q['id'],
+                            ObjectKey(ownerAccount),
+                          )),
+                          state: state,
+                          q['presentation'] is Map
+                              ? Json.from(q['presentation'])
+                              : null,
+                        ),
+                      if ((q['explanation_steps'] as List? ?? []).isEmpty)
+                        MathText('Aufgabenerklärung: ${q['explanation']}')
+                      else
+                        SavedVisualExplanation(
+                          state: state,
+                          unitId: widget.unitId,
+                          questionId: q['id'],
+                          text: q['explanation'],
+                          prompt: q['prompt'],
+                          steps: (q['explanation_steps'] as List? ?? [])
+                              .whereType<Map>()
+                              .map((value) => Json.from(value))
+                              .toList(),
+                          sourceKey: (
+                            widget.unitId,
+                            q['id'],
+                            ObjectKey(ownerAccount),
+                            state.api.token,
+                            renderedSource,
+                          ),
+                          isCurrent: () =>
+                              requestIsCurrent(renderedUnit, renderedOwner) &&
+                              identical(unit, u),
+                        ),
                       SizedBox(height: 12),
                       MathText(
                         '${counted(q['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')} genutzt. Verfügbare Hinweise:',
@@ -1903,7 +2011,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       );
     }
     if (u['introduction_seen'] == false) {
-      if (u['learning_session']?['action']?['kind'] == 'check_prior') {
+      if (u['learning_session']?['action']?['kind'] == 'check_prior' ||
+          entryProbePending(u)) {
         return Panel(
           tone: PanelTone.info,
           child: Column(
@@ -1924,11 +2033,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 'Probiere die erste Aufgabe. Wenn du Hilfe brauchst, gehen wir einen Schritt zusammen.',
               ),
               SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => showExplanation(context, u),
-                icon: Icon(Icons.auto_stories_outlined),
-                label: Text('Erst die Erklärung ansehen'),
-              ),
+              if (!entryProbePending(u))
+                OutlinedButton.icon(
+                  onPressed: () => showExplanation(context, u),
+                  icon: Icon(Icons.auto_stories_outlined),
+                  label: Text('Erst die Erklärung ansehen'),
+                ),
             ],
           ),
         );
@@ -1942,7 +2052,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             SizedBox(height: 16),
-            LearningExplanation(
+            SavedVisualExplanation(
+              unitId: widget.unitId,
+              steps: (u['explanation_steps'] as List? ?? [])
+                  .whereType<Map>()
+                  .map((value) => Json.from(value))
+                  .toList(),
               text: u['explanation'],
               state: state,
               sourceKey: (
@@ -3803,7 +3918,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final requestedOwner = ownerAccount;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
     final introduction = u['introduction_seen'] == false;
-    final q = introduction ? null : currentQuestion;
+    final entryFollowup =
+        u['learning_session']?['action']?['reason_code'] ==
+        'entry_probe_followup';
+    // A new application keeps its own solution hidden: after the prerequisite
+    // probe we explain the saved topic, not the next question's answer.
+    final q = introduction || entryFollowup ? null : currentQuestion;
     final token = state.api.token, family = state.familyId;
     final foregroundRevision = explanationScopeRevision;
     final source = unit?['learning_session']?['source_signature'];
@@ -3852,7 +3972,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  LearningExplanation(
+                  SavedVisualExplanation(
+                    unitId: widget.unitId,
+                    questionId: data['question_id']?.toString(),
+                    steps: (data['explanation_steps'] as List? ?? [])
+                        .whereType<Map>()
+                        .map((value) => Json.from(value))
+                        .toList(),
                     text: data['explanation'],
                     state: state,
                     sourceKey: (
@@ -3879,18 +4005,19 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         ? q['prompt']
                         : null,
                   ),
-                  SubjectPresentation(
-                    key: ValueKey((
-                      'explanation-all',
-                      u['id'],
-                      data['question_id'] ?? q?['id'] ?? 'introduction',
-                      ObjectKey(requestedOwner),
-                    )),
-                    state: state,
-                    data['presentation'] is Map
-                        ? Json.from(data['presentation'])
-                        : null,
-                  ),
+                  if ((data['explanation_steps'] as List? ?? []).isEmpty)
+                    SubjectPresentation(
+                      key: ValueKey((
+                        'explanation-all',
+                        u['id'],
+                        data['question_id'] ?? q?['id'] ?? 'introduction',
+                        ObjectKey(requestedOwner),
+                      )),
+                      state: state,
+                      data['presentation'] is Map
+                          ? Json.from(data['presentation'])
+                          : null,
+                    ),
                 ],
               ),
             ),
@@ -3904,6 +4031,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ],
       ),
     );
+    if (continuePractice == true &&
+        entryFollowup &&
+        currentExplanation() &&
+        context.mounted &&
+        ModalRoute.of(context)?.isCurrent != false) {
+      await load();
+    }
     if (continuePractice == true &&
         !introduction &&
         q != null &&

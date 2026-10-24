@@ -299,7 +299,9 @@ def test_sources_and_parent_planning_are_checked_before_and_after_generation(api
         job = db.scalar(select(Job).where(Job.kind == "study_block"))
         assert job.status == "failed"
         assert db.scalar(select(func.count()).select_from(LearningUnit)) == 0
-        assert db.scalar(select(Usage)).cost_micros == (0 if when == "during" else None)
+        usage = db.scalar(select(Usage))
+        assert usage.cost_micros == 0
+        assert usage.status == ("failed_billed" if when == "during" else "failed_not_sent")
     assert len(stage_transport["calls"]) == (1 if when == "during" else 0)
     current = api.get(path(study)).json()
     assert current["can_continue"] is (change == "planning")

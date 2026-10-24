@@ -258,7 +258,7 @@ def preparation_data(db, day, child=None):
     }
 
 
-def submit(db, p, day, child, key):
+def submit(db, p, day, child, key, *, learning_entry_enabled=False):
     """Persist intent before reserving; a disconnected browser cannot lose it."""
     if not key or len(key) > 80:
         raise HTTPException(422, "Ein eindeutiger Idempotency-Key (max. 80 Zeichen) ist erforderlich.")
@@ -301,6 +301,7 @@ def submit(db, p, day, child, key):
         "job_id": None,
         "user_id": p.user.id,
         "session_id": p.session.id,
+        "learning_entry_enabled": bool(learning_entry_enabled),
         "family_id": child.family_id,
         "sources": snapshot,
         "day_revision": day.revision,
@@ -418,6 +419,7 @@ def _queue(db, day, child, family, state, kind, payload):
         **payload,
         "school_day_id": day.id,
         "preparation_id": state["run_id"],
+        "learning_entry_enabled": kind == "package" and bool(state.get("learning_entry_enabled")),
         "material_revision": material.revision,
     }
     job = Job(
@@ -472,12 +474,18 @@ def _advance(db, day):
         _write(day, state, status=status, phase="review", job_id=None, error=None)
         return
     from .school_day import MAX_CONTENT, package_plan, planning_fingerprint
+    from .source_lineage import usable_source
+
+    if not any(usable_source(db, material) for material in source_pages):
+        raise ProviderError("Die Heftseiten enthalten noch keine verwendbare Lehrgrundlage. Bitte unsichere oder fehlerhafte Stellen zuerst prüfen.")
 
     if sum(len(m.content) for m in source_pages) > MAX_CONTENT:
         raise ProviderError("Der Text ist für ein Paket zu umfangreich. Bitte mit deinen Eltern den Stoff eingrenzen.")
     preview = package_plan(db, day, child)
     selected = [g for g in preview["groups"] if g["selected"]]
     if not selected:
+        if any(group.get("blocked_reason") for group in preview["groups"]):
+            raise ProviderError("Die neuen Heftquellen sind noch ungeklärt. Bitte zuerst die markierten Stellen prüfen.")
         _saved(db, day, state)
         return
     _queue(

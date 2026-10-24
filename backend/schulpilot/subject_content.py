@@ -8,7 +8,7 @@ import math
 import re
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_serializer, model_validator
 
 from . import grouped_questions, learning_scenes, science_graphics, text_probes
 
@@ -148,17 +148,48 @@ class SourceImageRegion(Bounded):
         return self
 
 
+class SourceAnnotation(Bounded):
+    """Literal visible mark, never a factual correction or inferred authorship."""
+    kind: Literal["crossout", "insertion", "correction", "highlight", "comment", "unknown"]
+    quote: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=500)
+    color: Literal["unknown", "black", "pencil", "blue", "red", "green", "purple", "orange"] = "unknown"
+    author: Literal["unknown", "student", "teacher"] = "unknown"
+    author_evidence: str = Field(default="", max_length=160)
+    image_region: SourceImageRegion | None = None
+
+
 class SourceBlock(Bounded):
     kind: Literal["heading", "paragraph", "list", "formula", "table", "diagram_text", "code"]
     text: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=12000, pattern=r"\S")
     purpose: Literal["unknown", "translation", "inflection", "rule", "example", "diagram", "metadata"] = "unknown"
     image_region: SourceImageRegion | None = Field(default=None,
-        description="Nur bei diagram_text: Bereich der sichtbaren Originalabbildung einschließlich Beschriftungen; Bildkoordinaten links/oben/rechts/unten von0bis1000, sonst null.")
+        description="Bereich des tatsächlich sichtbaren Originalblocks: links/oben/rechts/unten0bis1000; bei unsicherer Abgrenzung null. Keine erzeugte Grafik.")
+    literal_role: Literal["unknown", "instruction", "example", "student_work", "annotation"] = "unknown"
+    annotations: list[SourceAnnotation] = Field(default_factory=list, max_length=8)
+    reading_uncertainties: list[Annotated[str, Field(min_length=1, max_length=300)]] = Field(default_factory=list, max_length=8)
+
+    @model_serializer(mode="wrap")
+    def compact_literal(self, handler):
+        value = handler(self)
+        for key, default in (("literal_role", "unknown"), ("annotations", []), ("reading_uncertainties", [])):
+            if value.get(key) == default:
+                value.pop(key, None)
+        return value
 
     @model_validator(mode="after")
-    def literal_figure(self):
-        if self.image_region and self.kind != "diagram_text":
-            raise ValueError("Ein Fotoausschnitt gehört ausschließlich zu einer sichtbaren Abbildung.")
+    def literal_marks(self):
+        for mark in self.annotations:
+            if mark.quote not in self.text:
+                raise ValueError("Eine Literalannotation benötigt den unveränderten Wortlaut dieses Blocks.")
+            if mark.author != "unknown" and (not mark.author_evidence or mark.author_evidence not in self.text):
+                raise ValueError("Urheberschaft benötigt einen ausdrücklich sichtbaren Beleg; Farbe allein reicht nicht.")
+            if mark.author != "unknown":
+                role_label = (r"\b(?:Lehrer|Lehrerin|Lehrkraft|teacher)\b" if mark.author == "teacher"
+                              else r"\b(?:Schüler|Schülerin|Schülerantwort|student)\b")
+                if not re.search(role_label, mark.author_evidence, flags=re.IGNORECASE):
+                    raise ValueError("Eine Farbe oder ein Name belegt keine sichtbare Urheberrolle.")
+        if any(not isinstance(value, str) or not value.strip() or len(value) > 300 for value in self.reading_uncertainties):
+            raise ValueError("Lesestellen müssen kurz und konkret benannt sein.")
         return self
 
 

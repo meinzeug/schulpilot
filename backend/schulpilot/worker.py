@@ -91,6 +91,11 @@ def process(job_id):
     with DB() as db:
         candidate = db.get(Job, job_id)
         kind = candidate.kind if candidate else None
+    if kind == "unit_visuals":
+        from .visual_jobs import process as process_visuals
+
+        process_visuals(job_id)
+        return
     if kind == "exam_review":
         from .exam_review import process as process_exam_review
 
@@ -125,6 +130,7 @@ def process(job_id):
         }[kind](job_id)
         return
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -330,6 +336,16 @@ def process(job_id):
             function = job.kind
             from .catalog_ai import with_catalog_context
 
+            if job.kind in ("unit", "package"):
+                from .visual_references import with_visual_context
+
+                payload = with_visual_context(db, child, payload, source_pages, groups=job.payload.get("groups"))
+                from .learning_entry import with_learning_entry
+                from .visual_references import with_foundation_context
+
+                payload = with_learning_entry(db, child, payload, source_pages, groups=job.payload.get("groups"),
+                    enabled=bool(job.payload.get("learning_entry_enabled")) and not synthetic)
+                payload = with_foundation_context(db, payload)
             payload = with_catalog_context(db, child, payload)
             if not synthetic or fixture:
                 from .commerce import usage_terms
@@ -345,6 +361,7 @@ def process(job_id):
                 with DB() as db:
                     data = synthetic_report(db, db.get(LearningUnit, job.payload["review_of"]), "check")["next_unit"]
         else:
+            provider_requested = True
             result = request_provider(
                 ProviderConfig(**config_values), function, payload, image_bytes, synthetic_fixture=fixture_value
             )
@@ -390,6 +407,10 @@ def process(job_id):
                 raise ProviderError(
                     "Das Elternziel wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."
                 )
+            if job.kind in ("unit", "package"):
+                from .learning_entry import guard_entry_context
+
+                guard_entry_context(db, db.get(Child, job.child_id), payload, source_pages)
             if job.kind == "package":
                 # Sources/parent goals remain strict; midnight/time exhaustion
                 # retains a learning path instead of creating extra obligations.
@@ -405,6 +426,13 @@ def process(job_id):
                         provider=config_values["provider"],
                         model=config_values["model"],
                     )
+                    from .visual_references import remember as remember_visuals
+
+                    for unit_id, unit_data in zip(job.result["unit_ids"], data["units"], strict=True):
+                        remember_visuals(db, db.get(LearningUnit, unit_id), unit_data, payload)
+                        from .learning_entry import remember_generated
+
+                        remember_generated(db, db.get(LearningUnit, unit_id), payload, group_id=unit_data["group_id"])
             elif job.kind == "extract":
                 if not material or material.confirmed:
                     raise ProviderError("Material wurde zwischenzeitlich entfernt oder bereits bestätigt.")
@@ -414,12 +442,16 @@ def process(job_id):
                     data = validate_material(data, image_bytes)
                 except IncompleteTranscription as error:
                     raise ProviderError(str(error)) from None
+                from .source_lineage import extraction_receipt, save_snapshot
+
+                save_snapshot(db, material, "before_extraction")
                 for key in ("subject", "topic", "content", "uncertainties", "homework", "legibility", "source_blocks"):
                     setattr(material, key, data[key])
                 material.status = "unreadable" if data["legibility"] == "unreadable" else "review"
                 material.extraction_provider = config_values["provider"]
                 material.extraction_model = config_values["model"]
-                job.result = {"material_id": material.id}
+                source_version = save_snapshot(db, material, "extraction", extraction_receipt(db, job, config_values, image_bytes, result))
+                job.result = {"material_id": material.id, "source_snapshot_id": source_version.id if source_version else None}
                 record(db, job.child_id, "material_extracted", {"uncertainty_count": len(data["uncertainties"])})
             else:
                 source_pages = unit_sources(db, job)
@@ -470,8 +502,15 @@ def process(job_id):
                 )
                 db.add(unit)
                 db.flush()
+                from .visual_references import remember as remember_visuals
+
+                remember_visuals(db, unit, data, payload)
                 for source in source_pages:
                     db.add(UnitSource(unit_id=unit.id, material_id=source.id, revision=source.revision))
+                db.flush()
+                from .learning_entry import remember_generated
+
+                remember_generated(db, unit, payload)
                 if job.payload.get("exam_round_id"):
                     from .exams import attach_prepared_unit
 
@@ -523,7 +562,12 @@ def process(job_id):
                 job.finished = int(now())
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result or getattr(exc, "billing_result", None), failed=True)
+                    billed = result or getattr(exc, "billing_result", None)
+                    if billed is None and not provider_requested:
+                        from .providers import Result
+
+                        billed = Result({}, 0, 0, 0, cost_source="cancelled")
+                    settle(db, usage, billed, failed=True)
         log.warning("job_failed id=%s type=%s", job_id, type(exc).__name__)
 
 
@@ -603,6 +647,9 @@ def maintenance():
                 # Recheck during the next local maintenance pass, never retry AI.
                 continue
             remove(db, child, linked_ids(db, child_id, ids))
+            from .source_lineage import purge_diagnostic_outputs
+
+            purge_diagnostic_outputs(db, ids)
             purge_source_turns(db, ids, child_id=child_id)
             for material in db.scalars(select(Material).where(Material.child_id == child_id, Material.id.in_(ids))):
                 if material.path:
@@ -621,6 +668,13 @@ def maintenance():
         exam_cutoff = int(now()) - 365 * 86400
         purge_expired_exams(db, exam_cutoff)
         db.execute(delete(Exam).where(Exam.updated < exam_cutoff))
+        from .child_cost_controls import purge_expired as purge_old_cost_changes
+        from .source_lineage import expire_diagnostic_outputs
+        from .visual_reference_models import UnitVisualPosition
+
+        purge_old_cost_changes(db)
+        expire_diagnostic_outputs(db, int(now()) - 86400)
+        db.execute(delete(UnitVisualPosition).where(UnitVisualPosition.updated < int(now()) - 30 * 86400))
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
         from .db import (

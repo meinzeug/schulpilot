@@ -56,6 +56,7 @@ class Result:
     telemetry: dict | None = None
     cost_source: str = "legacy_estimate"
     action_proposal: dict | None = None
+    request_receipt: dict | None = None
 
 
 SYSTEM = """Du bist SCHULPILOT, eine altersgerechte Lernbegleitung. Antworte auf Deutsch.
@@ -729,7 +730,7 @@ def external_allowed(config, image=False, synthetic_fixture=False, *, operator_p
         raise ProviderError("Kein Provider-Schlüssel eingerichtet.")
 
 
-def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, probe_tier=None):
+def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, probe_tier=None, operator_evaluation=None):
     from .commerce import usage_terms
     from .model_routing import enabled, features_for, policy_hash, select_route, selection
 
@@ -743,6 +744,10 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
             "expires": int(time.time()) + 3600})
     previous = db.scalar(select(Usage).where(Usage.reservation_key == key))
     if previous:
+        if operator_evaluation:
+            from .source_evaluation import reserve_guard
+
+            reserve_guard(db, family, child_id, job_id, function, probe_tier, operator_evaluation)
         return previous
 
     family_bucket, family_calls, family_budget = usage_terms(db, family, enforce=True)
@@ -753,7 +758,14 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
         config = configured(db)
     else:
         config = select_route(base_config, function, features_for(db, child_id, job_id)) if enabled(base_config) else config_for_function(base_config, function)
-    if probe_tier:
+    if operator_evaluation:
+        if synthetic_fixture or not probe_tier or not enabled(base_config):
+            raise HTTPException(403, "Eine echte Operator-Diagnose darf nicht als künstliches Beispiel ausgeführt werden.")
+        from .source_evaluation import reserve_guard
+
+        snapshot = reserve_guard(db, family, child_id, job_id, function, probe_tier, operator_evaluation)
+        config = select_route(base_config, function, snapshot=snapshot)
+    elif probe_tier:
         if not (synthetic_fixture and settings.synthetic_paid_probe and enabled(base_config)):
             raise HTTPException(403, "Explizite Testmodellwahl ist nur im begrenzten künstlichen Prüfpfad erlaubt.")
         config = select_route(base_config, function, snapshot={"policy_hash": policy_hash(base_config.routing_policy),
@@ -774,6 +786,9 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
             503,
             "Dokumentierte Preisobergrenzen fehlen. Kosten sind unbekannt; der kostenpflichtige Aufruf bleibt gesperrt.",
         )
+    from .child_cost_controls import reservation_policy
+
+    child_policy = reservation_policy(db, child_id, family_id=family.id)
     period = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m")
     ids = [f"global:{period}", family_bucket]
     limits = [
@@ -789,13 +804,15 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
             UsageBucket,
             {"id": name, "calls": 0, "encumbered_micros": 0, "known_cost_micros": 0, "unknown_calls": 0},
         )
+        conditions = [UsageBucket.id == name]
+        # Explicit child day/month money limits replace the legacy family
+        # financial envelope. Global/evaluation stops and access stay intact.
+        if not (child_policy and name == family_bucket):
+            conditions += [UsageBucket.calls < calls,
+                UsageBucket.encumbered_micros + config.reserve_micros <= budget]
         result = db.execute(
             update(UsageBucket)
-            .where(
-                UsageBucket.id == name,
-                UsageBucket.calls < calls,
-                UsageBucket.encumbered_micros + config.reserve_micros <= budget,
-            )
+            .where(*conditions)
             .values(
                 calls=UsageBucket.calls + 1,
                 encumbered_micros=UsageBucket.encumbered_micros + config.reserve_micros,
@@ -825,6 +842,8 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
         from .schulbuddy_provider import budget_snapshot
 
         usage.route_snapshot = budget_snapshot(base_config, config)
+    if child_policy:
+        usage.route_snapshot = {**usage.route_snapshot, "child_cost_control": child_policy}
     from .ai_accounting import reserve_child
 
     reserve_child(db, usage, usage.route_snapshot)
@@ -838,6 +857,10 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
         job.payload = {**job.payload, "controller_guard": guard}
     db.add(usage)
     db.flush()
+    if operator_evaluation:
+        from .source_evaluation import bind_usage
+
+        bind_usage(db, usage, operator_evaluation)
     return usage
 
 
@@ -943,6 +966,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .exam_review_schemas import ExamReviewOutput
 
         model_type = ExamReviewOutput
+    if function == "unit_visuals":
+        from .visual_reference_schemas import VisualExplanationOutput
+
+        model_type = VisualExplanationOutput
     if function == "schulbuddy":
         from .schulbuddy_schemas import BuddyOutput
 
@@ -1035,7 +1062,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     from . import subject_content
 
     review_only = function == "coach" and bool(payload.get("defer_practice"))
-    visual_functions = function in ("unit", "package") or (function == "coach" and not review_only)
+    visual_functions = function in ("unit", "package", "unit_visuals") or (function == "coach" and not review_only)
     if visual_functions:
         subjects = subject_content.generation_subjects(payload)
     excerpt_candidates = None
@@ -1314,7 +1341,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             instructions += " Beachte instructional_support je selected_groups-Eintrag: guided_example braucht besonders kleine erklärte Zwischenschritte."
     compact_openrouter = (
         config.provider == "openrouter"
-        and function not in ("extract", "tutor", "vocabulary_import", "language_unit", "language_project", "decision")
+        and function not in ("extract", "tutor", "vocabulary_import", "language_unit", "language_project", "decision", "unit_visuals")
         and not review_only
     )
     block_count = payload.get("study_block", {}).get("question_count") if function == "unit" else None
@@ -1431,7 +1458,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
             )
     indexed_choices = (
-        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "schulbuddy", "vocabulary_import", "decision") and not review_only
+        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "schulbuddy", "vocabulary_import", "decision", "unit_visuals") and not review_only
     )
     if indexed_choices:
         indexed_choice_schema(schema, bounded_matches=compact_openrouter)
@@ -1498,6 +1525,24 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             instructions += subject_content.grouped_questions.RULES
         if "matching" in content_context:
             instructions += subject_content.learning_scenes.MATCH_RULES
+    if payload.get("visual_context") and visual_functions:
+        from .visual_references import RULES as VISUAL_RULES
+        from .visual_references import bind_schema as bind_visual_schema
+
+        bind_visual_schema(schema, payload)
+        if function == "unit_visuals":
+            from .visual_jobs import bind_schema as bind_sidecar_schema
+
+            bind_sidecar_schema(schema, payload)
+            instructions += "\nErgänze ausschließlich die angeforderten Grafikerklärungen zu den bereits gespeicherten Texten und Fragen. Keine neue Frage, keine Antwort, keine Änderung vorhandener Texte oder Leistungen. Genau ein kompakter Einführungs- und ein Lösungsschritt pro vorhandener Frage."
+        if payload["visual_context"].get("required"):
+            instructions += VISUAL_RULES
+    if payload.get("learning_entry"):
+        from .learning_entry import RULES as ENTRY_RULES
+        from .learning_entry import bind_entry_schema
+
+        bind_entry_schema(schema, payload)
+        instructions += ENTRY_RULES
     outgoing_payload = transport_payload(function, payload)
     if outgoing_payload is not payload:
         instructions += "\nmaterial.content_ref verweist auf die vollständig enthaltenen Quellen in materials[].content."
@@ -1537,6 +1582,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         effort = config.reasoning_effort or "medium"
         if effort != "medium":
             worker_request["reasoning_effort"] = effort
+        from .provider_receipts import request_receipt as build_request_receipt
+
+        receipt = build_request_receipt(config.provider, worker_request, schema)
         transport = httpx.HTTPTransport(uds=settings.codex_socket)
         try:
             with httpx.Client(transport=transport, timeout=155, follow_redirects=False) as client:
@@ -1639,6 +1687,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             url = "https://" + host + "/api/v1/chat/completions"
         else:
             raise ProviderError("Unbekannter Anbieter.")
+        from .provider_receipts import request_receipt as build_request_receipt
+
+        receipt = build_request_receipt(config.provider, body, schema)
         try:
             with httpx.Client(timeout=httpx.Timeout(120, connect=10), follow_redirects=False) as client:
                 response = client.post(url, headers=headers, json=body)
@@ -1774,7 +1825,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         def omit_absent_presentations(value):
             if isinstance(value, dict):
                 for key, item in list(value.items()):
-                    if key in ("presentation", "scene", "text_probe", "field_group") and item is None:
+                    if key in ("presentation", "scene", "text_probe", "field_group", "explanation_steps") and item is None:
                         del value[key]
                     else:
                         omit_absent_presentations(item)
@@ -1877,8 +1928,23 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             for review in data["question_reviews"]:
                 if review["question_id"] in assigned_goals:
                     review["learning_goal_id"] = assigned_goals[review["question_id"]]
+        if payload.get("learning_entry"):
+            from .learning_entry import validate_entry_output
+
+            validate_entry_output(payload, data)
         if visual_functions:
             subject_content.validate_output(data, payload, bounded_matching=compact_openrouter)
+            if payload.get("visual_context"):
+                from .db import DB
+                from .visual_references import validate_output as validate_visual_output
+
+                with DB() as visual_db:
+                    if function == "unit_visuals":
+                        from .visual_jobs import checked_output
+
+                        checked_output(visual_db, data, payload)
+                    else:
+                        validate_visual_output(visual_db, data, payload)
         cost = None
         reported = usage.get("cost") if config.provider == "openrouter" else None
         if (
@@ -1910,11 +1976,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if billing_result:
             billing_result.data, billing_result.catalog_assignment = data, catalog_assignment
             billing_result.action_proposal = action_proposal
+            billing_result.request_receipt = receipt
             if billing_result.cost_micros is None:
                 billing_result.cost_micros, billing_result.cost_source = cost, "estimate"
             return billing_result
-        return Result(data, input_tokens, output_tokens, cost, search_count, catalog_assignment, action_proposal=action_proposal)
+        return Result(data, input_tokens, output_tokens, cost, search_count, catalog_assignment, action_proposal=action_proposal, request_receipt=receipt)
     except ProviderError as error:
+        if billing_result:
+            billing_result.request_receipt = receipt
         error.billing_result = billing_result
         raise
     except ValidationError as error:

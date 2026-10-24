@@ -432,3 +432,9 @@ def usage(family_id: str, p=Depends(parent), db=Depends(get_db)):
         for u in db.scalars(select(Usage).where(Usage.family_id == family.id).order_by(Usage.created.desc()).limit(200))
     ]
     return result
+
+
+# Operator account controls expose money only, never private learning content.
+from .child_cost_controls import router as child_cost_router  # noqa: E402
+
+router.include_router(child_cost_router)

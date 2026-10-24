@@ -355,7 +355,9 @@ def test_changed_source_or_revoked_session_blocks_before_and_after_provider(api,
     assert turn["status"] == "failed" and turn["reply"] is None
     assert len(transport["calls"]) == (1 if when == "during" else 0)
     with DB() as db:
-        assert db.scalar(select(Usage)).cost_micros == (0 if when == "during" else None)
+        usage = db.scalar(select(Usage))
+        assert usage.cost_micros == 0
+        assert usage.status == ("failed_billed" if when == "during" else "failed_not_sent")
         assert db.scalar(select(Activity.id).where(Activity.kind == "explanation")) is None
 
 

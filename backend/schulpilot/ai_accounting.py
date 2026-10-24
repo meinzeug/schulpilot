@@ -64,6 +64,12 @@ def eur_amount(usd_micros, budget, *, reserve=False):
 
 
 def reserve_child(db, usage, route):
+    policy = (route or {}).get("child_cost_control")
+    if policy:
+        from .child_cost_controls import reserve_controlled
+
+        reserve_controlled(db, usage, policy)
+        return
     if not route:
         return
     budget = route["budget"]
@@ -105,24 +111,38 @@ def allocate_fee(db, amount):
 
 
 def settle_child(db, usage):
-    if not usage.child_budget_id:
+    from .child_cost_controls import balance_value, sync_balance, usage_quote
+    from .child_cost_models import UsageCostBalance
+
+    previous = db.get(UsageCostBalance, usage.id)
+    quote = usage_quote(usage, balance=previous)
+    if not quote:
         return
-    # Lock order: usage -> USD global/family -> credit lots -> child bucket.
-    if usage.cost_micros is None:
-        return
-    if usage.allocated_fee_micros is None:
+    before = dict(previous.__dict__) if previous else None
+    # A later verified provider correction must not allocate the same credits
+    # again. Preserve its historical fee basis and explicitly flag a mismatch.
+    if usage.cost_micros is not None and usage.allocated_fee_micros is None:
         usage.allocated_fee_micros = allocate_fee(db, usage.cost_micros)
-    if usage.allocated_fee_micros is None:
-        return  # Keep the full conservative EUR hold until a receipt is known.
-    amount = eur_amount(usage.cost_micros + usage.allocated_fee_micros, usage.route_snapshot["budget"])
-    if usage.charged_eur_micros is not None:
-        return
-    db.execute(update(ChildCostBucket).where(ChildCostBucket.id == usage.child_budget_id).values(
-        encumbered_eur_micros=ChildCostBucket.encumbered_eur_micros + amount - usage.reserved_eur_micros,
-        known_eur_micros=ChildCostBucket.known_eur_micros + amount,
-        unknown_calls=ChildCostBucket.unknown_calls - 1))
-    usage.charged_eur_micros = amount
-    if amount > usage.reserved_eur_micros:
+        if usage.allocated_fee_micros is not None:
+            if not previous:
+                previous = sync_balance(db, usage)
+            previous.fee_basis_usd_micros = usage.cost_micros
+    row = sync_balance(db, usage)
+    if usage.child_budget_id and usage.cost_micros is not None:
+        old_amount = before["accounted_eur_micros"] if before else usage.reserved_eur_micros
+        old_known = ((before["provider_eur_micros"] or 0) + (before["fee_known_eur_micros"] or 0)) if before else 0
+        known = (row.provider_eur_micros or 0) + (row.fee_known_eur_micros or 0)
+        db.execute(update(ChildCostBucket).where(ChildCostBucket.id == usage.child_budget_id).values(
+            encumbered_eur_micros=ChildCostBucket.encumbered_eur_micros + row.accounted_eur_micros - old_amount,
+            known_eur_micros=ChildCostBucket.known_eur_micros + known - old_known,
+            unknown_calls=ChildCostBucket.unknown_calls - int(not before or before["provider_eur_micros"] is None)))
+    if row and usage.cost_micros is not None and row.fee_state == "actual":
+        usage.charged_eur_micros = row.accounted_eur_micros
+    else:
+        usage.charged_eur_micros = None
+    reserved = balance_value(type("Reservation", (), {"cost_micros": None, "reserved_micros": usage.reserved_micros,
+        "allocated_fee_micros": None})(), quote)["accounted_eur_micros"]
+    if row and row.accounted_eur_micros > reserved:
         from .db import ProviderConfig
 
         config = db.get(ProviderConfig, 1)
@@ -139,8 +159,8 @@ def reconcile_one():
     from .security import decrypt
 
     with DB.begin() as db:
-        fee_pending = db.scalar(select(Usage).where(Usage.child_budget_id.is_not(None), Usage.cost_micros.is_not(None),
-            Usage.charged_eur_micros.is_(None)).order_by(Usage.created, Usage.id).limit(1).with_for_update(skip_locked=True))
+        fee_pending = db.scalar(select(Usage).where(Usage.cost_micros.is_not(None),
+            Usage.allocated_fee_micros.is_(None), Usage.charged_eur_micros.is_(None)).order_by(Usage.created, Usage.id).limit(1).with_for_update(skip_locked=True))
         if fee_pending:
             settle_child(db, fee_pending)
             if fee_pending.charged_eur_micros is not None:
@@ -152,7 +172,7 @@ def reconcile_one():
         # Filter before LIMIT: old unknown costs without a usable generation or
         # with exhausted attempts must never starve newer billable requests.
         row = db.scalar(select(Usage).where(
-            Usage.provider == "openrouter", Usage.cost_micros.is_(None), Usage.status != "reserved",
+            Usage.provider == "openrouter", Usage.cost_source.not_in(("generation", "cancelled")), Usage.status != "reserved",
             generation.is_not(None), func.length(generation).between(1, 180),
             func.coalesce(Usage.telemetry["reconcile_attempts"].as_integer(), 0) < 3,
             func.coalesce(Usage.telemetry["reconcile_after"].as_float(), 0) <= now(),
@@ -183,18 +203,25 @@ def reconcile_one():
         cost = micros(data["total_cost"])
         with DB.begin() as db:
             row = db.scalar(select(Usage).where(Usage.id == usage_id).with_for_update())
-            if not row or row.cost_micros is not None:
+            if not row or row.cost_source == "generation" or row.status == "reserved":
                 return True
+            if row.cost_micros is not None:
+                from .child_cost_controls import sync_balance
+
+                sync_balance(db, row)
+            previous_cost = row.cost_micros
+            previous_amount = row.reserved_micros if previous_cost is None else previous_cost
             for name in row.bucket_ids:
                 db.execute(update(UsageBucket).where(UsageBucket.id == name).values(
-                    encumbered_micros=UsageBucket.encumbered_micros + cost - row.reserved_micros,
-                    known_cost_micros=UsageBucket.known_cost_micros + cost,
-                    unknown_calls=UsageBucket.unknown_calls - 1))
+                    encumbered_micros=UsageBucket.encumbered_micros + cost - previous_amount,
+                    known_cost_micros=UsageBucket.known_cost_micros + cost - (previous_cost or 0),
+                    unknown_calls=UsageBucket.unknown_calls - int(previous_cost is None)))
             row.cost_micros, row.cost_source = cost, "generation"
             row.telemetry = {**row.telemetry, "billed_usd": str(data["total_cost"]),
                 "request_id": identifier(data.get("request_id")), "upstream": identifier(data.get("provider_name")),
                 "reasoning_tokens": integer(data.get("native_tokens_reasoning")),
-                "cached_tokens": integer(data.get("native_tokens_cached")), "reconciled_at": int(now())}
+                "cached_tokens": integer(data.get("native_tokens_cached")), "reconciled_at": int(now()),
+                "cost_receipt_state": "verified_generation", "reported_cost_micros": previous_cost}
             row.input_tokens = integer(data.get("tokens_prompt"))
             row.output_tokens = integer(data.get("tokens_completion"))
             if row.status.startswith("failed"):

@@ -980,3 +980,36 @@ getrennt; bestehende Grenzen werden durch diese Korrektur nicht angehoben.
 Klassenarbeitsvorbereitung, private Arbeitsanalyse und korrekt vorgeprüfte
 Quellenwiederholung: Produkt `8659115f8648d6134937ccd5f63948581abad28f`;
 Live-Abnahme, CI, Signaturen, Hashes und Grenzen in `docs/RELEASE_106.md`.
+
+
+## Quellen, Erklärgrafiken und Kinderkosten107 · 24.10.2026
+
+Implementierung1.33.0+107: [VISUAL_REFERENCES.md](VISUAL_REFERENCES.md) und
+[CHILD_COST_CONTROLS.md](CHILD_COST_CONTROLS.md) dokumentieren Rezeptregister,
+Quellenbindung, grafische Schritte, tatsächliche Lernbelege und die verbindliche
+Kostenpolicy. Migrationen0035–0038 erweitern die bestehende Architektur.
+
+Die angemeldete Simpleclub-Webapp wurde tatsächlich im Browser betrachtet:
+Brüche unter https://app.simpleclub.com/topic/vwYaXbxOe0pD0CXOv8ed und Simple past
+unter https://app.simpleclub.com/topic/gKTuprR1iimrnjpn5esd . Desktop- und
+390×844-Ansichten zeigen große fachliche Grafiken, kleine geführte Schritte,
+bleibende Antwortfeedbacks und den kontextbezogenen Tutor. Simple-past-Antworten
+wurden nach ausdrücklicher Freigabe im Referenzkonto abgesendet. Fremde Texte,
+Grafiken, Icons und Schriftdateien werden nicht in das Produkt übernommen.
+
+Aktuelle Primärdokumentation für die Modell-/Bildprüfung:
+https://developers.openai.com/api/docs/guides/images-vision ,
+https://openrouter.ai/docs/guides/best-practices/reasoning-tokens ,
+https://openrouter.ai/docs/guides/routing/provider-selection und
+https://openrouter.ai/docs/api/api-reference/generations/get-generation .
+Abgerufene Modellmetadaten sind kein praktischer Qualitätsnachweis.
+Vor diesem Produktcommit wurden keine neuen externen Modellaufrufe durchgeführt;
+Regressionen und lokale Browserfixtures sind davon getrennt.
+
+Lokaler PostgreSQL16-Lauf:264 bestandene Fälle ohne Überspringen, einschließlich
+Migration0034↔0038, Kosten, Quellen, Grafikpositionen, Einstieg und Tutorbindung.
+Die unveränderte Produktionsquellmenge dieses Laufs trägt SHA256
+`c4514869bed805db00009eb9b6509b30d8c271eaa0c65d2a4283594954da7fe9`,
+die Testmenge `3fe33fd84da412c7a32ef4c6da14bbb0b1711d0f3fdf3478d496707512de7189`.
+Vollständige CI, gebundene Builds, Liveprüfung und beobachtete Grenzen werden
+nach tatsächlicher Ausführung im Releasebeleg ergänzt.

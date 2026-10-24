@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, 
 
 from .grouped_questions import FieldGroup
 from .subject_content import Presentation, SourceBlock
+from .visual_reference_schemas import ExplanationStep
 
 Short = Annotated[str, Field(min_length=1, max_length=160)]
 # Credential characters are exact; only identifiers and ordinary text are trimmed.
@@ -189,6 +190,7 @@ class MaterialConfirm(Strict):
 
 
 class Question(Strict):
+    explanation_steps: list[ExplanationStep] | None = Field(default=None, min_length=1, max_length=2)
     presentation: Presentation | None = None
     field_group: FieldGroup | None = None
 
@@ -260,6 +262,7 @@ class Question(Strict):
 
 
 class UnitOutput(Strict):
+    explanation_steps: list[ExplanationStep] | None = Field(default=None, min_length=1, max_length=3)
     subject: str = Field(min_length=1, max_length=80)
     topic: Short
     explanation: str = Field(min_length=1, max_length=5000)

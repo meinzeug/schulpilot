@@ -852,10 +852,16 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
           RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(questionId))
         'question_id': questionId,
     };
-    if (dialog?.isActive != true) {
-      conversation = SchulbuddyContext('learn', fields);
-    }
-    await open(contextValue: SchulbuddyContext('learn', fields));
+    updatePage();
+    final visible = page.value;
+    final isDisplayedExplanation =
+        visible.references['unit_id'] == unitId &&
+        visible.references['explanation_step_id'] != null;
+    final target = isDisplayedExplanation
+        ? visible
+        : SchulbuddyContext('learn', fields);
+    if (dialog?.isActive != true) conversation = target;
+    await open(contextValue: target);
   }
 
   Future<void> open({SchulbuddyContext? contextValue}) async {
@@ -1325,7 +1331,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
     }
   }
 
-  Future<void> send({bool retry = false}) async {
+  Future<void> send({bool retry = false, String? question}) async {
     if (!current ||
         sending ||
         pending ||
@@ -1334,7 +1340,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
         (!retry && pendingBody != null)) {
       return;
     }
-    final text = input.text.trim();
+    final text = (question ?? input.text).trim();
     if (!retry && (text.isEmpty || text.length > 1200)) return;
     final stamp = ++generation, key = retry ? pendingKey! : _buddyKey();
     reading = false;
@@ -1428,25 +1434,10 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
         pendingBody != null) {
       return;
     }
-    if (input.text.isNotEmpty && input.text != text) {
-      final previous = input.text;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: const Text('Vorschlag eingesetzt.'),
-          action: SnackBarAction(
-            label: 'Rückgängig',
-            onPressed: () {
-              if (current && input.text == text) input.text = previous;
-            },
-          ),
-        ),
-      );
-    }
-    setState(() {
-      input.text = text;
-      input.selection = TextSelection.collapsed(offset: input.text.length);
-    });
-    inputFocus.requestFocus();
+    // A deliberate suggestion tap is the send action. Keep a different typed
+    // draft intact; the ordinary request key, quota and current-context guards
+    // remain in send(). Opening the chat itself never requests a model.
+    unawaited(send(question: text));
   }
 
   Widget turnCard(Json turn) => Padding(

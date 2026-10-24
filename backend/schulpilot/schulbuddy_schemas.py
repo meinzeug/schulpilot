@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .schemas import Strict
 
@@ -15,6 +15,7 @@ class BuddyScope(Strict):
     child_id: str | None = Field(default=None, min_length=1, max_length=32)
     unit_id: str | None = Field(default=None, min_length=1, max_length=32)
     material_id: str | None = Field(default=None, min_length=1, max_length=32)
+    material_revision: int | None = Field(default=None, ge=1, le=1_000_000_000, strict=True)
     day_id: str | None = Field(default=None, min_length=1, max_length=32)
     question_id: str | None = Field(default=None, min_length=1, max_length=80)
     exam_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
@@ -22,6 +23,26 @@ class BuddyScope(Strict):
     review_task_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,48}$")
     exam_tab: Literal["prepare", "review"] | None = None
     exam_revision: int | None = Field(default=None, ge=1)
+    explanation_kind: Literal["intro", "question"] | None = None
+    explanation_step_id: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+    graphic_index: int | None = Field(default=None, ge=0, le=5, strict=True)
+    graphic_phase: str | None = Field(default=None, max_length=40,
+        pattern=r"^(?:initial|fraction-(?:circle|bar)-(?:whole|denominator|numerator)|scene-[0-7]|science-(?:[0-9]|[1-9][0-9]))$")
+
+    @model_validator(mode="after")
+    def graphic_scope(self):
+        if self.material_revision is not None and not self.material_id:
+            raise ValueError("Eine betrachtete Quellenfassung benötigt ihre Heftseite.")
+        if self.explanation_step_id is not None:
+            if not self.unit_id or not self.explanation_kind:
+                raise ValueError("Ein Erklärschritt benötigt seine gespeicherte Lernrunde und Art.")
+            if self.explanation_kind == "question" and not self.question_id:
+                raise ValueError("Eine Frageerklärung benötigt ihre aktuelle Aufgabe.")
+        elif self.explanation_kind is not None or self.graphic_index is not None or self.graphic_phase is not None:
+            raise ValueError("Eine Grafikauswahl benötigt ihren geöffneten Erklärschritt.")
+        if self.graphic_phase is not None and self.graphic_index is None:
+            raise ValueError("Eine Grafikphase benötigt die konkrete Grafik.")
+        return self
 
 
 class BuddyQuestion(BuddyScope):
@@ -56,6 +77,15 @@ sources mit evidence_kind=written_work_original dienen nur zum Belegen sichtbare
 daraus keine richtige Musterlösung oder neue Note ableiten. Für fachliche Übungsgrundlagen passende bestätigte Heftquellen verlangen.
 source_review.confirmation_required bedeutet: erst Originaltext prüfen und bestätigen; nur Bedienhilfe geben.
 source_review.selection_required bedeutet: zu großer Bereich; konkrete Seite/kleinere Aufgabe wählen, keine nicht geladenen Inhalte behaupten.
+source_view.provider_has_photo=false bedeutet: Das Originalfoto ist nur beim Benutzer sichtbar.
+Du erhältst dann ausschließlich die bestätigte, gefilterte Abschrift und keine Bildpixel;
+behaupte nicht, Farben, Positionen oder eine unbeschriebene Abbildung selbst gesehen zu haben.
+current_explanation stammt ausschließlich aus dem geöffneten gespeicherten Erklärschritt.
+Seine graphic_state ist eine begrenzte lokale Ansicht, keine Kinderantwort oder Kompetenz.
+Erkläre genau die dort vorhandenen Beschriftungen, Zahlen und markierten Teile; erfinde keine anderen Phasen.
+Die Darstellung ist keine zusätzliche Quelle. Fachliche Aussagen bleiben an geprüfte sources gebunden.
+source_exclusions nennt ausdrücklich aus der Lernbasis ausgeschlossene Originalblöcke;
+diese weder still reparieren noch als fachliche Regel verwenden. Bei nötiger Klärung auf Originalprüfung verweisen.
 page und navigation beschreiben die tatsächliche App. Erfinde keine Buttons, gespeicherten Zustände oder Funktionen.
 page_inventory ist ein begrenzter Auszug echter gespeicherter Bestände, keine vollständige gefilterte Seitenansicht.
 Diese Metadaten helfen nur bei der Orientierung, sie sind keine fachlichen Quellen oder Kompetenznachweise.

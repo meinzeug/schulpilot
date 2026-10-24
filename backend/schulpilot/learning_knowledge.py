@@ -24,12 +24,14 @@ def prerequisites(goals):
 
 def catalogue(db, unit, sources):
     from .coaching import goals_for, source_goals
+    from .source_lineage import learning_source
 
-    proposed = goals_for(db, unit)
+    texts = [learning_source(db, material)["content"] for material in sources]
+    proposed = [goal for goal in goals_for(db, unit) if any(goal["source_excerpt"] in text for text in texts)]
     goals = [{**g, "origin": "validated_model_source_quote" if proposed else "reviewed_source_rule",
         "status": "source_checked_not_teacher_reviewed" if proposed else "checked"}
         for g in (proposed or source_goals(
-            [{"content": m.content or ""} for m in sources], unit.subject, unit.topic))]
+            [{"content": text} for text in texts if text.strip()], unit.subject, unit.topic))]
     labels = {g["label"] for g in goals}
     for q in unit.questions:
         extra = q.get("controller_goal")

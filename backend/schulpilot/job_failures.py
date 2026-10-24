@@ -87,11 +87,16 @@ def generation_availability(db, family, function, *, child_id=None, job_id=None,
             if enabled(config) else config_for_function(config, function))
     except HTTPException as error:
         return {"code": "not_configured", "message": str(error.detail)}
+    from .child_cost_controls import preflight
+
+    configured_child, child_blocker = preflight(db, child_id, config.reserve_micros)
+    if child_blocker:
+        return child_blocker
     summary = usage_summary(db, family)
     if (
         summary["access"]["state"] not in ("existing", "active")
-        or not summary["calls_remaining"]
-        or summary["budget_remaining_micros_usd"] < config.reserve_micros
+        or (not configured_child and (not summary["calls_remaining"]
+            or summary["budget_remaining_micros_usd"] < config.reserve_micros))
     ):
         return {
             "code": "quota_exhausted",

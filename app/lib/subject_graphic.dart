@@ -11,6 +11,8 @@ import 'science_graphic.dart';
 import 'text_probe_player.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
+import 'learning_graphic_scope.dart';
+import 'schulbuddy.dart';
 
 /// Finite versioned vector diagrams. No network images, HTML or model-drawn paths.
 class SubjectPresentation extends StatelessWidget {
@@ -21,25 +23,51 @@ class SubjectPresentation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (data?['version'] != 1) return const SizedBox.shrink();
-    final blocks = (data?['blocks'] as List? ?? []).where(
-      (b) => stages == null || stages!.contains(b['disclosure']),
-    );
+    final blocks = (data?['blocks'] as List? ?? [])
+        .where((b) => stages == null || stages!.contains(b['disclosure']))
+        .toList();
+    final scope = LearningGraphicScope.maybeOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final b in blocks) ...[
-          SubjectGraphic(
-            Json.from(b),
-            state: state,
-            action: state == null
-                ? null
-                : GraphicZoom(
-                    state: state!,
-                    compact: true,
-                    block: Json.from(b),
-                    render: (value) => SubjectGraphic(value, state: state),
-                  ),
-          ),
+        for (final entry in blocks.indexed) ...[
+          if (scope != null)
+            LearningGraphicScope(
+              index: entry.$1,
+              phase: scope.index == entry.$1 ? scope.phase : 'initial',
+              onChanged: scope.onChanged,
+              buddyReferences: scope.buddyReferences,
+              child: SubjectGraphic(
+                Json.from(entry.$2),
+                state: state,
+                action: state == null
+                    ? null
+                    : GraphicZoom(
+                        state: state!,
+                        compact: true,
+                        block: Json.from(entry.$2),
+                        render: (value) => _ExplanationZoomGraphic(
+                          block: value,
+                          state: state!,
+                          scope: scope,
+                          index: entry.$1,
+                        ),
+                      ),
+              ),
+            ),
+          if (scope == null)
+            SubjectGraphic(
+              Json.from(entry.$2),
+              state: state,
+              action: state == null
+                  ? null
+                  : GraphicZoom(
+                      state: state!,
+                      compact: true,
+                      block: Json.from(entry.$2),
+                      render: (value) => SubjectGraphic(value, state: state),
+                    ),
+            ),
         ],
       ],
     );
@@ -1214,4 +1242,67 @@ class PollinationPainter extends CustomPainter {
   @override
   bool shouldRepaint(PollinationPainter oldDelegate) =>
       step != oldDelegate.step || palette.isDark != oldDelegate.palette.isDark;
+}
+
+/// The enlarged graphic keeps its own current route and publishes the same
+/// bounded display state. The saved lesson remains mounted underneath.
+class _ExplanationZoomGraphic extends StatefulWidget {
+  final Json block;
+  final AppState state;
+  final LearningGraphicScope scope;
+  final int index;
+  const _ExplanationZoomGraphic({
+    required this.block,
+    required this.state,
+    required this.scope,
+    required this.index,
+  });
+  @override
+  State<_ExplanationZoomGraphic> createState() =>
+      _ExplanationZoomGraphicState();
+}
+
+class _ExplanationZoomGraphicState extends State<_ExplanationZoomGraphic> {
+  late String phase = widget.scope.index == widget.index
+      ? widget.scope.phase
+      : 'initial';
+  @override
+  Widget build(BuildContext context) {
+    final refs = widget.scope.buddyReferences;
+    Widget body = LearningGraphicScope(
+      index: widget.index,
+      phase: phase,
+      buddyReferences: refs,
+      onChanged: (index, value) {
+        if (!mounted || ModalRoute.of(context)?.isCurrent == false) return;
+        setState(() => phase = value);
+        widget.scope.onChanged(index, value);
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SubjectGraphic(widget.block, state: widget.state),
+          if (refs?['unit_id'] != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: SchulbuddyButton(
+                unitId: refs!['unit_id'],
+                questionId: refs['question_id'],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (refs != null) {
+      body = SchulbuddyPageContext(
+        contextValue: SchulbuddyContext('learn', {
+          ...refs,
+          'graphic_index': '${widget.index}',
+          'graphic_phase': phase,
+        }),
+        child: body,
+      );
+    }
+    return body;
+  }
 }

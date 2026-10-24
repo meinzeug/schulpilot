@@ -156,6 +156,9 @@ def reconcile(db, records):
             # Older journals only recorded the page. A restore must not revive
             # its rounds, follow-ups or evidence after replaying that deletion.
             remove(db, db.get(Child, row.child_id), linked_ids(db, row.child_id, [row.id]), journal=False)
+            from .source_lineage import purge_diagnostic_outputs
+
+            purge_diagnostic_outputs(db, [row.id])
             purge_source_turns(db, [row.id], child_id=row.child_id)
             if row.path:
                 paths.append(row.path)

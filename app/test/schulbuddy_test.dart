@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
+import 'package:schulpilot/notebook_photo.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -64,6 +66,7 @@ Future<Harness> open(
   double scale = 1,
   bool robot = false,
   bool unitEntry = false,
+  bool photoEntry = false,
   VoidCallback? onLearn,
 }) async {
   final calls = <http.Request>[];
@@ -109,6 +112,17 @@ Future<Harness> open(
               child: Column(
                 children: [
                   Text('Aufgabe $path'),
+                  if (photoEntry)
+                    Builder(
+                      builder: (photoContext) => TextButton(
+                        onPressed: () => zoomNotebookPhoto(
+                          photoContext,
+                          state,
+                          {'id': unit, 'revision': 7},
+                        ),
+                        child: const Text('Foto groß öffnen'),
+                      ),
+                    ),
                   if (robot)
                     ChildTodayHero(
                       eyebrow: 'Heute',
@@ -193,19 +207,111 @@ void main() {
       {'page_kind': 'admin'},
     );
   });
-  testWidgets('opening and all three starters never send a model request', (
+  testWidgets(
+    'opening is read only; an explicit starter sends immediately and keeps a different draft',
+    (t) async {
+      final h = await open(
+        t,
+        respond: (r) async => r.method == 'GET'
+            ? reply(contextResult('today'))
+            : reply(turn(key: r.headers['Idempotency-Key'])),
+      );
+      await tap(t, find.text('Buddy öffnen'));
+      expect(h.calls.every((r) => r.method == 'GET'), isTrue);
+      expect(find.byType(ActionChip), findsNWidgets(3));
+      await t.enterText(field(), 'Mein eigener Entwurf');
+      await tap(t, find.text('Wie kann ich selbst anfangen?'));
+      final posts = h.calls.where((r) => r.method == 'POST').toList();
+      expect(posts, hasLength(1));
+      expect(
+        jsonDecode(posts.single.body)['question'],
+        'Wie kann ich selbst anfangen?',
+      );
+      expect(
+        t.widget<TextField>(field()).controller!.text,
+        'Mein eigener Entwurf',
+      );
+      expect(find.text('Betrachte zuerst, was gesucht ist.'), findsOneWidget);
+    },
+  );
+  testWidgets(
+    'full screen photo keeps buddy visible, binds its revision and sends its starter directly',
+    (t) async {
+      final h = await open(
+        t,
+        photoEntry: true,
+        respond: (r) async {
+          if (r.url.path.endsWith('/image')) {
+            return http.Response.bytes(
+              img.encodePng(img.Image(width: 8, height: 12)),
+              200,
+              headers: {'content-type': 'image/png'},
+            );
+          }
+          if (r.method == 'GET') {
+            return reply({
+              ...contextResult('notebooks'),
+              'starters': [
+                'Erklär mir den Inhalt der Seite',
+                'Erklär mir die Abbildung',
+                'Stell mir eine Frage zum Inhalt',
+              ],
+            });
+          }
+          return reply(turn(key: r.headers['Idempotency-Key']));
+        },
+      );
+      await tap(t, find.text('Foto groß öffnen'));
+      expect(find.text('Heftfoto'), findsOneWidget);
+      await tap(t, find.byTooltip('Foto vergrößern'));
+      expect(find.text('200 %'), findsOneWidget);
+      expect(h.calls.every((r) => r.method == 'GET'), isTrue);
+      await tap(t, find.byTooltip('Schulbuddy öffnen'));
+      final contextCall = h.calls.lastWhere(
+        (r) => r.url.path.endsWith('/schulbuddy/context'),
+      );
+      expect(
+        contextCall.url.queryParameters,
+        containsPair('material_id', unit),
+      );
+      expect(
+        contextCall.url.queryParameters,
+        containsPair('material_revision', '7'),
+      );
+      await tap(t, find.text('Erklär mir den Inhalt der Seite'));
+      final posts = h.calls.where((r) => r.method == 'POST').toList();
+      expect(posts, hasLength(1));
+      final body = Json.from(jsonDecode(posts.single.body));
+      expect(body['question'], 'Erklär mir den Inhalt der Seite');
+      expect(body['material_id'], unit);
+      expect(body['material_revision'], '7');
+      await tap(t, find.byTooltip('Schulbuddy schließen'));
+      expect(find.text('200 %'), findsOneWidget);
+      await tap(t, find.byTooltip('Schließen'));
+      expect(find.text('Foto groß öffnen'), findsOneWidget);
+      expect(t.takeException(), isNull);
+    },
+  );
+  testWidgets('full screen private photo closes after session replacement', (
     t,
   ) async {
-    final h = await open(t);
-    await tap(t, find.text('Buddy öffnen'));
-    expect(find.text('Gespräch: Bereich today'), findsOneWidget);
-    expect(find.byType(ActionChip), findsNWidgets(3));
-    await tap(t, find.text('Wie kann ich selbst anfangen?'));
-    expect(
-      t.widget<TextField>(field()).controller!.text,
-      'Wie kann ich selbst anfangen?',
+    final h = await open(
+      t,
+      photoEntry: true,
+      respond: (r) async => http.Response.bytes(
+        img.encodePng(img.Image(width: 8, height: 12)),
+        200,
+        headers: {'content-type': 'image/png'},
+      ),
     );
+    await tap(t, find.text('Foto groß öffnen'));
+    expect(find.text('Heftfoto'), findsOneWidget);
+    h.state.api.token = 'replacement-session';
+    h.state.notifyListeners();
+    await t.pumpAndSettle();
+    expect(find.text('Heftfoto'), findsNothing);
     expect(h.calls.every((r) => r.method == 'GET'), isTrue);
+    expect(t.takeException(), isNull);
   });
   testWidgets(
     'closing and reopening preserves own draft and the mounted task answer',

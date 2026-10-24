@@ -389,7 +389,9 @@ def revoke_member(family_id: str, membership_id: str, p=Depends(parent), db=Depe
 def remove_child(db, child):
     from .erasure import request
     from .profile_images import deletion_paths as avatar_deletion_paths
+    from .source_lineage import purge_diagnostic_outputs
 
+    purge_diagnostic_outputs(db, list(db.scalars(select(Material.id).where(Material.child_id == child.id))))
     request(db, "child", child.id)
     request(db, "user", child.user_id)
     paths = list(db.scalars(select(Material.path).where(Material.child_id == child.id, Material.path.is_not(None))))
@@ -533,9 +535,15 @@ def export_child(db, child):
                                 for row in db.scalars(select(ChildSubject).where(ChildSubject.child_id == child.id))]
     result["subject_definitions"] = [{c.name: getattr(row, c.name) for c in Subject.__table__.columns}
                                      for row in db.scalars(select(Subject).where(Subject.id.in_(child_subject_ids(db, child.id))))]
+    from . import child_cost_controls, competences, source_lineage, visual_positions, visual_references
     from .exam_review import export_review
     from .exams import export_exams
 
+    result["source_lineage"] = source_lineage.export_sources(db, child.id)
+    result["unit_visual_snapshots"] = visual_references.export_child(db, child.id)
+    result["visual_positions"] = visual_positions.export_user(db, child.user_id)
+    result["competences"] = competences.export_child(db, child.id)
+    result["child_cost_controls"] = child_cost_controls.export_child(db, child.id)
     result["exams"] = export_exams(db, child.id)
     result.update(export_review(db, child.id))
     units = [u["id"] for u in result["learning_units"]]
@@ -607,6 +615,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
     from .db import FamilyTrial, NotificationRead, SchulbuddyTurn
     from .profile_images import add_to_export
     from .profile_images import export_metadata as avatar_metadata
+    from .visual_positions import export_user as visual_position_export
 
     family, membership = family_access(db, p, family_id)
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
@@ -629,6 +638,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                         **avatar_metadata(db, p.user.id),
                     },
                     "children": [export_child(db, c) for c in children],
+                    "visual_positions": visual_position_export(db, p.user.id),
                     "schulbuddy_turns": [{column.name: getattr(row, column.name)
                         for column in SchulbuddyTurn.__table__.columns if column.name != "session_id"}
                         for row in db.scalars(select(SchulbuddyTurn).where(SchulbuddyTurn.user_id == p.user.id,

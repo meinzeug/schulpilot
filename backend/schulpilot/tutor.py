@@ -101,6 +101,12 @@ def sources_for(db, child, scope):
         )
     if any(m.synthetic for m in materials):
         raise HTTPException(403, "Eigene Heftfragen sind im Beispielraum nicht verfügbar.")
+    from .learning_sources import UnusableSources, project
+
+    try:
+        project(db, materials)
+    except UnusableSources as error:
+        raise HTTPException(409, str(error)) from None
     return materials, scope_revision
 
 
@@ -138,6 +144,10 @@ def history_for(db, turn, source_revisions):
             raise HTTPException(
                 409, "Die Heftseiten wurden geändert. Bitte stelle deine Frage neu ohne den alten Verlauf."
             )
+        from .learning_sources import citations_current
+
+        if not citations_current(db, turn.child_id, previous.source_revisions, previous.reply.get("sources", [])):
+            raise HTTPException(409, "Der frühere Chat enthält eine inzwischen ungeklärte Quellenstelle. Bitte eine neue Frage stellen.")
         history.append({
             "question": previous.question, "answer": previous.reply["answer"], "kind": previous.reply["kind"],
             **({"next_question": previous.reply["next_question"]} if previous.reply.get("next_question") else {}),
@@ -158,9 +168,13 @@ def context(db, child, turn):
     if turn.source_revisions and turn.source_revisions != revisions:
         raise ProviderError("Die bestätigten Heftseiten wurden geändert. Bitte stelle deine Frage neu.")
     history = history_for(db, turn, revisions)
+    from .learning_sources import policy, project
+
+    safe_sources = project(db, materials)
     sources = [
-        {"ref": source["ref"], "label": source["label"], "subject": m.subject, "topic": m.topic, "content": m.content}
-        for source, m in zip(revisions, materials, strict=True)
+        {"ref": source["ref"], "label": source["label"], "subject": m.subject, "topic": m.topic,
+         "content": safe["content"], "source_policy": policy(safe)}
+        for source, m, safe in zip(revisions, materials, safe_sources, strict=True) if safe["content"].strip()
     ]
     payload = {"grade": child.grade, "question": turn.question, "sources": sources, "history": history}
     from .foundations import for_question
@@ -170,7 +184,15 @@ def context(db, child, turn):
     if turn.homework_context:
         from .homework import enrich_context
 
+        safe_texts = [source["content"] for source in payload["sources"]]
         payload = enrich_context(db, child, turn, payload)
+        from .learning_sources import exact_quote
+
+        selected = payload["homework"].get("task")
+        tasks = ([selected] if selected else []) + payload["homework"].get("related_tasks", [])
+        if any(quote and not exact_quote(quote, safe_texts) for task in tasks
+               for quote in (task.get("source_quote"), task.get("instruction_quote"))):
+            raise HTTPException(409, "Diese gespeicherte Aufgabenstelle ist inzwischen als Quelle ungeklärt. Bitte zuerst das Original gemeinsam prüfen; deine Aufgabe und Antworten bleiben gespeichert.")
     signature = digest(
         json.dumps(
             [payload, revisions, scope_values(turn), scope_revision, child.family_id, child.preferences, turn.reply_to,
@@ -217,13 +239,10 @@ def turn_data(db, turn):
             status, error = "failed", "Die Frage konnte nicht beantwortet werden. Du kannst sie erneut stellen."
         elif job.status == "running":
             status = "running"
-    changed = any(
-        not (material := db.get(Material, source["id"]))
-        or material.child_id != turn.child_id
-        or not material.confirmed
-        or material.revision != source["revision"]
-        for source in turn.source_revisions
-    )
+    from .learning_sources import citations_current
+
+    changed = not citations_current(db, turn.child_id, turn.source_revisions, (turn.reply or {}).get("sources", []))
+
     return {
         "id": turn.id,
         "job_id": turn.job_id,
@@ -456,7 +475,10 @@ def record_tutor_help(db, turn, units, revisions):
 
 
 def process(job_id):
+    from .learning_sources import failure_billing
+
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -495,6 +517,7 @@ def process(job_id):
         if local:
             result, reply = Result({}, 0, 0, 0), local_reply
         else:
+            provider_requested = True
             result = request_provider(ProviderConfig(**values), "tutor", payload)
             reply = checked_reply(result.data, payload, revisions)
         with DB.begin() as db:
@@ -572,7 +595,7 @@ def process(job_id):
                 turn.status, turn.error, turn.reply = "failed", reason[:500], None
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage:
-                settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
+                settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)
 
 
 def purge_source_turns(db, material_ids, *, child_id=None):

@@ -12,6 +12,7 @@ class LearningRoom extends StatelessWidget {
   final Widget? clock;
   final Widget? assistant;
   final Widget? overview;
+  final Widget? learningPath;
   final Widget child;
   final Widget? primaryAction;
   final Widget? actionMessage;
@@ -33,6 +34,7 @@ class LearningRoom extends StatelessWidget {
     this.clock,
     this.assistant,
     this.overview,
+    this.learningPath,
     this.primaryAction,
     this.actionMessage,
     this.onPause,
@@ -227,6 +229,10 @@ class LearningRoom extends StatelessWidget {
             ],
           );
 
+    final widePath =
+        learningPath != null &&
+        MediaQuery.sizeOf(context).width >= 1100 &&
+        !enlarged;
     Widget centered(Widget value) => Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
@@ -247,18 +253,60 @@ class LearningRoom extends StatelessWidget {
                 controller: scrollController,
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                child: centered(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (enlarged) header,
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                        child: child,
+                child: widePath
+                    ? Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1040),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    12,
+                                    16,
+                                    24,
+                                  ),
+                                  child: child,
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              SizedBox(
+                                width: 260,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: learningPath!,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : centered(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (enlarged) header,
+                            if (learningPath != null)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: learningPath!,
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                12,
+                                16,
+                                24,
+                              ),
+                              child: child,
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
               ),
             ),
             if (primaryAction != null || onHelp != null)

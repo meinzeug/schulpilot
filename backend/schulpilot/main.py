@@ -52,6 +52,8 @@ from . import (
     synthetic,
     tutor,
     unit_actions,
+    visual_jobs,
+    visual_positions,
     vocabulary,
 )
 from .config import runtime_settings, settings
@@ -293,6 +295,8 @@ for router in (
     learning_controller.router,
     controller_jobs.router,
     instructional_decisions.router,
+    visual_jobs.router,
+    visual_positions.router,
     parent_insights.router,
     parent_plans.router,
     payment_documents.router,

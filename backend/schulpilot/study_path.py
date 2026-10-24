@@ -63,13 +63,14 @@ STAGE_ACTIONS = {
 }
 
 
-def task_briefs(items, previous_prompts, phase, count):
+def task_briefs(items, previous_prompts, phase, count, *, contents=None):
     """Literal source anchors distribute practice beyond already asked facts.
 
     Lexical overlap only prioritizes passages; it is never a claim of semantic
     coverage or mastery. The model must still create and validate real tasks.
     """
-    candidates = source_excerpt_candidates({"materials": [{"content": m.content} for m in items]})
+    candidates = source_excerpt_candidates({"materials": [{"content": text} for text in
+        (contents if contents is not None else [m.content for m in items])]})
     stopwords = set(
         "der die das den dem des ein eine einer eines einem einen ist sind im in am an auf und oder zu mit für von als es sie er auch nicht wird werden hat haben bei man sich aus zum zur".split()
     )
@@ -104,25 +105,37 @@ def sources(db, day):
     items = pages(db, day)
     if not items or any(not m.confirmed or not m.content.strip() for m in items):
         raise ProviderError("Bitte zuerst alle Heftseiten prüfen und bestätigen.")
-    if sum(len(m.content) for m in items) > 60_000:
+    from .learning_sources import UnusableSources, project
+
+    try:
+        safe = project(db, items)
+    except UnusableSources as error:
+        raise ProviderError(str(error)) from None
+    if sum(len(value["content"]) for value in safe) > 60_000:
         raise ProviderError("Der Stoff ist für eine Lernreise zu umfangreich. Bitte auf mehrere Schultage verteilen.")
-    return items
+    return [material for material, value in zip(items, safe, strict=True) if value["content"].strip()]
 
 
-def fingerprint(items):
-    return hashlib.sha256(json.dumps([(m.id, m.revision) for m in items]).encode()).hexdigest()
+def fingerprint(items, db=None):
+    from .source_lineage import learning_source
+
+    # Safe content/policy are part of a pending stage, not a retroactive score.
+    return hashlib.sha256(json.dumps([(m.id, m.revision, learning_source(db, m)) for m in items], sort_keys=True).encode()).hexdigest()
 
 
-def page_extent(material):
-    words = len(re.findall(r"\w+", material.content))
+def page_extent(material, *, content=None):
+    words = len(re.findall(r"\w+", material.content if content is None else content))
     # Confirmed transcription is a better signal than image size or A4 alone.
     # Diagrams/formulas can be short; they still get more than one exposure.
     target = max(2 if words < 40 else 4, min(12, math.ceil(words / 55)))
     return {"material_id": material.id, "word_count": words, "target_questions": target}
 
 
-def bounded_extents(items):
-    extents = [page_extent(material) for material in items]
+def bounded_extents(items, db=None):
+    from .source_lineage import learning_source
+
+    extents = [page_extent(material, content=learning_source(db, material)["content"])
+               if db is not None else page_extent(material) for material in items]
     # A large batch must not spend the entire cap on its first pages.
     # Keep every confirmed page represented while reducing the densest stages.
     while sum(e["target_questions"] for e in extents) > 120:
@@ -132,7 +145,7 @@ def bounded_extents(items):
 
 def ensure_plan(db, day):
     items = sources(db, day)
-    source_hash = fingerprint(items)
+    source_hash = fingerprint(items, db)
     if day.learning_plan and day.learning_plan.get("source_hash") == source_hash:
         return day.learning_plan
     material_ids = {m.id for m in items}
@@ -146,7 +159,7 @@ def ensure_plan(db, day):
             link.material_id in revisions and revisions[link.material_id] == link.revision for link in links
         ):
             existing.append((unit, {link.material_id for link in links}))
-    extents = bounded_extents(items)
+    extents = bounded_extents(items, db)
     total = min(120, sum(e["target_questions"] for e in extents))
     blocks = []
     credits = {m.id: 0 for m in items}
@@ -261,7 +274,7 @@ def path_data(db, day, child):
     if not value:
         return result
     try:
-        result["stale"] = value.get("source_hash") != fingerprint(sources(db, day))
+        result["stale"] = value.get("source_hash") != fingerprint(sources(db, day), db)
     except ProviderError:
         result["stale"] = True
     for saved in source_backed_blocks(db, day):
@@ -345,7 +358,7 @@ def create(day_id: str, p=Depends(child_user), db=Depends(get_db)):
     try:
         if (
             day.learning_plan
-            and day.learning_plan.get("source_hash") != fingerprint(sources(db, day))
+            and day.learning_plan.get("source_hash") != fingerprint(sources(db, day), db)
             and db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"])))
         ):
             raise HTTPException(409, "Bitte die laufende Vorbereitung zuerst beenden lassen.")
@@ -440,7 +453,7 @@ def job_context(db, job):
         not block
         or block.get("job_id") != job.id
         or block.get("unit_id")
-        or fingerprint(items) != job.payload["source_hash"]
+        or fingerprint(items, db) != job.payload["source_hash"]
         or value.get("source_hash") != job.payload["source_hash"]
     ):
         raise ProviderError("Die Heftseiten oder die Lernreise wurden verändert. Bitte neu planen.")
@@ -455,7 +468,10 @@ def job_context(db, job):
 
 
 def process(job_id):
+    from .learning_sources import failure_billing
+
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -480,7 +496,9 @@ def process(job_id):
             ][-120:]
             from .grades import subject_key
             from .learning_guidance import strategies
+            from .learning_sources import project
 
+            safe = project(db, items)
             payload = {
                 "grade": child.grade,
                 "instructional_support": strategies(db, child).get(subject_key(block["subject"]), "practice_and_retrieval"),
@@ -489,21 +507,26 @@ def process(job_id):
                 "material": {
                     "subject": block["subject"],
                     "topic": block["title"],
-                    "content": "\n\n".join(m.content for m in items),
+                    "content": "\n\n".join(value["content"] for value in safe),
                     "uncertainties": [warning for m in items for warning in m.uncertainties],
                 },
                 "study_block": {
                     "mode": block["phase"],
                     "question_count": block["question_count"],
-                    "tasks": task_briefs(items, previous_prompts, block["phase"], block["question_count"]),
+                    "tasks": task_briefs(items, previous_prompts, block["phase"], block["question_count"],
+                                         contents=[value["content"] for value in safe]),
                 },
                 "previous_prompts": previous_prompts,
             }
             from .catalog_ai import with_catalog_context
 
             payload = with_catalog_context(db, child, payload)
+            from .visual_references import with_visual_context
+
+            payload = with_visual_context(db, child, payload, items)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.rollback()
+        provider_requested = True
         result = request_provider(ProviderConfig(**values), "unit", payload)
         data = s.UnitOutput.model_validate(result.data).model_dump()
         from .coaching import normalized_prompt
@@ -550,10 +573,13 @@ def process(job_id):
                 synthetic=False,
                 provider=values["provider"],
                 model=values["model"],
-                **data,
+                **{key: data[key] for key in ("subject", "topic", "explanation", "questions")},
             )
             db.add(unit)
             db.flush()
+            from .visual_references import remember as remember_visuals
+
+            remember_visuals(db, unit, data, payload)
             for material in items:
                 db.add(UnitSource(unit_id=unit.id, material_id=material.id, revision=material.revision))
             if result.catalog_assignment:
@@ -584,5 +610,5 @@ def process(job_id):
                 job.status, job.error, job.finished = "failed", reason[:500], int(now())
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
+                    settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)
         log.warning("study_block_failed type=%s", type(error).__name__)

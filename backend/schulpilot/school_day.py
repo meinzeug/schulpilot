@@ -98,6 +98,7 @@ def planning_fingerprint(db, child):
 
 def package_plan(db, day, child):
     from .grades import priorities, subject_key
+    from .source_lineage import learning_source
 
     current = plan(db, child)
     available = current["available_minutes"] if day.school_date == local_day(child).isoformat() else 0
@@ -123,10 +124,21 @@ def package_plan(db, day, child):
                 "topics": [],
                 "material_ids": [],
                 "new_material_ids": [],
+                "eligible_new_material_ids": [],
+                "eligible_material_ids": [],
+                "excluded_sources": [],
                 "estimated_minutes": minutes,
             }
             groups.append(group)
         group["material_ids"].append(material.id)
+        safe = learning_source(db, material)
+        if safe["content"].strip():
+            group["eligible_material_ids"].append(material.id)
+            if (material.id, material.revision) not in covered:
+                group["eligible_new_material_ids"].append(material.id)
+        if safe["exclusions"]:
+            group["excluded_sources"].append({"material_id": material.id, "revision": material.revision,
+                "usable": bool(safe["content"].strip()), "reasons": sorted({item["reason"] for item in safe["exclusions"]})})
         if (material.id, material.revision) not in covered:
             group["new_material_ids"].append(material.id)
         if material.topic not in group["topics"]:
@@ -141,19 +153,23 @@ def package_plan(db, day, child):
             not any(t in prefs.repeat_topics for t in g["topics"]),
         ),
     )
-    eligible = [g for g in ranked if g["new_material_ids"]]
+    eligible = [g for g in ranked if g["eligible_new_material_ids"]]
     # Each explicit request prepares a small finite package. Daily/weekly
     # targets and preferred subject days never deny voluntary preparation.
     selected = eligible[:3]
     for group in groups:
         group["selected"] = group in selected
         group["covered"] = not bool(group["new_material_ids"])
+        group["blocked_reason"] = "Für dieses Fach sind die neuen Heftquellen noch ungeklärt. Es werden daraus keine Aufgaben vorbereitet." if group["new_material_ids"] and not group["eligible_material_ids"] else None
     notices = []
     if reserved:
         notices.append("Deine eingeplanten Aufträge bleiben im Tagesplan. Du kannst zusätzlich freiwillig üben.")
     if current["paused"] or current["free_day"]:
         notices.extend(current["notices"][:1])
-    pending_count = sum(not g["covered"] for g in groups)
+    for group in groups:
+        if group["excluded_sources"]:
+            notices.append(group["subject"] + ": Ungeklärte Stellen bleiben bei der Aufgabenerstellung ausgeschlossen. Prüfe die markierten Heftquellen.")
+    pending_count = sum(bool(g["eligible_new_material_ids"]) for g in groups)
     if len(selected) < pending_count:
         notices.append("Dieses Paket beginnt mit bis zu drei Fächern. Die übrigen Seiten bleiben im Lernweg erhalten.")
     return {
@@ -345,11 +361,13 @@ def save_for_later(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
 
 
 @router.post("/school-days/{day_id}/prepare", status_code=202)
-def prepare(day_id: str, idempotency_key: str | None = Header(None), p=Depends(authenticated), db=Depends(get_db)):
+def prepare(day_id: str, idempotency_key: str | None = Header(None), p=Depends(authenticated), db=Depends(get_db),
+            capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     from .school_preparation import advance, preparation_data, submit
 
     day, child = get_day(db, p, day_id, write=True, allow_archived=True)
-    submit(db, p, day, child, idempotency_key)
+    submit(db, p, day, child, idempotency_key,
+        learning_entry_enabled=isinstance(capabilities, str) and "learning-entry-v1" in capabilities.split(","))
     db.commit()
     # This only reserves one durable job. No external request runs in HTTP.
     advance(day.id)
@@ -459,8 +477,10 @@ def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depe
         raise HTTPException(409, "Diese Seite hat verknüpfte Übungen. Bitte die App aktualisieren und die Löschvorschau verwenden; sie entfernt Seite, Übungen und Antworten gemeinsam.")
     path = material.path
     from .erasure import flush_journal, request
+    from .source_lineage import purge_diagnostic_outputs
     from .tutor import purge_source_turns
 
+    purge_diagnostic_outputs(db, [material.id])
     purge_source_turns(db, [material.id], child_id=material.child_id)
     request(db, "material", material.id)
     db.delete(material)
@@ -498,7 +518,8 @@ def validate_package_sources(db, job):
 
 @router.post("/school-days/{day_id}/package", status_code=202)
 def create_package(
-    day_id: str, idempotency_key: str | None = Header(None), p=Depends(authenticated), db=Depends(get_db)
+    day_id: str, idempotency_key: str | None = Header(None), p=Depends(authenticated), db=Depends(get_db),
+    capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")
 ):
     day, child = get_day(db, p, day_id, write=True, allow_archived=True)
     if day.stage == "ready":
@@ -516,6 +537,8 @@ def create_package(
     preview = package_plan(db, day, child)
     selected = [g for g in preview["groups"] if g["selected"]]
     if not selected:
+        if any(group["blocked_reason"] for group in preview["groups"]):
+            raise HTTPException(409, "Die neuen Heftquellen sind noch ungeklärt. Bitte zuerst die markierten Stellen prüfen; es wurde kein KI-Auftrag gestartet.")
         raise HTTPException(
             409,
             "Für diese bestätigten Seiten gibt es bereits Einheiten. Bitte den gespeicherten Lernweg öffnen.",
@@ -528,6 +551,7 @@ def create_package(
         "sources": [{"id": m.id, "revision": m.revision} for m in source_pages],
         "groups": selected,
         "planning_fingerprint": planning_fingerprint(db, child),
+        "learning_entry_enabled": isinstance(capabilities, str) and "learning-entry-v1" in capabilities.split(","),
     }
     return enqueue(db, p, child, "package", payload, idempotency_key)
 
@@ -553,7 +577,7 @@ def save_package(db, job, data, *, synthetic, provider, model):
             synthetic=synthetic,
             provider=provider,
             model=model,
-            **value.model_dump(exclude={"group_id"}),
+            **value.model_dump(exclude={"group_id", "explanation_steps"}),
         )
         db.add(unit)
         db.flush()

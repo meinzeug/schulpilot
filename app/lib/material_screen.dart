@@ -109,7 +109,7 @@ Future<Uint8List?> pickMaterialPhoto(
     source: source,
     maxWidth: 3200,
     maxHeight: 3200,
-    imageQuality: 90,
+    imageQuality: 95,
     requestFullMetadata: false,
   );
   if (file == null) return null;
@@ -638,14 +638,14 @@ Uint8List encodeMaterialCrop(Map<String, dynamic> value) {
     ),
   );
   final clean = img.Image.from(cropped)..exif.clear();
-  final resized = clean.width > 1600 || clean.height > 1600
+  final resized = clean.width > 3200 || clean.height > 3200
       ? img.copyResize(
           clean,
-          width: clean.width >= clean.height ? 1600 : null,
-          height: clean.height > clean.width ? 1600 : null,
+          width: clean.width >= clean.height ? 3200 : null,
+          height: clean.height > clean.width ? 3200 : null,
         )
       : clean;
-  return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 95));
 }
 
 class MaterialTaskDialog extends StatefulWidget {
@@ -1700,7 +1700,7 @@ class _MaterialReviewState extends State<MaterialReview>
               d['confirmed']
                   ? (d['purpose'] == 'exam'
                         ? 'Originaltext bestätigt'
-                        : 'Bestätigter Lernstoff')
+                        : 'Abschrift bestätigt')
                   : 'Bestätigung erforderlich',
             ),
           ],
@@ -2276,7 +2276,30 @@ class _MaterialReviewState extends State<MaterialReview>
                   if (wordPreview != null) saveWithoutWords(),
                 ] else if (confirmed) ...[
                   SizedBox(height: 14),
-                  Tag('Text übernommen'),
+                  Tooltip(
+                    message: 'Du hast die Abschrift übernommen. Das bestätigt den Wortlaut, nicht die fachliche Richtigkeit jeder Aussage.',
+                    child: Tag('Text übernommen'),
+                  ),
+                  if (d['source_learning'] is Map)
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      title: const Text('Abschrift und Quellenprüfung'),
+                      children: [
+                        const Text(
+                          '„Text übernommen“ bestätigt den gelesenen Wortlaut. Schülerlösungen und Korrekturen bleiben im Original erhalten und werden getrennt vom geprüften Lernstoff behandelt.',
+                        ),
+                        if (d['source_learning']['factual_status'] ==
+                            'not_assessed')
+                          const Text(
+                            'Diese Abschrift wurde nicht vollständig fachlich geprüft.',
+                          ),
+                        for (final raw
+                            in (d['source_learning']['exclusions'] as List? ??
+                                []))
+                          if (raw is Map && raw['message'] is String)
+                            Text(raw['message'] as String),
+                      ],
+                    ),
                 ],
               ],
             ),

@@ -108,6 +108,8 @@ def create_import(child_id: str, data: s.ImportRequest, idempotency_key: str = K
         if material.purpose == "exam" or not material.confirmed or not material.content.strip() or material.synthetic:
             raise HTTPException(409, "Zuerst den erkannten Text der eigenen Seite bestätigen.")
         row.source_revisions = [{"id": material.id, "revision": material.revision}]
+    if not data.pairs:
+        context(db, row)  # Reject unusable selected sources before queue/reservation.
     db.add(row)
     db.flush()
     if not data.pairs:
@@ -250,10 +252,12 @@ def confirm_import_record(db, p, child, row, data):
         collection = VocabularyCollection(id=uid(), child_id=child.id, title=row.title, target_locale=row.target_locale)
         db.add(collection)
         db.flush()
+    from .source_lineage import learning_source
+
+    source_text = normalized("\n".join(learning_source(db, db.get(Material, source["id"]))["content"]
+                                        for source in row.source_revisions) if row.source_revisions else row.text)
     for pair in data.pairs:
         value = identity(row.target_locale, pair)
-        source_text = normalized("\n".join(db.get(Material, source["id"]).content for source in row.source_revisions)
-                                 if row.source_revisions else row.text)
         literal = literal_present(source_text, pair.word) and literal_present(source_text, pair.meaning)
         item = db.scalar(select(VocabularyItem).where(VocabularyItem.child_id == child.id, VocabularyItem.identity == value))
         if not item:
@@ -534,7 +538,9 @@ def create_round(child_id: str, data: s.RoundRequest, idempotency_key: str = KEY
 
 def context(db, row):
     current_sources(db, row.child_id, row.source_revisions)
-    content = "\n\n".join(db.get(Material, source["id"]).content for source in row.source_revisions) if row.source_revisions else row.text
+    from .learning_sources import current_values
+
+    content = "\n\n".join(value["content"] for value in current_values(db, row.child_id, row.source_revisions)) if row.source_revisions else row.text
     return {"target_locale": row.target_locale, "confirmed_text": content}
 
 
@@ -553,7 +559,10 @@ def authority(db, row, family_id):
 
 
 def process(job_id):
+    from .learning_sources import failure_billing
+
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -573,6 +582,7 @@ def process(job_id):
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             row.status = "running"
             db.commit()
+        provider_requested = True
         result = request_provider(ProviderConfig(**values), "vocabulary_import", payload)
         output = s.VocabularyOutput.model_validate(result.data)
         for pair in output.pairs:
@@ -618,7 +628,7 @@ def process(job_id):
                 row.status, row.error = "failed", reason[:500]
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage:
-                settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
+                settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)
 
 
 def purge_sources(db, material_ids, child_id):

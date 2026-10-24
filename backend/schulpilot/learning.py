@@ -263,13 +263,17 @@ def unit_source_texts(db, unit):
     # source_revision field, and today's confirmed text cannot safely stand in
     # for the material used by an older exercise. Keep the exercise readable,
     # but only derive source-bound graphics from explicit matching references.
-    return [material.content for ref in references
-            if (material := db.get(Material, ref.material_id)) and material.child_id == unit.child_id and material.confirmed and material.revision == ref.revision]
+    from .source_lineage import learning_source
+
+    return [safe["content"] for ref in references
+            if (material := db.get(Material, ref.material_id)) and material.child_id == unit.child_id
+            and (safe := learning_source(db, material, revision=ref.revision))["content"].strip()]
 
 
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from . import adaptive_plan, coaching
     from .learning_controller import projection as session_projection
+    from .visual_references import projection as visual_projection
 
     sources = unit_source_texts(db, unit)
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, func.coalesce(Attempt.evaluation["attempt_number"].as_integer(), 0), Attempt.id)))
@@ -279,6 +283,10 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
                            .order_by(AttemptAssessment.created, AttemptAssessment.id)):
         history.setdefault(row.attempt_id, []).append({"previous_outcome": row.previous_outcome,
             "outcome": row.outcome, "rules_version": row.rules_version, "created": row.created})
+    session = session_projection(db, unit, include_draft=not include_answers)
+    entry = session.get("learning_path")
+    prior = next((step for step in (entry or {}).get("steps", []) if step["kind"] == "prior_check"), None)
+    hide_introduction = not include_answers and prior is not None and prior["status"] != "completed"
     questions = []
     from .instructional_decisions import deferred as instructional_deferred
 
@@ -328,6 +336,9 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         closed = "feedback_explanation" in value
         value["presentation"] = public_presentation(q.get("presentation") or legacy_presentation(q, sources),
             closed=include_answers or closed, hints=value["hints_used"])
+        from .visual_references import question_projection
+
+        value["explanation_steps"] = question_projection(db, unit, q, closed=include_answers or closed, hints=value["hints_used"])
         questions.append(value)
     return {
         "id": unit.id,
@@ -335,14 +346,16 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "subject": unit.subject,
         "topic": unit.topic,
         "explanation": unit.explanation
-        if include_answers or unit.round_kind not in coaching.CHECK_KINDS or unit.status == "completed"
+        if not hide_introduction and (include_answers or unit.round_kind not in coaching.CHECK_KINDS or unit.status == "completed")
         else "",
         "questions": questions,
+        **visual_projection(db, unit,
+            show_introduction=not hide_introduction and (include_answers or unit.round_kind not in coaching.CHECK_KINDS or unit.status == "completed")),
         "pending_feedback": pending_feedback(unit, attempts, events),
         "supports_recheck": True,
         "supports_question_explanation": True,
         "supports_detailed_feedback": True,
-        "learning_session": session_projection(db, unit, include_draft=not include_answers),
+        "learning_session": session,
         "content_version": 1,
         "supports_answer_idempotency": True,
         "status": unit.status,
@@ -389,7 +402,13 @@ def vocabulary_result(db, unit):
             "skills": sorted({q["language"]["skill"] for q in unit.questions if q.get("language")})}
 
 
-def language_capability(unit, capabilities):
+def language_capability(unit, capabilities, db=None):
+    if db is not None:
+        from .db import LearningMemory
+
+        memory = db.get(LearningMemory, unit.id)
+        if memory and (memory.working or {}).get("entry_plan") and "learning-entry-v1" not in (capabilities.split(",") if isinstance(capabilities, str) else []):
+            raise HTTPException(426, "Diese Runde nutzt den neuen Lernstart. Bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
     if any(q.get("type") == "grouped" for q in unit.questions) and "grouped-v1" not in (capabilities.split(",") if isinstance(capabilities, str) else []):
         raise HTTPException(426, "Diese Runde enthält Mehrfeldaufgaben. Bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
     if any(q.get("presentation") for q in unit.questions) and "visual-v1" not in (capabilities.split(",") if isinstance(capabilities, str) else []):
@@ -1154,15 +1173,25 @@ def unit_view(unit_id: str, p=Depends(authenticated), db=Depends(get_db),
               capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     unit = get_unit(db, p, unit_id)
     if p.user.role == "child":
-        language_capability(unit, capabilities)
-    return unit_data(db, unit, p.user.role == "parent")
+        language_capability(unit, capabilities, db)
+    value = unit_data(db, unit, p.user.role == "parent")
+    can_prepare = not unit.synthetic
+    if can_prepare and p.user.role == "parent":
+        try:
+            child_access(db, p, unit.child_id, write=True)
+        except HTTPException as error:
+            if error.status_code != 403:
+                raise
+            can_prepare = False
+    value["can_prepare_visual"] = can_prepare
+    return value
 
 
 @router.post("/units/{unit_id}/start")
 def start(unit_id: str, p=Depends(child_user), db=Depends(get_db),
           capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     unit = get_unit(db, p, unit_id, True, True)
-    language_capability(unit, capabilities)
+    language_capability(unit, capabilities, db)
     if unit.status == "completed":
         return unit_data(db, unit)
     if reason := learning_block(db, unit):
@@ -1275,8 +1304,14 @@ def explanation(unit_id: str, data: s.ExplanationRequest | None = None, p=Depend
     record(db, unit.child_id, "explanation", {"text": text, **({"question_id": q["id"]} if q else {})}, unit.id)
     db.commit()
     from .subject_content import legacy_presentation, public_presentation
+    from .visual_references import projection as visual_projection
+    from .visual_references import question_projection
 
+    visual_state = visual_projection(db, unit)
     return {"explanation": text, "question_id": q["id"] if q else None,
+            "explanation_visual_status": visual_state["explanation_visual_status"],
+            "explanation_visual_reason": visual_state["explanation_visual_reason"],
+            "explanation_steps": question_projection(db, unit, q, closed=True) if q else visual_projection(db, unit)["explanation_steps"],
             "presentation": public_presentation(q.get("presentation") or legacy_presentation(q, unit_source_texts(db, unit)), closed=True) if q else None}
 
 
@@ -1528,7 +1563,7 @@ def schedule_completed_review(db, unit):
 def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(child_user), db=Depends(get_db),
            capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     unit = get_unit(db, p, unit_id, True, True)
-    language_capability(unit, capabilities)
+    language_capability(unit, capabilities, db)
     q = question(unit, question_id)
     if q.get("type") == "grouped":
         from .grouped_questions import canonical, parse_answer

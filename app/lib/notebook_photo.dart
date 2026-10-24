@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'schulbuddy.dart';
 
 /// Authenticated bytes only. No disk/public URL cache and no cross-account image.
 class NotebookPhoto extends StatefulWidget {
@@ -26,7 +27,7 @@ class NotebookPhoto extends StatefulWidget {
 
 class _NotebookPhotoState extends State<NotebookPhoto> {
   Json? owner;
-  String? family;
+  String? family, sessionToken;
   ImageProvider? image;
   String? error;
   int generation = 0;
@@ -36,13 +37,15 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
       mounted &&
       owner != null &&
       identical(widget.state.user, owner) &&
-      widget.state.familyId == family;
+      widget.state.familyId == family &&
+      widget.state.api.token == sessionToken;
 
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
     family = widget.state.familyId;
+    sessionToken = widget.state.api.token;
     widget.state.addListener(identityChanged);
     load();
   }
@@ -60,6 +63,7 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
       discard();
       owner = widget.state.user;
       family = widget.state.familyId;
+      sessionToken = widget.state.api.token;
       error = null;
     });
     load();
@@ -73,6 +77,7 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
       widget.state.addListener(identityChanged);
       owner = widget.state.user;
       family = widget.state.familyId;
+      sessionToken = widget.state.api.token;
     }
     if (oldWidget.state != widget.state ||
         oldWidget.materialId != widget.materialId ||
@@ -109,7 +114,11 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
         () => image = ResizeImage.resizeIfNeeded(
           widget.thumbnail
               ? 400
-              : (widget.figureIndex != null && !widget.zoomable ? 1000 : 1600),
+              : (widget.zoomable
+                    ? 3200
+                    : widget.figureIndex != null
+                    ? 1000
+                    : 1600),
           null,
           MemoryImage(bytes),
         ),
@@ -290,8 +299,10 @@ Future<void> zoomNotebookPhoto(
   int? figureIndex,
   int? revision,
 }) async {
+  final materialId = page['id'].toString();
+  final sourceRevision = revision ?? page['revision'] as int?;
   final owner = state.user;
-  final family = state.familyId;
+  final family = state.familyId, sessionToken = state.api.token;
   if (owner == null ||
       !context.mounted ||
       ModalRoute.of(context)?.isCurrent == false) {
@@ -301,7 +312,8 @@ Future<void> zoomNotebookPhoto(
   bool current() =>
       context.mounted &&
       identical(state.user, owner) &&
-      state.familyId == family;
+      state.familyId == family &&
+      state.api.token == sessionToken;
   void changed() {
     final route = ownRoute;
     if (current() || route == null) return;
@@ -319,35 +331,45 @@ Future<void> zoomNotebookPhoto(
         ownRoute ??= ModalRoute.of(dialogContext);
         changed();
         return current()
-            ? Dialog.fullscreen(
-                child: Scaffold(
-                  backgroundColor: dialogContext.palette.surfaceLow,
-                  appBar: AppBar(
-                    title: Text(
-                      figureIndex == null
-                          ? 'Heftfoto'
-                          : 'Abbildung im Heftfoto',
-                    ),
-                    leading: IconButton(
-                      tooltip: 'Schließen',
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        if (current() && ownRoute?.isCurrent == true) {
-                          Navigator.pop(dialogContext);
-                        }
-                      },
-                    ),
-                  ),
-                  body: SafeArea(
-                    child: NotebookPhoto(
-                      state,
-                      materialId: page['id'],
-                      figureIndex: figureIndex,
-                      revision: revision,
-                      key: ValueKey(
-                        'zoom:${identityHashCode(owner)}:${page['id']}',
+            ? SchulbuddyPageContext(
+                contextValue: SchulbuddyContext('notebooks', {
+                  'material_id': materialId,
+                  if (sourceRevision != null)
+                    'material_revision': sourceRevision.toString(),
+                  if (state.isChild && state.user?['child_id'] is String)
+                    'child_id': state.user!['child_id'],
+                }, 'photo:$materialId:$sourceRevision'),
+                child: Dialog.fullscreen(
+                  child: Scaffold(
+                    backgroundColor: dialogContext.palette.surfaceLow,
+                    appBar: AppBar(
+                      actions: const [SchulbuddyButton(), SizedBox(width: 8)],
+                      title: Text(
+                        figureIndex == null
+                            ? 'Heftfoto'
+                            : 'Abbildung im Heftfoto',
                       ),
-                      zoomable: true,
+                      leading: IconButton(
+                        tooltip: 'Schließen',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          if (current() && ownRoute?.isCurrent == true) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                      ),
+                    ),
+                    body: SafeArea(
+                      child: NotebookPhoto(
+                        state,
+                        materialId: materialId,
+                        figureIndex: figureIndex,
+                        revision: sourceRevision,
+                        key: ValueKey(
+                          'zoom:${identityHashCode(owner)}:$materialId',
+                        ),
+                        zoomable: true,
+                      ),
                     ),
                   ),
                 ),

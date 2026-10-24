@@ -402,6 +402,7 @@ def process(job_id):
     from .providers import ProviderError, external_allowed, request_provider, settle
 
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -417,6 +418,7 @@ def process(job_id):
             config = job_config(db, job, "decision")
             external_allowed(config)
             values = {column.name: getattr(config, column.name) for column in config.__table__.columns}
+        provider_requested = True
         result = request_provider(type(config)(**values), "decision", payload)
         with DB.begin() as db:
             job = db.get(Job, job_id)
@@ -454,4 +456,6 @@ def process(job_id):
             job.status, job.finished, job.error_code = "failed", int(now()), failure_code(error)
             log.warning("decision_failed code=%s type=%s", job.error_code, type(error).__name__)
             job.error = str(error)[:450] if isinstance(error, ProviderError) else "Der neue Lernplan konnte nicht sicher übernommen werden. Deine Runde bleibt gespeichert."
-            settle(db, db.scalar(select(Usage).where(Usage.job_id == job.id)), result or getattr(error, "billing_result", None), failed=True)
+            from .learning_sources import failure_billing
+
+            settle(db, db.scalar(select(Usage).where(Usage.job_id == job.id)), failure_billing(result, error, provider_requested=provider_requested), failed=True)

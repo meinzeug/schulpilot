@@ -520,7 +520,10 @@ def context(db, unit):
         material = db.get(Material, unit.material_id)
         if material:
             source_rows = [UnitSource(material_id=material.id, revision=material.revision)]
+    from .learning_sources import UnusableSources, exact_quote, policy, project
+
     materials = []
+    original_sources = []
     for source in source_rows:
         material = db.get(Material, source.material_id)
         if (
@@ -530,16 +533,25 @@ def context(db, unit):
             or material.revision != source.revision
         ):
             raise ProviderError("Der bestätigte Stoff wurde geändert oder gelöscht. Bitte zuerst gemeinsam prüfen.")
+        original_sources.append(material)
+        from .source_lineage import learning_source
+
+        safe = learning_source(db, material)
         materials.append(
             {
                 "id": material.id,
                 "revision": material.revision,
                 "subject": material.subject,
                 "topic": material.topic,
-                "content": material.content,
+                "content": safe["content"],
+                "source_policy": policy(safe),
                 "uncertainties": material.uncertainties,
             }
         )
+    try:
+        project(db, original_sources)
+    except UnusableSources as error:
+        raise ProviderError(str(error)) from None
     assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
     if assignment and unit.goal_revision is not None and assignment.revision != unit.goal_revision:
         raise ProviderError(
@@ -563,6 +575,11 @@ def context(db, unit):
     homework_practice = (len(materials) == 1 and bool(unit.questions)
                          and db.get(Material, materials[0]["id"]).purpose == "homework")
     learning_goals = goals_for(db, unit)
+    texts = [material["content"] for material in materials]
+    if goal:
+        texts.extend(str(value) for key, value in goal.items() if key != "revision")
+    if any(not exact_quote(item["source_excerpt"], texts) for item in learning_goals):
+        raise ProviderError("Ein gespeichertes Lernziel beruht auf einer inzwischen ungeklärten Quellenstelle. Die ursprünglichen Antworten bleiben erhalten; bitte zuerst die Quelle prüfen.")
     if not learning_goals:
         candidates = source_goals(materials, unit.subject, unit.topic)
         # Complete the audited mixed fraction/triangle catalogue only when the
@@ -615,7 +632,7 @@ def context(db, unit):
         "grade": child.grade,
         "required_subject": unit.subject,
         "required_topic": unit.topic,
-        "materials": [{k: m[k] for k in ("subject", "topic", "content", "uncertainties")} for m in materials],
+        "materials": [{k: m[k] for k in ("subject", "topic", "content", "uncertainties", "source_policy")} for m in materials],
         "goal": goal,
         "completed_questions": completed_questions,
         "previous_prompts": [q["prompt"] for previous in chain for q in previous.questions][-80:],
@@ -843,7 +860,7 @@ def save_report(
     data = s.CoachingOutput.model_validate(data).model_dump()
     goals = data["learning_goals"]
     old_goals = goals_for(db, unit)
-    prescribed_goals = old_goals or context(db, unit)[1]["learning_goals"]
+    prescribed_goals = context(db, unit)[1]["learning_goals"]
     by_goal = {g["id"]: g for g in goals}
     if len(by_goal) != len(goals) or len({normalized_prompt(g["label"]) for g in goals}) != len(goals):
         raise ProviderError("Die Lernziele der KI-Auswertung sind nicht eindeutig.")
@@ -856,9 +873,9 @@ def save_report(
         texts = [m["content"] for m in source_payload["materials"]]
         if source_payload["goal"]:
             texts.extend(str(v) for k, v in source_payload["goal"].items() if k != "revision")
-        if any(
-            not any(normalized_prompt(g["source_excerpt"]) in normalized_prompt(text) for text in texts) for g in goals
-        ):
+        from .learning_sources import exact_quote
+
+        if any(not exact_quote(goal["source_excerpt"], texts) for goal in goals):
             raise ProviderError("Ein vorgeschlagenes Lernziel hat keinen wörtlichen Beleg im bestätigten Stoff.")
         if any(re.search(r"\b(?:verstehen|lernen|beherrschen|wissen)\s*$", goal["label"], re.I) for goal in goals):
             raise ProviderError("Ein Lernziel ist zu allgemein. Benötigt wird eine konkret prüfbare Fähigkeit.")
@@ -1174,7 +1191,10 @@ def schedule(unit_id, *, automatic=False):
 
 
 def process(job_id):
+    from .learning_sources import failure_billing
+
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -1225,6 +1245,7 @@ def process(job_id):
                 payload["controller_context"] = {"strategy_version": session["strategy_version"],
                     "action": session["action"], "observations": session["observations"]}
             db.rollback()
+        provider_requested = True
         result = request_provider(ProviderConfig(**values), "coach", payload)
         with DB.begin() as db:
             job = db.get(Job, job_id)
@@ -1270,7 +1291,7 @@ def process(job_id):
                     item.status, item.reason = "failed", reason[:500]
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
+                    settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)
         log.warning("coach_failed type=%s", type(error).__name__)
 
 
@@ -1328,7 +1349,10 @@ def request_practice(
 
 def process_practice(job_id):
     """An unavailable generator must never discard an already saved review."""
+    from .learning_sources import failure_billing
+
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -1396,8 +1420,12 @@ def process_practice(job_id):
             from .catalog_ai import with_catalog_context
 
             payload = with_catalog_context(db, child, payload)
+            from .visual_references import with_visual_context
+
+            payload = with_visual_context(db, child, payload, [db.get(Material, source["id"]) for source in sources])
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.rollback()
+        provider_requested = True
         result = request_provider(ProviderConfig(**values), "unit", payload)
         with DB.begin() as db:
             job = db.get(Job, job_id)
@@ -1432,6 +1460,10 @@ def process_practice(job_id):
                 practice_identity=(values["provider"], values["model"]),
                 record_review=False,
             )
+            if item.next_unit_id:
+                from .visual_references import remember as remember_visuals
+
+                remember_visuals(db, db.get(LearningUnit, item.next_unit_id), result.data, payload)
             if result.catalog_assignment and item.next_unit_id:
                 from .catalog_ai import remember
 
@@ -1450,7 +1482,7 @@ def process_practice(job_id):
                 job.status, job.error, job.finished = "failed", reason[:500], int(now())
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
+                    settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)
         log.warning("coach_practice_failed type=%s", type(error).__name__)
 
 

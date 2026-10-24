@@ -180,6 +180,9 @@ def delete_rows(db, child, rows):
 
     ensure_deletable(rows)
     ids = [m.id for m in rows]
+    from .source_lineage import purge_diagnostic_outputs
+
+    purge_diagnostic_outputs(db, ids)
     from .unit_erasure import linked_ids, remove
 
     remove(db, child, linked_ids(db, child.id, ids))

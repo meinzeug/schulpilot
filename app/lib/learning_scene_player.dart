@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'learning_graphic_frame.dart';
 import 'ui.dart';
+import 'learning_graphic_scope.dart';
 
 /// Plays a bounded, already disclosed scene locally. It never records learning,
 /// evaluates an answer, fetches assets or executes provider-supplied code.
@@ -33,6 +34,7 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
   bool reducedMotion = false;
   bool comparing = false;
   int baseline = 0;
+  int reportedPhase = -1;
 
   @override
   void initState() {
@@ -86,12 +88,30 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
 
   void checkPlayback() {
     if (controller.isAnimating && !motion) controller.stop();
+    if (controller.isAnimating && active && scene != null) {
+      final phase = (controller.value * (scene!.steps.length - 1)).round();
+      if (phase != reportedPhase) {
+        reportedPhase = phase;
+        LearningGraphicScope.report(context, 'scene-$phase');
+      }
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     route = ModalRoute.of(context);
+    final saved = LearningGraphicScope.maybeOf(context)?.phase;
+    if (saved != null &&
+        saved.startsWith('scene-') &&
+        !controller.isAnimating &&
+        scene != null &&
+        scene!.steps.length > 1) {
+      final index = int.tryParse(saved.substring(6));
+      if (index != null && index >= 0 && index < scene!.steps.length) {
+        controller.value = index / (scene!.steps.length - 1);
+      }
+    }
     final reduced = MediaQuery.disableAnimationsOf(context);
     if (reduced != reducedMotion || !active) controller.stop();
     reducedMotion = reduced;
@@ -160,6 +180,8 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
     controller.stop();
     final target = index.clamp(0, scene!.steps.length - 1);
     final next = target / (scene!.steps.length - 1);
+    reportedPhase = target;
+    LearningGraphicScope.report(context, 'scene-$target');
     if (motion) {
       controller.animateTo(
         next,
@@ -434,6 +456,10 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                       ? (v) {
                           controller.stop();
                           controller.value = v / (model.steps.length - 1);
+                          LearningGraphicScope.report(
+                            context,
+                            'scene-${v.round()}',
+                          );
                         }
                       : null,
                 ),

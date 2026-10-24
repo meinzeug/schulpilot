@@ -114,13 +114,33 @@ def source_state(db, unit):
             expected[material.id] = material.revision
     sources = list(db.scalars(select(Material).where(Material.id.in_(list(expected))))) if expected else []
     valid = len(sources) == len(expected) and all(m.confirmed and m.revision == expected[m.id] for m in sources)
+    from .competences import source_ref
+    from .source_lineage import learning_source
+
+    memory = db.get(LearningMemory, unit.id)
+    entry = (memory.working or {}).get("entry_plan") if memory else None
+    eligible = [learning_source(db, material) for material in sources]
+    if sources:
+        valid = valid and any(item["content"].strip() for item in eligible)
+    if not entry and any(item["exclusions"] for item in eligible):
+        from .visual_references import source_bindings_current
+
+        valid = valid and source_bindings_current(db, unit, require_question_binding=True)
+    entry_ids = {ref["material_id"] for ref in entry["source_refs"]} if entry else set()
+    current_refs = [source_ref(db, material) for material in sources if material.id in entry_ids] if entry else []
+    if entry:
+        valid = valid and sorted(current_refs, key=lambda item: str(item)) == sorted(entry["source_refs"], key=lambda item: str(item))
     assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
     if unit.assignment_id:
         valid = valid and bool(assignment and assignment.source_status == "confirmed"
             and (unit.goal_revision is None or assignment.revision == unit.goal_revision))
-    signature = fingerprint([unit.id, unit.goal_revision,
+    parts = [unit.id, unit.goal_revision,
         sorted((m.id, m.revision, m.confirmed) for m in sources), sorted(expected.items()), unit.questions,
-        [assignment.id, assignment.revision, assignment.source_status] if assignment else None])
+        [assignment.id, assignment.revision, assignment.source_status] if assignment else None]
+    if any(item["exclusions"] for item in eligible):
+        parts.append(["source_eligibility", [[item["material_id"], item["revision"], item["content"], item["exclusions"]]
+            for item in eligible]])
+    signature = fingerprint([*parts, current_refs] if entry else parts)
     return signature, valid, sources
 
 
@@ -199,6 +219,7 @@ def local_resources(db, unit, question, need, sources):
 def decide(db, unit, memory=None):
     from . import adaptive_plan, instructional_decisions
     from .learning import completion_ready
+    from .learning_entry import entry_action
 
     data = facts(db, unit)
     q = data["question"]
@@ -227,6 +248,8 @@ def decide(db, unit, memory=None):
                 else "Deine Antworten sind gespeichert. Später prüfst du den Abruf mit neuen Aufgaben.",
             expected_result="Runde beenden oder bewusst eine weitere kleine Runde wählen.",
             on_success="schedule_review", on_error="offer_break")
+    elif selected_entry := entry_action(db, unit, data):
+        value.update(selected_entry)
     elif adaptive_action := adaptive_plan.decision(db, unit):
         value.update(adaptive_action)
     elif (memory or {}).get("media_return"):
@@ -265,11 +288,16 @@ def decide(db, unit, memory=None):
         from .learning import local_day
         from .learning_knowledge import evidence
 
+        entry_memory = db.get(LearningMemory, unit.id)
+        reused = ((entry_memory.working or {}).get("entry_plan") or {}).get("entry_mode") == "reuse_evidence" if entry_memory else False
         previous = evidence(db, unit, data["sources"])
         goal_id = q.get("learning_goal_id") if q else None
         goal_id = goal_id or (fraction_task_goal(q["prompt"], previous) if q else None)
         secure = next((g for g in previous if g["id"] == goal_id and g["confidence"] == "repeated_recall"), None)
-        if secure and secure["review_due"] and secure["review_due"] >= local_day(db.get(Child, unit.child_id)).isoformat():
+        if reused:
+            value.update(reason_code="known_competence_evidence",
+                reason="Zu diesem Lernziel liegen eigene gespeicherte Antworten vor. Du kannst mit einer neuen Anwendung beginnen.")
+        elif secure and secure["review_due"] and secure["review_due"] >= local_day(db.get(Child, unit.child_id)).isoformat():
             value.update(reason_code="secure_prior_evidence", reason="Mehrere selbstständige Abrufprüfungen liegen vor. Beginne mit einer Anwendung.",
                 evidence_refs=secure["evidence_refs"])
         else:
@@ -298,6 +326,7 @@ def decide(db, unit, memory=None):
 def projection(db, unit, *, include_draft=True):
     from . import adaptive_plan, instructional_decisions
     from .coaching import support_check_context
+    from .learning_entry import public_path
     from .providers import ProviderError
 
     memory = db.get(LearningMemory, unit.id)
@@ -333,6 +362,7 @@ def projection(db, unit, *, include_draft=True):
         "updated": memory.updated if memory else 0, "draft_revision": working.get("draft_revision", 0),
         "plan_revision": memory.plan_revision if memory else 0, "source_signature": data["source_signature"],
         "source_valid": data["source_valid"], "action": decision,
+        "learning_path": public_path(db, unit, data),
         "working_memory": working, "preparation": preparation, "short_plan": adaptive_plan.public_plan(db, unit),
         "instructional_plan": instructional_decisions.public(db, unit),
         "decision_preparation": decision_preparation,
@@ -354,12 +384,18 @@ def knowledge(db, unit):
     curriculum. Old answers remain the single authoritative observations.
     """
     from .coaching import goal_states
+    from .competences import VERSION, matches, prerequisite_graph
+    from .competences import evidence as competence_evidence
     from .learning_knowledge import evidence, prerequisites
 
     signature, valid, sources = source_state(db, unit)
     states = goal_states(db, unit) if valid else []
     long_term = evidence(db, unit, sources) if valid else []
+    competency_ids = [item["id"] for item in matches(db, sources, unit.subject)] if valid else []
     return {"version": 1, "source_signature": signature, "source_valid": valid,
+        "competence_catalog_version": VERSION,
+        "competences": competence_evidence(db, unit.child_id, competency_ids) if valid else [],
+        "competence_prerequisites": prerequisite_graph(competency_ids),
         "goals": states, "long_term": long_term, "prerequisites": prerequisites(long_term),
         "notice": "Voraussetzungen sind Lernvorschläge. Eine richtige Wiedererkennung belegt keinen freien Abruf."}
 

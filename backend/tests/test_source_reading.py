@@ -95,8 +95,8 @@ def test_source_region_is_bounded_and_never_a_generated_lesson_graphic():
     for region in [dict(valid, left=-1), dict(valid, right=1001), dict(valid, left=900), dict(valid, left=100.1)]:
         with pytest.raises(ValidationError):
             SourceBlock(kind="diagram_text", text="Zeichnung", image_region=region)
-    with pytest.raises(ValidationError):
-        SourceBlock(kind="formula", text="x=1", image_region=valid)
+    #107: bounded literal regions now also support actual text/formula pixels.
+    assert SourceBlock(kind="formula", text="x=1", image_region=valid).image_region.right == 900
 
 
 def test_private_original_crop_checks_owner_revision_and_causes_no_writes(api, household):

@@ -7,6 +7,7 @@ import 'api.dart';
 import 'admin_workspace_ui.dart';
 import 'child_account.dart';
 import 'ai_cost_panel.dart';
+import 'admin_child_costs.dart';
 import 'app_version.dart';
 import 'codex_model_picker.dart';
 import 'dashboard.dart';
@@ -1918,6 +1919,8 @@ class _AdminScreenState extends State<AdminScreen> {
                       subtitle: 'Verbrauch, offene Abrechnungen und Reservierungen gemeinsam betrachten.',
                       icon: Icons.savings_outlined,
                     ),
+                    AdminChildCosts(widget.state, enabled: section == 4),
+                    const SizedBox(height: 20),
                     AiCostPanel(
                       widget.state,
                       key: ValueKey('costs-$version'),

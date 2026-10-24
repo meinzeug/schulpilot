@@ -218,8 +218,8 @@ def test_changed_legacy_provider_configuration_never_reaches_transport(media_uni
         assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
         usage = db.scalar(select(Usage).where(Usage.job_id == job_id))
         assert usage.model != 'different-synthetic-model'
-        assert usage.status == 'failed_unknown'
-        assert usage.cost_micros is None
+        assert usage.status == 'failed_not_sent'
+        assert usage.cost_micros == 0
 
 
 def test_public_demo_cannot_turn_media_return_into_an_arbitrary_external_call(media_unit):

@@ -116,7 +116,7 @@ def extraction_failed(db, child_id, material_id):
 
 def features_for(db, child_id, job_id):
     """Use bounded recorded facts, never client-selected difficulty or model IDs."""
-    job = db.get(Job, job_id)
+    job = db.get(Job, job_id) if job_id is not None else None
     if job and job.child_id != child_id:
         raise HTTPException(403, "Dieser Auftrag gehört zu einem anderen Zugang.")
     data = job.payload if job else {}

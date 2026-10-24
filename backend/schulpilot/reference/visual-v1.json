@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "references": [
+    {
+      "id": "math.fraction.part_whole",
+      "version": 1,
+      "subjects": [
+        "Mathematik"
+      ],
+      "kind": "fraction",
+      "purpose": "Ein Anteil einer gleichmäßig geteilten Gesamtmenge; Zähler und Nenner bleiben an den Originalbruch gebunden.",
+      "terms": [
+        "bruch",
+        "brüche",
+        "zähler",
+        "nenner"
+      ],
+      "interaction": "fraction_parts",
+      "variant": null
+    },
+    {
+      "id": "math.triangle.height",
+      "version": 1,
+      "subjects": [
+        "Mathematik"
+      ],
+      "kind": "triangle",
+      "purpose": "Grundseite und senkrechte Höhe eines belegten Dreiecks.",
+      "terms": [
+        "dreieck",
+        "höhe",
+        "grundseite"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "language.sentence.roles",
+      "version": 1,
+      "subjects": [
+        "Deutsch",
+        "Deutsch als Zweitsprache"
+      ],
+      "kind": "sentence",
+      "purpose": "Belegte Satzglieder innerhalb des vollständigen Originalsatzes markieren.",
+      "terms": [
+        "satz",
+        "subjekt",
+        "prädikat"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "language.tense.timeline",
+      "version": 1,
+      "subjects": [
+        "Englisch",
+        "Französisch",
+        "Spanisch",
+        "Latein",
+        "Deutsch"
+      ],
+      "kind": "timeline",
+      "purpose": "Belegte Zeitpunkte/Zeiträume zur sprachlichen Zeitreferenz einordnen.",
+      "terms": [
+        "past",
+        "zeit",
+        "vergangen",
+        "jahr"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "physics.reflection.normal",
+      "version": 1,
+      "subjects": [
+        "Physik"
+      ],
+      "kind": "reflection",
+      "purpose": "Beide belegten Winkel am Lot derselben Spiegelreflexion.",
+      "terms": [
+        "reflexion",
+        "spiegel",
+        "winkel"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "physics.circuit.state",
+      "version": 1,
+      "subjects": [
+        "Physik"
+      ],
+      "kind": "circuit",
+      "purpose": "Belegten offenen/geschlossenen Stromkreis überblicken.",
+      "terms": [
+        "stromkreis",
+        "schalter",
+        "strom"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "chemistry.particles.state",
+      "version": 1,
+      "subjects": [
+        "Chemie"
+      ],
+      "kind": "particles",
+      "purpose": "Feste/flüssige/gasförmige belegte Teilchenanordnung vergleichen.",
+      "terms": [
+        "teilchen",
+        "fest",
+        "flüssig",
+        "gas"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "chemistry.molecule.bonds",
+      "version": 1,
+      "subjects": [
+        "Chemie"
+      ],
+      "kind": "molecule",
+      "purpose": "Belegte Bindungen einer vorhandenen festen Molekülfamilie.",
+      "terms": [
+        "molekül",
+        "bindung",
+        "wasser"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "biology.plant.structure",
+      "version": 1,
+      "subjects": [
+        "Biologie"
+      ],
+      "kind": "plant",
+      "purpose": "Die festen, wörtlich belegten Pflanzenorgane räumlich zuordnen.",
+      "terms": [
+        "wurzel",
+        "pflanze",
+        "blatt"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "biology.cell.structure",
+      "version": 1,
+      "subjects": [
+        "Biologie"
+      ],
+      "kind": "cell",
+      "purpose": "Belegte Teile einer vereinfachten Tier-/Pflanzenzelle.",
+      "terms": [
+        "zelle",
+        "zellkern"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "geography.water.cycle",
+      "version": 1,
+      "subjects": [
+        "Geographie"
+      ],
+      "kind": "water_cycle",
+      "purpose": "Belegte Phasen und Richtung des Wasserkreislaufs.",
+      "terms": [
+        "wasserkreislauf",
+        "verdunst",
+        "niederschlag"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "geography.compass.direction",
+      "version": 1,
+      "subjects": [
+        "Geographie"
+      ],
+      "kind": "compass",
+      "purpose": "Belegte Himmelsrichtungen räumlich einordnen.",
+      "terms": [
+        "nord",
+        "süd",
+        "himmelsrichtung"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "math.function.polynomial",
+      "version": 1,
+      "subjects": [
+        "Mathematik",
+        "Physik",
+        "Technik"
+      ],
+      "kind": "function_graph",
+      "purpose": "Exakt belegtes Polynom mit unveränderlichen Koeffizienten und nachvollziehbarem Erkundungspunkt.",
+      "terms": [
+        "funktion",
+        "polynom",
+        "graph"
+      ],
+      "interaction": "polynomial_point",
+      "variant": null
+    },
+    {
+      "id": "science.data.original",
+      "version": 1,
+      "subjects": [
+        "Mathematik",
+        "Physik",
+        "Chemie",
+        "Biologie",
+        "Technik",
+        "Informatik"
+      ],
+      "kind": "data_plot",
+      "purpose": "Ausschließlich belegte Originaldatenpunkte auf beschrifteten Achsen.",
+      "terms": [
+        "mess",
+        "daten",
+        "diagramm"
+      ],
+      "interaction": "original_point",
+      "variant": null
+    },
+    {
+      "id": "logic.table.gates",
+      "version": 1,
+      "subjects": [
+        "Informatik",
+        "Technik"
+      ],
+      "kind": "logic_table",
+      "purpose": "Feste belegte UND/ODER/NICHT-Verknüpfung mit wahrheitsgetreuen Zuständen.",
+      "terms": [
+        "logik",
+        "und",
+        "oder",
+        "nicht"
+      ],
+      "interaction": "logic_state",
+      "variant": null
+    },
+    {
+      "id": "history.timeline.events",
+      "version": 1,
+      "subjects": [
+        "Geschichte"
+      ],
+      "kind": "timeline",
+      "purpose": "Belegte Daten und Zeitabstände ohne erfundene Ereignisse einordnen.",
+      "terms": [
+        "jahr",
+        "zeit",
+        "geschichte"
+      ],
+      "interaction": "inspect",
+      "variant": null
+    },
+    {
+      "id": "general.source_relation.phases",
+      "version": 1,
+      "subjects": [
+        "*"
+      ],
+      "kind": "scene",
+      "purpose": "Mindestens zwei belegte Zustände mit einer tatsächlichen Änderung der hervorgehobenen Phase oder gerichteten Beziehung; keine dekorative Wortkachel. Interaction und Pfeilrichtung müssen aus bestätigten Quellen ableitbar sein.",
+      "terms": [],
+      "interaction": "scene_phases",
+      "variant": null
+    }
+  ]
+}

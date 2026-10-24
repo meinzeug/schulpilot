@@ -149,6 +149,8 @@ def same_subject(material, exam):
 
 
 def notebook_sources(db, exam, child):
+    from .source_lineage import usable_source
+
     return [
         {"id": m.id, "revision": m.revision, "subject": m.subject, "topic": m.topic, "title": m.title}
         for m in db.scalars(
@@ -157,7 +159,7 @@ def notebook_sources(db, exam, child):
             .order_by(Material.created.desc(), Material.id)
             .limit(200)
         )
-        if m.content.strip() and same_subject(m, exam)
+        if usable_source(db, m) and same_subject(m, exam)
     ]
 
 
@@ -862,7 +864,15 @@ def request_practice(
         for m in pages
     ):
         raise HTTPException(409, "Bitte bestätigte eigene Heftseiten desselben Fachs auswählen.")
-    if sum(len(m.content) for m in pages) > MAX_CONTENT:
+    from .learning_sources import UnusableSources, project
+
+    try:
+        safe = project(db, pages)
+    except UnusableSources as error:
+        raise HTTPException(409, str(error)) from None
+    if any(not value["content"].strip() for value in safe):
+        raise HTTPException(409, "Bitte nur Heftseiten mit nutzbaren Quellenstellen auswählen.")
+    if sum(len(value["content"]) for value in safe) > MAX_CONTENT:
         raise HTTPException(422, "Die ausgewählten Heftseiten sind zu umfangreich.")
     payload = {
         "material_id": pages[0].id,
@@ -918,6 +928,10 @@ def validate_practice_job(db, job):
             or material.revision != ref["revision"]
         ):
             raise ProviderError("Die ausgewählte Heftquelle wurde geändert.")
+        from .source_lineage import usable_source
+
+        if not usable_source(db, material, revision=ref["revision"]):
+            raise ProviderError("Die ausgewählte Heftquelle enthält keine nutzbare Lehrgrundlage mehr.")
 
 
 def add_practice_context(db, job, payload):

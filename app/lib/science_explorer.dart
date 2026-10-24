@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'learning_graphic_scope.dart';
 
 /// Local inspection of an already opened scientific help block. No API,
 /// activity, answer, timers, or automatic playback belongs to this widget.
@@ -44,7 +45,10 @@ class _ScienceExplorerState extends State<ScienceExplorer>
   String snapshot = '';
   final pointFocus = FocusNode(debugLabel: 'Scientific inspection point');
   ModalRoute<dynamic>? route;
-  bool invalidated = false, expanded = false, foreground = true;
+  bool invalidated = false,
+      expanded = false,
+      foreground = true,
+      structured = false;
   int index = 0, a = 0, b = 0, generation = 0;
 
   String fingerprint() {
@@ -91,11 +95,12 @@ class _ScienceExplorerState extends State<ScienceExplorer>
 
   bool get supported {
     if (!{
-      'hint1',
-      'hint2',
-      'hint3',
-      'solution',
-    }.contains(widget.block['disclosure'])) {
+          'hint1',
+          'hint2',
+          'hint3',
+          'solution',
+        }.contains(widget.block['disclosure']) &&
+        !(structured && widget.block['disclosure'] == 'given')) {
       return false;
     }
     final values = numbers;
@@ -160,12 +165,26 @@ class _ScienceExplorerState extends State<ScienceExplorer>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    structured = LearningGraphicScope.maybeOf(context) != null;
     final nextRoute = ModalRoute.of(context);
     if ((route != null && !identical(route, nextRoute)) ||
         nextRoute?.isCurrent == false) {
       reset();
     }
     route = nextRoute;
+    final saved = LearningGraphicScope.maybeOf(context)?.phase;
+    if (saved != null && saved.startsWith('science-') && supported) {
+      final value = int.tryParse(saved.substring(8));
+      if (value != null && value >= 0 && value <= (logic ? 3 : lastIndex)) {
+        expanded = true;
+        if (logic) {
+          a = widget.block['variant'] == 'not_gate' ? value : value ~/ 2;
+          b = value % 2;
+        } else {
+          index = value;
+        }
+      }
+    }
   }
 
   @override
@@ -193,7 +212,13 @@ class _ScienceExplorerState extends State<ScienceExplorer>
   void choose(int value) {
     if (!active || !supported || !expanded || logic) return;
     setState(() => index = value.clamp(0, lastIndex));
+    reportPhase();
   }
+
+  void reportPhase() => LearningGraphicScope.report(
+    context,
+    'science-${logic ? (widget.block['variant'] == 'not_gate' ? a : a * 2 + b) : index}',
+  );
 
   Offset get point {
     final values = numbers;
@@ -253,6 +278,7 @@ class _ScienceExplorerState extends State<ScienceExplorer>
                   ? () {
                       if (active && epoch == generation) {
                         setState(() => expanded = !expanded);
+                        if (expanded) reportPhase();
                       }
                     }
                   : null,
@@ -271,12 +297,16 @@ class _ScienceExplorerState extends State<ScienceExplorer>
               runSpacing: 8,
               children: [
                 input('A', a, () {
-                  if (active && epoch == generation) setState(() => a = 1 - a);
+                  if (active && epoch == generation) {
+                    setState(() => a = 1 - a);
+                    reportPhase();
+                  }
                 }),
                 if (widget.block['variant'] != 'not_gate')
                   input('B', b, () {
                     if (active && epoch == generation) {
                       setState(() => b = 1 - b);
+                      reportPhase();
                     }
                   }),
               ],

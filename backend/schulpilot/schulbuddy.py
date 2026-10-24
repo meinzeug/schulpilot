@@ -55,7 +55,7 @@ def fingerprint(value):
 def protocol_fields(value):
     """Additive nullable exam fields must not change existing history/replay keys."""
     result = value.model_dump()
-    for key in ("exam_id", "exam_session_id", "review_task_id", "exam_tab", "exam_revision"):
+    for key in ("exam_id", "exam_session_id", "review_task_id", "exam_tab", "exam_revision", "explanation_kind", "explanation_step_id", "graphic_index", "graphic_phase", "material_revision"):
         if result.get(key) is None:
             result.pop(key, None)
     return result
@@ -64,7 +64,7 @@ def protocol_fields(value):
 def resolve(db, p, scope):
     """Client IDs name a scope, never grant a role/family or upload free context."""
     if p.user.role == "admin":
-        if scope.child_id or scope.unit_id or scope.material_id or scope.day_id or scope.question_id or scope.exam_id or scope.exam_session_id or scope.review_task_id:
+        if scope.child_id or scope.unit_id or scope.material_id or scope.day_id or scope.question_id or scope.exam_id or scope.exam_session_id or scope.review_task_id or scope.explanation_step_id:
             raise HTTPException(403, "Betriebsadministratoren erhalten keinen privaten Kinderkontext.")
         return None, []
     targets = []
@@ -95,6 +95,10 @@ def resolve(db, p, scope):
     if any(not child or target.child_id != child.id for _, target in targets):
         raise HTTPException(404, "Dieser Schulbuddy-Bereich gehört nicht zu diesem Zugang.")
     by_kind = dict(targets)
+    if scope.material_revision is not None:
+        actual = by_kind.get("material_id")
+        if not actual or actual.revision != scope.material_revision:
+            raise HTTPException(409, "Die betrachtete Heftseite wurde geändert. Bitte das aktuelle Foto öffnen.")
     if scope.question_id and not scope.unit_id:
         raise HTTPException(422, "Eine konkrete Aufgabe benötigt ihre gespeicherte Lernrunde.")
     if unit := by_kind.get("unit_id"):
@@ -173,6 +177,8 @@ def scope_context(db, p, scope):
                 payload["current_question"]["observed_outcome"] = pending["outcome"]
             current_guard.append(["visible_question", question_id, pending["attempt_id"] if pending else None])
     elif material := by_kind.get("material_id"):
+        payload["material_page"] = True
+        payload["source_view"] = {"original_photo_visible_to_user": True, "provider_has_photo": False}
         current_guard.append([material.id, material.revision, material.confirmed, material.status])
         materials = [material] if material.confirmed and (material.content or "").strip() else []
         if not materials:
@@ -184,6 +190,11 @@ def scope_context(db, p, scope):
         materials = list(db.scalars(select(Material).where(Material.child_id == child.id,
             Material.school_day_id == day.id).order_by(Material.page_number, Material.id).limit(7)))
         label = "Schultag " + day.school_date
+    if scope.explanation_step_id:
+        from .schulbuddy_graphics import bind as bind_graphic
+
+        graphic_context = bind_graphic(db, p, scope, unit, payload)
+        current_guard.append(["explanation_graphic", graphic_context])
     if len(materials) > 6 or sum(len(m.content or "") for m in materials) > 18000:
         raise HTTPException(422, "Bitte eine einzelne Heftseite oder kleinere Lernrunde für Schulbuddy auswählen.")
     if any(not m.confirmed or not (m.content or "").strip() for m in materials):
@@ -194,11 +205,24 @@ def scope_context(db, p, scope):
     for index, m in enumerate(materials):
         if m.child_id != child.id:
             raise HTTPException(404, "Heftseite nicht gefunden.")
-        refs.append({"id": m.id, "revision": m.revision, "ref": f"p{index+1}",
-                     "label": f"{m.subject} · {m.topic}"})
-        payload["sources"].append({"ref": f"p{index+1}", "label": refs[-1]["label"], "content": m.content,
-                                   **({"evidence_kind": "written_work_original", "authoritative_solution": False}
-                                      if m.purpose == "exam" else {})})
+        from .source_lineage import learning_source
+
+        safe = learning_source(db, m)
+        current_guard.append(["source_safety", m.id, safe["policy_version"], safe["factual_status"], fingerprint(safe)])
+        if m.purpose == "exam":
+            content = m.content  # Literal review evidence, explicitly not a solution.
+        else:
+            content = safe["content"]
+            if safe["exclusions"]:
+                payload.setdefault("source_exclusions", []).append({"source": f"p{index+1}", "reasons": sorted({row["reason"] for row in safe["exclusions"]})})
+        if not content.strip():
+            if payload.get("material_page"):
+                payload["source_review"] = {"confirmation_required": True,
+                    "notice": "Diese Quellenfassung enthält ungeklärte Lesestellen oder Korrekturen. Bitte zuerst das Original prüfen."}
+            continue
+        refs.append({"id": m.id, "revision": m.revision, "ref": f"p{index+1}", "label": f"{m.subject} · {m.topic}"})
+        payload["sources"].append({"ref": f"p{index+1}", "label": refs[-1]["label"], "content": content,
+            **({"evidence_kind": "written_work_original", "authoritative_solution": False} if m.purpose == "exam" else {})})
     if unit or materials or scope.page_kind in ("today", "learn", "words", "homework", "notebooks", "progress", "plan"):
         from .learning_knowledge import buddy_context
 
@@ -220,6 +244,21 @@ def scope_context(db, p, scope):
     return child, normalized, context_key, label, payload, refs, signature
 
 
+def source_changed(db, turn):
+    from .source_lineage import learning_source
+
+    pages = {}
+    for ref in turn.source_revisions:
+        material = db.get(Material, ref["id"])
+        if not material or material.child_id != turn.child_id or material.revision != ref["revision"] or not material.confirmed:
+            return True
+        pages[material.id] = material.content if material.purpose == "exam" else learning_source(db, material)["content"]
+    for citation in (turn.reply or {}).get("sources", []):
+        if citation.get("material_id") not in pages or citation.get("quote", "") not in pages[citation["material_id"]]:
+            return True
+    return False
+
+
 def public_turn(db, turn):
     job = db.get(Job, turn.job_id)
     status, error = turn.status, turn.error
@@ -228,8 +267,7 @@ def public_turn(db, turn):
         if status == "failed":
             error = error or "Diese Frage konnte nicht beantwortet werden. Kein automatischer weiterer Versuch."
     reply = turn.reply or {}
-    changed = any(not (m := db.get(Material, ref["id"])) or m.child_id != turn.child_id
-                  or m.revision != ref["revision"] or not m.confirmed for ref in turn.source_revisions)
+    changed = source_changed(db, turn)
     return {"id": turn.id, "request_key": turn.request_key, "job_id": turn.job_id, "status": status,
             "question": turn.question, "reply_to": turn.reply_to, "context_key": turn.context_key,
             "answer": reply.get("answer"), "next_question": reply.get("next_question"),
@@ -259,9 +297,13 @@ def starters_for(page_kind, label, payload):
     }[page_kind]
     rows = [page]
     if payload.get("source_review", {}).get("confirmation_required"):
-        rows.insert(0, "Wie prüfe und bestätige ich den erkannten Text dieser Seite?")
+        return ["Wie prüfe und bestätige ich den erkannten Text dieser Seite?"]
+    if payload.get("material_page") and any(source.get("evidence_kind") != "written_work_original" for source in payload["sources"]):
+        return ["Erklär mir den Inhalt der Seite", "Erklär mir die Abbildung", "Stell mir eine Frage zum Inhalt"]
     if payload["sources"]:
         rows.insert(0, f"Erkläre mir den bestätigten Stoff zu {label[:100]} in einem kleinen Schritt.")
+    if payload.get("current_explanation", {}).get("graphic"):
+        rows.insert(0, "Erkläre mir diese Grafik.")
     goals = payload.get("knowledge", {}).get("goals", [])
     weak = next((g for g in goals if g.get("needs_practice") or g.get("uncertain") or g.get("supported")), None)
     strong = next((g for g in goals if g.get("independent")), None)
@@ -284,11 +326,18 @@ def read_context(page_kind: PageKind = "general", child_id: str | None = Query(N
                  exam_session_id: str | None = Query(None, max_length=32),
                  review_task_id: str | None = Query(None, max_length=48),
                  exam_tab: str | None = Query(None, max_length=16),
+                 material_revision: int | None = Query(None, ge=1, le=1_000_000_000),
+                 explanation_kind: str | None = Query(None, max_length=16),
+                 explanation_step_id: str | None = Query(None, max_length=32),
+                 graphic_index: int | None = Query(None, ge=0, le=5),
+                 graphic_phase: str | None = Query(None, max_length=40),
                  p=Depends(authenticated), db=Depends(get_db)):
     try:
         scope = BuddyScope(page_kind=page_kind, child_id=child_id, unit_id=unit_id, material_id=material_id, day_id=day_id,
                           question_id=question_id, exam_id=exam_id, exam_session_id=exam_session_id,
-                          review_task_id=review_task_id, exam_tab=exam_tab)
+                          review_task_id=review_task_id, exam_tab=exam_tab, explanation_kind=explanation_kind,
+                          explanation_step_id=explanation_step_id, graphic_index=graphic_index, graphic_phase=graphic_phase,
+                          material_revision=material_revision)
     except ValidationError:
         raise HTTPException(422, "Ungültiger Schulbuddy-Bereich.") from None
     child, _, key, label, payload, _, _ = scope_context(db, p, scope)
@@ -339,7 +388,7 @@ def history_for(db, turn):
         old = db.get(SchulbuddyTurn, previous)
         if (not old or old.id in seen or old.user_id != turn.user_id or old.child_id != turn.child_id
                 or old.context_key != turn.context_key or old.source_revisions != turn.source_revisions
-                or old.status != "ready" or not old.reply):
+                or old.status != "ready" or not old.reply or source_changed(db, old)):
             raise HTTPException(409, "Der frühere Chat passt nicht mehr zum aktuellen Bereich. Bitte eine neue Frage stellen.")
         history.append({"question": old.question, "answer": old.reply["answer"]})
         seen.add(old.id)

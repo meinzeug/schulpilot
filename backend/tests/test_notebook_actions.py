@@ -537,7 +537,11 @@ def test_reprocess_worker_checks_before_and_after_transport_and_keeps_billed_err
         usage = db.scalar(select(Usage).where(Usage.job_id == job_id))
         if change == "none":
             assert job.status == "completed" and clone.status == "review" and clone.content
-            assert job.result == {"material_id": clone_id} and not clone.confirmed
+            from schulpilot.source_lineage_models import SourceRevision
+
+            assert job.result["material_id"] == clone_id and not clone.confirmed
+            source = db.get(SourceRevision, job.result["source_snapshot_id"])
+            assert source and source.material_id == clone_id and source.revision == clone.revision
             assert usage.cost_micros == 9
         else:
             assert job.status == "failed" and clone.status == "uploaded" and clone.content == ""

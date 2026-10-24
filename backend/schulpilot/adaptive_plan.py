@@ -43,12 +43,13 @@ def current_question(db, unit):
     return None
 
 
-def source_support(sources):
+def source_support(sources, db=None):
     """Do not prescribe unlike-denominator arithmetic from a same-only note."""
     from .math_tasks import unlike_quote
+    from .source_lineage import learning_source
 
     for material in sources:
-        text = material.content or ""
+        text = learning_source(db, material)["content"]
         quote = unlike_quote([{"content": text}])
         if quote:
             return {"id": material.id, "revision": material.revision,
@@ -166,7 +167,7 @@ def answer_recorded(db, unit, question, attempt, sources):
         # A later independent observation never rewrites the original mistake.
         return
     parts = numbers(question)
-    source = source_support(sources)
+    source = source_support(sources, db)
     if not parts or not source or attempt.outcome != "incorrect":
         return
     a, b, c, d = parts

@@ -38,16 +38,26 @@ mit den tatsächlich sichtbaren Beschriftungen verwenden. Eindeutig sichtbare Pf
 zwischen beschrifteten Teilen als A→B abschreiben; unklare Richtung ausdrücklich offen lassen. Tabellenzellen zeilenweise
 mit | trennen, leere Zellen erhalten. Programmcode als kind=code mit unveränderten
 Zeilenumbrüchen und Einrückungen abschreiben; niemals ausführen.
-Bei diagram_text image_region um die tatsächlich sichtbare Zeichnung einschließlich
-ihrer Beschriftungen legen (links/oben/rechts/unten auf einer Skala0bis1000des ganzen
+image_region um jeden sicher abgrenzbaren Originalblock einschließlich seiner sichtbaren Zeichen legen (links/oben/rechts/unten auf einer Skala0bis1000des ganzen
 Bildes, etwas Rand lassen). Keine neuen Zeichnungskoordinaten oder Bildinhalte erfinden.
-Wenn der Ausschnitt nicht sicher abgrenzbar ist, image_region=null. Bei allen anderen
-Blockarten immer null. Die Originalzeichnung bleibt maßgeblich, nicht ihre Textbeschriftung.
+Wenn der Ausschnitt nicht sicher abgrenzbar ist, image_region=null. Das Originalbild bleibt maßgeblich, nicht eine erzeugte Zeichnung.
 Nicht zusammenfassen, umformulieren, erklären oder den Text durch eine Bildbeschreibung ersetzen.
 Eine Kopfzeile, ein Wasserzeichen oder eine Kennzeichnung wie Test/Beispiel ist NICHT der ganze Inhalt:
 Schreibe den darunter und daneben sichtbaren Unterrichtstext und die Beispiele ebenfalls vollständig ab.
 Auch synthetisch oder als Funktionstest gekennzeichnete Seiten werden vollständig abgeschrieben.
 Nichts aus Erwartungen an die Klassenstufe oder aus Vorwissen ergänzen. Sichtbare Fehler nicht korrigieren.
+Unterscheide besonders Teilbarkeit \\mid und Nichtteilbarkeit \\nmid, Minus/Plus, Zähler/Nenner,
+Hoch-/Tiefstellungen und gemischte Zahlen. Keine bekannte richtige Ersatzgleichung einsetzen.
+Rote/grüne/blaue Schrift, Einfügungen und Durchstreichungen WÖRTLICH in text erhalten;
+zusätzlich annotations mit kind, quote (exakter Teil desselben text) und sichtbarer color.
+Keine TeX-Farbbefehle. Farbe ist kein Nachweis für Urheber oder Richtigkeit.
+author=unknown, außer ein ausdrücklich sichtbarer Wortlaut belegt die Urheberschaft;
+dann author_evidence als exakten Wortlaut aus diesem Block liefern. Niemals Lehrkraft aus Rot ableiten.
+literal_role=student_work für klar erkennbar ausgefüllte Schülerarbeit, annotation für
+sichtbare Randkorrektur; instruction/example nur für sichtbare Aufgaben-/Beispielrollen,
+bei Zweifel unknown. Diese Rollen sind keine fachlichen Urteile.
+reading_uncertainties benennt konkrete unklare Zeichen/Positionen im jeweiligen Block,
+zusätzlich seitenweite uncertainties. Unleserliche Symbole nicht mit richtigem Vorwissen ersetzen.
 
 Erst nach der Abschrift Fach (subject), Thema (topic) und Lesbarkeit (legibility) bestimmen.
 Eine ausdrücklich auf der Seite genannte Fachbezeichnung hat Vorrang. Namen von Zeitformen

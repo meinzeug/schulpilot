@@ -66,11 +66,26 @@ def context(db, row):
         if not item or item.child_id != row.child_id or not item.confirmed or item.revision != snapshot["revision"]:
             raise HTTPException(409, "Ausgewählte Wörter wurden korrigiert. Bitte den Auftrag neu vorbereiten.")
         current_sources(db, row.child_id, item.source_revisions)
+        if item.origin == "material":
+            from .learning_sources import current_values, exact_quote
+
+            texts = [value["content"] for value in current_values(db, row.child_id, item.source_revisions)]
+            if any(value and not exact_quote(value, texts) for value in (item.word, item.meaning, item.context)):
+                raise HTTPException(409, "Ein ausgewähltes Wort beruht auf einer inzwischen ungeklärten Quellenstelle. Bitte das Wort ausdrücklich neu prüfen und bestätigen.")
         words.append({"id": item.id, "word": item.word, "meaning": item.meaning, "context": item.context,
                       "variants": item.variants, "target_locale": item.target_locale})
-    materials = [{"content": db.get(Material, source["id"]).content, "ref": f"p{index + 1}"}
-                 for index, source in enumerate(row.source_revisions)]
+    from .learning_sources import current_values, policy
+
+    safe = current_values(db, row.child_id, row.source_revisions)
+    materials = [{"content": value["content"], "ref": f"p{index + 1}", "source_policy": policy(value)}
+                 for index, value in enumerate(safe) if value["content"].strip()]
     previous = db.get(LanguageProject, row.previous_id) if row.previous_id else None
+    if previous and previous.result and any(value["exclusions"] for value in safe):
+        from .learning_sources import exact_quote
+
+        current_texts = [value["content"] for value in safe] + [f"{word['word']} = {word['meaning']}" for word in words]
+        if not exact_quote(previous.result.get("source_excerpt", ""), current_texts):
+            raise HTTPException(409, "Der gespeicherte Gesprächsschritt zitiert eine inzwischen ungeklärte Quellenstelle. Bitte ein neues Gespräch beginnen; der frühere Text bleibt lesbar.")
     return {"grade": db.get(Child, row.child_id).grade, "mode": row.mode, "target_locale": row.target_locale,
             "words": words, "materials": materials, "goal": row.inputs["goal"], "draft": row.inputs["draft"],
             "grammar_topic": row.inputs["grammar_topic"], "step": row.step, "last_step": row.step >= 4,
@@ -107,7 +122,9 @@ def create(child_id: str, data: s.ProjectRequest, idempotency_key: str = KEY,
         sources[material.id] = material.revision
     source_revisions = [{"id": material_id, "revision": revision} for material_id, revision in sorted(sources.items())]
     current_sources(db, child.id, source_revisions)
-    content = "\n".join(db.get(Material, source["id"]).content for source in source_revisions)
+    from .learning_sources import current_values
+
+    content = "\n".join(value["content"] for value in current_values(db, child.id, source_revisions))
     if len(content) > 36000:
         raise HTTPException(422, "Bitte eine kleinere Auswahl bestätigter Heftseiten wählen.")
     if data.mode == "grammar":
@@ -249,7 +266,10 @@ def checked_output(raw, payload, row):
 
 
 def process(job_id):
+    from .learning_sources import failure_billing
+
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -274,6 +294,7 @@ def process(job_id):
                 "materials": [source | {"subject": s.TARGETS[row.target_locale].split(" · ")[0],
                     "topic": row.inputs["grammar_topic"] or row.inputs["goal"]} for source in payload["materials"]]})
             db.commit()
+        provider_requested = True
         result = request_provider(ProviderConfig(**values), "language_project", payload)
         with DB.begin() as db:
             job = db.get(Job, job_id)
@@ -328,4 +349,4 @@ def process(job_id):
                 row.status, row.error = "failed", reason[:500]
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage:
-                settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
+                settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)

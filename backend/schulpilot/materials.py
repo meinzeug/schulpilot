@@ -103,8 +103,9 @@ def upload(
                 raise ValueError("format")
             if source.width * source.height > Image.MAX_IMAGE_PIXELS:
                 raise ValueError("dimensions")
+            upload_geometry = {"input_width": source.width, "input_height": source.height, "input_bytes": len(raw)}
             image = ImageOps.exif_transpose(source).convert("RGB")
-            image.thumbnail((1600, 1600))
+            image.thumbnail((3200, 3200))
             warnings = []
             if min(image.size) < 600:
                 warnings.append("Das Foto ist klein. Bitte prüfen, ob der Text gut lesbar ist.")
@@ -119,11 +120,14 @@ def upload(
                     "Das Foto enthält wenig erkennbare Details und könnte unscharf oder leer sein. Bitte prüfen."
                 )
             output = io.BytesIO()
-            image.save(output, format="JPEG", quality=88)  # EXIF/GPS/XMP are discarded.
+            image.save(output, format="JPEG", quality=95)  # EXIF/GPS/XMP are discarded.
+            upload_geometry.update(width=image.width, height=image.height, output_bytes=len(output.getvalue()), orientation="baked")
     except (UnidentifiedImageError, ValueError, OSError, Image.DecompressionBombError):
         raise HTTPException(
             422, "Bitte ein gültiges JPEG-, PNG- oder WebP-Bild mit höchstens 16 Megapixeln wählen."
         ) from None
+    if len(output.getvalue()) > 10 * 1024 * 1024:
+        raise HTTPException(413, "Der bereinigte Fotoexport überschreitet10 MB. Bitte einen kleineren gut lesbaren Ausschnitt abgeben.")
     digest = hashlib.sha256(output.getvalue()).hexdigest()
     # One lock per child also serializes replay checks, day state and file ownership.
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
@@ -178,6 +182,12 @@ def upload(
     )
     try:
         db.add(material)
+        db.flush()
+        from .source_lineage import PREPROCESS_VERSION
+        from .source_lineage_models import SourceImageReceipt
+
+        db.add(SourceImageReceipt(material_id=material.id, image_digest=digest, geometry=upload_geometry,
+                                  normalization_version=PREPROCESS_VERSION))
         if purpose == "exam":
             from .exam_review import attach_uploaded
 
@@ -228,13 +238,40 @@ def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)
     if material.purpose == "exam":
         from .exam_review_models import ExamReviewPage
         linked_exam = db.scalar(select(ExamReviewPage.exam_id).where(ExamReviewPage.material_id == material.id))
-    return material_data(material) | ({"exam_id": linked_exam} if material.purpose == "exam" else {}) | {"duplicate_candidates": duplicate_sources(db, material),
+    from .source_lineage import block_data, learning_source
+
+    return material_data(material) | {"source_learning": learning_source(db, material), "source_block_refs": block_data(material), "supports_source_history": True} | ({"exam_id": linked_exam} if material.purpose == "exam" else {}) | {"duplicate_candidates": duplicate_sources(db, material),
         "has_image": bool(material.path), "fixed_example": bool(material.fixture_id),
         "processing_job": ({"id": extraction.id, "kind": extraction.kind, "status": extraction.status,
                             "error": extraction.error, "error_code": extraction.error_code} if extraction else None)}
 
 
+@router.get("/materials/{material_id}/revisions")
+def source_history(material_id: str, offset: int = 0, p=Depends(authenticated), db=Depends(get_db)):
+    from .source_lineage_models import SourceRevision
+    material, _ = get_material(db, p, material_id)
+    if not 0 <= offset <= 100000:
+        raise HTTPException(422, "Bitte eine gültige Quellenposition verwenden.")
+    rows = list(db.scalars(select(SourceRevision).where(SourceRevision.material_id == material.id,
+        SourceRevision.child_id == material.child_id).order_by(SourceRevision.sequence.desc()).offset(offset).limit(21)))
+    return {"items": [{"id": row.id, "revision": row.revision, "sequence": row.sequence, "digest": row.digest,
+        "cause": row.cause, "created": row.created} for row in rows[:20]],
+        "next_offset": offset + 20 if len(rows) > 20 else None}
+
+
+@router.get("/materials/{material_id}/revisions/{snapshot_id}")
+def source_history_item(material_id: str, snapshot_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    from .source_lineage import snapshot_data
+    from .source_lineage_models import SourceRevision
+    material, _ = get_material(db, p, material_id)
+    row = db.get(SourceRevision, snapshot_id)
+    if not row or row.material_id != material.id or row.child_id != material.child_id:
+        raise HTTPException(404, "Quellenfassung nicht gefunden.")
+    return snapshot_data(row)
+
+
 @router.get("/materials/{material_id}/figures/{block_index}")
+@router.get("/materials/{material_id}/regions/{block_index}")
 def source_figure(material_id: str, block_index: int, revision: int,
                   p=Depends(authenticated), db=Depends(get_db)):
     material, _ = get_material(db, p, material_id)
@@ -244,8 +281,8 @@ def source_figure(material_id: str, block_index: int, revision: int,
     if not 0 <= block_index < min(len(blocks), 80) or not material.path:
         raise HTTPException(404, "Die Abbildung ist nicht mehr verfügbar.")
     region = blocks[block_index].get("image_region")
-    if not region or blocks[block_index]["kind"] != "diagram_text":
-        raise HTTPException(404, "Die Zeichnung findest du im vollständigen Heftfoto.")
+    if not region:
+        raise HTTPException(404, "Diesen Abschnitt findest du im vollständigen Heftfoto.")
     path = settings.data_dir / "uploads" / material.path
     if not path.is_file():
         raise HTTPException(404, "Das Heftfoto ist nicht mehr verfügbar.")
@@ -266,6 +303,19 @@ def source_figure(material_id: str, block_index: int, revision: int,
     # provider call, progress write, or public image cache.
     return Response(output.getvalue(), media_type="image/jpeg",
         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/materials/{material_id}/source-blocks/{block_id}/image")
+def source_block_image(material_id: str, block_id: str, revision: int,
+                       p=Depends(authenticated), db=Depends(get_db)):
+    from .source_lineage import block_data
+    material, _ = get_material(db, p, material_id)
+    if material.revision != revision:
+        raise HTTPException(409, "Die Quellenfassung wurde geändert. Bitte die aktuelle Seite öffnen.")
+    block = next((row for row in block_data(material) if row["block_id"] == block_id), None)
+    if not block:
+        raise HTTPException(404, "Quellenabschnitt nicht gefunden.")
+    return source_figure(material_id, block["block_index"], revision, p, db)
 
 
 @router.post("/materials/{material_id}/task-preview")
@@ -294,7 +344,26 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
     if material.purpose == "exam" and (data.task_decisions or data.vocabulary):
         raise HTTPException(422, "Aus einer korrigierten Arbeit werden keine Hausaufgaben oder Wörter übernommen.")
     confirmation_digest = material_tasks.fingerprint(data.model_dump(mode="json", exclude={"revision"}))
-    if material.confirmed and material.confirmation_digest == confirmation_digest:
+    if (material.confirmed and material.confirmation_digest == confirmation_digest
+            and all(getattr(data, key) == getattr(material, key) for key in ("subject", "topic", "content", "homework"))):
+        from .source_lineage import digest as source_digest
+        from .source_lineage import save_snapshot, source_snapshot
+
+        # An explicit replay can record the already supplied reading consent
+        # for a legacy page; it never changes text, revision or assessments.
+        from .source_lineage_models import SourceRevision
+
+        current = source_snapshot(material)
+        existing_confirmation = db.scalar(select(SourceRevision).where(
+            SourceRevision.material_id == material.id, SourceRevision.revision == material.revision,
+            SourceRevision.cause == "confirmation").order_by(SourceRevision.sequence.desc()).limit(1))
+        if not (existing_confirmation and existing_confirmation.snapshot == current
+                and existing_confirmation.receipt.get("reading_resolution") == "explicit_user_confirmation"
+                and existing_confirmation.receipt.get("confirmed_literal_digest") == source_digest(current)):
+            save_snapshot(db, material, "confirmation", {"version": 1,
+                "origin": "explicit_transcript_confirmation", "factual_validation": "not_assessed",
+                "reading_resolution": "explicit_user_confirmation", "confirmed_literal_digest": source_digest(current)})
+            db.commit()
         return material_data(material)
     if data.revision is not None and data.revision != material.revision:
         # A lost response can be replayed without another source/item revision.
@@ -329,6 +398,10 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
                 422,
                 "Das synthetische Beispiel hat einen festen Beispieltext ohne notierte Hausaufgaben. Freie Eingaben sind hier nicht als KI-Demo auswertbar.",
             )
+    from .source_lineage import invalidate_dependents, save_snapshot
+
+    previous_revision = material.revision
+    before_source = save_snapshot(db, material, "before_confirmation")
     source_changed = material.confirmed and any(getattr(data, k) != getattr(material, k) for k in ("subject", "topic", "content", "homework"))
     if data.content != material.content:
         # A corrected text invalidates advisory OCR roles; never reuse stale classification.
@@ -341,6 +414,15 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
     material.confirmed = True
     material.confirmation_digest = confirmation_digest
     material.status = "confirmed"
+    from .source_lineage import digest as source_digest
+    from .source_lineage import source_snapshot
+
+    save_snapshot(db, material, "confirmation", {"version": 1, "origin": "explicit_transcript_confirmation",
+        "previous_snapshot_id": before_source.id if before_source else None,
+        "factual_validation": "not_assessed", "reading_resolution": "explicit_user_confirmation",
+        "confirmed_literal_digest": source_digest(source_snapshot(material))})
+    if source_changed:
+        invalidate_dependents(db, material, previous_revision)
     if source_changed:
         from .learning_controller import observe
 
@@ -458,10 +540,18 @@ def enqueue(db, p, child, kind, payload, idempotency, *, commit=True):
         payload["assignment_revision"] = db.get(Assignment, payload["assignment_id"]).revision
     existing = db.scalar(select(Job).where(Job.idempotency == key))
     if existing:
-        comparable = {k: v for k, v in existing.payload.items() if k != "controller_guard"}
-        if existing.child_id != child.id or existing.kind != kind or comparable != payload:
+        comparable = {k: v for k, v in existing.payload.items() if k not in ("controller_guard", "learning_entry_enabled")}
+        payload_comparable = {k: v for k, v in payload.items() if k != "learning_entry_enabled"}
+        if existing.child_id != child.id or existing.kind != kind or comparable != payload_comparable:
             raise HTTPException(409, "Dieser Anfrageschlüssel wurde bereits für einen anderen Auftrag verwendet.")
         return {"id": existing.id, "status": existing.status}
+    if kind in ("unit", "package"):
+        from .source_lineage import usable_source
+
+        source_ids = [row["id"] for row in payload.get("sources", [])] or ([payload["material_id"]] if payload.get("material_id") else [])
+        source_pages = [db.get(Material, identifier, populate_existing=True) for identifier in source_ids]
+        if source_pages and not any(material and material.child_id == child.id and usable_source(db, material) for material in source_pages):
+            raise HTTPException(409, "Die gewählten Heftseiten enthalten noch keine verwendbare Lehrgrundlage. Bitte unsichere oder fehlerhafte Stellen zuerst prüfen.")
     rate_limit(db, "job:" + p.user.id, 30, 60, commit=False)
     # Atomically limit each child to one pending paid operation.
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"]))):
@@ -513,6 +603,7 @@ def create_unit(
     idempotency: str = Header(alias="Idempotency-Key", default=""),
     p=Depends(authenticated),
     db=Depends(get_db),
+    capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities"),
 ):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
     material_id = data.material_id
@@ -596,7 +687,8 @@ def create_unit(
                 raise HTTPException(422, "Die zusammengehörigen Seiten sind für eine Einheit zu umfangreich.")
     elif not data.assignment_id:
         raise HTTPException(422, "Bitte bestätigtes Material oder einen Elternauftrag auswählen.")
-    payload = {"material_id": material_id, "assignment_id": data.assignment_id, "review_of": data.review_of}
+    payload = {"material_id": material_id, "assignment_id": data.assignment_id, "review_of": data.review_of,
+        "learning_entry_enabled": isinstance(capabilities, str) and "learning-entry-v1" in capabilities.split(",")}
     if data.review_of:
         from .coaching import progress
 

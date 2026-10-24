@@ -945,7 +945,17 @@ class Audit(Base):
 Index("jobs_queue", Job.status, Job.created)
 
 # Register additive catalog tables after all referenced private models exist.
-from . import catalog_models, exam_models, exam_review_models, order_withdrawal_models, payment_models  # noqa: E402,F401
+from . import (  # noqa: E402,F401  # noqa: E402,F401
+    catalog_models,
+    child_cost_models,
+    competence_models,
+    exam_models,
+    exam_review_models,
+    order_withdrawal_models,
+    payment_models,
+    source_lineage_models,  # noqa: E402,F401
+    visual_reference_models,  # noqa: E402,F401
+)
 
 settings.data_dir.mkdir(parents=True, exist_ok=True)
 engine = create_engine(
@@ -979,6 +989,12 @@ def init_db():
         from .subject_registry import seed_connection
 
         seed_connection(db.connection())
+        from .competences import seed_connection as seed_competences
+
+        seed_competences(db.connection())
+        from .visual_references import seed as seed_visual_references
+
+        seed_visual_references(db)
     from .installation import initialize
 
     initialize()

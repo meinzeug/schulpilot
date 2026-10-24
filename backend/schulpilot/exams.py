@@ -53,23 +53,27 @@ def can_manage(db, p, child):
 
 
 def sources_data(db, child_id):
+    from .source_lineage import usable_source
+
     return [{"id": m.id, "revision": m.revision, "subject": m.subject, "topic": m.topic, "title": m.title}
             for m in db.scalars(select(Material).where(Material.child_id == child_id,
                 Material.purpose == "notebook", Material.confirmed.is_(True)).order_by(
-                    Material.created.desc(), Material.id).limit(200))]
+                    Material.created.desc(), Material.id).limit(200)) if usable_source(db, m)]
 
 
 def valid_refs(db, child_id, refs, subject_id, subject):
+    from .source_lineage import learning_source, usable_source
+
     pages = []
     for ref in refs:
         material = db.get(Material, ref["id"], populate_existing=True)
         if (not material or material.child_id != child_id or material.purpose != "notebook"
-                or not material.confirmed or material.revision != ref["revision"] or not material.content.strip()
+                or not usable_source(db, material, revision=ref["revision"])
                 or (material.subject_id != subject_id if subject_id and material.subject_id
                     else material.subject != subject)):
             return False
         pages.append(material)
-    return bool(pages) and sum(len(page.content) for page in pages) <= 60_000
+    return bool(pages) and sum(len(learning_source(db, page)["content"]) for page in pages) <= 60_000
 
 
 def plan_values(db, child, data):

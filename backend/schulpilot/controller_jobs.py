@@ -83,7 +83,10 @@ def prepare(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(
 
 
 def process(job_id):
+    from .learning_sources import failure_billing
+
     result = None
+    provider_requested = False
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -113,6 +116,12 @@ def process(job_id):
             from .catalog_ai import with_catalog_context
 
             payload = with_catalog_context(db, db.get(Child, job.child_id), payload)
+            from .db import Material
+            from .visual_references import with_visual_context
+
+            payload = with_visual_context(db, db.get(Child, job.child_id), payload,
+                                          [db.get(Material, source["id"]) for source in sources])
+        provider_requested = True
         result = request_provider(type(config)(**values), "unit", payload)
         with DB.begin() as db:
             job = db.get(Job, job_id)
@@ -140,6 +149,9 @@ def process(job_id):
                 provider=values["provider"], model=values["model"], synthetic=False)
             db.add(followup)
             db.flush()
+            from .visual_references import remember as remember_visuals
+
+            remember_visuals(db, followup, result.data, payload)
             for source in sources:
                 db.add(UnitSource(unit_id=followup.id, material_id=source["id"], revision=source["revision"]))
             record(db, child.id, "unit_created", {"via": "media_return", "previous_unit_id": unit.id}, followup.id)
@@ -164,4 +176,4 @@ def process(job_id):
                 else "Die neue Runde konnte nicht vorbereitet werden. Deine gespeicherten Übungen bleiben nutzbar.")[:500]
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage:
-                settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
+                settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)

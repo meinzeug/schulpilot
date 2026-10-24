@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'learning_graphic_scope.dart';
 
 /// Explores the already disclosed fraction. Never changes the source numbers,
 /// records an answer, fetches data or awards learning progress.
@@ -72,6 +73,13 @@ class _FractionExplorerState extends State<FractionExplorer>
   void didChangeDependencies() {
     super.didChangeDependencies();
     route = ModalRoute.of(context);
+    final phase = LearningGraphicScope.maybeOf(context)?.phase;
+    if (phase != null &&
+        RegExp(r'^fraction-(circle|bar)-(whole|denominator|numerator)$')
+            .hasMatch(phase)) {
+      bars = phase.startsWith('fraction-bar-');
+      focus = phase.split('-').last;
+    }
     if (!active || MediaQuery.disableAnimationsOf(context)) {
       motion.stop();
       motion.value = 1;
@@ -102,6 +110,7 @@ class _FractionExplorerState extends State<FractionExplorer>
   void choose(String value) {
     if (!active) return;
     setState(() => focus = value);
+    reportPhase();
     if (MediaQuery.disableAnimationsOf(context) ||
         MediaQuery.accessibleNavigationOf(context)) {
       motion.value = 1;
@@ -109,6 +118,11 @@ class _FractionExplorerState extends State<FractionExplorer>
       motion.forward(from: 0);
     }
   }
+
+  void reportPhase() => LearningGraphicScope.report(
+    context,
+    'fraction-${bars ? 'bar' : 'circle'}-$focus',
+  );
 
   @override
   void dispose() {
@@ -151,13 +165,23 @@ class _FractionExplorerState extends State<FractionExplorer>
             IconButton(
               tooltip: 'Kreismodell',
               isSelected: !bars,
-              onPressed: active ? () => setState(() => bars = false) : null,
+              onPressed: active
+                  ? () {
+                      setState(() => bars = false);
+                      reportPhase();
+                    }
+                  : null,
               icon: const Icon(Icons.pie_chart_outline_rounded),
             ),
             IconButton(
               tooltip: 'Balkenmodell',
               isSelected: bars,
-              onPressed: active ? () => setState(() => bars = true) : null,
+              onPressed: active
+                  ? () {
+                      setState(() => bars = true);
+                      reportPhase();
+                    }
+                  : null,
               icon: const Icon(Icons.view_column_outlined),
             ),
           ],
