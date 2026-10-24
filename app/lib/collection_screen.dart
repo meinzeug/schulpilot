@@ -93,15 +93,6 @@ class CollectionScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
-        if (learning && !state.isAdmin)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => openRoute(context, '/discover/$childId'),
-              icon: const Icon(Icons.auto_awesome_outlined),
-              label: const Text('Themen mit Grafiken entdecken'),
-            ),
-          ),
         if (!learning && state.isChild) ...[
           ChildSectionHero(
             eyebrow: 'Hefte',
@@ -1072,6 +1063,20 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (widget.learning &&
+                      widget.onSelect == null &&
+                      !widget.state.isAdmin)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          if (!active) return;
+                          openRoute(context, '/discover/${widget.childId}');
+                        },
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        label: const Text('Themen mit Grafiken entdecken'),
+                      ),
+                    ),
                   TextField(
                     controller: search,
                     focusNode: searchFocus,

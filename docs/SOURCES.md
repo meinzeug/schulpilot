@@ -1212,3 +1212,10 @@ darunter sieben neue Fälle sowie vorhandene Kontext-/Grafikfälle. Ein separate
 Zehnergate auf PostgreSQL undSQLite prüfte die Asset-Wartung und verspätete Kostenbelege:
 Ein terminaler Auftrag bleibt terminal, seine Generationkennung bleibt für den
 normalen Preisabgleich erhalten. Modell-/Metadatenaufrufe waren dabei gemockt.
+
+Der erste Volltest40124457196 meldete im Flutterlauf3522bestandene,
+19übersprungene und drei fehlgeschlagene Fälle: Der neue zusätzliche
+Grafikeinstieg verdrängte auf kleinen Bildschirmen den ersten Inhalt und die
+dritte Runde. Der Einstieg wurde deshalb in das bestehende Drei-Punkte-Menü
+verlegt; die bestehenden Dichtegrenzen bleiben unverändert. Ein zusätzlicher
+Test prüft den bewusst geöffneten Menüeinstieg ohne neue API-Aufträge.

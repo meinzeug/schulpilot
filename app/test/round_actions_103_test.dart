@@ -9,6 +9,7 @@ import 'package:schulpilot/collection_screen.dart';
 import 'package:schulpilot/ui.dart';
 
 import 'collection_screen_test.dart' as c;
+import 'page_tools_test_helpers.dart' as page_tools;
 
 Finder roundMenu(String id) => find.byKey(ValueKey('round-actions:unit:$id'));
 
@@ -74,6 +75,11 @@ Future<(AppState, GoRouter, List<http.Request>)> openRounds(
         path: '/unit/:id',
         builder: (_, route) =>
             Scaffold(body: Text('Bestehende Runde ${route.uri.path}')),
+      ),
+      GoRoute(
+        path: '/discover/:id',
+        builder: (_, route) =>
+            Scaffold(body: Text('Öffentliche Lernideen ${route.uri.path}')),
       ),
       GoRoute(
         path: '/cover',
@@ -146,6 +152,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets(
+    'public explorations stay in page tools until explicitly opened',
+    (tester) async {
+      final (_, _, calls) = await openRounds(tester, width: 320);
+      final discover = find.text('Themen mit Grafiken entdecken');
+      expect(discover, findsNothing);
+      expect(calls, hasLength(1));
+      await page_tools.openPageTools(tester, 'learning-tools');
+      expect(discover, findsOneWidget);
+      expect(calls, hasLength(1));
+      await c.tap(tester, discover);
+      expect(find.text('Öffentliche Lernideen /discover/child'), findsOneWidget);
+      expect(calls, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('round action menu is local until a deliberate selection', (
     tester,

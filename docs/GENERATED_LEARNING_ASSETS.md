@@ -49,7 +49,9 @@ Migration `0040_shared_learning_assets` ist additiv nach 0039 und erzeugt genau 
 ## Nachweise
 
 Die gemeinsame Flutter-Ansicht liegt unter `/discover/:childId` und ist unter
-„Lernen“ über „Themen mit Grafiken entdecken“ erreichbar. Sie zeigt zunächst
+„Lernen“ im Drei-Punkte-Menü „Lernrunden suchen & ordnen“ über
+„Themen mit Grafiken entdecken“ erreichbar. Der Einstieg benötigt keine eigene
+Zeile oberhalb der gespeicherten Runden. Sie zeigt zunächst
 Fach und Thema; Darstellung und Stufe sind aufklappbar. Das gewählte Fach wird
 bereits beim ersten Laden serverseitig gefiltert, weitere Themen werden bewusst
 seitenweise nachgeladen. Ein unsicher beantworteter Start behält seinen
