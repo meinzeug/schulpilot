@@ -12,6 +12,8 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/store_screens.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'page_tools_104_test_helpers.dart';
+
 Json catalog({
   int revision = 7,
   bool enabled = true,
@@ -439,6 +441,7 @@ void main() {
       final f = StoreFixture();
       f.items = [order(id: 'unpaid'), order(id: 'paid', status: 'paid')];
       await f.mount(t, '/bestellungen');
+      await openPageTool104(t, 'parent-orders-tools');
       expect(find.text('Zahlung offen (1)'), findsOneWidget);
       await tap(t, find.text('Freigeschaltet (1)'));
       expect(find.text('Bestellkennung: unpaid'), findsNothing);
@@ -451,6 +454,7 @@ void main() {
     (t) async {
       final f = StoreFixture();
       await f.mount(t, '/bestellungen');
+      await openPageTool104(t, 'parent-orders-tools');
       await t.enterText(query(), 'missing');
       await t.pumpAndSettle();
       expect(
@@ -469,6 +473,7 @@ void main() {
       final f = StoreFixture();
       f.items = [order(id: 'newer', created: 1792454500), order(id: 'older')];
       await f.mount(t, '/bestellungen');
+      await openPageTool104(t, 'parent-orders-tools');
       final dropdown = find.byWidgetPredicate(
         (w) =>
             w is DropdownButtonFormField<String> &&

@@ -8,6 +8,7 @@ import 'package:schulpilot/notification_panel.dart';
 import 'package:schulpilot/ui.dart';
 
 import 'admin_operations_catalog_ux_test.dart' as ops;
+import 'page_tools_104_test_helpers.dart';
 
 Json status() => {
   'production_available': false,
@@ -86,10 +87,7 @@ void main() {
     (t) async {
       final fixture = await mount(t, status());
       expect(find.text('Push-Konfigurationsnachweise ansehen'), findsNothing);
-      await ops.tap(
-        t,
-        find.widgetWithText(ExpansionTile, 'Konfiguration & Nachweise'),
-      );
+      await openPageTool104(t, 'admin-push-config');
       await ops.tap(t, find.text('Push-Konfigurationsnachweise ansehen'));
       expect(find.text('Gespeicherte Push-Nachweise'), findsOneWidget);
       expect(

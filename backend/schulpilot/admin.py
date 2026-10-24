@@ -98,6 +98,24 @@ def save_provider(data, actor, db):
             409,
             "Die Konfiguration wurde inzwischen geändert. Dein Entwurf bleibt erhalten. Lade den gespeicherten Stand bewusst neu.",
         )
+    # PostgreSQL locks this row above; SQLite does not implement FOR UPDATE.
+    # Claim the submitted revision atomically before dirtying any config field.
+    # Legacy callers without a revision retain their unconditional-save contract.
+    claim = update(ProviderConfig).where(ProviderConfig.id == 1)
+    if data.expected_revision is not None:
+        claim = claim.where(ProviderConfig.revision == data.expected_revision)
+    claimed = db.execute(
+        claim.values(revision=ProviderConfig.revision + 1).execution_options(synchronize_session=False)
+    )
+    if claimed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(
+            409,
+            "Die Konfiguration wurde inzwischen geändert. Dein Entwurf bleibt erhalten. Lade den gespeicherten Stand bewusst neu.",
+        )
+    # The SQL expression bypassed the identity map. Refresh now, while the row
+    # has no unflushed edits, so both the result and omission checks use it.
+    db.refresh(config)
     if previous_stop is False and config.emergency_stop and not data.emergency_stop:
         raise HTTPException(409, "Der Notfallstopp wurde inzwischen aktiviert. Bitte die Einstellungen neu laden.")
     values = data.model_dump(exclude={"api_key", "expected_revision"})
@@ -141,8 +159,6 @@ def save_provider(data, actor, db):
         setattr(config, key, value)
     if data.api_key:
         config.encrypted_key = encrypt(data.api_key)
-    db.execute(update(ProviderConfig).where(ProviderConfig.id == 1).values(revision=ProviderConfig.revision + 1))
-    db.refresh(config)
     config.status = "Konfiguration gespeichert. Verbindung noch nicht geprüft."
     if catalog_error:
         config.status = "Konfiguration gespeichert. Codex-Modellauswahl unverändert; Katalog gerade nicht erreichbar."

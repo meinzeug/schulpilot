@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -85,8 +87,16 @@ void main() {
               : pending.future;
         }),
       );
-      await hw.open(t, s, overview: true);
-      await t.tap(find.byTooltip('Aktualisieren'));
+      await hw.open(t, s, overview: true, openTools: false);
+      await page_tools.openPageTools(t, 'homework-photo-tools');
+      final refresh = find.widgetWithText(
+        TextButton,
+        'Aufgabenfotos aktualisieren',
+      );
+      await t.ensureVisible(refresh);
+      await t.pumpAndSettle();
+      expect(refresh.hitTestable(), findsOneWidget);
+      await t.tap(refresh);
       await t.pump();
       expect(find.text('Gespeichertes Foto'), findsOneWidget);
       expect(find.textContaining('aktualisiert'), findsWidgets);

@@ -16,6 +16,7 @@ import 'access_store_ux90_test.dart' as store;
 import 'access_workflows_ux90_test.dart' as helpers;
 import 'admin_batch1_ux_test.dart' as fixtures;
 import 'store_round2_ux88_test.dart' as checkout;
+import 'page_tools_104_test_helpers.dart';
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
@@ -97,6 +98,7 @@ void main() {
           exported = Json.from(jsonDecode(utf8.decode(bytes)) as Map);
         };
       await f.mountOrders(t);
+      await openPageTool104(t, 'parent-orders-tools');
       await helpers.press(t, 'Freigeschaltet (1)');
       await helpers.press(t, 'Angezeigte Bestellmetadaten speichern');
       expect(exported!['loaded_count'], 2);
@@ -203,6 +205,7 @@ void main() {
           store.order(),
         ];
       await f.mountOrders(t);
+      await openPageTool104(t, 'parent-orders-tools');
       t
           .widget<StoreOrderPeriodFilter>(find.byType(StoreOrderPeriodFilter))
           .onChanged('scheduled');

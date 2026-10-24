@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -260,7 +262,8 @@ void main() {
         expect(find.text('Eigene Brüche'), findsOneWidget);
         expect(find.byType(TextField), findsNothing);
         expect(find.byType(DropdownButtonFormField<String>), findsNothing);
-        expect(find.text('Suchen & filtern'), findsOneWidget);
+        expect(find.byKey(const ValueKey('page-tools-button')), findsOneWidget);
+        expect(find.text('Suchen & filtern'), findsNothing);
         expect(requests.every((request) => request.method == 'GET'), true);
         await tap(tester, 'Eigene Brüche');
         expect(find.text('Gespeicherte Runde'), findsOneWidget);
@@ -400,13 +403,13 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       await mount(tester, childDay(), requests, learning: true, width: 320);
-      await tap(tester, 'Suchen & filtern');
+      await page_tools.openPageTools(tester, 'learning-tools');
       expect(find.byType(TextField), findsOneWidget);
       await tester.enterText(find.byType(TextField), 'eigene');
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
       expect(requests.last.url.queryParameters['q'], 'eigene');
-      await tap(tester, 'Suche schließen');
+      await page_tools.closePageTools(tester, 'learning-tools');
       expect(tester.testTextInput.isVisible, isFalse);
       expect(find.byType(TextField), findsNothing);
       expect(find.text('Filter zurücksetzen'), findsOneWidget);
@@ -455,9 +458,15 @@ void main() {
   );
 
   testWidgets(
-    'Parent collection tools remain available without a child search disclosure',
+    'Parent collection tools remain available through the shared header options',
     (tester) async {
-      await mount(tester, childDay(), [], learning: true, parent: true);
+      final requests = <http.Request>[];
+      await mount(tester, childDay(), requests, learning: true, parent: true);
+      expect(find.byType(TextField), findsNothing);
+      final before = requests.length;
+      await page_tools.openPageTools(tester, 'learning-tools');
+      expect(requests.length, before);
+      expect(requests.every((request) => request.method == 'GET'), true);
       expect(find.byType(TextField), findsOneWidget);
       expect(
         find.descendant(

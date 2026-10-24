@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -7,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/notification_panel.dart';
+import 'package:schulpilot/page_tools.dart';
 import 'package:schulpilot/ui.dart';
 import 'package:schulpilot/unit_screen.dart';
 
@@ -353,14 +356,20 @@ void main() {
           home: Scaffold(
             body: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              child: NotificationPanel(state),
+              child: PageToolsHost(
+                state: state,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [const PageToolsButton(), NotificationPanel(state)],
+                ),
+              ),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
       expect(find.text('Ruhezeit: 19:00–09:00'), findsOneWidget);
-      await _tap(tester, 'Zeiten & Auswahl');
+      await page_tools.openPageTools(tester, 'notification-preferences');
       final switches = tester.widgetList<SwitchListTile>(
         find.byType(SwitchListTile),
       );

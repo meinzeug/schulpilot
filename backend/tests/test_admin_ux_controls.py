@@ -5,9 +5,13 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from conftest import HEADERS
 from fastapi.testclient import TestClient
-from schulpilot.db import DB, Family, ProviderConfig, Usage
+from schulpilot import admin as admin_routes
+from schulpilot.db import DB, Audit, Family, ProviderConfig, Usage, engine
 from schulpilot.main import app
+from schulpilot.security import decrypt
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.sql.dml import Update
 from test_codex_models import operator as synthetic_operator_fixture
 
 
@@ -72,6 +76,103 @@ def test_two_operator_drafts_can_commit_the_same_revision_only_once(operator):
     assert sorted(outcomes) == [200, 409]
     with DB() as db:
         assert db.get(ProviderConfig, 1).revision == original["expected_revision"] + 1
+
+
+def test_late_sqlite_revision_conflict_preserves_the_winner_and_has_no_loser_writes(operator, monkeypatch):
+    if engine.dialect.name != "sqlite":
+        pytest.skip("SQLite omits FOR UPDATE; PostgreSQL serializes before this boundary")
+    original = provider_payload()
+    winner_key = "SYNTHETIC-CAS-WINNER-KEY"
+    loser_key = "SYNTHETIC-CAS-LOSER-KEY"
+    winner_responses, rollbacks, encrypted_values = [], [], []
+    execute = OrmSession.execute
+    rollback = OrmSession.rollback
+    encrypt = admin_routes.encrypt
+    dispatched = False
+
+    def record_encrypt(value):
+        encrypted_values.append(value)
+        assert value != loser_key, "The rejected draft must not reach key encryption"
+        return encrypt(value)
+
+    def record_rollback(db):
+        rollbacks.append(db)
+        return rollback(db)
+
+    def competing_save_before_claim(db, statement, *args, **kwargs):
+        nonlocal dispatched
+        if not dispatched and isinstance(statement, Update) and statement.table.name == "provider_config":
+            dispatched = True
+            # The losing request has read revision N but has not executed its
+            # claim. A separate real API transaction now wins that revision.
+            winner = operator.put(
+                "/api/admin/provider",
+                json={**original, "reserve_micros": 2345, "api_key": winner_key},
+            )
+            assert winner.status_code == 200
+            winner_responses.append(winner.json())
+            assert not any(isinstance(value, ProviderConfig) for value in db.dirty)
+        return execute(db, statement, *args, **kwargs)
+
+    monkeypatch.setattr(OrmSession, "execute", competing_save_before_claim)
+    monkeypatch.setattr(OrmSession, "rollback", record_rollback)
+    monkeypatch.setattr(admin_routes, "encrypt", record_encrypt)
+    rejected = operator.put(
+        "/api/admin/provider",
+        json={**original, "reserve_micros": 1234, "api_key": loser_key, "image_capable": True},
+    )
+    assert dispatched and len(winner_responses) == 1
+    assert rejected.status_code == 409 and "Entwurf" in rejected.json()["detail"]
+    assert loser_key not in rejected.text and winner_key not in rejected.text
+    assert encrypted_values == [winner_key]
+    assert len(rollbacks) == 1
+    assert winner_responses[0]["revision"] == original["expected_revision"] + 1
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+        assert config.revision == original["expected_revision"] + 1
+        assert config.reserve_micros == 2345 and config.image_capable is False
+        assert decrypt(config.encrypted_key) == winner_key
+        assert db.scalar(select(func.count()).select_from(Audit).where(Audit.action == "admin.provider_update")) == 1
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+
+
+def test_provider_validation_failure_rolls_back_the_revision_claim(operator):
+    original = provider_payload()
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+        before = {column.name: getattr(config, column.name) for column in ProviderConfig.__table__.columns}
+    rejected = operator.put(
+        "/api/admin/provider",
+        json={
+            **original,
+            "provider": "openrouter",
+            "model": "synthetic-model-without-free-suffix",
+            "openrouter_free_only": True,
+            "api_key": "SYNTHETIC-REJECTED-CONFIG-KEY",
+        },
+    )
+    assert rejected.status_code == 422 and ":free" in rejected.json()["detail"]
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+        assert config.revision == original["expected_revision"]
+        assert {column.name: getattr(config, column.name) for column in ProviderConfig.__table__.columns} == before
+        assert db.scalar(select(func.count()).select_from(Audit).where(Audit.action == "admin.provider_update")) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+
+
+def test_legacy_provider_saves_return_the_actual_single_increment(operator):
+    payload = provider_payload()
+    original_revision = payload.pop("expected_revision")
+    for offset, value in enumerate((1234, 2345), start=1):
+        response = operator.put("/api/admin/provider", json={**payload, "reserve_micros": value})
+        assert response.status_code == 200
+        assert response.json()["revision"] == original_revision + offset
+        assert response.json()["reserve_micros"] == value
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+        assert config.revision == original_revision + 2 and config.reserve_micros == 2345
+        assert db.scalar(select(func.count()).select_from(Audit).where(Audit.action == "admin.provider_update")) == 2
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
 
 
 def test_legacy_provider_payload_stays_compatible(operator):

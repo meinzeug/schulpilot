@@ -12,6 +12,8 @@ import 'package:schulpilot/store_plan_editor.dart';
 import 'package:schulpilot/store_screens.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'page_tools_104_test_helpers.dart';
+
 Json plan(String id) => {
   'id': id,
   'name': 'Synthetic $id',
@@ -258,6 +260,7 @@ void main() {
     (t) async {
       final f = Fixture();
       await f.mountOrders(t);
+      await openPageTool104(t, 'parent-orders-tools');
       await t.enterText(
         field('Gespeicherte Bestellungen durchsuchen'),
         'SYNTHETIC-REF',
@@ -266,6 +269,7 @@ void main() {
       await press(t, 'Tarife ansehen');
       await t.tap(find.byTooltip('Zurück'));
       await t.pumpAndSettle();
+      await openPageTool104(t, 'parent-orders-tools');
       expect(
         t
             .widget<TextField>(field('Gespeicherte Bestellungen durchsuchen'))
