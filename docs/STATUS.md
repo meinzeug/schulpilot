@@ -1,4 +1,16 @@
-# Aktuell: schmale Seiten und gezielte Werkzeuge · 1.30.1+104
+# Aktuell: neue Marke und beweglicher Schulbuddy · 1.31.0+105
+
+Live https://schulpilot.dorfspy.de · Produktcommit `7ba70c8a8bdc83aa3493b31c4cb4b9fcca02a567` · Release `20261024T105052Z-7ba70c8`.
+Freundlicher violetter Kopf als normales Logo; vollständiger Roboter mit schwarzem Hut beim Start, Handheben und Zwinkern in einer endlichen Bildfolge. Schulbuddy bleibt die geflügelte Buch-/Roboterfigur. Er lässt sich aus dem Header ziehen, frei platzieren und wieder andocken; der schmale Ziehhinweis hat einen Zehnsekundenzyklus. Glocke und Initialen passen zur Figurenfamilie. Eigene geschützte Profilfotos für alle Rollen; im Kinderkonto bewusst unter „Profil“. Fachhefter behalten Header, untere Navigation und schwebenden Buddy.
+
+Vollständige CI 40078603562 grün: **2264 Backendtests/34 übersprungen, 3377 Fluttertests/19 übersprungen**, Ruff/Analyse/CI-Webbuild erfolgreich. Regulärer Web-/Direct-/Playbuild aus demselben sauberen Commit, Signaturen/16KB/Bundle geprüft, Geheimnisscan ohne Fund. Öffentliche APK/JS bytegleich. Fünf Dienste aktiv, Migration 0031→0032, 17/17 unmittelbar gesicherte Konfigurationen bytegleich, Google erhalten, Sicherung erfolgreich; Reparaturquelle mit 633 Dateien geprüft.
+
+Künstliche Browseransichten in allen Rollen; abschließend live im bestehenden Kinderzugang Heute, Hefte/Mathematik, Ziehen/Chatöffnen/Andocken, Logo-Rückweg und Geräte-/Profilreiter bei 390×844, Desktop nach Viewportrücksetzung 1101×884 geprüft. Keine Lernantworten, neuen Modellaufträge oder Produktionsfotoänderungen. Eigene Vorschau beendet; keine privaten Screenshots auf Festplatte. Sechs native JUnitfälle grün; der Emulatorlauf ohne KVM endete in System-ANR/Timeout und ist keine bestandene Android-Laufzeitprüfung. Kein pauschaler Rückweg auf 104, weil dessen Datei-/Restorepfade keine Profilfotos kennen.
+[Release105 und genaue Grenzen](RELEASE_105_2026_10_24.md) · [Logo/Startup und Prompt](LOGO_105.md) · [Headergrafiken und Prompt](HEADER_GRAPHICS_105.md).
+
+---
+
+# Vorheriger Produktionsstand104: schmale Seiten und gezielte Werkzeuge · 1.30.1+104
 
 Live https://schulpilot.dorfspy.de · Produktcommit `e58984ebd3fc9462044264dbcaa23d9c51ba66c9` · Release `20261024T023008Z-e58984e`.
 Gemeinsame Seitenoptionen für Kinder, Eltern und Administration, kompakter Fachhefter ohne permanente Filter-/Ansichtsleisten, erhaltene Formularentwürfe, klare Primärinhalte, eigene Illustration für leere Einstiege sowie lokale Kreis-/Balkenmodelle. Weitere Fachszenen zeigen die Grafik vor Zusatzwerkzeugen; fachliche Freigaben, Antworten, Rechte und Budgets bleiben erhalten.
