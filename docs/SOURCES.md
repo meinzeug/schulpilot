@@ -1153,3 +1153,19 @@ Die integrierten Transport-, Reparatur- und Auszugsfälle bestanden anschließen
 gemeinsam96SQLiteprüfungen. Ein vorheriger Lauf im eingeschränkten lokalen
 ASGI-Testtransport wurde unterbrochen; erst der erneute vollständige Lauf mit
 den vorhandenen TestClient-Berechtigungen ist der96er-Ergebnisbeleg.
+
+Tatsächlicher Volltest40114809881 auf cc6f6a1: Backend2915bestanden,
+37übersprungen und2veraltete Testzugriffe auf den internen Namen
+`$defs.GroundedQuestion`; die vorherigen fachlichen Match-/Ablehnungsassertions
+bestanden. Flutter3511bestanden/19übersprungen, Analyse und Webbuild grün.
+Der anschließende reine Testfix löst Referenzen über den bestehenden Helper auf
+und erhält sämtliche bisherigen Wertebereichs-/Antwortassertions; alle37Fälle
+der Szenentestdatei bestanden danach. Er ändert keine Produktdatei.
+
+110 wurde mit unverändertemSchema0039 aus cc6f6a1 veröffentlicht; öffentliche
+APK/JavaScript, Signatur und17geschützte Konfigurationen wurden nachgeprüft.
+Der einmal bewusst gestartete reale Reparaturauftrag erreichte den Anbieter,
+wurde aber als `invalid_output` abgewiesen. Eine erfolgreiche Paketerstellung
+ist deshalb weiterhin NICHT belegt.4000gemeldete Ausgabetokens allein beweisen
+weder den genauen Ablehnungsgrund noch eine tatsächlich gespeicherte Lernrunde.
+Kein blinder weiterer Modellaufruf und kein Aufweichen der Aufgabenprüfung.

@@ -512,7 +512,10 @@ def test_normal_compact_ai_rounds_can_emit_small_source_bound_matching(monkeypat
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     definitions = schema["$defs"]
     name = "GroundedQuestion" if context == "package" else "PracticeQuestion" if context == "coach" else "Question"
-    branch = next(branch for branch in definitions[name]["anyOf"]
+    from schema_helpers import package_questions, resolved
+
+    branches = package_questions(schema) if context == "package" else resolved(schema, definitions[name])["anyOf"]
+    branch = next(branch for branch in branches
                   if branch["properties"]["type"]["enum"] == ["match"])
     assert branch["properties"]["options"]["minItems"] == 2
     assert branch["properties"]["options"]["maxItems"] == 4
@@ -594,7 +597,9 @@ def test_codex_factual_packages_keep_the_previous_choice_short_permission(monkey
             "materials": [{"group_id": "g1", "subject": "Biologie", "topic": "Tierklassen", "content": source}],
         })
     assert len(calls) == 1
-    branches = calls[0]["schema"]["$defs"]["GroundedQuestion"]["anyOf"]
+    from schema_helpers import package_questions
+
+    branches = package_questions(calls[0]["schema"])
     assert {kind for branch in branches for kind in branch["properties"]["type"]["enum"]} == {"choice", "short"}
 
 
