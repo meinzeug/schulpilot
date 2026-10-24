@@ -126,3 +126,16 @@ def test_non_analysis_schema_is_not_silently_mutated():
 def test_malformed_reply_does_not_escape_the_compact_transport_guard(value):
     with pytest.raises(ValueError, match="kompakten Ausgaberahmen"):
         compact.validate_bounds(value, 4000)
+
+
+def test_grouped_assignment_rules_keep_readable_literal_rows_independent_and_roles_explicit():
+    text = compact.rules(4000)
+    assert "WÖRTLICHE vollständige Teilzeile" in text
+    assert "Überschrift bleibt Kontext" in text
+    assert "hänge sie nicht an question an" in text
+    assert "Unklare Nachbarzeilen" in text
+    assert "ohne eine Mindestzahl" in text
+    assert "keine Verbform korrigieren" in text
+    assert "teacher_feedback leer" in text
+    assert "kein Rollenbeleg" in text
+    assert "Punktzahl selbst berechnen" in text

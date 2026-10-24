@@ -1058,3 +1058,41 @@ CI40096202033 erfolgreich mit2708Backendfällen/36übersprungen und3482Flutterf�
 überein. Migration0038, fünf eigene Dienste aktiv, bestehende17geschützte
 Konfigurationen und Google-Verifikation erhalten. Kein Nachweis tatsächlicher
 Android-Hintergrundzustellung oder nativer Tastaturbedienung ohne echtes Gerät.
+
+## Eltern-Lernhinweise und kleine Arbeitsauszüge109 · 24.10.2026
+
+1.34.0+109 ergänzt persönliche Elternregeln und die additive Migration0039.
+Grundlagen und Rechte stehen in [NOTIFICATIONS.md](NOTIFICATIONS.md). Der
+bestehende Worker prüft tatsächlich gespeicherte Lernzeit und heutige gültige
+Klassenarbeitstermine. Gerätefreigabe, Ruhezeiten und neutraler Firebase-Inhalt
+bleiben getrennt von der gespeicherten In-App-Meldung. Keine neuen Dienste.
+
+[EXAMS.md](EXAMS.md) beschreibt die begrenzten Arbeitsauszüge: klare vollständige
+Teilzeilen können einzeln ausgewählt werden, ohne bei unsicheren Nachbarzeilen
+den gesamten Sammelauftrag zu verwerfen. Wörtliche Quellen, alte Antworten und
+belegte Lehrerrollen bleiben verbindlich. Die Änderung erzwingt weder eine
+Mindestaufgabenzahl noch eine erfundene fachliche Korrektur. Schema-, Kosten-,
+Versuchs- und Ausgabegrenzen bleiben erhalten.
+
+108-Abschluss: Produkt68c6cf0c00dbb08076e5cb5c9ce0726bc350d8ea,
+CI40100425016 erfolgreich mit2762Backendfällen/36übersprungen und3482Flutterfällen/
+19übersprungen. Gebundener sauberer Build9fb6faa0e94d861bc97c9c095594b150;
+öffentliche APK108 und Web-JavaScript stimmen mit den geprüften Artefakten
+überein. Schema0038, fünf eigene Dienste aktiv,17geschützte Konfigurationen und
+Google-Verifikation erhalten. Die ausdrücklich freigegebene echte Fotoverarbeitung
+wurde im Browser erneut gestartet und kam zur Quellenprüfung zurück. Die
+anschließende erste Arbeitsanalyse lieferte einen gültigen, aber leeren Auszug;
+dies ist kein erfolgreicher Nachweis vollständiger Nacharbeit. Genau diese
+beobachtete Auswahlgrenze ist der Anlass der Teilzeilenregeln in109.
+
+Die lokalen109-Transport-/API-Tests verwenden künstliche Quellen. Modellqualität,
+Desktop-/Mobilbrowser und native Zustellung werden nur nach tatsächlich erfolgter
+Beobachtung als geprüft bezeichnet; die nachfolgende Veröffentlichung erhält
+separate versionsgebundene Belege.
+
+Gezielte lokale109-Abnahme:166bestandene PostgreSQL16-Fälle einschließlich
+0038→0039-Migration, Arbeitsauszügen und Elternregeln;35bestandene aktuelle
+Flutterfälle für Auszüge/Elternformular, zusätzlich bereits24bestehende
+Glocken-/Posteingangsfälle. Flutter-Analyse und Ruff ohne Befund. Die bekannten
+16geschützten lokalen Geheimnisquellen wurden vor Commit ohne Fund geprüft.
+Dies ersetzt weder die vollständige CI noch die nachfolgende Browserabnahme.

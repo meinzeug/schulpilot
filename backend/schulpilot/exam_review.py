@@ -251,7 +251,7 @@ def projection(db, p, exam, child):
         "notebook_sources": notebook_sources(db, exam, child),
         "scan": scan_data(db, exam, child, manage=manage),
         "notice": (
-            "KI-Auszug · bis zu 8 Aufgaben je bewusster Analyse, keine vollständige Auswertung. Originalaufgabe, alte Antwort und Lehrermarkierung bleiben getrennt. KI-Hinweise sind Vorschläge, keine Note oder neuen Lernbelege."
+            "Kleiner KI-Auszug · einzelne Aufgaben je bewusster Analyse, keine vollständige Auswertung. Originalaufgabe, alte Antwort und Lehrermarkierung bleiben getrennt. KI-Hinweise sind Vorschläge, keine Note oder neuen Lernbelege."
             + (
                 " Der erkannte Text ist für einen einzelnen Auszug zu umfangreich. Bitte jeweils Arbeitsseiten mit insgesamt höchstens 60000 Zeichen auswählen."
                 if sum(len(m.content or "") for m in pages) > MAX_CONTENT
@@ -682,7 +682,7 @@ def authority(db, job):
             **(
                 {
                     "previous_questions": previous_questions(review),
-                    "scope": "KI-Auszug, bis zu acht weitere Aufgaben, keine Vollständigkeitsbehauptung",
+                    "scope": "Kleiner KI-Auszug mit einzelnen weiteren Aufgaben, keine Vollständigkeitsbehauptung",
                 }
                 if job.payload["action"] == "analyze"
                 else {}
@@ -739,7 +739,7 @@ def merge_report(review, job, checked):
     if len(previous) + len(checked["tasks"]) > 96:
         raise ProviderError("Die begrenzten Aufgabenauszüge sind ausgeschöpft.")
     report["tasks"] = [*previous, *checked["tasks"]]
-    summary = "KI-Auszug · bis zu 8 Aufgaben je Analyse, keine vollständige Auswertung. " + checked["summary"]
+    summary = "Kleiner KI-Auszug · keine vollständige Auswertung. " + checked["summary"]
     report["summary"] = report.get("summary") or summary
     report["uncertainties"] = list(dict.fromkeys([*report.get("uncertainties", []), *checked["uncertainties"]]))
     batch.update(status="ready", error=None, summary=summary, added_tasks=len(checked["tasks"]))

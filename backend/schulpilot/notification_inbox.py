@@ -183,6 +183,14 @@ def recent_events(db, user, current=None, *, direct_messages=False, direct_exams
                 route,
                 "failed" if failed else kind,
             )
+    if user.role == "parent":
+        from .parent_goal_reminders import events
+
+        for event in events(db, user.id, current):
+            if event.child_id in children:
+                # A dated, saved check, not a claim that work remains open now.
+                add("parent_goal:" + event.id, event.child_id, event.created,
+                    "Tagescheck: Lernziele waren noch offen", f"/child/{event.child_id}", "parent_goal")
     from .exam_notifications import events_for_child
 
     for child in children.values():

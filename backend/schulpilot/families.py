@@ -591,7 +591,9 @@ def export_one_child(child_id: str, include_photos: bool = True, p=Depends(paren
         output = Path(temporary.name)
     try:
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("child.json", json.dumps(export_child(db, child) | {"export_scope": {"include_photos": include_photos}}, ensure_ascii=False, indent=2))
+            from .parent_goal_reminders import export_own as export_parent_reminders
+
+            archive.writestr("child.json", json.dumps(export_child(db, child) | {"parent_goal_reminders": export_parent_reminders(db, p.user.id, [child.id]), "export_scope": {"include_photos": include_photos}}, ensure_ascii=False, indent=2))
             if include_photos:
                 from .profile_images import add_to_export
 
@@ -613,6 +615,7 @@ def export_one_child(child_id: str, include_photos: bool = True, p=Depends(paren
 def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
     from .commerce import orders_export, trial_data
     from .db import FamilyTrial, NotificationRead, SchulbuddyTurn
+    from .parent_goal_reminders import export_own as export_parent_reminders
     from .profile_images import add_to_export
     from .profile_images import export_metadata as avatar_metadata
     from .visual_positions import export_user as visual_position_export
@@ -639,6 +642,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                     },
                     "children": [export_child(db, c) for c in children],
                     "visual_positions": visual_position_export(db, p.user.id),
+                    "parent_goal_reminders": export_parent_reminders(db, p.user.id, [c.id for c in children]),
                     "schulbuddy_turns": [{column.name: getattr(row, column.name)
                         for column in SchulbuddyTurn.__table__.columns if column.name != "session_id"}
                         for row in db.scalars(select(SchulbuddyTurn).where(SchulbuddyTurn.user_id == p.user.id,

@@ -60,8 +60,11 @@ Erkannte Texte bleiben Vorschläge, die vor der fachlichen Besprechung zu
 prüfen und zu bestätigen sind.
 
 Die KI-Besprechung ist ein **Aufgabenauszug, kein Vollständigkeits- oder
-Benotungsnachweis**. Je bewusstem Auftrag werden bis zu acht Aufgaben aus
-gewählten bestätigten Seiten besprochen. Weitere begrenzte Auszüge dürfen
+Benotungsnachweis**. Je bewusstem Auftrag werden einzelne Aufgaben aus
+gewählten bestätigten Seiten besprochen. Neue kompakte Anbieterantworten sind
+bei weniger als8000 konfigurierten Ausgabetokens auf zwei, sonst auf vier
+vollständige Aufgaben begrenzt; ältere gespeicherte Berichte mit bis zu acht
+Aufgaben bleiben lesbar. Weitere begrenzte Auszüge dürfen
 vorherige Aufgaben, Entwürfe und Berichtigungen nicht überschreiben. Es gelten
 höchstens zwölf Analyseabschnitte und alle Familien-/Kinder-/Systembudgets.
 Je Auswahl und bisherigem Aufgabenstand sind höchstens zwei fehlgeschlagene
@@ -78,6 +81,13 @@ Pro Aufgabe werden getrennt angezeigt:
 - der eigene neue Verbesserungsversuch und bewusst angeforderte Hilfe.
 
 Originalangaben brauchen wörtliche Belege in den gewählten Quellen. Die KI
+behandelt unabhängig lesbare Teilzeilen einer Sammelaufgabe einzeln. Unsichere
+Nachbarzeilen dürfen klare Zeilen nicht pauschal ausschließen. Dabei bleibt die
+Aufgabenzeile wörtlich erhalten; eine gemeinsame Überschrift ist Kontext oder
+zusätzlicher Quellenbeleg. Sichtbare alte Antworten werden nicht korrigiert.
+Lehrerrückmeldungen brauchen eine ausdrücklich belegte Zuordnung zur Lehrkraft;
+Farbe oder Handschrift allein genügen nicht. Fehlende Zuordnungen bleiben offen.
+Die KI
 ändert keine Lehrernote und erzeugt aus Papierantworten oder ihren eigenen
 Urteilen keine Attempts, Lernerfolge oder Kompetenznachweise. Neue Übungen
 verwenden bestätigte **Heftgrundlagen** desselben Fachs und den ausgewählten

@@ -511,8 +511,8 @@ class _ExamReviewPanelState extends State<ExamReviewPanel> {
                 children: [
                   Text(
                     append
-                        ? 'Wähle die Fotos für einen weiteren KI-Auszug mit höchstens 8 neuen Aufgaben. Die vorhandenen Aufgaben und Entwürfe bleiben erhalten. Das ist keine vollständige Auswertung.'
-                        : 'Aus diesen bestätigten Fotos wird ein KI-Auszug mit höchstens 8 Aufgaben erstellt. Unbestätigte oder leere Seiten werden nicht mitgesendet. Das ist keine vollständige Auswertung.',
+                        ? 'Wähle die Fotos für einen weiteren kleinen KI-Auszug mit einzelnen Aufgaben. Die vorhandenen Aufgaben und Entwürfe bleiben erhalten. Das ist keine vollständige Auswertung.'
+                        : 'Aus diesen bestätigten Fotos wird ein kleiner KI-Auszug mit einzelnen Aufgaben erstellt. Unbestätigte oder leere Seiten werden nicht mitgesendet. Das ist keine vollständige Auswertung.',
                   ),
                   for (final page in pages)
                     CheckboxListTile(
@@ -888,7 +888,7 @@ class _ExamReviewPanelState extends State<ExamReviewPanel> {
                 ),
             if (data!['can_analyze'] == true)
               ActionButton(
-                label: 'Bis zu 8 Aufgaben besprechen lassen',
+                label: 'Einzelne Aufgaben besprechen lassen',
                 enabled: !busy,
                 icon: Icons.auto_awesome_outlined,
                 onPressed: analyze,
@@ -897,7 +897,7 @@ class _ExamReviewPanelState extends State<ExamReviewPanel> {
               OutlinedButton.icon(
                 onPressed: busy ? null : () => analyze(append: true),
                 icon: const Icon(Icons.add_to_photos_outlined),
-                label: const Text('Weiteren KI-Auszug wählen · bis 8 Aufgaben'),
+                label: const Text('Weiteren kleinen KI-Auszug wählen'),
               ),
             if ([
               'queued',

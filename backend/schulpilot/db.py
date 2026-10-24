@@ -952,6 +952,7 @@ from . import (  # noqa: E402,F401  # noqa: E402,F401
     exam_models,
     exam_review_models,
     order_withdrawal_models,
+    parent_reminder_models,
     payment_models,
     source_lineage_models,  # noqa: E402,F401
     visual_reference_models,  # noqa: E402,F401

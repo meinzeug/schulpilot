@@ -14,6 +14,7 @@ import 'dashboard.dart';
 import 'notification_panel.dart';
 import 'parent_workspace_ui.dart';
 import 'parent_profile_dialog.dart';
+import 'parent_goal_reminders.dart';
 import 'parent_export_dialog.dart';
 import 'parent_operator_audit.dart';
 import 'ui.dart';
@@ -371,6 +372,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
             if (!state.isAdmin) ...[
               section('notifications', NotificationPanel(state)),
+              if (state.isParent && state.familyId != null)
+                TextButton.icon(
+                  key: const ValueKey('parent-goal-reminders-settings-link'),
+                  onPressed: () {
+                    if (scope.current &&
+                        ModalRoute.of(context)?.isCurrent == true) {
+                      openSettingSection('children');
+                    }
+                  },
+                  icon: const Icon(Icons.event_available_outlined),
+                  label: const Text('Lernhinweise je Kind einstellen'),
+                ),
               const SizedBox(height: 16),
             ],
             section('devices', heading('Angemeldete Geräte')),
@@ -666,7 +679,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
+                            ParentGoalRemindersButton(
+                              state,
+                              childId: child['id'],
+                              childName: child['display_name'],
+                            ),
+                            const SizedBox(height: 12),
                             ActionButton(
                               label: 'Daten dieses Kindes exportieren',
                               secondary: true,

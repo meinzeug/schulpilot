@@ -403,6 +403,7 @@ def due_kinds(db, device, current):
         or user.disabled
         or not user.verified
         or not session
+        or session.user_id != user.id
         or session.revoked
         or session.expires <= current
         or current - session.seen > 7 * 86400
@@ -494,6 +495,11 @@ def due_kinds(db, device, current):
                     except HTTPException:
                         continue
                     result.add("learning_ready")
+    if user.role == "parent" and device.reminders:
+        from .parent_goal_reminders import due_events
+
+        if due_events(db, user.id, current):
+            result.add("parent_goal")
     return sorted(result)
 
 
@@ -507,6 +513,9 @@ def prepare(db, current=None):
     db.execute(delete(PushDevice).where(PushDevice.updated < current - 60 * 86400))
     db.execute(delete(PushDelivery).where(PushDelivery.created < current - 14 * 86400))
     db.execute(delete(NotificationRead).where(NotificationRead.created < current - 30 * 86400))
+    from .parent_goal_reminders import schedule
+
+    schedule(db, current)
     if not public_config()["available"]:
         return
     for device in db.scalars(select(PushDevice)):
@@ -514,6 +523,14 @@ def prepare(db, current=None):
         for kind in due_kinds(db, device, current):
             day = datetime.fromtimestamp(current, ZoneInfo(device.timezone)).strftime("%Y-%m-%d")
             key = device.id + ":" + kind + ":" + day
+            if kind == "parent_goal":
+                from .parent_goal_reminders import delivery_key, due_events
+
+                for event, _, _ in due_events(db, device.user_id, current):
+                    insert_ignore(db, PushDelivery, {"id": uid(), "device_id": device.id,
+                        "dedup_key": delivery_key(device, event), "kind": kind,
+                        "status": "queued", "created": current}, key="dedup_key")
+                continue
             if kind in ("preparation_ready", "preparation_review"):
                 from .preparation_notifications import delivery_key, events_for_child
 
@@ -584,6 +601,8 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_da
             if kind != "reminder"
             else "Dein Lernplan ist bereit. Öffne ihn, wenn es für dich passt."
         )
+        if kind == "parent_goal":
+            body = "Ein geplanter Tagescheck ist da. Öffne SCHULPILOT."
         message = {
             "token": token,
             "notification": {"title": "SCHULPILOT", "body": body},
@@ -653,7 +672,7 @@ def deliver_one(DB, *, call_id=None):
         db.commit()
         device = db.get(PushDevice, device_id)
         testing = kind in ("test_validate", "test_send")
-        call_data, exam_path, preparation_path = None, None, None
+        call_data, exam_path, preparation_path, parent_goal = None, None, None, None
         if kind in ("family_call_incoming", "family_call_ended"):
             from .db import FamilyCall
 
@@ -675,6 +694,15 @@ def deliver_one(DB, *, call_id=None):
             delivery.status = "suppressed"
             db.commit()
             return True
+        if kind == "parent_goal":
+            from .parent_goal_reminders import delivery_key, due_events
+
+            parent_goal = next((value for value in due_events(db, device.user_id, int(now()))
+                if delivery_key(device, value[0]) == delivery.dedup_key), None)
+            if parent_goal is None:
+                delivery.status = "suppressed"
+                db.commit()
+                return True
         if kind in ("exam_reminder", "exam_ready"):
             from .exam_notifications import events_for_child
 
@@ -699,10 +727,26 @@ def deliver_one(DB, *, call_id=None):
                 return True
             preparation_path = event["route"]
         token = decrypt(device.encrypted_token)
-        ttl = min(60, seconds_before_quiet(int(now()), device.timezone, device.quiet_start, device.quiet_end))
+        maximum_ttl = 3600 if kind == "parent_goal" else 60
+        ttl = min(maximum_ttl, seconds_before_quiet(int(now()), device.timezone, device.quiet_start, device.quiet_end))
+        if parent_goal is not None:
+            event, _, rule = parent_goal
+            local = datetime.fromtimestamp(int(now()), ZoneInfo(rule.timezone))
+            from datetime import timedelta
+
+            midnight = datetime.combine(local.date() + timedelta(days=1), datetime.min.time(), ZoneInfo(rule.timezone))
+            ttl = min(ttl, int(midnight.timestamp()) - int(now()))
+            from .parent_goal_reminders import same_child_day
+
+            if event.daily_remaining_seconds and same_child_day(event, parent_goal[1], int(now())):
+                zone = ZoneInfo(s.Preferences(**parent_goal[1].preferences).timezone)
+                child_local = datetime.fromtimestamp(int(now()), zone)
+                child_midnight = datetime.combine(child_local.date() + timedelta(days=1), datetime.min.time(), zone)
+                ttl = min(ttl, int(child_midnight.timestamp()) - int(now()))
         if call_data is not None:
             ttl = min(ttl, 45, int(call_data["expires_at"]) // 1000 - int(now()))
-        for child in children_for(db, db.get(User, device.user_id)):
+        ttl_children = [parent_goal[1]] if parent_goal is not None else children_for(db, db.get(User, device.user_id))
+        for child in ttl_children:
             preferences = s.Preferences(**child.preferences)
             ttl = min(
                 ttl,

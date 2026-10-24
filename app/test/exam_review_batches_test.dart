@@ -116,7 +116,7 @@ class BatchFixture extends f.Fixture {
 
 Finder draft() => find.widgetWithText(TextField, 'Dein Verbesserungsversuch');
 Future<void> openChoice(WidgetTester tester) =>
-    f.tap(tester, find.text('Weiteren KI-Auszug wählen · bis 8 Aufgaben'));
+    f.tap(tester, find.text('Weiteren kleinen KI-Auszug wählen'));
 Future<void> chooseSecond(WidgetTester tester) async {
   await f.tap(
     tester,
@@ -167,9 +167,13 @@ void main() {
         'can_analyze_more': false,
       };
       await value.mount(tester, selected: 'exam', tab: 'review');
-      await f.tap(tester, find.text('Bis zu 8 Aufgaben besprechen lassen'));
+      await f.tap(tester, find.text('Einzelne Aufgaben besprechen lassen'));
       expect(value.writes, isEmpty);
       expect(find.text('Fotos für den KI-Auszug wählen'), findsOneWidget);
+      expect(
+        find.textContaining('ein kleiner KI-Auszug mit einzelnen Aufgaben'),
+        findsOneWidget,
+      );
       await f.tap(
         tester,
         find.widgetWithText(CheckboxListTile, 'Erstes künstliches Foto'),

@@ -1266,6 +1266,10 @@ class _NotificationPanelState extends State<NotificationPanel>
     key: ValueKey(version),
     load: load,
     builder: (data, _) {
+      final preferenceOwner = widget.state.user;
+      final preferenceFamily = widget.state.familyId;
+      final preferenceToken = widget.state.api.token;
+      final preferenceVersion = version;
       final devices = data['devices'] as List;
       final current = devices.where((device) => device['current'] == true);
       final enabled = current.isNotEmpty;
@@ -1430,6 +1434,31 @@ class _NotificationPanelState extends State<NotificationPanel>
                                 reminders = value;
                                 dirty = true;
                               }),
+                      ),
+                    if (widget.state.isParent)
+                      SwitchListTile(
+                        key: const ValueKey('parent-goal-device-reminders'),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Lernhinweise zu offenen Zielen'),
+                        subtitle: const Text(
+                          'Persönliche Zeiten stellst du je Kind unter Familie ein. Push braucht zusätzlich die Gerätefreigabe.',
+                        ),
+                        value: reminders,
+                        onChanged: busy
+                            ? null
+                            : (value) {
+                                if (!isCurrentAccount(preferenceOwner) ||
+                                    widget.state.familyId != preferenceFamily ||
+                                    widget.state.api.token != preferenceToken ||
+                                    version != preferenceVersion ||
+                                    ModalRoute.of(context)?.isCurrent != true) {
+                                  return;
+                                }
+                                setState(() {
+                                  reminders = value;
+                                  dirty = true;
+                                });
+                              },
                       ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,

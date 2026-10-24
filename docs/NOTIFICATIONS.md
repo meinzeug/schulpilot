@@ -61,7 +61,9 @@ Der Kanal ist zunächst ohne Ton/Vibration; eigene Android-Kanaleinstellungen
 bleiben maßgeblich. Android 7 / API 24 erhält die kompatible native Darstellung.
 
 FCM erhält eine sichtbare, gebündelte Nachricht mit hoher Transportpriorität;
-TTL bleibt höchstens 60 Sekunden und endet vor der nächsten Ruhezeit. Das ist
+TTL bleibt normalerweise höchstens 60 Sekunden und endet vor der nächsten Ruhezeit.
+Die unten beschriebene Kategorie `parent_goal` verwendet eine begrenzte Ausnahme
+von höchstens einer Stunde. Das ist
 keine Umgehung von Android-Berechtigungen, Geräteeinstellungen, erzwungenem
 Beenden oder fehlenden Play-Diensten. Die App initialisiert weder Analytics noch
 einen neuen Sprach-/Audio-/Firebase-Dienst.
@@ -193,3 +195,33 @@ ist eine Meldung möglich; ein späterer erfolgreicher Wiederholungsdurchlauf wi
 nicht durch eine ältere Meldung desselben Tages unterdrückt. Sitzung, Quellen,
 Elternfreigabe, Geräte-Opt-in und beide Ruhezeiten werden vor Versand erneut
 geprüft. Firebase-Annahme ist kein Beweis für eine sichtbare Android-Zustellung.
+
+## Persönliche Eltern-Lernhinweise · 1.34.0+109
+
+Eltern können je eigenem Kind unter Einstellungen → Familie →
+„Lernhinweise einstellen“ Wochentage, Uhrzeit und Zeitzone wählen. Die beiden
+Anlässe „Tageslernziel noch offen“ und „geplante Klassenarbeitsrunde noch offen“
+sind getrennt schaltbar. Die Regel gehört dem angemeldeten Elternkonto;
+Mitbetreuende haben ihre eigene Auswahl. Neue Regeln sind ausgeschaltet.
+Die Einstellung verändert keine Kinderziele und erteilt keine Gerätefreigabe.
+
+Der bestehende Serverworker prüft fällige Regeln auch bei geschlossener App.
+Für das Tagesminimum zählen ausschließlich gespeicherte Aktivitätssekunden am
+Lerntag des Kindes. Klassenarbeitsanlässe beziehen sich auf heute geplante,
+weiterhin gültige Termine, nicht auf einen anwachsenden Rückstand. Eine
+In-App-Meldung entsteht höchstens einmal je Elternkonto, Kind und lokalem
+Regeltag. Neue Abfragen und Appstarts erzeugen keine Meldung oder KI-Arbeit.
+
+Die optionale Gerätekategorie `parent_goal` braucht zusätzlich das ausdrücklich
+bestätigte Geräte-Opt-in. Vor Versand werden aktuelle Sitzung, Mitgliedschaft,
+Regel und offene Ziele erneut geprüft. FCM erhält ausschließlich den bestehenden
+neutralen Text und `/app`, keine Kinderkennung oder Lerninhalte. Die Lebensdauer
+beträgt höchstens 3600 Sekunden und endet vor Ruhezeiten und Regelmitternacht;
+ein Tagesminimum-Anlass endet zusätzlich vor der Mitternacht des Kindes.
+Ein getrennt noch gültiger Klassenarbeitstermin darf dabei erhalten bleiben.
+
+Migration0039 ergänzt Regeln, Änderungen und Ereignisse additiv. Änderungen
+verwenden Revision und Idempotenzschlüssel; Familienentzug und Kontolöschung
+bereinigen die Zuordnung. Ereignisse werden nach30Tagen entfernt. API-,
+Worker-, Transport- und Oberflächentests verwenden künstliche Konten; eine
+sichtbare Android-Hintergrundzustellung ist erst mit beobachtetem Endgerät belegt.
