@@ -98,6 +98,22 @@ def enabled(config):
     return config.provider == "openrouter" and bool((config.routing_policy or {}).get("enabled"))
 
 
+def extraction_failed(db, child_id, material_id):
+    """Only an actual bounded-output failure on this exact source revision.
+
+    This selects the next explicit request; it never retries or calls a model.
+    """
+    material = db.get(Material, material_id) if material_id else None
+    if not material or material.child_id != child_id:
+        return False
+    return db.scalar(select(Job.id).where(
+        Job.child_id == child_id, Job.kind == "extract", Job.status == "failed",
+        Job.payload["material_id"].as_string() == material.id,
+        Job.payload["material_revision"].as_integer() == material.revision,
+        Job.error.contains("begrenzte Ausgabelänge"),
+    ).limit(1)) is not None
+
+
 def features_for(db, child_id, job_id):
     """Use bounded recorded facts, never client-selected difficulty or model IDs."""
     job = db.get(Job, job_id)
@@ -139,6 +155,7 @@ def features_for(db, child_id, job_id):
         "errors": sum(a.outcome == "incorrect" for a in attempts),
         "uncertain": sum(a.outcome == "uncertain" for a in attempts),
         "poor_image": any(m.uncertainties or m.quality_warnings or m.legibility in ("partial", "unreadable") for m in sources),
+        "extraction_failed": extraction_failed(db, child_id, material.id) if material else False,
         "sources_known": bool(ids) and len(sources) == len(ids),
         "source_count": len(sources),
         "source_chars": sum(len(m.content or "") for m in sources),
@@ -149,6 +166,8 @@ def features_for(db, child_id, job_id):
 
 def choose_tier(function, features, *, economy=False):
     # Start difficult material on the suitable route, without a trial cascade.
+    if function == "extract" and features.get("extraction_failed"):
+        return "sol", "recorded_transcription_failure"
     if economy:
         if features.get("poor_image") or features.get("errors", 0) >= 2 or features.get("uncertain", 0):
             return "sol", "recorded_difficulty"

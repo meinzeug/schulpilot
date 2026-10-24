@@ -211,7 +211,26 @@ def preparation_data(db, day, child=None):
             can_retry = state.get("package_attempts", {}).get(_fingerprint(current), 0) < MAX_ATTEMPTS
     from .job_failures import generation_availability, message_code
 
-    blocker = generation_availability(db, db.get(Family, child.family_id), "extract" if state.get("phase") == "extract" else "package") if can_retry else None
+    waiting = next((m for m in source_pages if m.status == "uploaded" and not m.confirmed), None)
+    # Match _advance: OCR first, package only after all sources are confirmed.
+    # Reviewing saved OCR is cost-free and must remain possible at any budget.
+    retry_kind = "extract" if waiting else "package" if source_pages and all(m.confirmed for m in source_pages) else None
+    routing_features = None
+    if can_retry and retry_kind:
+        child = child or db.get(Child, day.child_id)
+        from .model_routing import extraction_failed
+
+        next_sources = [waiting] if waiting else source_pages
+        routing_features = {
+            "errors": 0, "uncertain": 0,
+            "extraction_failed": extraction_failed(db, child.id, waiting.id) if waiting else False,
+            "poor_image": any(m.uncertainties or m.quality_warnings or m.legibility in ("partial", "unreadable") for m in next_sources),
+            "sources_known": bool(next_sources), "source_count": len(next_sources),
+            "source_chars": sum(len(m.content or "") for m in next_sources),
+            "subject_count": len({m.subject for m in next_sources}), "question_chars": 0,
+        }
+    blocker = generation_availability(db, db.get(Family, child.family_id), retry_kind,
+        child_id=child.id, routing_features=routing_features) if can_retry and retry_kind else None
     error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
     if error_code == "unknown" and error:
         error_code = message_code(error)
@@ -229,6 +248,7 @@ def preparation_data(db, day, child=None):
         "status": status,
         "error_code": error_code if error else None,
         "retry_blocker": blocker,
+        "retry_kind": retry_kind,
         "phase": state.get("phase"),
         "completed_pages": sum(m.status in ("review", "confirmed", "unreadable") for m in source_pages),
         "total_pages": len(source_pages),

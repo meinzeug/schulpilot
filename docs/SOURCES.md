@@ -968,3 +968,9 @@ Primäre Implementierungsbelege: [EXAMS.md](EXAMS.md),
 entsprechenden API-/Worker-/Flutter-Gegenproben. Künstliche Browserdaten und
 Provider-Mocks sind keine echte OCR-/LLM-Qualitätsprüfung. Versionsgebundene
 Releasebelege werden nach ihrer tatsächlichen Ausführung ergänzt.
+
+106-Verfügbarkeitskorrektur: Die kostenlose Statusprojektion prüft die Reserve
+der tatsächlich bevorstehenden ausgewählten OCR-/Paketroute. Eine größere
+Basisreserve darf weder den Wiederholungsbutton verdecken noch die kostenlose
+Quellenprüfung sperren. Lernzeit-Mindestziele und finanzielle KI-Limits bleiben
+getrennt; bestehende Grenzen werden durch diese Korrektur nicht angehoben.

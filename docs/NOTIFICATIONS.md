@@ -184,3 +184,12 @@ den servererzeugten lokalen Exam-Pfad mit festen UUID-Parametern oder eine
 Unit-ID an. Web-Serviceworker und Flutter prüfen denselben endlichen Pfadraum.
 Kein Name, Fach, Prüfungstitel, Notentext oder privater Inhalt im Push.
 Kontowechsel/Abmeldung verwerfen vorgemerkte Ziele und Vordergrundaktionen.
+
+
+106: Fertigmeldungen der Fotoverarbeitung verlinken auf den konkreten Schultag
+(`/after-school/<Kind>?day=<Tag>`), mit derselben strikten lokalen Whitelist in
+Web-Serviceworker und APK. Pro Gerät, Schultag, Verarbeitungsdurchlauf und Status
+ist eine Meldung möglich; ein späterer erfolgreicher Wiederholungsdurchlauf wird
+nicht durch eine ältere Meldung desselben Tages unterdrückt. Sitzung, Quellen,
+Elternfreigabe, Geräte-Opt-in und beide Ruhezeiten werden vor Versand erneut
+geprüft. Firebase-Annahme ist kein Beweis für eine sichtbare Android-Zustellung.

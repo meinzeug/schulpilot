@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import Field, model_validator
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import load_only
 
 from . import schemas as s
 from .config import runtime_settings
@@ -27,7 +26,6 @@ from .db import (
     PushDelivery,
     PushDevice,
     PushTestGrant,
-    SchoolDay,
     Session,
     User,
     get_db,
@@ -115,18 +113,20 @@ def service_worker():
     # Configuration must be present synchronously when the worker starts;
     # fetching it asynchronously can lose the first background push event.
     from .exam_notifications import EXAM_PATH_PATTERN
+    from .preparation_notifications import PREPARATION_PATH_PATTERN
 
     script = r"""self.addEventListener('notificationclick', event => {
   event.stopImmediatePropagation(); event.notification.close();
   const data = event.notification.data || {};
-  const path = (data.FCM_MSG && data.FCM_MSG.data ? data.FCM_MSG.data : data).exam_path;
-  const target = typeof path === 'string' && /^(?:EXAM_PATH)(?![\s\S])/.test(path) ? path : '/app';
+  const payload = data.FCM_MSG && data.FCM_MSG.data ? data.FCM_MSG.data : data;
+  const path = payload.exam_path === undefined ? payload.route : payload.exam_path;
+  const target = typeof path === 'string' && /^(?:EXAM_PATH|PREPARATION_PATH)(?![\s\S])/.test(path) ? path : '/app';
   event.waitUntil(clients.openWindow(target));
 });
 importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js');
 firebase.initializeApp(CONFIG); firebase.messaging();
-""".replace("CONFIG", json.dumps(firebase).replace("<", "\\u003c")).replace("EXAM_PATH", EXAM_PATH_PATTERN.replace("/", "\\/"))
+""".replace("CONFIG", json.dumps(firebase).replace("<", "\\u003c")).replace("EXAM_PATH", EXAM_PATH_PATTERN.replace("/", "\\/")).replace("PREPARATION_PATH", PREPARATION_PATH_PATTERN.replace("/", "\\/"))
     return Response(
         script,
         media_type="application/javascript",
@@ -472,23 +472,9 @@ def due_kinds(db, device, current):
             from .exam_notifications import events_for_child
 
             result.update(event["kind"] for event in events_for_child(db, child, current, retention=86400))
-            from .school_preparation import notice_allowed
+            from .preparation_notifications import events_for_child as preparation_events
 
-            # One neutral daily bundle. Re-check the submitting session as well
-            # as this device's session before enqueue AND immediately on send.
-            for day in db.scalars(
-                select(SchoolDay)
-                .options(load_only(SchoolDay.id, SchoolDay.child_id, SchoolDay.revision, SchoolDay.preparation))
-                .where(SchoolDay.child_id == child.id)
-            ):
-                state = day.preparation or {}
-                if state.get("status") not in ("needs_review", "needs_photo", "ready") or not (
-                    current - 86400 < state.get("notice_created", 0) <= current
-                ):
-                    continue
-                if not notice_allowed(db, day):
-                    continue
-                result.add("preparation_ready" if state["status"] == "ready" else "preparation_review")
+            result.update(event["kind"] for event in preparation_events(db, child, current))
             # New language jobs share the same queue. Only a currently valid
             # request/source may trigger a notice, never a generated answer.
             from .db import Job, LanguageProject, VocabularyImport
@@ -528,6 +514,16 @@ def prepare(db, current=None):
         for kind in due_kinds(db, device, current):
             day = datetime.fromtimestamp(current, ZoneInfo(device.timezone)).strftime("%Y-%m-%d")
             key = device.id + ":" + kind + ":" + day
+            if kind in ("preparation_ready", "preparation_review"):
+                from .preparation_notifications import delivery_key, events_for_child
+
+                for child in children_for(db, db.get(User, device.user_id)):
+                    for event in events_for_child(db, child, current):
+                        if event["kind"] == kind:
+                            insert_ignore(db, PushDelivery, {"id": uid(), "device_id": device.id,
+                                "dedup_key": delivery_key(device, event), "kind": kind,
+                                "status": "queued", "created": current}, key="dedup_key")
+                continue
             insert_ignore(
                 db,
                 PushDelivery,
@@ -548,11 +544,15 @@ class FcmError(Exception):
         self.code, self.unregistered = code, unregistered
 
 
-def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_data=None, exam_path=None):
+def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_data=None, exam_path=None, preparation_path=None):
     from .exam_notifications import valid_exam_path
 
     if exam_path is not None and not valid_exam_path(exam_path):
         raise FcmError("INVALID_EXAM_PATH")
+    from .preparation_notifications import valid_preparation_path
+
+    if preparation_path is not None and (exam_path is not None or not valid_preparation_path(preparation_path)):
+        raise FcmError("INVALID_PREPARATION_PATH")
     site = runtime_settings()
     config = public_config(testing=testing)
     if not config["available"]:
@@ -605,6 +605,9 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_da
         if exam_path is not None:
             message["data"]["exam_path"] = exam_path
             message["webpush"]["fcm_options"]["link"] = site.public_url + exam_path
+        if preparation_path is not None:
+            message["data"]["route"] = preparation_path
+            message["webpush"]["fcm_options"]["link"] = site.public_url + preparation_path
         if call_data is not None:
             # Data-only: Android's own call notification owns the ringtone and
             # call-style actions. Never include a private name, subject or text.
@@ -650,7 +653,7 @@ def deliver_one(DB, *, call_id=None):
         db.commit()
         device = db.get(PushDevice, device_id)
         testing = kind in ("test_validate", "test_send")
-        call_data, exam_path = None, None
+        call_data, exam_path, preparation_path = None, None, None
         if kind in ("family_call_incoming", "family_call_ended"):
             from .db import FamilyCall
 
@@ -684,6 +687,17 @@ def deliver_one(DB, *, call_id=None):
                 db.commit()
                 return True
             exam_path = max(candidates, key=lambda event: (event["created"], event["id"]))["route"]
+        if kind in ("preparation_ready", "preparation_review"):
+            from .preparation_notifications import delivery_key, events_for_child
+
+            event = next((event for child in children_for(db, db.get(User, device.user_id))
+                for event in events_for_child(db, child, int(now()))
+                if event["kind"] == kind and delivery_key(device, event) == delivery.dedup_key), None)
+            if not event:
+                delivery.status = "suppressed"
+                db.commit()
+                return True
+            preparation_path = event["route"]
         token = decrypt(device.encrypted_token)
         ttl = min(60, seconds_before_quiet(int(now()), device.timezone, device.quiet_start, device.quiet_end))
         if call_data is not None:
@@ -705,6 +719,8 @@ def deliver_one(DB, *, call_id=None):
             send_fcm(token, kind, ttl, testing=testing, call_data=call_data)
         elif exam_path is not None:
             send_fcm(token, kind, ttl, exam_path=exam_path)
+        elif preparation_path is not None:
+            send_fcm(token, kind, ttl, preparation_path=preparation_path)
         elif testing:
             send_fcm(token, kind, ttl, testing=True, validate_only=kind == "test_validate")
         else:

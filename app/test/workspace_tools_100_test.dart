@@ -263,13 +263,13 @@ void main() {
       });
     },
   );
-  testWidgets('089 mobile More keeps the active nested area named', (
+  testWidgets('089 compact More preserves the active area in its tooltip', (
     tester,
   ) async {
     await workspace(tester, (state, router) async {
       final nav = find.byType(NavigationBar);
       expect(
-        find.descendant(of: nav, matching: find.text('Hefte')),
+        find.descendant(of: nav, matching: find.text('Mehr')),
         findsOneWidget,
       );
       expect(find.byTooltip('Hefte · Weitere Bereiche'), findsOneWidget);

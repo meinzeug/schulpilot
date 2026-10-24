@@ -67,7 +67,7 @@ def failure_code(error):
     return "unknown"
 
 
-def generation_availability(db, family, function):
+def generation_availability(db, family, function, *, child_id=None, job_id=None, routing_features=None):
     """A read-only explanation, never a reservation or promise under concurrency."""
     from datetime import datetime, timezone
 
@@ -77,6 +77,16 @@ def generation_availability(db, family, function):
     config = db.get(ProviderConfig, 1)
     if not config:
         return {"code": "not_configured", "message": "Die Lern-KI ist noch nicht eingerichtet."}
+    # Preflight the same selected route as the upcoming explicit reservation,
+    # never the potentially larger base reserve. This is not a reservation.
+    from .model_routing import enabled, features_for, select_route
+
+    try:
+        config = (select_route(config, function,
+            routing_features if routing_features is not None else features_for(db, child_id, job_id))
+            if enabled(config) else config_for_function(config, function))
+    except HTTPException as error:
+        return {"code": "not_configured", "message": str(error.detail)}
     summary = usage_summary(db, family)
     if (
         summary["access"]["state"] not in ("existing", "active")
@@ -85,7 +95,7 @@ def generation_availability(db, family, function):
     ):
         return {
             "code": "quota_exhausted",
-            "message": "Dein Lernumfang ist gerade aufgebraucht. Gespeicherte Aufgaben und Erklärungen kannst du weiter nutzen.",
+            "message": "Neue KI-Verarbeitung ist durch das Aufruf- oder Kostenlimit begrenzt. Gespeicherte Aufgaben und Erklärungen kannst du weiter nutzen.",
         }
     period = datetime.now(timezone.utc).strftime("%Y-%m")
     global_bucket = db.get(UsageBucket, f"global:{period}")
@@ -97,7 +107,7 @@ def generation_availability(db, family, function):
             "message": "Neue KI-Schritte sind vorübergehend angehalten. Deine gespeicherten Inhalte bleiben da.",
         }
     try:
-        external_allowed(config_for_function(config, function))
+        external_allowed(config, image=function == "extract")
     except ProviderError as error:
         return {"code": "not_configured", "message": str(error)}
     return None

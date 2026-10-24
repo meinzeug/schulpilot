@@ -1361,7 +1361,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     final explanation =
         blocker?['message'] as String? ??
         switch (code) {
-          'quota_exhausted' => 'Dein Lernumfang ist gerade aufgebraucht. Gespeicherte Aufgaben und Erklärungen bleiben nutzbar.',
+          'quota_exhausted' => 'Neue KI-Inhalte können gerade nicht vorbereitet werden. Mit gespeicherten Aufgaben und Erklärungen kannst du weiterlernen.',
           'provider_timeout' => 'Die KI hat länger gebraucht als erlaubt. Deine Heftseiten sind da.',
           'invalid_output' => 'Die KI hat unvollständige Aufgaben geliefert. Wir haben sie nicht übernommen.',
           'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',

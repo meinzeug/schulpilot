@@ -9,6 +9,7 @@ void main() {
     for (final path in [
       '/app',
       '/unit/$exam',
+      '/after-school/$child?day=$exam',
       '/exams/$child?exam=$exam',
       '/exams/$child?exam=$exam&session=$session',
       '/exams/$child?exam=$exam&tab=review',
@@ -23,6 +24,10 @@ void main() {
       '/unit/$exam\n',
       '/exams/$child?exam=$exam\u2028',
       '/settings',
+      '/after-school/$child',
+      '/after-school/$child?day=$exam&next=/admin',
+      '/after-school/$child?day=$exam&day=$session',
+      '/after-school/$child?day=$exam\n',
       '/unit/$exam?next=evil',
       '/exams/$child',
       '/exams/$child?exam=$exam&exam=$session',
