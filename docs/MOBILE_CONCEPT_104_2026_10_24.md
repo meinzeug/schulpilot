@@ -6,7 +6,7 @@ Simpleclub wurde sichtbar im angemeldeten In-App-Browser bei390×844 untersucht.
 Die folgende Liste erfasst27 Funktionsansichten und Bedienzustände aus verschiedenen
 Bereichen, keine27 verschiedenen Lernthemen und keine vollständige Abnahme jeder Appfunktion.
 Echte Screenshots liegen im lokalen Visualisierungsverzeichnis; sie sind Referenzbelege,
-keine übernommenen Produktassets. Die Profilaufnahme enthält Kontodaten und bleibt privat.
+keine übernommenen Produktassets. Die Profilaufnahme enthielt Kontodaten, blieb privat und wurde nach Sichtprüfung gelöscht.
 
 | Nr. | Beobachtete Ansicht / Bedienung | Bild |
 | --- | --- | --- |
@@ -34,7 +34,7 @@ keine übernommenen Produktassets. Die Profilaufnahme enthält Kontodaten und bl
 | 22 | Erklärung: Text und interaktive Grafik im Lesefluss | `simpleclub104-mobile-22-explanation.jpg` |
 | 23 | Interaktive Grafik: Nenner hervorheben/animieren | `simpleclub104-mobile-23-interactive-graphic.jpg` |
 | 24 | KI-Tutor: kontextbezogener Einstieg ohne Anfrage | `simpleclub104-mobile-24-tutor.jpg` |
-| 25 | Profil: Lernprofil und gruppierte Einstellungen | Privat, nach Sichtprüfung löschen |
+| 25 | Profil: Lernprofil und gruppierte Einstellungen | Privat geprüft, danach gelöscht |
 | 26 | Bedienungshilfen: Animation und barrierefreie Navigation | `simpleclub104-mobile-26-accessibility.jpg` |
 | 27 | Fächerwahl: Auswahlkarten ohne Speicherung | `simpleclub104-mobile-27-subject-choice.jpg` |
 
@@ -74,3 +74,6 @@ wurde tatsächlich bedient; weder Übungsantwort noch Bewertung wurde ausgeführ
 
 Quellprüfung, künstliche Browserdaten, Widgetregressionen und veröffentlichte Produktionsbytes
 sind verschiedene Nachweise. Technische Endergebnisse und Rückweg werden im Releasebericht dokumentiert.
+
+
+Tatsächliche abschließende Prüf-/Build-/Deploymentwerte und Browsergrenzen: [Release104](RELEASE_104_2026_10_24.md).

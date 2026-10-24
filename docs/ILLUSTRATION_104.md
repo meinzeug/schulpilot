@@ -9,7 +9,7 @@ Die Illustration wurde am 24. Oktober 2026 mit dem eingebauten Imagegen-Werkzeug
 - Generierungsmodus: eingebautes Imagegen, `transparent_background: true`; keine bezahlte API-/CLI-Ausweichroute und keine nachträgliche Bildbearbeitung.
 - Verwendeter Skill: [Imagegen SKILL.md](/home/dennis/.codex/skills/.system/imagegen/SKILL.md).
 
-Das Original wurde nach der Generierung mit dem Bildbetrachter geprüft und bytegleich in das Projekt kopiert. Sichtbar sind ein kleiner blauvioletter Roboter mit cyanfarbenen Augen, ein aufgeschlagenes Heft, zwei Bücher, ein leerer Kalender und drei Karten. Es gibt keinen Text und kein Logo. Weiche halbtransparente Schatten und Lichtkanten gehören zum erzeugten Original. Eine konkrete Einbindung und Asset-Registrierung erfolgen getrennt; diese Datei behauptet keine fertige Ansicht oder Browserabnahme.
+Das Original wurde nach der Generierung mit dem Bildbetrachter geprüft und bytegleich in das Projekt kopiert. Sichtbar sind ein kleiner blauvioletter Roboter mit cyanfarbenen Augen, ein aufgeschlagenes Heft, zwei Bücher, ein leerer Kalender und drei Karten. Es gibt keinen Text und kein Logo. Weiche halbtransparente Schatten und Lichtkanten gehören zum erzeugten Original. Die vorhandene Assetverzeichnis-Registrierung lädt das PNG über `LearningStartIllustration`. Es erscheint ausschließlich in leeren ungefilterten Einstiegen von Lernsammlung, Wörtern, Fachheftregal und Elternplan, mobil höchstens160px hoch. Der leere Wortschatz wurde im künstlichen Browser geprüft; dies ist keine KI-Inhaltsabnahme. Endergebnisse: [Release104](RELEASE_104_2026_10_24.md).
 
 ## Vollständiger Generierungsprompt
 

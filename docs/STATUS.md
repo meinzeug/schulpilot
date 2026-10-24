@@ -1,4 +1,15 @@
-# Aktuell: Inhalt zuerst, Werkzeuge auf Wunsch · 1.30.0+103
+# Aktuell: schmale Seiten und gezielte Werkzeuge · 1.30.1+104
+
+Live https://schulpilot.dorfspy.de · Produktcommit `e58984ebd3fc9462044264dbcaa23d9c51ba66c9` · Release `20261024T023008Z-e58984e`.
+Gemeinsame Seitenoptionen für Kinder, Eltern und Administration, kompakter Fachhefter ohne permanente Filter-/Ansichtsleisten, erhaltene Formularentwürfe, klare Primärinhalte, eigene Illustration für leere Einstiege sowie lokale Kreis-/Balkenmodelle. Weitere Fachszenen zeigen die Grafik vor Zusatzwerkzeugen; fachliche Freigaben, Antworten, Rechte und Budgets bleiben erhalten.
+
+93 neue Flutterfälle in fünf Sammlungen. Lokale Korrektursuite 883/1 in 27 Dateien; spätere Titelprüfung 68/7 in 3 Dateien, nicht addiert. Späterer Nachlauf 149/5 Flutter und 41 Backendfälle grün. Vollständige CI40044265906 grün: 2214 Backend/33 übersprungen und 3281 Flutter/19 übersprungen, Ruff/Analyse/CI-Webbuild erfolgreich. Reguläre signierte Pakete quellgebunden; öffentliche APK/JS bytegleich. Fünf Dienste aktiv, Schema 0031, 17/17 frische Konfigurationen bytegleich, Google erhalten, Sicherung erfolgreich.
+
+27 mobile Simpleclub-Funktionsansichten/Bedienzustände wirklich im sichtbaren Browser betrachtet; keine vollständige Referenzapp-Abnahme. Künstliche Schulpilot-Browseransichten über alle drei Rollen, danach Bestandshefter lesend mobil/desktop inklusive Menü und Suchabbruch; private Bilder gelöscht und Viewports zurückgesetzt. Keine neue fachliche KI-, Lernaktivitäts- oder physische Geräteabnahme. [Release104](RELEASE_104_2026_10_24.md) · [Recherche und Konzept](MOBILE_CONCEPT_104_2026_10_24.md) · [Eigene Illustration/Prompt](ILLUSTRATION_104.md).
+
+---
+
+# Vorheriger Produktionsstand103: Inhalt zuerst, Werkzeuge auf Wunsch · 1.30.0+103
 
 Live https://schulpilot.dorfspy.de · Produktcommit `d0b1913a25b41835ee2734b4b324857f90c1dc4b` ·
 Release `20261024T003848Z-d0b1913`.

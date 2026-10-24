@@ -112,10 +112,9 @@ reale Triage, priorisierte Betriebsaktionen und breite Verwaltungstabellen.
 Der jeweilige Rollenbereich folgt derselben Formensprache ohne Kinderfigur vor
 Berichten und Betriebsformularen.
 
-Eine globale Navigation: Im Browser steht bei normaler Schrift ab 1050 px eine
-224 px breite beschriftete Rail. Bei 720–1049 px verwendet dieselbe Navigation
-80 px Breite; bei großer Schrift über dem Faktor 1,4 fällt auch die breite
-Browseransicht auf die kompakte 80 px-Rail mit zugänglichen Beschriftungen zurück.
+Eine globale Navigation: Im Browser verwendet der gemeinsame Rahmen seit103 ab720px
+bei normaler und großer Schrift eine80px breite Iconrail mit Tooltips und
+zugänglichen Beschriftungen. Es gibt keine zusätzliche224px-Desktopspalte.
 Darunter steht die eingerückte, abgerundete Touchnavigation mit sichtbarer
 Auswahl. Das Kontoziel bleibt unten in der Rail; Betrieb, Einrichtung, Verkauf
 und Push bleiben auch mobil erreichbar.
@@ -444,3 +443,10 @@ Die [47-Routen-Inventur 103](CLEAR_LAYOUT_103_2026_10_23.md) ergänzt die Abstan
 Wörter und Lernrunden starten als kompakte Listen; Karten bleiben bewusst wählbar. Sekundäre Aktionen gehören ins beschriftete Elementmenü. Hauptklick und bewusste Prüfung behalten ihre bisherige Bedeutung. Die Bereichsinfo ist auch am Desktop optional; die echte Hauptaktion bleibt beim Öffnen montiert. Geschlossene Formulare behalten ihre lokalen Entwürfe, sind aber aus Fokus, Trefferprüfung und Semantik ausgeschlossen. Nur kontogebundene, routenlokale boolesche Aufklappzustände dürfen wiederhergestellt werden.
 
 Keine Verdichtung durch TextScalergrenzen oder abgeschnittene Pflichttexte. Normale Schrift und200Prozent mit echten lokalen Fonts prüfen, Trefferflächen mindestens48px; lange Titel dürfen wachsen. Bildschirmvergleiche mit künstlichen Inhalten dienen der Gestaltung, nicht als Nachweis einer KI-Ausgabe oder echter Lernaktivität.
+
+
+## Gemeinsame Kopfmenüs und grafische Einstiege104
+
+Zusätzliche Suche, Filter und Verwaltungswerkzeuge öffnen sich über die drei Punkte im jeweiligen Seitenkopf. Es gibt keinen leeren Menüknopf ohne Werkzeuge. Die Gruppe bleibt am ursprünglichen Platz montiert, geschlossen ohne Layoutplatz/Fokus/Ticker; Entwürfe bleiben erhalten. Aktive Einschränkungen, Warnungen und Hauptaktionen bleiben sichtbar. Normale Auswahl-/Datumsdialoge schließen das Formular nicht; alte kontofremde Befehle bleiben unwirksam. Der Fachhefter bündelt auch Ansichtswechsel/Suche/Aktualisieren im eigenen Kopfmenü.
+
+Eigene dekorative Illustration nur für leere ungefilterte Einstiege; mobil maximal160px, keine leeren Platzhalter in gefüllten Ansichten. Fachgrafiken stehen vor Zusatzwerkzeugen. Die lokale Bruchansicht zeigt bereits offengelegte Werte als Kreis/Balken, Zähler und Nenner gezielt, mit reduzierter Bewegung und ohne Bewertung/Progress. [Tatsächlicher Umfang, Prüfungen und Grenzen](RELEASE_104_2026_10_24.md), [Referenzinspektion](MOBILE_CONCEPT_104_2026_10_24.md), [Illustration/Prompt](ILLUSTRATION_104.md).

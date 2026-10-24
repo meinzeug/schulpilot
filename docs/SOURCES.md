@@ -938,3 +938,10 @@ der Wörterseite, keine inhaltliche Abnahme befüllter Sprachwerkstatt-, Lernsta
 oder Heftsammlungsansichten. Keine zusätzliche Modellanfrage, Referenzassets oder
 physische Androidgeräteprüfung in dieser Runde. Persistente Lernbelege bleiben
 davon getrennt.
+
+
+### Gemeinsame Seitenoptionen104 ·24.10.2026
+
+Die angemeldete Simpleclub-App wurde sichtbar bei390×844 anhand27unterschiedlicher Funktionsansichten/Bedienzustände untersucht: https://app.simpleclub.com/library, https://app.simpleclub.com/learning-plan-templates, https://app.simpleclub.com/search, https://app.simpleclub.com/topic/vwYaXbxOe0pD0CXOv8ed und Profil/Einstellungen. Tatsächliche Referenzbelege, erlaubte lesende Alternativen zu abgelehntem Speichern/Übungsstart und Grenzen führt [MOBILE_CONCEPT_104_2026_10_24.md](MOBILE_CONCEPT_104_2026_10_24.md). Keine fremden Inhalte/Assets übernommen. Eine eigene transparente PNG entstand mit dem eingebauten Bildwerkzeug; [vollständiger Prompt und Herkunft](ILLUSTRATION_104.md).
+
+[Release104](RELEASE_104_2026_10_24.md) bindet tatsächliche CI40044265906, reguläre Artefakte, öffentliche Hashvergleiche und SSH-Nachprüfung an `e58984ebd3fc9462044264dbcaa23d9c51ba66c9`. Künstliche Browserdaten, lesender Produktionshefter, Widgettests und echte KI-Erzeugung werden getrennt; keine neuen Provideraufrufe oder physische Androidabnahme dieser Runde. Private Profil-/Produktionsbilder gelöscht, vorübergehende Viewports zurückgesetzt.
