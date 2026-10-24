@@ -68,6 +68,14 @@ void main() {
     'PP080 parent-goal card lands on actual topics rather than AI administration',
     (tester) async {
       final f = fixture.Fixture();
+      f.respond = (request) async {
+        if (!request.url.path.endsWith('/learning-plan')) return null;
+        expect(request.method, 'GET');
+        return fixture.response({
+          ...f.plan,
+          'filters': request.url.queryParameters,
+        });
+      };
       await f.mount(tester, '/overview');
       await tap(tester, find.text('Offene Pflichtaufträge: 1'));
       expect(parentPlanModeSelected103(tester, 'Meine Themen'), isTrue);

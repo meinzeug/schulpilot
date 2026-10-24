@@ -46,7 +46,7 @@ void main() {
       f.respond = (r) async =>
           r.url.queryParameters['q'] == 'Flächen' ? pending.future : null;
       await f.mount(tester, '/parent-homework/child');
-      await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+      await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
       final before = f.requests.length;
       await tester.enterText(input('Hausaufgaben suchen'), ' Flächen ');
       expect(f.requests.length, before);
@@ -87,7 +87,7 @@ void main() {
       metadata(f);
       f.homework['next_cursor'] = 'old-photo-cursor';
       await f.mount(tester, '/parent-homework/child');
-      await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+      await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
       await choose(tester, 'Fach der Hausaufgaben', 'Mathematik');
       expect(f.requests.last.url.queryParameters['subject'], 'Mathematik');
       expect(
@@ -123,7 +123,7 @@ void main() {
       expect(f.requests.first.url.queryParameters['page'], '3');
       f.plan['pagination'] = {'page': 1, 'pages': 1};
       final before = f.requests.length;
-      await tap(tester, find.text('Suche & alle Themenfilter'));
+      await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
       await tester.enterText(input('Lernaufträge suchen'), 'Zähler');
       expect(f.requests.length, before);
       await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -141,7 +141,7 @@ void main() {
       metadata(f);
       f.state.collectionViews['parent-plan:child'] = {'section': 1};
       await f.mount(tester, '/parent-plan/child');
-      await tap(tester, find.text('Suche & alle Themenfilter'));
+      await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
       await choose(tester, 'Fach der Lernaufträge', 'Englisch');
       expect(f.requests.last.url.queryParameters['subject'], 'Englisch');
       await tap(tester, find.text('Themenfilter zurücksetzen'));
@@ -169,7 +169,7 @@ void main() {
         metadata(f);
         f.state.collectionViews['parent-plan:child'] = {'section': 1};
         await f.mount(tester, '/parent-plan/child');
-        await tap(tester, find.text('Suche & alle Themenfilter'));
+        await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
         await tap(tester, find.text('Aufträge gezielt filtern'));
         await choose(tester, item.$2, item.$3);
         expect(f.requests.last.url.queryParameters[item.$4], item.$5);
@@ -261,7 +261,7 @@ void main() {
           page == 'plan' ? '/parent-plan/child' : '/parent-homework/child',
         );
         if (page == 'homework') {
-          await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+          await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
         }
         expect(
           find.textContaining('auf diesem Server noch nicht verfügbar.'),
@@ -306,9 +306,9 @@ void main() {
         );
         expect(tester.takeException(), isNull);
         if (page == 'plan') {
-          await tap(tester, find.text('Suche & alle Themenfilter'));
+          await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
         } else {
-          await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+          await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
         }
         final search = find.byType(ParentCollectionSearch);
         await tester.ensureVisible(search);

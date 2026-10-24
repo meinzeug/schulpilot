@@ -11,7 +11,7 @@ import 'parent_insights_panel.dart';
 import 'practice_evidence.dart';
 import 'preparation_card.dart';
 import 'ui.dart';
-import 'parent_view_details.dart';
+import 'page_tools.dart';
 
 /// A read-only projection of saved server evidence, with planning kept separate.
 class ParentOverview extends StatelessWidget {
@@ -243,39 +243,29 @@ class ParentOverview extends StatelessWidget {
                   ),
               ],
             );
-            final time = ParentViewDetails(
+            final time = PageToolsGroup(
+              id: 'parent-overview-time',
               title: 'Zeit & Mindestziele',
               scope: ('overview-time', ObjectKey(account), family, childId),
               isCurrent: current,
-              subtitle: plan['goal_required'] == true
-                  ? plan['daily_goal_met'] == true
-                        ? 'Tagesmindestziel erreicht'
-                        : 'Tagesmindestziel offen'
-                  : null,
-              children: [
-                if (plan.isEmpty)
-                  const Notice('Noch keine Zeitdaten verfügbar.')
-                else
-                  ActionPanel(
-                    actionLabel: 'Zeitrahmen und Wochenvorschlag ansehen',
-                    onPressed: () =>
-                        visit('/parent-plan/$childId?ansicht=week'),
-                    padding: const EdgeInsets.all(16),
-                    child: LearningGoalPanel(plan: plan),
-                  ),
-              ],
-            );
-            if (size.maxWidth >= 850 &&
-                MediaQuery.textScalerOf(context).scale(1) <= 1.3) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              active: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(flex: 5, child: nextSteps),
-                  const SizedBox(width: 32),
-                  Expanded(flex: 3, child: time),
+                  if (plan.isEmpty)
+                    const Notice('Noch keine Zeitdaten verfügbar.')
+                  else
+                    ActionPanel(
+                      actionLabel: 'Zeitrahmen und Wochenvorschlag ansehen',
+                      onPressed: () =>
+                          visit('/parent-plan/$childId?ansicht=week'),
+                      padding: const EdgeInsets.all(16),
+                      child: LearningGoalPanel(plan: plan),
+                    ),
                 ],
-              );
-            }
+              ),
+            );
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [nextSteps, const SizedBox(height: 16), time],
@@ -314,86 +304,89 @@ class ParentOverview extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 20),
-        ParentViewDetails(
+        PageToolsGroup(
+          id: 'parent-overview-evidence',
           title: 'Fächer & Wochenrückblick',
           scope: ('overview-evidence', ObjectKey(account), family, childId),
           isCurrent: current,
-          subtitle:
-              '${data['subject_count'] ?? subjects.length} Fächer · gespeicherte Ergebnisse',
-          children: [
-            ParentSectionHeading(
-              title: 'Fächer im Überblick',
-              subtitle:
-                  'Selbstständige Lösungen, Hilfe und offene Fragen je Fach.',
-              icon: Icons.auto_stories_outlined,
-              action: TextButton.icon(
-                onPressed: () => section('progress'),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: const Text('Alle Fächer'),
-              ),
-            ),
-            if (subjects.isEmpty)
-              const Notice(
-                'Sobald Aufgaben beantwortet sind, erscheint hier der Lernstand je Fach.',
-              )
-            else
-              Column(
-                children: [
-                  for (final subject in subjects)
-                    _ParentSubjectRow(
-                      childId: childId,
-                      subject: Json.from(subject),
-                    ),
-                ],
-              ),
-            if ((data['subject_count'] as num? ?? subjects.length) >
-                subjects.length)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  'Vorschau: ${subjects.length} von ${data['subject_count']} Fächern. Der Lernstand umfasst alle Fächer.',
-                  style: TextStyle(color: context.palette.muted),
+          active: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ParentSectionHeading(
+                title: 'Fächer im Überblick',
+                subtitle:
+                    'Selbstständige Lösungen, Hilfe und offene Fragen je Fach.',
+                icon: Icons.auto_stories_outlined,
+                action: TextButton.icon(
+                  onPressed: () => section('progress'),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: const Text('Alle Fächer'),
                 ),
               ),
-            const SizedBox(height: 16),
-            ActionPanel(
-              actionLabel: 'Verlauf der letzten sieben Tage ansehen',
-              onPressed: () => section('history'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const ParentSectionHeading(
-                    title: 'Die letzten sieben Tage',
-                    icon: Icons.history_rounded,
-                  ),
-                  Text(
-                    '${counted(data['week_summary']?['completed_units'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')}${data['week_summary']?['answer_count'] is num ? ' · ${counted(data['week_summary']['answer_count'], 'gespeicherter Antwortversuch', 'gespeicherte Antwortversuche')}' : ''} · ${counted(data['week_summary']?['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
-                  ),
-                  if ((data['week_summary']?['topics'] as List? ?? [])
-                      .isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Themen abgeschlossener Runden in diesem Zeitraum:',
-                    ),
-                    for (final topic
-                        in (data['week_summary']['topics'] as List).take(3))
-                      Text(topic.toString()),
-                    if ((data['week_summary']['topics'] as List).length > 3)
-                      Text(
-                        '${(data['week_summary']['topics'] as List).length - 3} weitere Themen im Verlauf',
+              if (subjects.isEmpty)
+                const Notice(
+                  'Sobald Aufgaben beantwortet sind, erscheint hier der Lernstand je Fach.',
+                )
+              else
+                Column(
+                  children: [
+                    for (final subject in subjects)
+                      _ParentSubjectRow(
+                        childId: childId,
+                        subject: Json.from(subject),
                       ),
                   ],
-                  const SizedBox(height: 8),
-                  Text(
-                    data['week_summary']?['support'] ??
-                        'Noch keine Rückmeldung.',
+                ),
+              if ((data['subject_count'] as num? ?? subjects.length) >
+                  subjects.length)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    'Vorschau: ${subjects.length} von ${data['subject_count']} Fächern. Der Lernstand umfasst alle Fächer.',
                     style: TextStyle(color: context.palette.muted),
                   ),
-                ],
+                ),
+              const SizedBox(height: 16),
+              ActionPanel(
+                actionLabel: 'Verlauf der letzten sieben Tage ansehen',
+                onPressed: () => section('history'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const ParentSectionHeading(
+                      title: 'Die letzten sieben Tage',
+                      icon: Icons.history_rounded,
+                    ),
+                    Text(
+                      '${counted(data['week_summary']?['completed_units'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')}${data['week_summary']?['answer_count'] is num ? ' · ${counted(data['week_summary']['answer_count'], 'gespeicherter Antwortversuch', 'gespeicherte Antwortversuche')}' : ''} · ${counted(data['week_summary']?['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
+                    ),
+                    if ((data['week_summary']?['topics'] as List? ?? [])
+                        .isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Themen abgeschlossener Runden in diesem Zeitraum:',
+                      ),
+                      for (final topic
+                          in (data['week_summary']['topics'] as List).take(3))
+                        Text(topic.toString()),
+                      if ((data['week_summary']['topics'] as List).length > 3)
+                        Text(
+                          '${(data['week_summary']['topics'] as List).length - 3} weitere Themen im Verlauf',
+                        ),
+                    ],
+                    const SizedBox(height: 8),
+                    Text(
+                      data['week_summary']?['support'] ??
+                          'Noch keine Rückmeldung.',
+                      style: TextStyle(color: context.palette.muted),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
         ExpansionTile(
           leading: Icon(

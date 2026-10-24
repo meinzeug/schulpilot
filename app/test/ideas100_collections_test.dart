@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -138,12 +140,7 @@ void main() {
     testWidgets('compact rows remain usable at $width', (t) async {
       final (state, calls) = await collection(t, width: width);
       expect(find.text('Kompakte Zeilen'), findsNothing);
-      await c.tap(
-        t,
-        width < 720
-            ? find.byTooltip('Suchen & filtern')
-            : find.text('Suchen & filtern'),
-      );
+      await page_tools.openPageTools(t, 'learning-tools');
       await c.tap(t, find.text('Kompakte Zeilen'));
       final tiles = t.widgetList<ListTile>(
         find.descendant(
@@ -246,7 +243,7 @@ void main() {
   ) async {
     final (state, _, calls) = await n.open(t, shelf: true);
     expect(find.text('Hefter mit offenen Prüfungen'), findsNothing);
-    await n.tap(t, find.text('Fach suchen'));
+    await page_tools.openPageTools(t, 'notebook-shelf-tools');
     await n.tap(t, find.text('Hefter mit offenen Prüfungen'));
     expect(find.text('Biologie'), findsNothing);
     await n.tap(t, find.text('Mathematik'));
@@ -284,10 +281,10 @@ void main() {
         return n.jsonReply(data);
       },
     );
-    await n.tap(t, find.text('Liste'));
+    await n.chooseNotebookView(t, 'Liste');
     expect(find.text('Geladene Seiten nach Schultag gliedern'), findsNothing);
     final beforeGrouping = calls.length;
-    await n.tap(t, find.byTooltip('Filter'));
+    await n.openNotebookFilters(t);
     await n.tap(t, find.text('Geladene Seiten nach Schultag gliedern'));
     await n.tap(t, find.text('Anzeigen'));
     expect(calls.length, beforeGrouping);
@@ -316,24 +313,24 @@ void main() {
     final grid = find.byKey(
       const PageStorageKey('notebook:child:${n.mathId}-grid'),
     );
-    await n.tap(t, find.text('Liste'));
+    await n.chooseNotebookView(t, 'Liste');
     await t.ensureVisible(list);
     await t.pumpAndSettle();
     await t.drag(list, const Offset(0, -480));
     await t.pumpAndSettle();
     final listOffset = t.widget<ListView>(list).controller!.offset;
     expect(listOffset, greaterThan(100));
-    await n.tap(t, find.text('Kacheln'));
+    await n.chooseNotebookView(t, 'Kacheln');
     await t.ensureVisible(grid);
     await t.pumpAndSettle();
     await t.drag(grid, const Offset(0, -360));
     await t.pumpAndSettle();
     final gridOffset = t.widget<GridView>(grid).controller!.offset;
     expect(gridOffset, greaterThan(100));
-    await n.tap(t, find.text('Blättern'));
-    await n.tap(t, find.text('Liste'));
+    await n.chooseNotebookView(t, 'Blättern');
+    await n.chooseNotebookView(t, 'Liste');
     expect(t.widget<ListView>(list).controller!.offset, closeTo(listOffset, 1));
-    await n.tap(t, find.text('Kacheln'));
+    await n.chooseNotebookView(t, 'Kacheln');
     expect(t.widget<GridView>(grid).controller!.offset, closeTo(gridOffset, 1));
     expect(calls.every((r) => r.method == 'GET'), isTrue);
     expect(t.takeException(), isNull);
@@ -378,7 +375,7 @@ void main() {
     'selection tray previews only loaded selection and never deletes',
     (t) async {
       final (state, _, calls) = await n.open(t, photos: false);
-      await n.tap(t, find.text('Liste'));
+      await n.chooseNotebookView(t, 'Liste');
       await n.tap(t, find.text('Seiten auswählen'));
       await n.tap(t, find.byType(Checkbox).first);
       await n.tap(t, find.text('Auswahlablage · 1 Seite'));

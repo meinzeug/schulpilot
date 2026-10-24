@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -281,7 +283,7 @@ void main() {
     );
     await fixture.open(tester, state, 'plan', width: 320, scale: 2);
     await fixture.tap(tester, 'Meine Themen');
-    await fixture.tap(tester, 'Suche & alle Themenfilter');
+    await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
     final toggle = find.byWidgetPredicate(
       (w) =>
           w is DropdownButtonFormField<String> &&
@@ -392,7 +394,7 @@ void main() {
         }),
       );
       await fixture.open(tester, state, 'homework');
-      await fixture.tap(tester, 'Suche & Hausaufgabenfilter');
+      await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
       await fixture.tap(tester, 'Mit Häkchen');
       expect(find.text('Mathematik · Flächen'), findsNothing);
       expect(

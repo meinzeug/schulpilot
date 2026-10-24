@@ -6,7 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 Future<bool> openPublicLegalDocument(String path, String apiBase) async {
   if (!const ['/impressum', '/widerrufen'].contains(path)) return false;
   final origin = kIsWeb ? Uri.base : Uri.tryParse(apiBase);
-  if (origin == null || origin.host.isEmpty ||
+  if (origin == null ||
+      origin.host.isEmpty ||
       (!kIsWeb && origin.scheme != 'https') ||
       (kIsWeb && !const ['http', 'https'].contains(origin.scheme))) {
     return false;
@@ -20,7 +21,9 @@ Future<bool> openPublicLegalDocument(String path, String apiBase) async {
   try {
     return await launchUrl(
       uri,
-      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      mode: kIsWeb
+          ? LaunchMode.platformDefault
+          : LaunchMode.externalApplication,
       webOnlyWindowName: '_self',
     );
   } catch (_) {
@@ -45,7 +48,11 @@ class PublicLegalLinks extends StatelessWidget {
             final opened = await openPublicLegalDocument(item.$1, apiBase);
             if (!opened && context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Die Seite konnte nicht geöffnet werden. Bitte im Webbrowser erneut versuchen.')),
+                const SnackBar(
+                  content: Text(
+                    'Die Seite konnte nicht geöffnet werden. Bitte im Webbrowser erneut versuchen.',
+                  ),
+                ),
               );
             }
           },

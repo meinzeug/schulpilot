@@ -19,6 +19,7 @@ import 'parent_activity_timeline.dart';
 import 'parent_workspace_ui.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'parent_view_details.dart';
 import 'learning_plan_ui.dart';
 
@@ -191,21 +192,26 @@ class DashboardScreen extends StatelessWidget {
                   ],
                 ),
               if (state.canManage && children.isNotEmpty)
-                ParentViewDetails(
+                PageToolsGroup(
+                  id: 'parent-family-tools',
                   title: 'Familie verwalten',
                   scope: ('family-tools', ObjectKey(account), familyId),
                   isCurrent: current,
-                  children: [
-                    if (state.canManage && children.isNotEmpty)
-                      OutlinedButton.icon(
-                        onPressed: () =>
-                            showChildDialog(context, state).then((_) {
-                              if (context.mounted) refresh();
-                            }),
-                        icon: Icon(Icons.person_add_alt_1_rounded, size: 18),
-                        label: Text('Kind hinzufügen'),
-                      ),
-                  ],
+                  active: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (state.canManage && children.isNotEmpty)
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              showChildDialog(context, state).then((_) {
+                                if (context.mounted) refresh();
+                              }),
+                          icon: Icon(Icons.person_add_alt_1_rounded, size: 18),
+                          label: Text('Kind hinzufügen'),
+                        ),
+                    ],
+                  ),
                 ),
               SizedBox(height: 16),
               if (state.demoCredentials != null) demoAccess(context, state),
@@ -752,7 +758,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           ],
                         ),
                       SizedBox(height: 16),
-                      ParentViewDetails(
+                      PageToolsGroup(
+                        id: 'parent-child-preferences',
                         title: 'Lernziele & Einstellungen',
                         scope: (
                           'parent-child-preferences',
@@ -761,44 +768,48 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           child['id'],
                         ),
                         isCurrent: () => sameAccount,
-                        children: [
-                          Panel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
+                        active: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Panel(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 10),
-                                Text(
-                                  'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
-                                  style: TextStyle(
-                                    color: context.palette.muted,
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 18),
-                                if (state.canManage)
-                                  ActionButton(
-                                    label: 'Lernvorgaben anpassen',
-                                    icon: Icons.tune_rounded,
-                                    onPressed: () async {
-                                      await preferencesDialog(
-                                        context,
-                                        state,
-                                        child,
-                                      );
-                                      refresh();
-                                    },
-                                  ),
-                              ],
+                                  SizedBox(height: 18),
+                                  if (state.canManage)
+                                    ActionButton(
+                                      label: 'Lernvorgaben anpassen',
+                                      icon: Icons.tune_rounded,
+                                      onPressed: () async {
+                                        await preferencesDialog(
+                                          context,
+                                          state,
+                                          child,
+                                        );
+                                        refresh();
+                                      },
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 16),
-                        ],
+                            SizedBox(height: 16),
+                          ],
+                        ),
                       ),
                       ActionPanel(
                         actionLabel: 'Lernaufträge und Klassenarbeiten im Lernplan ansehen',
@@ -2484,53 +2495,74 @@ class _ParentMessagesState extends State<_ParentMessages> {
           'Bis zu 100 neueste Nachrichten · ${all.length} geladen',
           style: TextStyle(color: context.palette.muted),
         ),
-        ParentViewDetails(
+        ParentAppliedFilters(
+          filters: [
+            if (query.isNotEmpty)
+              ('Suche: $query', () => applySearch(clear: true)),
+            if (kindFilter != 'all')
+              (
+                'Anliegen: ${switch (kindFilter) {
+                  'help' => 'Hilfewünsche',
+                  'interest' => 'Interessen',
+                  'plan_change' => 'Planvorschläge',
+                  'reply' => 'Antworten',
+                  'system' => 'Von Schulpilot',
+                  _ => kindFilter,
+                }}',
+                () => changeView(() => kindFilter = 'all'),
+              ),
+            if (oldestFirst)
+              (
+                'Älteste der geladenen zuerst',
+                () => changeView(() => oldestFirst = false),
+              ),
+          ],
+        ),
+        PageToolsGroup(
+          id: 'parent-message-tools',
           title: 'Nachrichten suchen & sortieren',
-          subtitle: query.isNotEmpty || kindFilter != 'all' || oldestFirst
-              ? [
-                  if (query.isNotEmpty) 'Suche: $query',
-                  if (kindFilter != 'all') 'Anliegenfilter aktiv',
-                  if (oldestFirst) 'Älteste zuerst',
-                ].join(' · ')
-              : null,
           scope: ('parent-message-tools', ObjectKey(account), family, childId),
           isCurrent: () => current,
-          children: [
-            ParentCollectionSearch(
-              controller: search,
-              label: 'Geladene Nachrichten durchsuchen',
-              appliedQuery: query,
-              helperText: 'Mit Suchen bestätigen. Durchsucht nur diese höchstens 100 geladenen Nachrichten.',
-              onSearch: applySearch,
-              onClear: () => applySearch(clear: true),
-            ),
-            ParentChoiceFilter(
-              label: 'Anliegenart',
-              value: kindFilter,
-              choices: const [
-                ('all', 'Alle Anliegenarten'),
-                ('help', 'Hilfewünsche'),
-                ('interest', 'Interessen'),
-                ('plan_change', 'Planvorschläge'),
-                ('reply', 'Antworten'),
-                ('system', 'Von Schulpilot'),
-              ],
-              onChanged: (value) => changeView(() {
-                kindFilter = value;
-                if (value != 'help' && value != 'all') openOnly = false;
-              }),
-            ),
-            ParentChoiceFilter(
-              label: 'Reihenfolge der geladenen Nachrichten',
-              value: oldestFirst ? 'oldest' : 'newest',
-              choices: const [
-                ('newest', 'Neueste zuerst'),
-                ('oldest', 'Älteste der geladenen zuerst'),
-              ],
-              onChanged: (value) =>
-                  changeView(() => oldestFirst = value == 'oldest'),
-            ),
-          ],
+          active: query.isNotEmpty || kindFilter != 'all' || oldestFirst,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ParentCollectionSearch(
+                controller: search,
+                label: 'Geladene Nachrichten durchsuchen',
+                appliedQuery: query,
+                helperText: 'Mit Suchen bestätigen. Durchsucht nur diese höchstens 100 geladenen Nachrichten.',
+                onSearch: applySearch,
+                onClear: () => applySearch(clear: true),
+              ),
+              ParentChoiceFilter(
+                label: 'Anliegenart',
+                value: kindFilter,
+                choices: const [
+                  ('all', 'Alle Anliegenarten'),
+                  ('help', 'Hilfewünsche'),
+                  ('interest', 'Interessen'),
+                  ('plan_change', 'Planvorschläge'),
+                  ('reply', 'Antworten'),
+                  ('system', 'Von Schulpilot'),
+                ],
+                onChanged: (value) => changeView(() {
+                  kindFilter = value;
+                  if (value != 'help' && value != 'all') openOnly = false;
+                }),
+              ),
+              ParentChoiceFilter(
+                label: 'Reihenfolge der geladenen Nachrichten',
+                value: oldestFirst ? 'oldest' : 'newest',
+                choices: const [
+                  ('newest', 'Neueste zuerst'),
+                  ('oldest', 'Älteste der geladenen zuerst'),
+                ],
+                onChanged: (value) =>
+                    changeView(() => oldestFirst = value == 'oldest'),
+              ),
+            ],
+          ),
         ),
         Wrap(
           spacing: 8,

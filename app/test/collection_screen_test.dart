@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' show SemanticsRole;
@@ -310,6 +312,7 @@ void main() {
       );
     });
     await tap(tester, find.byTooltip('Nächste Seite'));
+    await page_tools.openPageTools(tester, 'learning-tools');
     await tap(tester, find.byType(DropdownButtonFormField<String>));
     await tester.tap(find.text('Englisch').last);
     await tester.pumpAndSettle();
@@ -341,6 +344,7 @@ void main() {
         ),
       );
     });
+    await page_tools.openPageTools(tester, 'learning-tools');
     await tester.enterText(find.byType(TextField), 'alt');
     await tester.pump(const Duration(milliseconds: 400));
     await tester.enterText(find.byType(TextField), 'neu');
@@ -392,6 +396,7 @@ void main() {
             ? slow.future
             : reply(listing(total: 1)),
       );
+      await page_tools.openPageTools(tester, 'learning-tools');
       await tester.enterText(find.byType(TextField), 'warte');
       await tester.pump(const Duration(milliseconds: 400));
       state.user = {'id': 'other-user', 'role': 'child', 'child_id': 'other'};
@@ -484,6 +489,7 @@ void main() {
       requests.add(request);
       return reply(listing(total: 1));
     });
+    await page_tools.openPageTools(tester, 'learning-tools');
     await tester.showKeyboard(find.byType(TextField));
     expect(tester.testTextInput.isVisible, isTrue);
     await tap(tester, find.byTooltip('Filter und Sortierung'));
@@ -493,6 +499,7 @@ void main() {
     expect(requests, hasLength(1));
     await tap(tester, find.text('Anwenden'));
     expect(tester.testTextInput.isVisible, isFalse);
+    await page_tools.openPageTools(tester, 'learning-tools');
     await tester.showKeyboard(find.byType(TextField));
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();

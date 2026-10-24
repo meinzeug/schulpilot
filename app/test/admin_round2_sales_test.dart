@@ -7,6 +7,8 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/store_screens.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'admin_operations_catalog_ux_test.dart' as ops;
 
 Json order({String id = 'fixture-order', String status = 'awaiting_payment'}) =>
@@ -121,7 +123,10 @@ void main() {
       });
       await mountStore(t, s);
       final initial = reads;
-      await ops.tap(t, find.text('Bestellungen suchen, filtern & exportieren'));
+      await toggleParentDetails104(
+        t,
+        'Bestellungen suchen, filtern & exportieren',
+      );
       final search = field('Verwendungszweck, Bestell-ID oder Tarif suchen');
       for (final query in [
         'fixture-order',
@@ -149,7 +154,10 @@ void main() {
       });
       await mountStore(t, s);
       final initial = reads;
-      await ops.tap(t, find.text('Bestellungen suchen, filtern & exportieren'));
+      await toggleParentDetails104(
+        t,
+        'Bestellungen suchen, filtern & exportieren',
+      );
       final search = field('Verwendungszweck, Bestell-ID oder Tarif suchen');
       await t.enterText(search, 'missing');
       await t.pumpAndSettle();

@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -119,10 +121,7 @@ void main() {
     (tester) async {
       final calls = <http.Request>[];
       await f.show(tester, LanguageWorkshop(account(calls), childId: 'child'));
-      await f.tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       final before = calls.length;
       await tester.enterText(f.input('Geladene Projekte durchsuchen'), 'Tiere');
       await tester.pumpAndSettle();
@@ -142,10 +141,7 @@ void main() {
     (tester) async {
       final calls = <http.Request>[];
       await f.show(tester, LanguageWorkshop(account(calls), childId: 'child'));
-      await f.tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await f.tap(
         tester,
         find.byWidgetPredicate(

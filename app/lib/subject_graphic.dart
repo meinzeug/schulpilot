@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'math_content.dart';
+import 'fraction_explorer.dart';
 import 'learning_graphic_frame.dart';
 import 'learning_scene_player.dart';
 import 'science_graphic.dart';
@@ -215,7 +216,13 @@ class SubjectGraphic extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (vectorKinds.contains(kind))
+          if (kind == 'fraction')
+            FractionExplorer(
+              numerator: numbers[0].toInt(),
+              denominator: numbers[1].toInt(),
+              state: state,
+            )
+          else if (vectorKinds.contains(kind))
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -422,14 +429,14 @@ class SubjectGraphic extends StatelessWidget {
           if (kind == 'picture_words' || kind == 'mindmap' || kind == 'plant')
             for (var i = 0; i < labels.length; i++)
               Text('${i + 1}: ${labels[i]}'),
-          if (vectorKinds.contains(kind))
+          if (kind != 'fraction' && vectorKinds.contains(kind))
             ExcludeSemantics(
               child: MathText(
                 text,
                 style: const TextStyle(fontSize: 15, height: 1.45),
               ),
             )
-          else
+          else if (kind != 'fraction')
             MathText(text, style: const TextStyle(fontSize: 15, height: 1.45)),
           if (kind == 'timeline' && block['variant'] == 'centuries') ...[
             const SizedBox(height: 8),

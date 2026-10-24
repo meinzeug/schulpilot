@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -178,7 +180,7 @@ void main() {
       (tester) async {
         final f = Fixture();
         await f.mount(tester);
-        await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+        await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
         await choose(tester, item.$2, item.$3);
         await tester.scrollUntilVisible(
           find.text(item.$4),
@@ -208,6 +210,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
+      await openParentDetails103(tester, 'PDF-Einträge gezielt prüfen');
       final all = find.text(
         '3 von 3 PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
       );
@@ -232,7 +235,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
-      await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+      await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       await choose(tester, 'Fach in der PDF', 'Biologie');
       final choice = find.byKey(const ValueKey('c-null'));
       await reveal(tester, choice);
@@ -296,7 +299,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester, width: 320, scale: 2);
-      await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+      await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       await choose(tester, 'Fach in der PDF', 'Biologie');
       await tap(tester, find.text('Vorhandene Noten vergleichen'));
       expect(tester.takeException(), isNull);

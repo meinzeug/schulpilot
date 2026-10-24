@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -129,6 +131,7 @@ void main() {
         return f.reply({'days': [], 'next_before': null});
       });
       await history.open(tester, state);
+      await page_tools.openPageTools(tester, 'school-history-tools');
       await f.tap(tester, find.text('Zu einem Datum'));
       await f.tap(tester, find.text('Tage anzeigen'));
       expect(
@@ -183,7 +186,7 @@ void main() {
       });
       await photo.showDay(tester, state);
       held = true;
-      await f.tap(tester, find.byTooltip('Mehr'));
+      await page_tools.openPageTools(tester, 'school-day-tools');
       await f.tap(tester, find.text('Neu laden'));
       final secondary = find.text('Noch eine Seite hinzufügen');
       await tester.ensureVisible(secondary);

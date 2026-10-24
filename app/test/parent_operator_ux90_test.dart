@@ -167,7 +167,7 @@ void main() {
       t,
       (_) => SingleChildScrollView(child: AdminAuditList([], state: f.state)),
     );
-    await tap(t, find.text('Protokoll durchsuchen & filtern'));
+    await toggleParentDetails104(t, 'Protokoll durchsuchen & filtern');
     await tap(t, find.text('Gesamtes Protokoll gezielt durchsuchen'));
     expect(find.text('Gesamtes Betriebsprotokoll'), findsOneWidget);
     expect(f.requests.single.url.path, '/api/admin/audit-events');

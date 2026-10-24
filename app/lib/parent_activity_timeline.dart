@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'parent_view_details.dart';
 
 /// A bounded local view of already-loaded activity, never a new learning event.
@@ -26,13 +27,6 @@ class ParentActivityTimeline extends StatefulWidget {
 }
 
 class _ParentActivityTimelineState extends State<ParentActivityTimeline> {
-  bool? filtersExpanded;
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    filtersExpanded ??= false;
-  }
-
   late final Json? account;
   late final String? family;
   final search = TextEditingController();
@@ -153,64 +147,75 @@ class _ParentActivityTimelineState extends State<ParentActivityTimeline> {
           '${widget.activities.length} Ereignisse · Vorschau der höchstens 200 neuesten',
         ),
         const SizedBox(height: 12),
-        ExpansionTile(
-          key: const ValueKey('parent-timeline-filters'),
-          title: const Text('Suche & Aktivitätsfilter'),
-          subtitle: query.isEmpty && category == 'all'
-              ? null
-              : Text(
-                  [
-                    if (query.isNotEmpty) 'Suche: $query',
-                    if (category != 'all')
-                      'Aktivität: ${switch (category) {
-                        'answers' => 'Antworten',
-                        'support' => 'Hilfen & Erklärungen',
-                        'rounds' => 'Lernrunden',
-                        'materials' => 'Stoff & Planung',
-                        _ => 'Alle Lernaktivitäten',
-                      }}',
-                  ].join(' · '),
-                ),
-          tilePadding: EdgeInsets.zero,
-          initiallyExpanded: (filtersExpanded ?? false),
-          maintainState: true,
-          onExpansionChanged: (value) {
-            if (current) setState(() => filtersExpanded = value);
-          },
-          children: [
-            ExcludeFocus(
-              excluding: !(filtersExpanded ?? false),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ParentCollectionSearch(
-                    controller: search,
-                    label: 'Geladenen Verlauf durchsuchen',
-                    appliedQuery: query,
-                    helperText: 'Sucht nur in dieser geladenen Vorschau. Alle Aufgabenbelege stehen im Lernstand.',
-                    onSearch: () => change(() => query = search.text.trim()),
-                    onClear: () => change(() {
-                      query = '';
-                      search.clear();
-                    }),
-                  ),
-                  ParentChoiceFilter(
-                    label: 'Lernaktivität',
-                    value: category,
-                    choices: const [
-                      ('all', 'Alle Lernaktivitäten'),
-                      ('answers', 'Antworten'),
-                      ('support', 'Hilfen & Erklärungen'),
-                      ('rounds', 'Lernrunden'),
-                      ('materials', 'Stoff & Planung'),
-                    ],
-                    onChanged: (v) => change(() => category = v),
-                  ),
-                  const SizedBox(height: 12),
-                ],
+        ParentAppliedFilters(
+          filters: [
+            if (query.isNotEmpty)
+              (
+                'Suche: $query',
+                () => change(() {
+                  query = '';
+                  search.clear();
+                }),
               ),
-            ),
+            if (category != 'all')
+              (
+                'Aktivität: ${switch (category) {
+                  'answers' => 'Antworten',
+                  'support' => 'Hilfen & Erklärungen',
+                  'rounds' => 'Lernrunden',
+                  'materials' => 'Stoff & Planung',
+                  _ => category,
+                }}',
+                () => change(() => category = 'all'),
+              ),
           ],
+        ),
+        PageToolsGroup(
+          key: const ValueKey('parent-timeline-filters'),
+          id: 'parent-timeline-filters',
+          title: 'Suche & Aktivitätsfilter',
+          scope: (
+            'timeline-filters',
+            ObjectKey(account),
+            family,
+            widget.childId,
+            widget.state.api.token,
+          ),
+          isCurrent: () => current,
+          active: query.isNotEmpty || category != 'all',
+          summary: [
+            if (query.isNotEmpty) 'Suche: $query',
+            if (category != 'all') 'Aktivität eingegrenzt',
+          ].join(' · '),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ParentCollectionSearch(
+                controller: search,
+                label: 'Geladenen Verlauf durchsuchen',
+                appliedQuery: query,
+                helperText: 'Sucht nur in dieser geladenen Vorschau. Alle Aufgabenbelege stehen im Lernstand.',
+                onSearch: () => change(() => query = search.text.trim()),
+                onClear: () => change(() {
+                  query = '';
+                  search.clear();
+                }),
+              ),
+              ParentChoiceFilter(
+                label: 'Lernaktivität',
+                value: category,
+                choices: const [
+                  ('all', 'Alle Lernaktivitäten'),
+                  ('answers', 'Antworten'),
+                  ('support', 'Hilfen & Erklärungen'),
+                  ('rounds', 'Lernrunden'),
+                  ('materials', 'Stoff & Planung'),
+                ],
+                onChanged: (v) => change(() => category = v),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
         Semantics(
           liveRegion: true,

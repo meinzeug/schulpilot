@@ -12,14 +12,19 @@ void main() {
     'CK022 grid photo and summary select pages without leaving selection mode',
     (tester) async {
       final (_, _, requests) = await fixture.open(tester);
-      await fixture.tap(tester, find.text('Kacheln'));
+      await fixture.chooseNotebookView(tester, 'Kacheln');
       await fixture.tap(tester, find.text('Seiten auswählen'));
       await fixture.tap(tester, find.byType(NotebookPhoto).first);
       expect(find.text('1 Seite ausgewählt'), findsOneWidget);
       expect(find.text('Text & Lernen'), findsNothing);
       await fixture.tap(tester, find.text('Lernstoff 0').first);
       expect(find.text('1 Seite ausgewählt'), findsNothing);
-      expect(find.text('Kacheln'), findsWidgets);
+      await fixture.openNotebookOptions(tester);
+      expect(
+        tester.widget<ListTile>(fixture.notebookOption('Kacheln')).selected,
+        isTrue,
+      );
+      await fixture.tap(tester, find.byTooltip('Hefteroptionen schließen'));
       expect(requests.every((r) => r.method == 'GET'), isTrue);
     },
   );
@@ -54,12 +59,16 @@ void main() {
     'CK025 notebook search respects the real 120 character server limit',
     (tester) async {
       final (_, _, requests) = await fixture.open(tester, photos: false);
-      await fixture.tap(tester, find.byTooltip('Im Hefter suchen'));
+      final beforeSearch = requests.length;
+      await fixture.openNotebookSearch(tester);
       await tester.enterText(label('In diesem Hefter suchen'), 'x' * 140);
       await tester.pump(const Duration(milliseconds: 450));
       await tester.pumpAndSettle();
       final field = tester.widget<TextField>(label('In diesem Hefter suchen'));
       expect(field.controller!.text.length, 120);
+      expect(requests.length, beforeSearch);
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
       final query = requests
           .where((r) => r.url.path.endsWith('/materials'))
           .last

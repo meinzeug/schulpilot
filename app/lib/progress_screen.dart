@@ -10,6 +10,7 @@ import 'parent_insights_panel.dart';
 import 'package:go_router/go_router.dart';
 
 import 'ui.dart';
+import 'page_tools.dart';
 
 class ProgressScreen extends StatefulWidget {
   final AppState state;
@@ -353,14 +354,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
     state: widget.state,
     title: widget.state.isChild ? 'Dein Lernstand' : 'Lernstand',
     showTitle: widget.state.isChild,
-    actions: [
-      if (widget.state.isChild)
-        IconButton(
-          onPressed: loading ? null : load,
-          tooltip: 'Aktualisieren',
-          icon: Icon(Icons.refresh_rounded),
-        ),
-    ],
     child: !current
         ? const SizedBox()
         : Column(
@@ -404,153 +397,176 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   ),
                 heading(topic ?? subject!),
               ],
-              ExpansionTile(
-                title: const Text('Zeitraum, Suche & Reihenfolge'),
-                subtitle: Text(
-                  '${category == null ? 'Alle Ergebnisse' : categories[category]}${viewFiltered ? ' · Ansichtsfilter aktiv' : ''}',
+              PageToolsGroup(
+                id: 'progress-tools',
+                title: 'Zeitraum, Suche & Reihenfolge',
+                scope: (
+                  ObjectKey(owner),
+                  ownerFamily,
+                  widget.state.api.token,
+                  widget.childId,
+                  subject,
+                  topic,
                 ),
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Alle Ergebnisse'),
-                        selected: category == null,
-                        onSelected: loading
-                            ? null
-                            : (_) => choose(
-                                nextSubject: subject,
-                                nextTopic: topic,
-                                changeCategory: true,
-                              ),
-                      ),
-                      for (final entry in categories.entries)
+                isCurrent: () => current,
+                active: viewFiltered || category != null,
+                summary:
+                    '${category == null ? 'Alle Ergebnisse' : categories[category]}${viewFiltered ? ' · Ansichtsfilter aktiv' : ''}',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextButton.icon(
+                      onPressed: loading ? null : load,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Lernstand aktualisieren'),
+                    ),
+
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
                         ChoiceChip(
-                          label: Text(entry.value),
-                          selected: category == entry.key,
+                          label: const Text('Alle Ergebnisse'),
+                          selected: category == null,
                           onSelected: loading
                               ? null
                               : (_) => choose(
                                   nextSubject: subject,
                                   nextTopic: topic,
-                                  nextCategory: entry.key,
                                   changeCategory: true,
                                 ),
                         ),
-                    ],
-                  ),
+                        for (final entry in categories.entries)
+                          ChoiceChip(
+                            label: Text(entry.value),
+                            selected: category == entry.key,
+                            onSelected: loading
+                                ? null
+                                : (_) => choose(
+                                    nextSubject: subject,
+                                    nextTopic: topic,
+                                    nextCategory: entry.key,
+                                    changeCategory: true,
+                                  ),
+                          ),
+                      ],
+                    ),
 
-                  TextField(
-                    controller: viewSearch,
-                    maxLength: 100,
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      labelText: 'Fach oder Thema suchen',
-                      suffixIcon: IconButton(
-                        tooltip: 'Suche anwenden',
-                        icon: const Icon(Icons.search_rounded),
-                        onPressed: loading ? null : applySearch,
+                    TextField(
+                      controller: viewSearch,
+                      maxLength: 100,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        labelText: 'Fach oder Thema suchen',
+                        suffixIcon: IconButton(
+                          tooltip: 'Suche anwenden',
+                          icon: const Icon(Icons.search_rounded),
+                          onPressed: loading ? null : applySearch,
+                        ),
                       ),
+                      onSubmitted: loading ? null : (_) => applySearch(),
                     ),
-                    onSubmitted: loading ? null : (_) => applySearch(),
-                  ),
-                  for (final field in [
-                    (
-                      'Zeitraum',
-                      period,
-                      {
-                        'all': 'Gesamter Lernverlauf',
-                        '7': 'Letzte 7 Tage',
-                        '30': 'Letzte 30 Tage',
-                        '90': 'Letzte 90 Tage',
-                      },
-                    ),
-                    (
-                      'Reihenfolge',
-                      sort,
-                      {
-                        'default': 'Standard',
-                        'name': 'Name A–Z',
-                        'recent': 'Zuletzt geübt',
-                        'practice': 'Weiter üben zuerst',
-                      },
-                    ),
-                    (
-                      'Rundenstatus',
-                      roundStatus,
-                      {
-                        'all': 'Alle Runden',
-                        'active': 'Begonnen',
-                        'paused': 'Pausiert',
-                        'completed': 'Abgeschlossen',
-                        'not_started': 'Nicht begonnen',
-                      },
-                    ),
-                    (
-                      'Rundenart',
-                      roundKind,
-                      {
-                        'all': 'Alle Lernarten',
-                        'learning': 'Fachübungen',
-                        'vocabulary': 'Wörterrunden',
-                        'spaced_review': 'Spätere Wiederholung',
-                        'study_recall': 'Abrufprobe',
-                        'study_block': 'Verstehensetappe',
-                        'check': 'Verständnisprobe',
-                      },
-                    ),
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey('${field.$1}-${field.$2}'),
-                        initialValue: field.$2,
-                        isExpanded: true,
-                        decoration: InputDecoration(labelText: field.$1),
-                        items: [
-                          for (final e in field.$3.entries)
-                            DropdownMenuItem(
-                              value: e.key,
-                              child: Text(e.value),
-                            ),
-                        ],
-                        onChanged: loading
-                            ? null
-                            : (v) {
-                                FocusManager.instance.primaryFocus?.unfocus();
-                                setState(() {
-                                  switch (field.$1) {
-                                    case 'Zeitraum':
-                                      period = v!;
-                                    case 'Reihenfolge':
-                                      sort = v!;
-                                    case 'Rundenstatus':
-                                      roundStatus = v!;
-                                    default:
-                                      roundKind = v!;
-                                  }
-                                });
-                                choose(
-                                  nextSubject: subject,
-                                  nextTopic: topic,
-                                  force: true,
-                                );
-                              },
+                    for (final field in [
+                      (
+                        'Zeitraum',
+                        period,
+                        {
+                          'all': 'Gesamter Lernverlauf',
+                          '7': 'Letzte 7 Tage',
+                          '30': 'Letzte 30 Tage',
+                          '90': 'Letzte 90 Tage',
+                        },
                       ),
-                    ),
-                  if (period != 'all')
-                    const Notice(
-                      'Der Zeitraum bezieht sich auf die letzte gespeicherte Antwort einer Aufgabe. Frühere Versuche dieser Aufgaben bleiben mitgezählt; der gesamte Lernverlauf bleibt erhalten.',
-                    ),
-                  if (viewFiltered)
-                    TextButton.icon(
-                      onPressed: loading ? null : resetView,
-                      icon: const Icon(Icons.filter_alt_off_outlined),
-                      label: const Text('Ansichtsfilter zurücksetzen'),
-                    ),
-                ],
+                      (
+                        'Reihenfolge',
+                        sort,
+                        {
+                          'default': 'Standard',
+                          'name': 'Name A–Z',
+                          'recent': 'Zuletzt geübt',
+                          'practice': 'Weiter üben zuerst',
+                        },
+                      ),
+                      (
+                        'Rundenstatus',
+                        roundStatus,
+                        {
+                          'all': 'Alle Runden',
+                          'active': 'Begonnen',
+                          'paused': 'Pausiert',
+                          'completed': 'Abgeschlossen',
+                          'not_started': 'Nicht begonnen',
+                        },
+                      ),
+                      (
+                        'Rundenart',
+                        roundKind,
+                        {
+                          'all': 'Alle Lernarten',
+                          'learning': 'Fachübungen',
+                          'vocabulary': 'Wörterrunden',
+                          'spaced_review': 'Spätere Wiederholung',
+                          'study_recall': 'Abrufprobe',
+                          'study_block': 'Verstehensetappe',
+                          'check': 'Verständnisprobe',
+                        },
+                      ),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey('${field.$1}-${field.$2}'),
+                          initialValue: field.$2,
+                          isExpanded: true,
+                          decoration: InputDecoration(labelText: field.$1),
+                          items: [
+                            for (final e in field.$3.entries)
+                              DropdownMenuItem(
+                                value: e.key,
+                                child: Text(e.value),
+                              ),
+                          ],
+                          onChanged: loading
+                              ? null
+                              : (v) {
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(() {
+                                    switch (field.$1) {
+                                      case 'Zeitraum':
+                                        period = v!;
+                                      case 'Reihenfolge':
+                                        sort = v!;
+                                      case 'Rundenstatus':
+                                        roundStatus = v!;
+                                      default:
+                                        roundKind = v!;
+                                    }
+                                  });
+                                  choose(
+                                    nextSubject: subject,
+                                    nextTopic: topic,
+                                    force: true,
+                                  );
+                                },
+                        ),
+                      ),
+                    if (viewFiltered)
+                      TextButton.icon(
+                        onPressed: loading ? null : resetView,
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Ansichtsfilter zurücksetzen'),
+                      ),
+                  ],
+                ),
               ),
+              if (period != 'all')
+                const Notice(
+                  'Der Zeitraum bezieht sich auf die letzte gespeicherte Antwort einer Aufgabe. Frühere Versuche dieser Aufgaben bleiben mitgezählt; der gesamte Lernverlauf bleibt erhalten.',
+                ),
+              if (viewFiltered)
+                Text(
+                  'Ansichtsfilter aktiv · ${period == 'all' ? 'Gesamter Lernverlauf' : 'Letzte $period Tage'}',
+                ),
               if (category != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),

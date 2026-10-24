@@ -103,6 +103,7 @@ class Fixture {
     double width = 390,
     double scale = 1,
     Brightness brightness = Brightness.dark,
+    bool openTools = true,
   }) async {
     tester.view.physicalSize = Size(width, 900);
     tester.view.devicePixelRatio = 1;
@@ -125,6 +126,7 @@ class Fixture {
             state,
             childId: r.pathParameters['id']!,
             initialSection: r.uri.queryParameters['ansicht'],
+            initialFilters: r.uri.queryParameters,
           ),
         ),
         GoRoute(
@@ -176,16 +178,16 @@ class Fixture {
       ),
     );
     await tester.pumpAndSettle();
-    if (initial == '/insights') {
+    if (openTools && initial == '/insights') {
       await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
     }
-    if (initial.startsWith('/grades/')) {
+    if (openTools && initial.startsWith('/grades/')) {
       for (final title in [
         'Suche & Notenfilter',
         'Schwerpunkte über alle Fächer',
         'Ansicht & Export',
       ]) {
-        if (find.text(title).evaluate().isNotEmpty) {
+        if (hasParentDetails104(tester, title)) {
           await openParentDetails103(tester, title);
         }
       }

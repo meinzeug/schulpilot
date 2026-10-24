@@ -233,3 +233,19 @@ Der Vollbildzoom hat zusätzliche große Plus-/Minus-/Zurücksetzen-Tasten und
 einen Prozentwert, weiterhin maximal8-fach. Bildwechsel/Logout verwerfen
 Matrix und private Bildbytes; Zoomen löst keine neuen Bild-/KI-Anfragen aus.
 Abnahme und Grenzen in CHILD_AUDIT_2026_10_20.md.
+
+## Hefteroptionen104 ·24.10.2026
+
+Der fachbezogene Kopf bündelt die Zusatzwerkzeuge im Drei-Punkte-Menü
+„Hefteroptionen“: Blättern/Kacheln/Liste, Suche, Filter mit Reihenfolge und
+Zeitraum, bewusstes Aktualisieren und Themen entdecken. Im normalen Leser
+bleiben Rückweg, Fach, Foto hinzufügen und die Seitenwahl vor dem Inhalt.
+Aktive Such-/Status-/Zeitraumfilter bleiben sichtbar und einzeln aufhebbar.
+
+Die Suche verwendet einen lokalen Entwurf; erst Übernehmen oder Enter
+wendet ihn an. Abbrechen erhält die bisherige Auswahl. Geschlossene Menüs
+belegen keinen Inhaltsraum. Konto, Sitzung, Familie, Fach, Quellenrevision
+und aktuelle Hostroute werden vor der Folgeaktion erneut geprüft.
+Ansichtwechsel ändern weder Lernstand noch Metadatenfilter; benötigte
+private Fotovorschauen dürfen beim Anzeigen normal nachgeladen werden.
+Die Elternansicht behält ihren berechtigten Kinder-/Familienkontext.

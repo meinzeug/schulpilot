@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -424,8 +426,7 @@ void main() {
       final f = _Fixture((_) async => fixture.response(preview()));
       await f.mount(tester);
       await click(tester, find.text('PDF auswählen'));
-      await reveal(tester, find.text('Datum & Gewichtung'));
-      await click(tester, find.text('Datum & Gewichtung'));
+      await toggleParentDetails104(tester, 'Datum & Gewichtung');
       expect(
         find.textContaining('nur für neu angelegte Noten'),
         findsOneWidget,
@@ -595,8 +596,7 @@ void main() {
         expect(find.text('PDF auswählen').hitTestable(), findsOneWidget);
         await click(tester, find.text('PDF auswählen'));
         expect(find.text('Auswahl übernehmen').hitTestable(), findsOneWidget);
-        await reveal(tester, find.text('Datum & Gewichtung'));
-        await click(tester, find.text('Datum & Gewichtung'));
+        await toggleParentDetails104(tester, 'Datum & Gewichtung');
         final fields = find.byType(DropdownButtonFormField<int>);
         await reveal(tester, fields.first);
         expect(

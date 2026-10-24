@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -277,19 +279,13 @@ void main() {
     final calls = await mount(tester, 'vocabulary', const Size(390, 844), 1);
     final before = calls.length;
     expect(find.widgetWithText(TextField, 'Wörter suchen'), findsNothing);
-    final toggle = find.byKey(const ValueKey('child-mobile-filter-toggle'));
-    await tester.ensureVisible(toggle);
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
+    await page_tools.openPageTools(tester, 'vocabulary-tools');
     expect(calls.length, before);
     final input = find.widgetWithText(TextField, 'Wörter suchen');
     await tester.enterText(input, 'mein Entwurf');
-    await tester.ensureVisible(toggle);
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
+    await page_tools.togglePageTools(tester, 'vocabulary-tools');
     expect(find.widgetWithText(TextField, 'Wörter suchen'), findsNothing);
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
+    await page_tools.openPageTools(tester, 'vocabulary-tools');
     expect(
       tester
           .widget<TextField>(find.widgetWithText(TextField, 'Wörter suchen'))

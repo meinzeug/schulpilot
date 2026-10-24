@@ -117,7 +117,7 @@ void main() {
         expect(find.text('Die letzten sieben Tage'), findsNothing);
         expect(find.text('Regelmäßig mit KI auswerten'), findsNothing);
         final before = f.requests.length;
-        await press103(tester, find.text('Fächer & Wochenrückblick'));
+        await toggleParentDetails104(tester, 'Fächer & Wochenrückblick');
         expect(find.text('Die letzten sieben Tage'), findsOneWidget);
         expect(f.requests.length, before);
         expect(f.requests.every((r) => r.method == 'GET'), isTrue);
@@ -220,11 +220,11 @@ void main() {
       expect(find.text('Diese Notenauswahl als CSV speichern'), findsNothing);
       expect(find.text('Mehr angeleitete Übung einplanen'), findsNothing);
       final before = f.requests.length;
-      await press103(tester, find.text('Suche & Notenfilter'));
+      await toggleParentDetails104(tester, 'Suche & Notenfilter');
       await tester.enterText(search103('Noten suchen'), 'Künstliche Brüche');
-      await press103(tester, find.text('Suche & Notenfilter'));
+      await toggleParentDetails104(tester, 'Suche & Notenfilter');
       expect(search103('Noten suchen'), findsNothing);
-      await press103(tester, find.text('Suche & Notenfilter'));
+      await toggleParentDetails104(tester, 'Suche & Notenfilter');
       expect(
         tester.widget<TextField>(search103('Noten suchen')).controller!.text,
         'Künstliche Brüche',
@@ -240,7 +240,7 @@ void main() {
       expect(search103('Noten suchen'), findsOneWidget);
       expect(f.requests.length, before + 1);
       expect(f.requests.last.url.queryParameters['q'], 'Künstliche Brüche');
-      await press103(tester, find.text('Ansicht & Export'));
+      await toggleParentDetails104(tester, 'Ansicht & Export');
       expect(find.text('Diese Notenauswahl als CSV speichern'), findsOneWidget);
       expect(f.requests.length, before + 1);
       f.state.familyId = 'other-family';
@@ -287,7 +287,7 @@ void main() {
           expect(find.text('Als neues Ziel kopieren'), findsNothing);
           expect(find.text('Aus Heftseite übernehmen'), findsNothing);
           final before = f.requests.length;
-          await press103(tester, find.text('Weitere Themenwerkzeuge'));
+          await toggleParentDetails104(tester, 'Weitere Themenwerkzeuge');
           expect(find.text('Aus Heftseite übernehmen'), findsOneWidget);
           expect(f.requests.length, before);
         }
@@ -304,14 +304,14 @@ void main() {
       await f.mount(tester, width: 320, scale: 2);
       expect(search103('Geladene Nachrichten durchsuchen'), findsNothing);
       final before = f.requests.length;
-      await press103(tester, find.text('Nachrichten suchen & sortieren'));
+      await toggleParentDetails104(tester, 'Nachrichten suchen & sortieren');
       await tester.enterText(
         search103('Geladene Nachrichten durchsuchen'),
         'Künstlicher Suchentwurf',
       );
-      await press103(tester, find.text('Nachrichten suchen & sortieren'));
+      await toggleParentDetails104(tester, 'Nachrichten suchen & sortieren');
       expect(search103('Geladene Nachrichten durchsuchen'), findsNothing);
-      await press103(tester, find.text('Nachrichten suchen & sortieren'));
+      await toggleParentDetails104(tester, 'Nachrichten suchen & sortieren');
       expect(
         tester
             .widget<TextField>(search103('Geladene Nachrichten durchsuchen'))

@@ -5,6 +5,8 @@ import 'package:schulpilot/ai_cost_panel.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/settings_screen.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'admin_operations_catalog_ux_test.dart' as ops;
 
 Finder field(String label) => find.widgetWithText(TextFormField, label);
@@ -307,7 +309,7 @@ void main() {
         t,
         AdminAuditList([event('admin.provider_update')], state: s),
       );
-      await ops.tap(t, find.text('Protokoll durchsuchen & filtern'));
+      await toggleParentDetails104(t, 'Protokoll durchsuchen & filtern');
       await t.enterText(find.byType(TextField), 'does-not-match');
       await t.pump();
       expect(find.text('Keine passenden Einträge.'), findsOneWidget);
@@ -332,7 +334,7 @@ void main() {
           event('admin.provider_check'),
         ]),
       );
-      await ops.tap(t, find.text('Protokoll durchsuchen & filtern'));
+      await toggleParentDetails104(t, 'Protokoll durchsuchen & filtern');
       await ops.tap(t, find.widgetWithText(ChoiceChip, 'Änderungen'));
       expect(find.text('Aktion: admin.provider_update'), findsOneWidget);
       expect(find.text('Aktion: admin.provider_read'), findsNothing);

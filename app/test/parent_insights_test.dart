@@ -352,7 +352,7 @@ void main() {
       }),
     );
     final router = await open(tester, state, 'homework');
-    await tap(tester, 'Suche & Hausaufgabenfilter');
+    await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
     await tap(tester, 'Mit Häkchen');
     expect(filters, ['all', 'worked']);
     router.go('/insights');

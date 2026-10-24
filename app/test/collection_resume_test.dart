@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -151,11 +153,8 @@ class _Fixture {
       ),
     );
     await tester.pumpAndSettle();
-    if (kind == 'words' && !parent && width < 720) {
-      final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
-      await tester.ensureVisible(filters);
-      await tester.tap(filters);
-      await tester.pumpAndSettle();
+    if (kind == 'words' && !parent) {
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
     }
   }
 
@@ -197,17 +196,20 @@ void main() {
         f.waiting = true;
         f.pending = Completer<http.Response>();
         if (kind == 'words') {
-          await _tap(tester, find.byTooltip('Weitere Wörteraktionen'));
+          await page_tools.openPageTools(tester, 'vocabulary-tools');
+        } else {
+          await page_tools.openPageTools(
+            tester,
+            kind == 'shelf' ? 'notebook-shelf-tools' : 'learning-tools',
+          );
         }
         await _tap(
           tester,
           kind == 'words'
               ? find.text('Aktualisieren')
-              : find.byTooltip(
-                  kind == 'shelf'
-                      ? 'Hefter aktualisieren'
-                      : 'Liste aktualisieren',
-                ),
+              : kind == 'shelf'
+              ? find.text('Hefter aktualisieren')
+              : find.byTooltip('Liste aktualisieren'),
           settle: false,
         );
         final pendingRequest = f.requests.lastWhere(
@@ -232,10 +234,15 @@ void main() {
         final f = _Fixture(kind, parent: true);
         await f.open(tester);
         if (kind == 'shelf') {
-          await _tap(tester, find.byTooltip('Weitere Optionen'));
+          await page_tools.openPageTools(tester, 'notebook-shelf-tools');
         }
         if (kind == 'words') {
           await _tap(tester, find.byTooltip('Weitere Wörteraktionen'));
+        } else {
+          await page_tools.openPageTools(
+            tester,
+            kind == 'shelf' ? 'notebook-shelf-tools' : 'learning-tools',
+          );
         }
         f.waiting = true;
         f.pending = Completer<http.Response>();
@@ -434,7 +441,7 @@ void main() {
     (tester) async {
       final f = _Fixture('shelf');
       await f.open(tester);
-      await _tap(tester, find.text('Fach suchen'));
+      await page_tools.openPageTools(tester, 'notebook-shelf-tools');
       await tester.enterText(
         find.byType(TextField),
         'Keine künstliche Übereinstimmung',
@@ -470,6 +477,7 @@ void main() {
   ) async {
     final f = _Fixture('pages', parent: true);
     await f.open(tester);
+    await page_tools.openPageTools(tester, 'learning-tools');
     await _tap(tester, find.byTooltip('Filter und Sortierung'));
     expect(find.text('Ansicht anpassen'), findsOneWidget);
     f.router.go('/view/other');

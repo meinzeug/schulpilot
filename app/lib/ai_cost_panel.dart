@@ -5,11 +5,18 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'admin_workspace_ui.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 
 class AiCostPanel extends StatefulWidget {
   final AppState state;
+  final bool toolsEnabled;
   final VoidCallback? onOpenRouting;
-  const AiCostPanel(this.state, {super.key, this.onOpenRouting});
+  const AiCostPanel(
+    this.state, {
+    super.key,
+    this.onOpenRouting,
+    this.toolsEnabled = true,
+  });
   @override
   State<AiCostPanel> createState() => _AiCostPanelState();
 }
@@ -139,71 +146,98 @@ class _AiCostPanelState extends State<AiCostPanel> {
                 ],
               )
             else
-              ExpansionTile(
-                title: const Text('Budgetgrenzen & Kostenstellen'),
-                children: [
-                  Text(
-                    'Pro Kind und Monat: Ziel ${eur(data['budget_policy']['target_eur_micros'])} · Warnung ${eur(data['budget_policy']['warning_eur_micros'])} · Grenze ${eur(data['budget_policy']['hard_eur_micros'])}',
-                  ),
-                  for (final row in data['child_budgets'] as List? ?? [])
-                    Material(
-                      type: MaterialType.transparency,
-                      child: ListTile(
-                        onTap: () => showAdminDetails(
-                          context,
-                          state,
-                          title: 'Kostenstelle ${row['cost_centre']}',
-                          notice: 'Anonyme Kostenstelle. Diese Ansicht öffnet keine privaten Familien- oder Lerninhalte.',
-                          rows: [
-                            (
-                              'Gespeicherter Budgetstatus',
-                              _budgetState(row['state']),
-                            ),
-                            (
-                              'Mit Reservierungen gebunden',
-                              eur(row['held_eur_micros']),
-                            ),
-                            (
-                              'Offene Abrechnungen',
-                              number(row['unsettled_calls']),
-                            ),
-                          ],
-                        ),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          row['state'] == 'within_target'
-                              ? Icons.check_circle_outline
-                              : Icons.warning_amber_rounded,
-                          color: row['state'] == 'within_target'
-                              ? context.palette.successInk
-                              : context.palette.warningInk,
-                        ),
-                        title: Text('Kostenstelle ${row['cost_centre']}'),
-                        subtitle: Text(
-                          '${_budgetState(row['state'])} · ${eur(row['held_eur_micros'])} einschließlich Reservierungen · ${number(row['unsettled_calls'])} Abrechnungen offen',
+              PageToolsGroup(
+                id: 'admin-budget-details',
+                title: 'Budgetgrenzen & Kostenstellen',
+                scope: (
+                  'budget-details',
+                  ObjectKey(state.user),
+                  state.api.token,
+                ),
+                isCurrent: () =>
+                    mounted && widget.toolsEnabled && state.isAdmin,
+                active: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Pro Kind und Monat: Ziel ${eur(data['budget_policy']['target_eur_micros'])} · Warnung ${eur(data['budget_policy']['warning_eur_micros'])} · Grenze ${eur(data['budget_policy']['hard_eur_micros'])}',
+                    ),
+                    for (final row in data['child_budgets'] as List? ?? [])
+                      Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
+                          onTap: () => showAdminDetails(
+                            context,
+                            state,
+                            title: 'Kostenstelle ${row['cost_centre']}',
+                            notice: 'Anonyme Kostenstelle. Diese Ansicht öffnet keine privaten Familien- oder Lerninhalte.',
+                            rows: [
+                              (
+                                'Gespeicherter Budgetstatus',
+                                _budgetState(row['state']),
+                              ),
+                              (
+                                'Mit Reservierungen gebunden',
+                                eur(row['held_eur_micros']),
+                              ),
+                              (
+                                'Offene Abrechnungen',
+                                number(row['unsettled_calls']),
+                              ),
+                            ],
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            row['state'] == 'within_target'
+                                ? Icons.check_circle_outline
+                                : Icons.warning_amber_rounded,
+                            color: row['state'] == 'within_target'
+                                ? context.palette.successInk
+                                : context.palette.warningInk,
+                          ),
+                          title: Text('Kostenstelle ${row['cost_centre']}'),
+                          subtitle: Text(
+                            '${_budgetState(row['state'])} · ${eur(row['held_eur_micros'])} einschließlich Reservierungen · ${number(row['unsettled_calls'])} Abrechnungen offen',
+                          ),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 10),
-                ],
+                    const SizedBox(height: 10),
+                  ],
+                ),
               ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Alle Modelle'),
-                selected: !anomaliesOnly,
-                onSelected: (_) => setState(() => anomaliesOnly = false),
-              ),
-              ChoiceChip(
-                label: const Text('Offene Kosten / unbrauchbar'),
-                selected: anomaliesOnly,
-                onSelected: (_) => setState(() => anomaliesOnly = true),
-              ),
-            ],
+          PageToolsGroup(
+            id: 'admin-model-filter',
+            title: 'Modellverbrauch filtern',
+            scope: ('model-filter', ObjectKey(state.user), state.api.token),
+            isCurrent: () => mounted && widget.toolsEnabled && state.isAdmin,
+            active: anomaliesOnly,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Alle Modelle'),
+                  selected: !anomaliesOnly,
+                  onSelected: (_) => setState(() => anomaliesOnly = false),
+                ),
+                ChoiceChip(
+                  label: const Text('Offene Kosten / unbrauchbar'),
+                  selected: anomaliesOnly,
+                  onSelected: (_) => setState(() => anomaliesOnly = true),
+                ),
+              ],
+            ),
           ),
+          if (anomaliesOnly)
+            TextButton.icon(
+              onPressed: () => setState(() => anomaliesOnly = false),
+              icon: const Icon(Icons.filter_alt_off_outlined),
+              label: const Text(
+                'Offene Kosten / unbrauchbar · Filter aufheben',
+              ),
+            ),
           if (anomaliesOnly &&
               !Json.from(data['models'] ?? {}).values.any(anomaly))
             const Padding(
@@ -308,38 +342,48 @@ class _AiCostPanelState extends State<AiCostPanel> {
               style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
           ],
-          ExpansionTile(
-            title: const Text('Kostenstellen'),
-            children: [
-              if ((data['cost_centres'] as List? ?? []).isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text('Noch keine zugeordneten Kostenstellen.'),
-                ),
-              for (final row in data['cost_centres'] as List? ?? [])
-                Material(
-                  type: MaterialType.transparency,
-                  child: ListTile(
-                    onTap: () => showAdminDetails(
-                      context,
-                      state,
-                      title: 'Kostenstelle ${row[0]}',
-                      notice: 'Aggregierte technische Zuordnung ohne private Lerninhalte.',
-                      rows: [
-                        ('Kostenstellenkennung', '${row[0]}'),
-                        ('Aufrufe', number(row[1]['calls'])),
-                        ('Erfasste Kosten', usd(row[1]['billed_micros_usd'])),
-                        ('Kosten noch offen', number(row[1]['unknown_calls'])),
-                      ],
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    title: Text('Konto ${row[0]}'),
-                    subtitle: Text(
-                      '${row[1]['calls']} Aufrufe · keine privaten Lerninhalte',
+          PageToolsGroup(
+            id: 'admin-cost-centres',
+            title: 'Kostenstellen',
+            scope: ('cost-centres', ObjectKey(state.user), state.api.token),
+            isCurrent: () => mounted && widget.toolsEnabled && state.isAdmin,
+            active: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if ((data['cost_centres'] as List? ?? []).isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Noch keine zugeordneten Kostenstellen.'),
+                  ),
+                for (final row in data['cost_centres'] as List? ?? [])
+                  Material(
+                    type: MaterialType.transparency,
+                    child: ListTile(
+                      onTap: () => showAdminDetails(
+                        context,
+                        state,
+                        title: 'Kostenstelle ${row[0]}',
+                        notice: 'Aggregierte technische Zuordnung ohne private Lerninhalte.',
+                        rows: [
+                          ('Kostenstellenkennung', '${row[0]}'),
+                          ('Aufrufe', number(row[1]['calls'])),
+                          ('Erfasste Kosten', usd(row[1]['billed_micros_usd'])),
+                          (
+                            'Kosten noch offen',
+                            number(row[1]['unknown_calls']),
+                          ),
+                        ],
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      title: Text('Konto ${row[0]}'),
+                      subtitle: Text(
+                        '${row[1]['calls']} Aufrufe · keine privaten Lerninhalte',
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
           CreditReceiptForm(state, onSaved: reload),
         ],

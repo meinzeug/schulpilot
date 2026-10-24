@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
@@ -1033,7 +1035,7 @@ void main() {
       final requests = <http.Request>[];
       await workspace.mount(t, requests);
       await press(t, find.widgetWithText(ChoiceChip, 'Familientarife'));
-      await press(t, find.text('Suche & Haushaltsfilter'));
+      await toggleParentDetails104(t, 'Suche & Haushaltsfilter');
       await t.enterText(field('Familie suchen'), 'no-such-fixture');
       await t.pumpAndSettle();
       await press(t, find.widgetWithText(FilledButton, 'Suchen'));

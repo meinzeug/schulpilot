@@ -5,6 +5,8 @@ import 'child_section_ui.dart';
 import 'notebook_cover.dart';
 import 'subject_badge.dart';
 import 'ui.dart';
+import 'page_tools.dart';
+import 'learning_start_illustration.dart';
 
 class NotebookShelf extends StatelessWidget {
   final AppState state;
@@ -52,6 +54,7 @@ class _NotebookShelfBody extends StatefulWidget {
 class _NotebookShelfState extends State<_NotebookShelfBody> {
   final search = TextEditingController();
   final searchFocus = FocusNode();
+  final toolsKey = GlobalKey();
   late final Json? owner;
   late final String? family, session;
   Json? data;
@@ -87,6 +90,20 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
     allPages = !widget.initialSearch && saved?['all_pages'] == true;
     search.text = saved?['q'] ?? '';
     showSearch = widget.initialSearch || search.text.isNotEmpty;
+    if (widget.initialSearch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final groupContext = toolsKey.currentContext;
+        if (current &&
+            groupContext != null &&
+            PageToolsHost.open(groupContext, 'notebook-shelf-tools')) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (current && showSearch && searchFocus.canRequestFocus) {
+              searchFocus.requestFocus();
+            }
+          });
+        }
+      });
+    }
     load();
   }
 
@@ -149,22 +166,6 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
     );
   }
 
-  void toggleSearch() {
-    if (showSearch) {
-      searchFocus.unfocus();
-      setState(() {
-        showSearch = false;
-        search.clear();
-      });
-      remember();
-    } else {
-      setState(() => showSearch = true);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (current && showSearch) searchFocus.requestFocus();
-      });
-    }
-  }
-
   Widget sectionTabs() => ChildSectionTabs(
     tabs: const [
       (id: 'mine', label: 'Meine Fächer', icon: Icons.folder_open_rounded),
@@ -197,11 +198,18 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
     decoration: InputDecoration(
       hintText: 'Fach suchen',
       prefixIcon: Icon(Icons.search_rounded),
-      suffixIcon: IconButton(
-        tooltip: 'Suche schließen',
-        onPressed: toggleSearch,
-        icon: Icon(Icons.close_rounded),
-      ),
+      suffixIcon: search.text.isEmpty
+          ? null
+          : IconButton(
+              tooltip: 'Fachsuche leeren',
+              onPressed: () {
+                if (!current) return;
+                searchFocus.unfocus();
+                setState(search.clear);
+                remember();
+              },
+              icon: const Icon(Icons.close_rounded),
+            ),
     ),
     onChanged: (_) {
       setState(() {});
@@ -270,151 +278,129 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.state.isChild) ...[
-          sectionTabs(),
-          const SizedBox(height: 16),
-          Row(
+        if (widget.state.isChild) sectionTabs(),
+        if (!widget.state.isChild && widget.onAddPhoto != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: current ? widget.onAddPhoto : null,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: const Text('Neue Heftfotos'),
+            ),
+          ),
+        PageToolsGroup(
+          key: toolsKey,
+          id: 'notebook-shelf-tools',
+          title: 'Hefter suchen & ordnen',
+          scope: (ObjectKey(owner), family, session, widget.childId),
+          isCurrent: () => current,
+          active: search.text.isNotEmpty || reviewOnly,
+          summary: '${visible.length} Hefter in dieser Ansicht',
+          child: Column(
             key: const ValueKey('notebook-toolbar'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: showSearch
-                    ? searchField()
-                    : TextButton.icon(
-                        onPressed: toggleSearch,
-                        icon: const Icon(Icons.search_rounded),
-                        label: const Text('Fach suchen'),
-                      ),
-              ),
-              IconButton.filledTonal(
-                tooltip: list ? 'Kacheln' : 'Liste',
-                onPressed: () {
-                  searchFocus.unfocus();
-                  setState(() => list = !list);
-                  remember();
-                },
-                icon: Icon(
-                  list ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                ),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                tooltip: 'Hefter aktualisieren',
-                onPressed: load,
-                icon: const Icon(Icons.refresh_rounded),
+              searchField(),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  IconButton(
+                    tooltip: list ? 'Kacheln' : 'Liste',
+                    onPressed: () {
+                      if (!current) return;
+                      searchFocus.unfocus();
+                      setState(() => list = !list);
+                      remember();
+                    },
+                    icon: Icon(
+                      list ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: load,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Hefter aktualisieren'),
+                  ),
+                  FilterChip(
+                    label: const Text('Hefter mit offenen Prüfungen'),
+                    selected: reviewOnly,
+                    onSelected: (value) {
+                      if (current) setState(() => reviewOnly = value);
+                    },
+                  ),
+                  if (!widget.state.isChild) ...[
+                    FilterChip(
+                      label: const Text('Meine Fächer'),
+                      selected: ownOnly,
+                      onSelected: (value) {
+                        if (current) {
+                          setState(() => ownOnly = value);
+                          remember();
+                        }
+                      },
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (current) {
+                          setState(() => allPages = true);
+                          remember();
+                        }
+                      },
+                      child: const Text('Alle Heftseiten'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (current) {
+                          openRoute(context, '/vocabulary/${widget.childId}');
+                        }
+                      },
+                      child: const Text('Wörter'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (current) {
+                          openRoute(context, '/child/${widget.childId}');
+                        }
+                      },
+                      child: const Text('Zum Lernüberblick'),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
-        ] else
-          Container(
-            key: ValueKey('notebook-toolbar'),
-            padding: EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: context.palette.panelSurface,
-              border: Border.all(color: context.palette.surfaceBorder),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  tooltip: 'Fach suchen',
-                  isSelected: showSearch,
-                  onPressed: toggleSearch,
-                  icon: Icon(Icons.search_rounded),
-                ),
-                IconButton(
-                  tooltip: 'Meine Fächer',
-                  isSelected: ownOnly,
-                  style: IconButton.styleFrom(
-                    backgroundColor: ownOnly ? mint : Colors.transparent,
-                    foregroundColor: ownOnly ? teal : muted,
-                  ),
-                  onPressed: () {
-                    setState(() => ownOnly = !ownOnly);
-                    remember();
-                  },
-                  icon: Icon(Icons.filter_alt_outlined),
-                  selectedIcon: Icon(Icons.filter_alt_rounded),
-                ),
-                IconButton(
-                  tooltip: list ? 'Kacheln' : 'Liste',
-                  onPressed: () {
-                    searchFocus.unfocus();
-                    setState(() => list = !list);
-                    remember();
-                  },
-                  icon: Icon(
-                    list ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                  ),
-                ),
-                if (widget.onAddPhoto != null)
-                  IconButton(
-                    tooltip: 'Neue Heftfotos',
-                    onPressed: widget.onAddPhoto,
-                    color: context.palette.teal,
-                    icon: Icon(Icons.add_a_photo_outlined),
-                  ),
-                PopupMenuButton<String>(
-                  tooltip: 'Weitere Optionen',
-                  onOpened: searchFocus.unfocus,
-                  onSelected: (value) {
-                    if (!current) return;
-                    switch (value) {
-                      case 'pages':
-                        setState(() => allPages = true);
-                      case 'words':
-                        openRoute(context, '/vocabulary/${widget.childId}');
-                      case 'refresh':
-                        load();
-                      case 'overview':
-                        openRoute(context, '/child/${widget.childId}');
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: 'pages',
-                      child: Text('Alle Heftseiten'),
-                    ),
-                    PopupMenuItem(value: 'words', child: Text('Wörter')),
-                    PopupMenuItem(
-                      value: 'refresh',
-                      child: Text('Hefter aktualisieren'),
-                    ),
-                    if (!widget.state.isChild)
-                      PopupMenuItem(
-                        value: 'overview',
-                        child: Text('Zum Lernüberblick'),
-                      ),
-                  ],
-                  icon: Icon(Icons.more_horiz_rounded),
-                ),
-              ],
-            ),
-          ),
-        if (showSearch && !widget.state.isChild) ...[
-          SizedBox(height: 10),
-          searchField(),
-        ],
-        if (!widget.state.isChild ||
-            MediaQuery.sizeOf(context).width >= 720 ||
-            showSearch ||
-            reviewOnly)
+        ),
+        if (search.text.isNotEmpty || reviewOnly)
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              FilterChip(
-                label: const Text('Hefter mit offenen Prüfungen'),
-                selected: reviewOnly,
-                onSelected: (v) {
-                  if (current) setState(() => reviewOnly = v);
-                },
-              ),
+              if (search.text.isNotEmpty)
+                InputChip(
+                  label: Text('Suche: ${search.text}'),
+                  onDeleted: () {
+                    if (current) {
+                      searchFocus.unfocus();
+                      setState(search.clear);
+                      remember();
+                    }
+                  },
+                  deleteButtonTooltipMessage: 'Fachsuche entfernen',
+                ),
               if (reviewOnly)
-                const Text(
-                  'Nur gemeldete offene Prüfungen · Öffnen setzt den Seitenfilter.',
+                InputChip(
+                  label: const Text('Hefter mit offenen Prüfungen'),
+                  onDeleted: () {
+                    if (current) setState(() => reviewOnly = false);
+                  },
+                  deleteButtonTooltipMessage: 'Prüfungsfilter entfernen',
                 ),
             ],
+          ),
+        if (reviewOnly)
+          const Text(
+            'Nur gemeldete offene Prüfungen · Öffnen setzt den Seitenfilter.',
           ),
         SizedBox(height: 12),
         if (error != null) ...[
@@ -432,6 +418,9 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
           Panel(
             child: Column(
               children: [
+                if (query.isEmpty && !reviewOnly)
+                  const LearningStartIllustration(),
+
                 Text(
                   ownOnly && query.isEmpty
                       ? 'Deine Hefte sind noch leer.'

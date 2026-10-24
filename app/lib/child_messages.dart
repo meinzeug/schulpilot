@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'child_section_ui.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'lesson_voice.dart';
 
 /// A small mailbox, separate from the child's learning start page.
@@ -348,9 +349,19 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
           _ => 'Nachrichten für dich und von dir',
         }),
         const SizedBox(height: 12),
-        ChildFilterTools(
+        PageToolsGroup(
+          id: 'child-message-tools',
+          title: 'Nachrichten suchen & ordnen',
+          scope: (
+            ObjectKey(account),
+            widget.state.familyId,
+            widget.state.api.token,
+            widget.data['child']['id'],
+            section,
+          ),
+          isCurrent: () => current,
           summary: '${rows.length} Nachrichten in dieser Ansicht',
-          filtered:
+          active:
               search.text.trim().isNotEmpty ||
               sender != 'all' ||
               order != 'newest' ||
@@ -480,6 +491,33 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
             style: TextStyle(color: context.palette.muted),
           ),
         ),
+        if (search.text.trim().isNotEmpty ||
+            sender != 'all' ||
+            order != 'newest' ||
+            (isWish && wishKind != 'all'))
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (search.text.trim().isNotEmpty)
+                Chip(label: Text('Suche: ${search.text.trim()}')),
+              if (sender != 'all')
+                Chip(
+                  label: Text(switch (sender) {
+                    'parent' => 'Von meinen Eltern',
+                    'child' => 'Von mir',
+                    _ => 'Von Schulpilot',
+                  }),
+                ),
+              if (order != 'newest') const Chip(label: Text('Älteste zuerst')),
+              if (isWish && wishKind != 'all')
+                Chip(
+                  label: Text(
+                    wishKind == 'interest' ? 'Lernideen' : 'Planwünsche',
+                  ),
+                ),
+            ],
+          ),
         const SizedBox(height: 12),
         if (messages.length >= 100)
           Padding(

@@ -5,6 +5,7 @@ import 'parent_child_navigation.dart';
 import 'parent_insights_panel.dart' show reviewDate;
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'parent_view_details.dart';
 import 'ideas100_local_views.dart';
 
@@ -26,13 +27,6 @@ class ParentHomeworkScreen extends StatefulWidget {
 }
 
 class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
-  bool? filtersExpanded;
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    filtersExpanded ??= false;
-  }
-
   final List<Json> photos = [];
   String filter = 'all';
   final search = TextEditingController();
@@ -351,188 +345,217 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                       ),
                   ],
                 ),
-                ExpansionTile(
+                ParentAppliedFilters(
+                  enabled: !loading,
+                  filters: [
+                    if (filter != 'all')
+                      (
+                        'Fotos: ${filter == 'worked'
+                            ? 'Mit Häkchen'
+                            : filter == 'open'
+                            ? 'Ohne Häkchen'
+                            : 'Noch prüfen'}',
+                        () {
+                          if (own && !loading && viewChild == widget.childId) {
+                            filter = 'all';
+                            load();
+                          }
+                        },
+                      ),
+                    if (order != 'newest')
+                      (
+                        'Älteste zuerst',
+                        () {
+                          if (own && !loading && viewChild == widget.childId) {
+                            order = 'newest';
+                            load();
+                          }
+                        },
+                      ),
+                  ],
+                ),
+                PageToolsGroup(
                   key: const ValueKey('parent-homework-filters'),
-                  title: const Text('Suche & Hausaufgabenfilter'),
-                  subtitle: Text(
-                    '${filter == 'all'
-                        ? 'Alle Fotos'
-                        : filter == 'worked'
-                        ? 'Mit Häkchen'
-                        : filter == 'open'
-                        ? 'Ohne Häkchen'
-                        : 'Foto noch prüfen'} · ${order == 'newest' ? 'Neueste zuerst' : 'Älteste zuerst'}',
+                  id: 'parent-homework-filters',
+                  title: 'Suche & Hausaufgabenfilter',
+                  scope: (
+                    'homework-filters',
+                    ObjectKey(owner),
+                    family,
+                    viewChild,
+                    session,
                   ),
-                  tilePadding: EdgeInsets.zero,
-                  initiallyExpanded: (filtersExpanded ?? false),
-                  maintainState: true,
-                  onExpansionChanged: (value) {
-                    if (own) setState(() => filtersExpanded = value);
-                  },
-                  children: [
-                    ExcludeFocus(
-                      excluding: !(filtersExpanded ?? false),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          ParentCollectionSearch(
-                            controller: search,
-                            label: 'Hausaufgaben suchen',
-                            helperText: 'Sucht nach Fach, Thema, Fototitel und Titeln der aktuell erkannten Aufgaben.',
-                            appliedQuery: query,
-                            enabled: !loading,
-                            onSearch: applySearch,
-                            onClear: () => applySearch(clear: true),
+                  isCurrent: () => own && viewChild == widget.childId,
+                  active:
+                      query.isNotEmpty ||
+                      subject != null ||
+                      start != null ||
+                      end != null ||
+                      progress != 'any' ||
+                      filter != 'all' ||
+                      order != 'newest',
+                  summary:
+                      '${filter == 'all'
+                          ? 'Alle Fotos'
+                          : filter == 'worked'
+                          ? 'Mit Häkchen'
+                          : filter == 'open'
+                          ? 'Ohne Häkchen'
+                          : 'Foto noch prüfen'} · ${order == 'newest' ? 'Neueste zuerst' : 'Älteste zuerst'}',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ParentCollectionSearch(
+                        controller: search,
+                        label: 'Hausaufgaben suchen',
+                        helperText: 'Sucht nach Fach, Thema, Fototitel und Titeln der aktuell erkannten Aufgaben.',
+                        appliedQuery: query,
+                        enabled: !loading,
+                        onSearch: applySearch,
+                        onClear: () => applySearch(clear: true),
+                      ),
+                      if (subjects.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey(('homework-subject', subject)),
+                          initialValue: subjects.contains(subject)
+                              ? subject
+                              : null,
+                          isExpanded: true,
+                          itemHeight: null,
+                          decoration: const InputDecoration(
+                            labelText: 'Fach der Hausaufgaben',
                           ),
-                          if (subjects.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
-                              key: ValueKey(('homework-subject', subject)),
-                              initialValue: subjects.contains(subject)
-                                  ? subject
-                                  : null,
-                              isExpanded: true,
-                              itemHeight: null,
-                              decoration: const InputDecoration(
-                                labelText: 'Fach der Hausaufgaben',
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Alle Fächer'),
+                            ),
+                            for (final value in subjects)
+                              DropdownMenuItem(
+                                value: value,
+                                child: Text(value),
                               ),
-                              items: [
-                                const DropdownMenuItem<String>(
-                                  value: null,
-                                  child: Text('Alle Fächer'),
-                                ),
-                                for (final value in subjects)
-                                  DropdownMenuItem(
-                                    value: value,
-                                    child: Text(value),
-                                  ),
-                              ],
-                              onChanged: loading
+                          ],
+                          onChanged: loading
+                              ? null
+                              : (value) {
+                                  if (!own || subject == value) return;
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  subject = value;
+                                  load();
+                                },
+                        ),
+                      ],
+                      if (query.isNotEmpty ||
+                          subject != null ||
+                          start != null ||
+                          end != null ||
+                          progress != 'any' ||
+                          filter != 'all')
+                        TextButton.icon(
+                          onPressed: loading ? null : clearFilters,
+                          icon: const Icon(Icons.filter_alt_off_outlined),
+                          label: const Text(
+                            'Alle Hausaufgabenfilter zurücksetzen',
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final item in const [
+                            ('all', 'Alle Fotos'),
+                            ('worked', 'Mit Häkchen'),
+                            ('open', 'Ohne Häkchen'),
+                            ('review', 'Foto noch prüfen'),
+                          ])
+                            ChoiceChip(
+                              label: Text(item.$2),
+                              selected: filter == item.$1,
+                              onSelected: loading
                                   ? null
-                                  : (value) {
-                                      if (!own || subject == value) return;
-                                      FocusManager.instance.primaryFocus
-                                          ?.unfocus();
-                                      subject = value;
+                                  : (_) {
+                                      if (!own || filter == item.$1) return;
+                                      setState(() => filter = item.$1);
                                       load();
                                     },
                             ),
-                          ],
-                          if (query.isNotEmpty ||
-                              subject != null ||
-                              start != null ||
-                              end != null ||
-                              progress != 'any' ||
-                              filter != 'all')
-                            TextButton.icon(
-                              onPressed: loading ? null : clearFilters,
-                              icon: const Icon(Icons.filter_alt_off_outlined),
-                              label: const Text(
-                                'Alle Hausaufgabenfilter zurücksetzen',
-                              ),
-                            ),
-                          const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final item in const [
-                                ('all', 'Alle Fotos'),
-                                ('worked', 'Mit Häkchen'),
-                                ('open', 'Ohne Häkchen'),
-                                ('review', 'Foto noch prüfen'),
-                              ])
-                                ChoiceChip(
-                                  label: Text(item.$2),
-                                  selected: filter == item.$1,
-                                  onSelected: loading
-                                      ? null
-                                      : (_) {
-                                          if (!own || filter == item.$1) return;
-                                          setState(() => filter = item.$1);
-                                          load();
-                                        },
-                                ),
-                            ],
-                          ),
-                          Text(switch (filter) {
-                            'worked' => 'Mindestens eine Aufgabe ist vom Kind abgehakt. Das Foto muss noch nicht vollständig bearbeitet sein.',
-                            'open' => 'Für diese Fotos ist noch keine Aufgabe abgehakt.',
-                            'review' => 'Diese Fotos sind noch nicht als geprüfte Quelle bestätigt.',
-                            _ => 'Alle gespeicherten Hausaufgabenfotos.',
-                          }, style: TextStyle(color: context.palette.muted)),
-                          const SizedBox(height: 8),
-                          ParentChoiceFilter(
-                            label: 'Reihenfolge der Fotos',
-                            value: order,
+                        ],
+                      ),
+                      Text(switch (filter) {
+                        'worked' => 'Mindestens eine Aufgabe ist vom Kind abgehakt. Das Foto muss noch nicht vollständig bearbeitet sein.',
+                        'open' =>
+                          'Für diese Fotos ist noch keine Aufgabe abgehakt.',
+                        'review' => 'Diese Fotos sind noch nicht als geprüfte Quelle bestätigt.',
+                        _ => 'Alle gespeicherten Hausaufgabenfotos.',
+                      }, style: TextStyle(color: context.palette.muted)),
+                      const SizedBox(height: 8),
+                      ParentChoiceFilter(
+                        label: 'Reihenfolge der Fotos',
+                        value: order,
+                        enabled: !loading,
+                        choices: const [
+                          ('newest', 'Neueste Fotos zuerst'),
+                          ('oldest', 'Älteste Fotos zuerst'),
+                        ],
+                        onChanged: (v) {
+                          if (!own || loading) return;
+                          order = v;
+                          load();
+                        },
+                      ),
+                      ExpansionTile(
+                        title: const Text(
+                          'Zeitraum und Bearbeitung eingrenzen',
+                        ),
+                        children: [
+                          ParentDateRange(
+                            key: ValueKey('homework-range-${widget.childId}'),
+                            start: start,
+                            end: end,
                             enabled: !loading,
-                            choices: const [
-                              ('newest', 'Neueste Fotos zuerst'),
-                              ('oldest', 'Älteste Fotos zuerst'),
-                            ],
-                            onChanged: (v) {
+                            onApply: (from, to) {
                               if (!own || loading) return;
-                              order = v;
+                              start = from;
+                              end = to;
                               load();
                             },
                           ),
-                          ExpansionTile(
-                            title: const Text(
-                              'Zeitraum und Bearbeitung eingrenzen',
-                            ),
-                            children: [
-                              ParentDateRange(
-                                key: ValueKey(
-                                  'homework-range-${widget.childId}',
-                                ),
-                                start: start,
-                                end: end,
-                                enabled: !loading,
-                                onApply: (from, to) {
-                                  if (!own || loading) return;
-                                  start = from;
-                                  end = to;
-                                  load();
-                                },
+                          const Text(
+                            'Der Aufnahmetag gilt in der gespeicherten Zeitzone deines Kindes.',
+                          ),
+                          ParentChoiceFilter(
+                            label: 'Stand der eigenen Häkchen',
+                            value: progress,
+                            enabled: !loading,
+                            choices: const [
+                              ('any', 'Jeder Bearbeitungsstand'),
+                              ('none', 'Noch keine Aufgabe abgehakt'),
+                              (
+                                'partial',
+                                'Teilweise abgehakt / weitere Aufgaben offen',
                               ),
-                              const Text(
-                                'Der Aufnahmetag gilt in der gespeicherten Zeitzone deines Kindes.',
-                              ),
-                              ParentChoiceFilter(
-                                label: 'Stand der eigenen Häkchen',
-                                value: progress,
-                                enabled: !loading,
-                                choices: const [
-                                  ('any', 'Jeder Bearbeitungsstand'),
-                                  ('none', 'Noch keine Aufgabe abgehakt'),
-                                  (
-                                    'partial',
-                                    'Teilweise abgehakt / weitere Aufgaben offen',
-                                  ),
-                                  (
-                                    'complete',
-                                    'Alle erkannten Aufgaben abgehakt',
-                                  ),
-                                  (
-                                    'unanalyzed',
-                                    'Noch keine aktuelle Aufgabenübersicht',
-                                  ),
-                                ],
-                                onChanged: (v) {
-                                  if (!own || loading) return;
-                                  progress = v;
-                                  load();
-                                },
-                              ),
-                              const Text(
-                                'Vollständig abgehakt bedeutet nur die eigene Markierung, ohne weitere unerkannte Aufgaben. Es ist keine Prüfung der Lösung.',
+                              ('complete', 'Alle erkannten Aufgaben abgehakt'),
+                              (
+                                'unanalyzed',
+                                'Noch keine aktuelle Aufgabenübersicht',
                               ),
                             ],
+                            onChanged: (v) {
+                              if (!own || loading) return;
+                              progress = v;
+                              load();
+                            },
+                          ),
+                          const Text(
+                            'Vollständig abgehakt bedeutet nur die eigene Markierung, ohne weitere unerkannte Aufgaben. Es ist keine Prüfung der Lösung.',
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 if (collectionTotals != null)
                   Padding(

@@ -260,7 +260,20 @@ Future<void> tapText(WidgetTester tester, String label) async {
 }
 
 Future<void> reload(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('Mehr'));
+  final header = find.byKey(const ValueKey('page-tools-button'));
+  await tester.ensureVisible(header);
+  await settleUi(tester);
+  expect(header.hitTestable(), findsOneWidget);
+  await tester.tap(header);
+  await settleUi(tester);
+  final choice = find.byKey(
+    const ValueKey('page-tools-choice:school-day-tools'),
+  );
+  await tester.ensureVisible(choice);
+  await settleUi(tester);
+  expect(choice.hitTestable(), findsOneWidget);
+  await tester.tap(choice);
+  await settleUi(tester);
   await settleUi(tester);
   await tapText(tester, 'Neu laden');
 }

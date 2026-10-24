@@ -74,7 +74,7 @@ class _Fixture {
         'Schwerpunkte über alle Fächer',
         'Ansicht & Export',
       ]) {
-        if (find.text(title).evaluate().isNotEmpty) {
+        if (hasParentDetails104(tester, title)) {
           await openParentDetails103(tester, title);
         }
       }

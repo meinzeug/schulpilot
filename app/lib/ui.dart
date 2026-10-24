@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'page_tools.dart';
 import 'app_palette.dart';
 export 'app_palette.dart';
 import 'download_panel.dart';
@@ -1074,15 +1075,18 @@ class PageFrame extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => WorkspaceShell(
+  Widget build(BuildContext context) => PageToolsHost(
     state: state,
-    title: title,
-    subtitle: subtitle,
-    actions: actions,
-    showTitle: showTitle,
-    focusContent: focusContent,
-    browser: kIsWeb,
-    child: child,
+    child: WorkspaceShell(
+      state: state,
+      title: title,
+      subtitle: subtitle,
+      actions: actions,
+      showTitle: showTitle,
+      focusContent: focusContent,
+      browser: kIsWeb,
+      child: child,
+    ),
   );
 }
 
@@ -2995,15 +2999,25 @@ class _WorkspaceHeading extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title != null)
-            Semantics(
-              header: true,
-              child: Text(
-                title!,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontSize: MediaQuery.sizeOf(context).width < 720 ? 24 : 28,
-                  height: 1.2,
+            Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      title!,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontSize: MediaQuery.sizeOf(context).width < 720
+                                ? 24
+                                : 28,
+                            height: 1.2,
+                          ),
+                    ),
+                  ),
                 ),
-              ),
+                const PageToolsButton(),
+              ],
             ),
           if (subtitle?.isNotEmpty == true)
             Padding(

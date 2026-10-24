@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -339,8 +341,7 @@ void main() {
           .widgetWithText(TextField, 'Geladene Neuigkeiten durchsuchen')
           .evaluate()
           .isEmpty) {
-        await tester.ensureVisible(find.text('Suche & Neuigkeitenfilter'));
-        await tester.tap(find.text('Suche & Neuigkeitenfilter'));
+        await openParentDetails103(tester, 'Suche & Neuigkeitenfilter');
         await tester.pumpAndSettle();
       }
       await tester.enterText(
@@ -382,6 +383,7 @@ void main() {
           'unread': 2,
         });
       });
+      await openParentDetails103(tester, 'Suche & Neuigkeitenfilter');
       await tester.tap(find.text('Alle Kinder'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Beispiel B').last);
@@ -407,6 +409,7 @@ void main() {
           'unread': 2,
         });
       });
+      await openParentDetails103(tester, 'Suche & Neuigkeitenfilter');
       await tester.tap(find.text('Alle Arten'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Hilfewünsche').last);

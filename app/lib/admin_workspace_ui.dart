@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 
 /// A local, authorized view of explicitly selected operator metadata.
 /// Opening this dialog never fetches data or starts an operation.
@@ -166,6 +167,7 @@ class _CompactAdminHeaderState extends State<_CompactAdminHeader> {
               ),
             ),
             if (content.action != null) content.action!,
+            const PageToolsButton(),
             Semantics(
               expanded: expanded,
               child: IconButton(

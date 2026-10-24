@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:async';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -181,6 +183,10 @@ void main() {
     (t) async {
       final f = store.Fixture();
       await f.mountOrders(t);
+      await openParentDetails103(
+        t,
+        'Bestellungen suchen, filtern & exportieren',
+      );
       t
           .widget<StoreOrderDateFilter>(find.byType(StoreOrderDateFilter))
           .onChanged(
@@ -215,6 +221,10 @@ void main() {
             ..['amount_cents'] = 9900,
         ];
       await f.mountOrders(t);
+      await openParentDetails103(
+        t,
+        'Bestellungen suchen, filtern & exportieren',
+      );
       t
           .widget<DropdownButtonFormField<String>>(
             find.byKey(const ValueKey('newest')),
@@ -492,7 +502,7 @@ void main() {
       });
       await mount(t, PushAdminScreen(state));
       expect(find.textContaining('synthetic-project'), findsNothing);
-      await press(t, 'Konfiguration & Nachweise');
+      await toggleParentDetails104(t, 'Konfiguration & Nachweise');
       expect(find.textContaining('synthetic-project'), findsOneWidget);
       await press(t, 'Status aktualisieren');
       expect(reads, 2);

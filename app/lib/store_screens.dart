@@ -12,6 +12,7 @@ import 'admin_workspace_ui.dart';
 import 'store_plan_editor.dart';
 import 'store_order_filters.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'public_trial.dart';
 import 'order_payment_access.dart';
 import 'paypal_settings.dart';
@@ -1192,88 +1193,133 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: search,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
-                    onChanged: (value) =>
-                        setState(() => query = value.trim().toLowerCase()),
-                    decoration: const InputDecoration(
-                      labelText: 'Gespeicherte Bestellungen durchsuchen',
-                      hintText: 'Verwendungszweck, Tarif oder Bestell-ID',
-                      prefixIcon: Icon(Icons.search_rounded),
+                  PageToolsGroup(
+                    id: 'parent-orders-tools',
+                    title: 'Bestellungen suchen, filtern & exportieren',
+                    scope: (
+                      'parent-orders-tools',
+                      ObjectKey(owner),
+                      family,
+                      widget.state.api.token,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final filter in const [
-                        ('all', 'Alle'),
-                        ('awaiting_payment', 'Zahlung offen'),
-                        ('paid', 'Freigeschaltet'),
-                        ('cancelled', 'Storniert'),
-                        ('refunded', 'Erstattet'),
-                      ])
-                        FilterChip(
-                          label: Text(
-                            '${filter.$2} (${orders.where((o) => matchStatus(o, filter.$1)).length})',
+                    isCurrent: () => own,
+                    active:
+                        query.isNotEmpty ||
+                        status != 'all' ||
+                        sort != 'newest' ||
+                        dateRange != null ||
+                        period != 'all',
+                    summary: [
+                      if (query.isNotEmpty) 'Suche: $query',
+                      if (status != 'all') orderStatus(status),
+                      if (sort != 'newest') 'Sortierung geändert',
+                      if (dateRange != null) 'Zeitraum gewählt',
+                      if (period != 'all') 'Laufzeitfilter aktiv',
+                    ].join(' · '),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: search,
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) =>
+                              FocusManager.instance.primaryFocus?.unfocus(),
+                          onChanged: (value) => setState(
+                            () => query = value.trim().toLowerCase(),
                           ),
-                          selected: status == filter.$1,
-                          onSelected: (_) {
+                          decoration: const InputDecoration(
+                            labelText: 'Gespeicherte Bestellungen durchsuchen',
+                            hintText: 'Verwendungszweck, Tarif oder Bestell-ID',
+                            prefixIcon: Icon(Icons.search_rounded),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final filter in const [
+                              ('all', 'Alle'),
+                              ('awaiting_payment', 'Zahlung offen'),
+                              ('paid', 'Freigeschaltet'),
+                              ('cancelled', 'Storniert'),
+                              ('refunded', 'Erstattet'),
+                            ])
+                              FilterChip(
+                                label: Text(
+                                  '${filter.$2} (${orders.where((o) => matchStatus(o, filter.$1)).length})',
+                                ),
+                                selected: status == filter.$1,
+                                onSelected: (_) {
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(() => status = filter.$1);
+                                },
+                              ),
+                          ],
+                        ),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey(sort),
+                          initialValue: sort,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Bestellverlauf sortieren',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'newest',
+                              child: Text('Neueste zuerst'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'oldest',
+                              child: Text('Älteste zuerst'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'highest_amount',
+                              child: Text('Höchster Bestellbetrag zuerst'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'lowest_amount',
+                              child: Text('Niedrigster Bestellbetrag zuerst'),
+                            ),
+                          ],
+                          onChanged: (value) {
                             FocusManager.instance.primaryFocus?.unfocus();
-                            setState(() => status = filter.$1);
+                            setState(() => sort = value ?? 'newest');
                           },
                         ),
-                    ],
-                  ),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(sort),
-                    initialValue: sort,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Bestellverlauf sortieren',
+                        StoreOrderDateFilter(
+                          range: dateRange,
+                          onChanged: (value) =>
+                              setState(() => dateRange = value),
+                        ),
+                        StoreOrderPeriodFilter(
+                          value: period,
+                          onChanged: (value) => setState(() => period = value),
+                        ),
+                        StoreOrderExportButton(
+                          widget.state,
+                          shown: shown,
+                          loadedCount: orders.length,
+                          scope: 'Eigener geladener Familien-Bestellausschnitt, höchstens 100',
+                          save: widget.saveOrderReport,
+                        ),
+                      ],
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'newest',
-                        child: Text('Neueste zuerst'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'oldest',
-                        child: Text('Älteste zuerst'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'highest_amount',
-                        child: Text('Höchster Bestellbetrag zuerst'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'lowest_amount',
-                        child: Text('Niedrigster Bestellbetrag zuerst'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                      setState(() => sort = value ?? 'newest');
-                    },
                   ),
-                  StoreOrderDateFilter(
-                    range: dateRange,
-                    onChanged: (value) => setState(() => dateRange = value),
-                  ),
-                  StoreOrderPeriodFilter(
-                    value: period,
-                    onChanged: (value) => setState(() => period = value),
-                  ),
-                  StoreOrderExportButton(
-                    widget.state,
-                    shown: shown,
-                    loadedCount: orders.length,
-                    scope: 'Eigener geladener Familien-Bestellausschnitt, höchstens 100',
-                    save: widget.saveOrderReport,
-                  ),
+                  if (query.isNotEmpty ||
+                      status != 'all' ||
+                      sort != 'newest' ||
+                      dateRange != null ||
+                      period != 'all')
+                    Text(
+                      [
+                        if (query.isNotEmpty) 'Suche: $query',
+                        if (status != 'all') orderStatus(status),
+                        if (sort != 'newest') 'Sortierung geändert',
+                        if (dateRange != null) 'Zeitraum gewählt',
+                        if (period != 'all') 'Laufzeitfilter aktiv',
+                      ].join(' · '),
+                    ),
                   if (query.isNotEmpty ||
                       status != 'all' ||
                       sort != 'newest' ||
@@ -1516,7 +1562,7 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
   String period = 'all';
   final paymentDrafts = <String, StorePaymentDraft>{};
   final pendingPayments = <String>{};
-  bool orderRefreshNeeded = false, orderToolsExpanded = false;
+  bool orderRefreshNeeded = false;
 
   void paymentBusy(String id, bool busy) {
     if (!own) return;
@@ -1828,156 +1874,143 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                                 },
                               ),
                               const SizedBox(height: 12),
-                              ExpansionTile(
+                              PageToolsGroup(
                                 key: const ValueKey('admin-order-tools'),
-                                title: const Text(
-                                  'Bestellungen suchen, filtern & exportieren',
+                                id: 'admin-order-tools',
+                                title: 'Bestellungen suchen, filtern & exportieren',
+                                scope: (
+                                  'admin-order-tools',
+                                  ObjectKey(owner),
+                                  widget.state.api.token,
                                 ),
-                                tilePadding: EdgeInsets.zero,
-                                maintainState: true,
-                                onExpansionChanged: (value) {
-                                  if (!own) return;
-                                  if (!value) {
-                                    FocusManager.instance.primaryFocus
-                                        ?.unfocus();
-                                  }
-                                  setState(() => orderToolsExpanded = value);
-                                },
-                                children: [
-                                  ExcludeFocus(
-                                    excluding: !orderToolsExpanded,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        TextField(
-                                          controller: orderSearch,
-                                          onChanged: (v) => setState(
-                                            () => orderQuery = v
-                                                .trim()
-                                                .toLowerCase(),
-                                          ),
-                                          decoration: InputDecoration(
-                                            labelText: 'Verwendungszweck, Bestell-ID oder Tarif suchen',
-                                            prefixIcon: const Icon(
-                                              Icons.search_rounded,
-                                            ),
-                                            suffixIcon: orderQuery.isEmpty
-                                                ? null
-                                                : IconButton(
-                                                    tooltip:
-                                                        'Bestellsuche leeren',
-                                                    icon: const Icon(
-                                                      Icons.close_rounded,
-                                                    ),
-                                                    onPressed: () =>
-                                                        setState(() {
-                                                          orderSearch.clear();
-                                                          orderQuery = '';
-                                                        }),
-                                                  ),
-                                          ),
+                                isCurrent: () => own && section == 0,
+                                active:
+                                    orderFilter != 'all' ||
+                                    orderQuery.isNotEmpty ||
+                                    orderSort != 'newest' ||
+                                    dateRange != null ||
+                                    period != 'all',
+                                summary: viewSummary,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    TextField(
+                                      controller: orderSearch,
+                                      onChanged: (v) => setState(
+                                        () =>
+                                            orderQuery = v.trim().toLowerCase(),
+                                      ),
+                                      decoration: InputDecoration(
+                                        labelText: 'Verwendungszweck, Bestell-ID oder Tarif suchen',
+                                        prefixIcon: const Icon(
+                                          Icons.search_rounded,
                                         ),
-                                        const SizedBox(height: 12),
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 8,
-                                          children: [
-                                            for (final item in const [
-                                              ('all', 'Alle'),
-                                              (
-                                                'awaiting_payment',
-                                                'Zahlung offen',
-                                              ),
-                                              ('paid', 'Freigeschaltet'),
-                                              ('closed', 'Beendet'),
-                                            ])
-                                              FilterChip(
-                                                label: Text(
-                                                  '${item.$2} (${orders.where((o) => hasStatus(o, item.$1)).length})',
+                                        suffixIcon: orderQuery.isEmpty
+                                            ? null
+                                            : IconButton(
+                                                tooltip: 'Bestellsuche leeren',
+                                                icon: const Icon(
+                                                  Icons.close_rounded,
                                                 ),
-                                                selected:
-                                                    orderFilter == item.$1,
-                                                showCheckmark: false,
-                                                onSelected: (_) {
-                                                  FocusManager
-                                                      .instance
-                                                      .primaryFocus
-                                                      ?.unfocus();
-                                                  setState(
-                                                    () => orderFilter = item.$1,
-                                                  );
-                                                },
+                                                onPressed: () => setState(() {
+                                                  orderSearch.clear();
+                                                  orderQuery = '';
+                                                }),
                                               ),
-                                          ],
-                                        ),
-                                        DropdownButtonFormField<String>(
-                                          key: ValueKey(
-                                            'order-sort-$orderSort',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        for (final item in const [
+                                          ('all', 'Alle'),
+                                          ('awaiting_payment', 'Zahlung offen'),
+                                          ('paid', 'Freigeschaltet'),
+                                          ('closed', 'Beendet'),
+                                        ])
+                                          FilterChip(
+                                            label: Text(
+                                              '${item.$2} (${orders.where((o) => hasStatus(o, item.$1)).length})',
+                                            ),
+                                            selected: orderFilter == item.$1,
+                                            showCheckmark: false,
+                                            onSelected: (_) {
+                                              FocusManager.instance.primaryFocus
+                                                  ?.unfocus();
+                                              setState(
+                                                () => orderFilter = item.$1,
+                                              );
+                                            },
                                           ),
-                                          initialValue: orderSort,
-                                          isExpanded: true,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Geladene Bestellungen sortieren',
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'newest',
-                                              child: Text('Neueste zuerst'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'oldest',
-                                              child: Text('Älteste zuerst'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'status',
-                                              child: Text(
-                                                'Status, dann neueste zuerst',
-                                              ),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'highest_amount',
-                                              child: Text(
-                                                'Höchster Bestellbetrag zuerst',
-                                              ),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'lowest_amount',
-                                              child: Text(
-                                                'Niedrigster Bestellbetrag zuerst',
-                                              ),
-                                            ),
-                                          ],
-                                          onChanged: (v) {
-                                            FocusManager.instance.primaryFocus
-                                                ?.unfocus();
-                                            setState(
-                                              () => orderSort = v ?? 'newest',
-                                            );
-                                          },
-                                        ),
-                                        const SizedBox(height: 16),
-                                        StoreOrderDateFilter(
-                                          range: dateRange,
-                                          onChanged: (value) =>
-                                              setState(() => dateRange = value),
-                                        ),
-                                        StoreOrderPeriodFilter(
-                                          value: period,
-                                          onChanged: (value) =>
-                                              setState(() => period = value),
-                                        ),
-                                        StoreOrderExportButton(
-                                          widget.state,
-                                          shown: sorted.where(matches).toList(),
-                                          loadedCount: orders.length,
-                                          scope: 'Geladener administrativer Bestellausschnitt, höchstens 200',
-                                          save: widget.saveOrderReport,
-                                        ),
                                       ],
                                     ),
-                                  ),
-                                ],
+                                    DropdownButtonFormField<String>(
+                                      key: ValueKey('order-sort-$orderSort'),
+                                      initialValue: orderSort,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText:
+                                            'Geladene Bestellungen sortieren',
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 'newest',
+                                          child: Text('Neueste zuerst'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'oldest',
+                                          child: Text('Älteste zuerst'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'status',
+                                          child: Text(
+                                            'Status, dann neueste zuerst',
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'highest_amount',
+                                          child: Text(
+                                            'Höchster Bestellbetrag zuerst',
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'lowest_amount',
+                                          child: Text(
+                                            'Niedrigster Bestellbetrag zuerst',
+                                          ),
+                                        ),
+                                      ],
+                                      onChanged: (v) {
+                                        FocusManager.instance.primaryFocus
+                                            ?.unfocus();
+                                        setState(
+                                          () => orderSort = v ?? 'newest',
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    StoreOrderDateFilter(
+                                      range: dateRange,
+                                      onChanged: (value) =>
+                                          setState(() => dateRange = value),
+                                    ),
+                                    StoreOrderPeriodFilter(
+                                      value: period,
+                                      onChanged: (value) =>
+                                          setState(() => period = value),
+                                    ),
+                                    StoreOrderExportButton(
+                                      widget.state,
+                                      shown: sorted.where(matches).toList(),
+                                      loadedCount: orders.length,
+                                      scope: 'Geladener administrativer Bestellausschnitt, höchstens 200',
+                                      save: widget.saveOrderReport,
+                                    ),
+                                  ],
+                                ),
                               ),
                               if (viewSummary.isNotEmpty)
                                 Semantics(

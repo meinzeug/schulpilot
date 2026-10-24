@@ -19,6 +19,7 @@ import 'notebook_photo.dart';
 import 'study_path_panel.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'parent_child_navigation.dart';
 
 class SchoolDayScreen extends StatelessWidget {
@@ -158,6 +159,11 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (PageToolsHost.isMenuCovering(widget.state, ModalRoute.of(context))) {
+      schedule();
+      return;
+    }
+
     final wasVisible = routeVisible;
     routeVisible = ModalRoute.of(context)?.isCurrent ?? true;
     if (!wasVisible && active) unawaited(load());
@@ -194,9 +200,20 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     poll?.cancel();
     poll = null;
     if (!active || !waiting || working) return;
+    final host = ModalRoute.of(context), version = generation, id = day?['id'];
     poll = Timer(Duration(seconds: 3), () {
       poll = null;
-      if (active) unawaited(load());
+      if (!sameDay(version, id) ||
+          !foreground ||
+          !identical(host, ModalRoute.of(context)) ||
+          host?.isActive == false) {
+        return;
+      }
+      if (PageToolsHost.isMenuCovering(state, host)) {
+        schedule();
+      } else if (active && host?.isCurrent != false) {
+        unawaited(load());
+      }
     });
   }
 
@@ -1061,25 +1078,46 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     return PageFrame(
       state: state,
       title: 'Nach der Schule',
-      actions: [
-        PopupMenuButton<String>(
-          tooltip: 'Mehr',
-          onSelected: (action) {
-            if (action == 'history') {
-              openRoute(context, '/after-school/${widget.childId}/history');
-            } else {
-              unawaited(load());
-            }
-          },
-          itemBuilder: (_) => [
-            PopupMenuItem(value: 'history', child: Text('Frühere Tage')),
-            PopupMenuItem(value: 'refresh', child: Text('Neu laden')),
-          ],
-        ),
-      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          PageToolsGroup(
+            id: 'school-day-tools',
+            title: 'Schultagoptionen',
+            scope: (
+              ObjectKey(actorAccount),
+              family,
+              session,
+              widget.childId,
+              day?['id'],
+            ),
+            isCurrent: () => mounted && ownerMatches && foreground,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    if (active) {
+                      openRoute(
+                        context,
+                        '/after-school/${widget.childId}/history',
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.history_rounded),
+                  label: const Text('Frühere Tage'),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    if (active) unawaited(load());
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Neu laden'),
+                ),
+              ],
+            ),
+          ),
           if (day != null) ...[
             Text(
               'Schultag · ${schoolDate(day!['date'])}',
@@ -2277,22 +2315,46 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       state: state,
       title: 'Nach der Schule',
       subtitle: 'Heftseiten sammeln und für später vorbereiten.',
-      actions: [
-        OutlinedButton.icon(
-          onPressed: () =>
-              openRoute(context, '/after-school/${widget.childId}/history'),
-          icon: Icon(Icons.history),
-          label: Text('Tagespakete'),
-        ),
-        OutlinedButton.icon(
-          onPressed: () => unawaited(load()),
-          icon: Icon(Icons.refresh),
-          label: Text('Aktualisieren'),
-        ),
-      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          PageToolsGroup(
+            id: 'school-day-tools',
+            title: 'Schultagoptionen',
+            scope: (
+              ObjectKey(actorAccount),
+              family,
+              session,
+              widget.childId,
+              day?['id'],
+            ),
+            isCurrent: () => mounted && ownerMatches && foreground,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    if (active) {
+                      openRoute(
+                        context,
+                        '/after-school/${widget.childId}/history',
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.history_rounded),
+                  label: const Text('Tagespakete'),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    if (active) unawaited(load());
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Aktualisieren'),
+                ),
+              ],
+            ),
+          ),
           if (state.isParent)
             ParentChildNavigation(
               childId: widget.childId,

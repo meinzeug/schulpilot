@@ -6,6 +6,8 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/settings_screen.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'admin_operations_catalog_ux_test.dart' as ops;
 import 'admin_workspace_test.dart' as workspace;
 
@@ -180,7 +182,7 @@ void main() {
         return ops.reply(costs());
       });
       await ops.mount(t, AiCostPanel(s));
-      await ops.tap(t, find.text('Kostenstellen'));
+      await toggleParentDetails104(t, 'Kostenstellen');
       await ops.tap(t, find.text('Konto account-fixture'));
       expect(find.text('Kostenstelle account-fixture'), findsOneWidget);
       expect(find.text('Kostenstellenkennung'), findsOneWidget);

@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -93,10 +95,9 @@ Future<void> tap(WidgetTester tester, Finder f) async {
 }
 
 Future<void> showWordCards(WidgetTester tester) async {
-  final tools = find.byKey(const ValueKey('child-mobile-filter-toggle'));
-  await tap(tester, tools);
+  await page_tools.openPageTools(tester, 'vocabulary-tools');
   await tap(tester, find.widgetWithText(ChoiceChip, 'Wortkarten'));
-  await tap(tester, tools);
+  await page_tools.closePageTools(tester, 'vocabulary-tools');
 }
 
 Finder input(String label) => find.byWidgetPredicate(
@@ -138,10 +139,7 @@ void main() {
         return reply({});
       });
       await show(tester, mailbox(state, mailData()));
-      await tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await tester.enterText(input('Nachrichten durchsuchen'), 'BRÜCHE');
       await tester.pumpAndSettle();
       expect(find.text('Bitte Brüche weiter üben.'), findsOneWidget);
@@ -158,10 +156,7 @@ void main() {
     (tester) async {
       final state = account((_) async => reply({}));
       await show(tester, mailbox(state, mailData()));
-      await tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await tap(tester, find.byType(DropdownButtonFormField<String>).first);
       await tap(tester, find.text('Von meinen Eltern').last);
       expect(find.text('Bitte Brüche weiter üben.'), findsOneWidget);
@@ -173,7 +168,7 @@ void main() {
     tester,
   ) async {
     await show(tester, mailbox(account((_) async => reply({})), mailData()));
-    await tap(tester, find.byKey(const ValueKey('child-mobile-filter-toggle')));
+    await page_tools.togglePageTools(tester);
     await tap(tester, find.byType(DropdownButtonFormField<String>).last);
     await tap(tester, find.text('Älteste zuerst').last);
     expect(
@@ -296,7 +291,7 @@ void main() {
       words['items'][0]['word'] = 'pear';
       words['items'][0]['meaning'] = 'Birne';
       words['items'][0]['revision'] = 2;
-      await tap(tester, find.byTooltip('Weitere Wörteraktionen'));
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
       await tap(tester, find.text('Aktualisieren'));
       expect(find.text('pear'), findsNothing);
       expect(find.text('Birne'), findsOneWidget);
@@ -392,20 +387,14 @@ void main() {
         }),
       );
       await show(tester, HomeworkScreen(state, childId: 'child'));
-      await tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await tap(tester, find.text('Foto noch prüfen'));
       await tap(tester, find.text('Foto suchen'));
       await tester.enterText(input('In geladenen Fotos suchen'), 'Brü');
       await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox());
       await show(tester, HomeworkScreen(state, childId: 'child'));
-      await tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       expect(
         tester
             .widget<TextField>(input('In geladenen Fotos suchen'))

@@ -6,10 +6,10 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:intl/intl.dart';
 
 import 'api.dart';
-import 'child_section_ui.dart';
 import 'lesson_voice.dart';
 import 'learning_content.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'vocabulary_screen.dart';
 
 const workshopOwnWork = {
@@ -176,9 +176,43 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
     if (current) setState(() {});
   }
 
+  void pollProjectStatusAfterTools() {
+    poll?.cancel();
+    if (!current ||
+        !foreground ||
+        !routeVisible ||
+        !['queued', 'running'].contains(project?['status'])) {
+      return;
+    }
+    final host = ModalRoute.of(context), request = generation;
+    final token = widget.state.api.token, snapshot = jsonEncode(project);
+    poll = Timer(const Duration(seconds: 3), () {
+      if (!current ||
+          !foreground ||
+          !routeVisible ||
+          request != generation ||
+          token != widget.state.api.token ||
+          snapshot != jsonEncode(project) ||
+          !identical(host, ModalRoute.of(context)) ||
+          host?.isActive == false) {
+        return;
+      }
+      if (PageToolsHost.isMenuCovering(widget.state, host)) {
+        pollProjectStatusAfterTools();
+      } else if (host?.isCurrent != false) {
+        load();
+      }
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (PageToolsHost.isMenuCovering(widget.state, ModalRoute.of(context))) {
+      pollProjectStatusAfterTools();
+      return;
+    }
+
     final wasVisible = routeVisible;
     routeVisible = ModalRoute.of(context)?.isCurrent ?? true;
     if (!routeVisible) poll?.cancel();
@@ -617,18 +651,6 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
     title: 'Sprachwerkstatt',
-    actions: [
-      TextButton.icon(
-        onPressed: () => openRoute(context, '/vocabulary/${widget.childId}'),
-        icon: Icon(Icons.translate_rounded),
-        label: Text('Meine Wörter'),
-      ),
-      IconButton(
-        tooltip: 'Aktualisieren',
-        onPressed: busy || loading ? null : load,
-        icon: Icon(Icons.refresh_rounded),
-      ),
-    ],
     child: !current
         ? SizedBox.shrink()
         : Column(
@@ -638,9 +660,46 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
               if (loading || busy) LinearProgressIndicator(),
               if (selectionNotice != null)
                 Notice(selectionNotice!, warning: true),
-              if (project != null)
-                projectView(project!)
-              else if (widget.projectId == null) ...[
+              if (project != null) ...[
+                PageToolsGroup(
+                  id: 'workshop-detail-tools',
+                  title: 'Sprachprojektoptionen',
+                  scope: (
+                    ObjectKey(owner),
+                    family,
+                    widget.state.api.token,
+                    widget.childId,
+                    widget.projectId,
+                  ),
+                  isCurrent: () => current && foreground,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TextButton.icon(
+                        onPressed: busy || loading
+                            ? null
+                            : () {
+                                if (current) {
+                                  openRoute(
+                                    context,
+                                    '/vocabulary/${widget.childId}',
+                                  );
+                                }
+                              },
+                        icon: const Icon(Icons.translate_rounded),
+                        label: const Text('Meine Wörter'),
+                      ),
+                      TextButton.icon(
+                        onPressed: busy || loading ? null : load,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Projekte aktualisieren'),
+                      ),
+                    ],
+                  ),
+                ),
+                projectView(project!),
+              ] else if (widget.projectId == null) ...[
                 if (widget.state.isChild)
                   ExpansionTile(
                     key: const ValueKey('language-new-project'),
@@ -1095,14 +1154,21 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                   ),
                 SizedBox(height: 16),
                 heading('Deine gespeicherten Lernprojekte'),
-                if (projects.isNotEmpty ||
-                    projectSearch.text.isNotEmpty ||
-                    projectFilter != 'all' ||
-                    projectDays != null ||
-                    sourceProjectsOnly) ...[
-                  ChildFilterTools(
+                ...[
+                  PageToolsGroup(
+                    id: 'workshop-project-tools',
+                    title: 'Projekte suchen & ordnen',
+                    scope: (
+                      ObjectKey(owner),
+                      family,
+                      widget.state.api.token,
+                      widget.childId,
+                      widget.materialId,
+                      widget.projectId,
+                    ),
+                    isCurrent: () => current,
                     summary: '${projects.length} geladene Projekte',
-                    filtered:
+                    active:
                         projectSearch.text.trim().isNotEmpty ||
                         projectFilter != 'all' ||
                         projectDays != null ||
@@ -1111,6 +1177,32 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            TextButton.icon(
+                              onPressed: busy || loading
+                                  ? null
+                                  : () {
+                                      if (current) {
+                                        openRoute(
+                                          context,
+                                          '/vocabulary/${widget.childId}',
+                                        );
+                                      }
+                                    },
+                              icon: const Icon(Icons.translate_rounded),
+                              label: const Text('Meine Wörter'),
+                            ),
+                            TextButton.icon(
+                              onPressed: busy || loading ? null : load,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Projekte aktualisieren'),
+                            ),
+                          ],
+                        ),
+
                         TextField(
                           controller: projectSearch,
                           textInputAction: TextInputAction.search,
@@ -1234,6 +1326,42 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                       ),
                     ),
                 ],
+                if (projectSearch.text.trim().isNotEmpty ||
+                    projectFilter != 'all' ||
+                    projectDays != null ||
+                    sourceProjectsOnly ||
+                    projectSort != 'newest')
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (projectSearch.text.trim().isNotEmpty)
+                        Chip(
+                          label: Text('Suche: ${projectSearch.text.trim()}'),
+                        ),
+                      if (projectFilter != 'all')
+                        Chip(
+                          label: Text(switch (projectFilter) {
+                            'ready' => 'Bereit zum Üben',
+                            'pending' => 'Wird vorbereitet',
+                            'failed' => 'Vorbereitung fehlgeschlagen',
+                            _ => 'Projektfilter aktiv',
+                          }),
+                        ),
+                      if (projectDays != null)
+                        Chip(label: Text('Letzte $projectDays Tage')),
+                      if (sourceProjectsOnly)
+                        const Chip(label: Text('Nur Projekte mit Heftquellen')),
+                      if (projectSort != 'newest')
+                        Chip(
+                          label: Text(
+                            projectSort == 'oldest'
+                                ? 'Älteste zuerst'
+                                : 'Nach Lernziel A–Z',
+                          ),
+                        ),
+                    ],
+                  ),
                 if (projects.isEmpty && !loading)
                   Text(
                     'Hier findest du später deine vorbereiteten Projekte und eigenen Entwürfe.',

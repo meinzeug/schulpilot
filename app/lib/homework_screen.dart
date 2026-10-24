@@ -19,6 +19,7 @@ import 'notebook_photo.dart';
 import 'lesson_voice.dart';
 import 'parent_child_navigation.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'collection_view_tools.dart';
 
 String homeworkKey() =>
@@ -523,11 +524,6 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         if (widget.state.isChild) ...[
           ChildSectionHero(
             eyebrow: 'Hausaufgaben',
-            compactAction: IconButton(
-              tooltip: 'Aktualisieren',
-              onPressed: loading || photoBusy ? null : load,
-              icon: Icon(Icons.refresh_rounded),
-            ),
             title: 'Was hast du heute auf?',
             description: 'Buch, Arbeitsblatt oder Hefter: Fotografiere die Aufgabe. Dann schauen wir gemeinsam, was zu tun ist.',
             icon: Icons.edit_note_rounded,
@@ -646,13 +642,23 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
           heading('Deine Aufgabenfotos'),
           SizedBox(height: 12),
         ],
-        if (widget.state.isChild && photos.isNotEmpty) ...[
-          ChildFilterTools(
+        if (widget.state.isChild) ...[
+          PageToolsGroup(
+            id: 'homework-photo-tools',
+            title: 'Aufgabenfotos suchen & ordnen',
+            scope: (ObjectKey(actor), actorFamily, actorToken, widget.childId),
+            isCurrent: () => mounted && own,
             summary: '${photos.length} geladene Fotos',
-            filtered: listFiltered,
+            active: listFiltered,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                TextButton.icon(
+                  onPressed: loading || photoBusy ? null : load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Aufgabenfotos aktualisieren'),
+                ),
+
                 Wrap(
                   spacing: 10,
                   runSpacing: 8,
@@ -771,6 +777,31 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
               ],
             ),
           ),
+          if (listFiltered || photoOrder != 'newest')
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (photoSearch.text.trim().isNotEmpty)
+                  Chip(label: Text('Suche: ${photoSearch.text.trim()}')),
+                if (photoFilter != 'all')
+                  Chip(
+                    label: Text(switch (photoFilter) {
+                      'review' => 'Foto noch prüfen',
+                      'ready' => 'Text geprüft',
+                      _ => 'Mit Häkchen',
+                    }),
+                  ),
+                if (photoOrder != 'newest')
+                  const Chip(label: Text('Älteste zuerst')),
+                if (photoDates != null)
+                  Chip(
+                    label: Text(
+                      '${DateFormat('dd.MM.yyyy').format(photoDates!.start)} bis ${DateFormat('dd.MM.yyyy').format(photoDates!.end)}',
+                    ),
+                  ),
+              ],
+            ),
           if (startCursor != null)
             TextButton.icon(
               onPressed: loading

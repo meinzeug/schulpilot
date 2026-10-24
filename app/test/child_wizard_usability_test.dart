@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -344,8 +346,7 @@ void main() {
       expect(find.text('Etappe öffnen'), findsOneWidget);
       expect(pathReads, 1);
       expect(posts, isEmpty);
-      await tester.tap(find.byTooltip('Mehr'));
-      await tester.pumpAndSettle();
+      await page_tools.openPageTools(tester, 'school-day-tools');
       await tester.tap(find.text('Neu laden'));
       await tester.pumpAndSettle();
       expect(posts, isEmpty);

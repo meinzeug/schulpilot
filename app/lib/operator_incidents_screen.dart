@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 
 /// Technical metadata only. No child/family context is requested or displayed.
 class OperatorIncidentsScreen extends StatefulWidget {
@@ -16,13 +17,6 @@ class OperatorIncidentsScreen extends StatefulWidget {
 }
 
 class _OperatorIncidentsScreenState extends State<OperatorIncidentsScreen> {
-  bool? filtersExpanded;
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    filtersExpanded ??= MediaQuery.sizeOf(context).width >= 720;
-  }
-
   final search = TextEditingController();
   late final Json? owner;
   Json? listing, detail, catalog;
@@ -496,120 +490,139 @@ class _OperatorIncidentsScreenState extends State<OperatorIncidentsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ExpansionTile(
+                if (query.isNotEmpty || kind.isNotEmpty || code.isNotEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        [
+                          if (query.isNotEmpty) 'Suche: $query',
+                          if (kind.isNotEmpty) 'Auftragsart: $kind',
+                          if (code.isNotEmpty) 'Fehlercode: $code',
+                        ].join(' · '),
+                      ),
+                      TextButton.icon(
+                        onPressed: loading || acting
+                            ? null
+                            : () {
+                                if (!current) return;
+                                search.clear();
+                                query = kind = code = '';
+                                load(targetPage: 1);
+                              },
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Alle Fehlerfilter zurücksetzen'),
+                      ),
+                    ],
+                  ),
+                PageToolsGroup(
                   key: const ValueKey('operator-incident-filters'),
-                  title: const Text('Suche & Fehlerfilter'),
-                  subtitle: query.isEmpty && kind.isEmpty && code.isEmpty
-                      ? null
-                      : Text(
-                          [
-                            if (query.isNotEmpty) 'Suche: $query',
-                            if (kind.isNotEmpty) 'Auftragsart: $kind',
-                            if (code.isNotEmpty) 'Fehlercode: $code',
-                          ].join(' · '),
+                  id: 'operator-incident-filters',
+                  title: 'Suche & Fehlerfilter',
+                  scope: (
+                    'incident-filters',
+                    ObjectKey(owner),
+                    widget.state.api.token,
+                    selected,
+                  ),
+                  isCurrent: () => current && selected == null,
+                  active:
+                      query.isNotEmpty || kind.isNotEmpty || code.isNotEmpty,
+                  summary: [
+                    if (query.isNotEmpty) 'Suche: $query',
+                    if (kind.isNotEmpty) 'Auftragsart: $kind',
+                    if (code.isNotEmpty) 'Fehlercode: $code',
+                  ].join(' · '),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: search,
+                        decoration: const InputDecoration(
+                          labelText: 'Technischen Code oder Funktion suchen',
                         ),
-                  tilePadding: EdgeInsets.zero,
-                  initiallyExpanded: (filtersExpanded ?? false),
-                  maintainState: true,
-                  onExpansionChanged: (value) {
-                    if (current) setState(() => filtersExpanded = value);
-                  },
-                  children: [
-                    ExcludeFocus(
-                      excluding: !(filtersExpanded ?? false),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        onSubmitted: loading || acting
+                            ? null
+                            : (_) {
+                                query = search.text.trim();
+                                load(targetPage: 1);
+                              },
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
-                          TextField(
-                            controller: search,
-                            decoration: const InputDecoration(
-                              labelText:
-                                  'Technischen Code oder Funktion suchen',
+                          SizedBox(
+                            width: 260,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: kind,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Auftragsart',
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: '',
+                                  child: Text('Alle Auftragsarten'),
+                                ),
+                                for (final value
+                                    in listing?['kinds'] as List? ?? [])
+                                  DropdownMenuItem(
+                                    value: '$value',
+                                    child: Text('$value'),
+                                  ),
+                              ],
+                              onChanged: loading || acting
+                                  ? null
+                                  : (v) {
+                                      kind = v ?? '';
+                                      load(targetPage: 1);
+                                    },
                             ),
-                            onSubmitted: loading || acting
-                                ? null
-                                : (_) {
-                                    query = search.text.trim();
-                                    load(targetPage: 1);
-                                  },
                           ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              SizedBox(
-                                width: 260,
-                                child: DropdownButtonFormField<String>(
-                                  initialValue: kind,
-                                  isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Auftragsart',
-                                  ),
-                                  items: [
-                                    const DropdownMenuItem(
-                                      value: '',
-                                      child: Text('Alle Auftragsarten'),
-                                    ),
-                                    for (final value
-                                        in listing?['kinds'] as List? ?? [])
-                                      DropdownMenuItem(
-                                        value: '$value',
-                                        child: Text('$value'),
-                                      ),
-                                  ],
-                                  onChanged: loading || acting
-                                      ? null
-                                      : (v) {
-                                          kind = v ?? '';
-                                          load(targetPage: 1);
-                                        },
+                          SizedBox(
+                            width: 260,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: code,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Fehlercode',
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: '',
+                                  child: Text('Alle Fehlercodes'),
                                 ),
-                              ),
-                              SizedBox(
-                                width: 260,
-                                child: DropdownButtonFormField<String>(
-                                  initialValue: code,
-                                  isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Fehlercode',
+                                for (final value
+                                    in listing?['codes'] as List? ?? [])
+                                  DropdownMenuItem(
+                                    value: '$value',
+                                    child: Text('$value'),
                                   ),
-                                  items: [
-                                    const DropdownMenuItem(
-                                      value: '',
-                                      child: Text('Alle Fehlercodes'),
-                                    ),
-                                    for (final value
-                                        in listing?['codes'] as List? ?? [])
-                                      DropdownMenuItem(
-                                        value: '$value',
-                                        child: Text('$value'),
-                                      ),
-                                  ],
-                                  onChanged: loading || acting
-                                      ? null
-                                      : (v) {
-                                          code = v ?? '';
-                                          load(targetPage: 1);
-                                        },
-                                ),
-                              ),
-                              ActionButton(
-                                label: 'Suchen',
-                                enabled: !loading && !acting,
-                                icon: Icons.search,
-                                onPressed: () async {
-                                  query = search.text.trim();
-                                  await load(targetPage: 1);
-                                },
-                              ),
-                            ],
+                              ],
+                              onChanged: loading || acting
+                                  ? null
+                                  : (v) {
+                                      code = v ?? '';
+                                      load(targetPage: 1);
+                                    },
+                            ),
                           ),
-                          const SizedBox(height: 12),
+                          ActionButton(
+                            label: 'Suchen',
+                            enabled: !loading && !acting,
+                            icon: Icons.search,
+                            onPressed: () async {
+                              query = search.text.trim();
+                              await load(targetPage: 1);
+                            },
+                          ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
                 if (loading) const LinearProgressIndicator(),
                 if (listing != null)

@@ -19,7 +19,7 @@ void main() {
     'KK006 photo and summary share the list page action; management remains separate',
     (tester) async {
       final (_, _, requests) = await fixture.open(tester);
-      await tap(tester, find.text('Liste'));
+      await fixture.chooseNotebookView(tester, 'Liste');
       final photo = find.byType(NotebookPhoto).first;
       await tap(tester, photo);
       expect(find.text('1 von 47'), findsWidgets);
@@ -32,7 +32,7 @@ void main() {
     tester,
   ) async {
     await fixture.open(tester, width: 320, textScale: 2, photos: false);
-    await tap(tester, find.text('Kacheln'));
+    await fixture.chooseNotebookView(tester, 'Kacheln');
     final grid = tester.widget<GridView>(find.byType(GridView));
     final delegate =
         grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
@@ -44,11 +44,24 @@ void main() {
     'KK008 search collapse retains query, explicit clear removes only query',
     (tester) async {
       final (state, _, requests) = await fixture.open(tester, photos: false);
-      await tap(tester, find.byTooltip('Im Hefter suchen'));
+      final before = requests.length;
+      await fixture.openNotebookSearch(tester);
       await tester.enterText(label('In diesem Hefter suchen'), 'Brüche');
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.pumpAndSettle();
-      await tap(tester, find.byTooltip('Suchfeld einklappen'));
+      expect(requests.length, before);
+      await tap(tester, find.text('Suchen'));
+      expect(label('In diesem Hefter suchen'), findsNothing);
+      final afterSearch = requests.length;
+      await tap(tester, find.text('Suche: Brüche'));
+      expect(
+        tester
+            .widget<TextField>(label('In diesem Hefter suchen'))
+            .controller!
+            .text,
+        'Brüche',
+      );
+      await tap(tester, find.text('Abbrechen'));
+      expect(requests.length, afterSearch);
       expect(find.text('Suche: Brüche'), findsOneWidget);
       expect(
         state.collectionViews['notebook:child:${fixture.mathId}']?['q'],
@@ -67,7 +80,7 @@ void main() {
     tester,
   ) async {
     final (_, _, requests) = await fixture.open(tester, photos: false);
-    await tap(tester, find.byTooltip('Filter'));
+    await fixture.openNotebookFilters(tester);
     await tap(tester, find.byType(DropdownButtonFormField<String>).last);
     await tap(tester, find.text('Noch prüfen').last);
     await tap(tester, find.text('Anzeigen'));
@@ -126,23 +139,23 @@ void main() {
     tester,
   ) async {
     await fixture.open(tester, photos: false);
-    await tap(tester, find.byTooltip('Im Hefter suchen'));
+    await fixture.openNotebookSearch(tester);
     await tester.enterText(label('In diesem Hefter suchen'), 'M');
     expect(label('In diesem Hefter suchen'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
+    await tap(tester, find.text('Abbrechen'));
   });
   for (final dialog in ['Filter', '1 von 47']) {
     testWidgets(
       'KK012 fresh same-ID session removes old notebook $dialog dialog and ignores saved callback',
       (tester) async {
         final (state, _, requests) = await fixture.open(tester, photos: false);
-        await tap(
-          tester,
-          dialog == 'Filter'
-              ? find.byTooltip('Filter')
-              : find.text(dialog).first,
-        );
+        if (dialog == 'Filter') {
+          await fixture.openNotebookFilters(tester);
+        } else {
+          await tap(tester, find.text(dialog).first);
+        }
         final callback = tester
             .widget<FilledButton>(
               find.widgetWithText(
@@ -195,7 +208,7 @@ void main() {
         photos: false,
       );
       final before = requests.length;
-      await tap(tester, find.byTooltip('Filter'));
+      await fixture.openNotebookFilters(tester);
       tester.view.viewInsets = FakeViewPadding(bottom: 300);
       await tester.pumpAndSettle();
       await tap(tester, find.text('Abbrechen'));
@@ -235,7 +248,7 @@ void main() {
           return fixture.jsonReply(fixture.pages(r, photos: false));
         },
       );
-      await tap(tester, find.byTooltip('Im Hefter suchen'));
+      await fixture.openNotebookSearch(tester);
       await tester.enterText(label('In diesem Hefter suchen'), 'kein Treffer');
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
@@ -340,17 +353,28 @@ void main() {
             : pending.future;
       },
     );
-    await tester.ensureVisible(find.byTooltip('Seiten aktualisieren'));
-    await tester.tap(find.byTooltip('Seiten aktualisieren'));
-    await tester.pump();
-    expect(
-      tester
-          .widget<IconButton>(
-            find.widgetWithIcon(IconButton, Icons.refresh_rounded),
-          )
-          .onPressed,
-      isNull,
+    await fixture.openNotebookOptions(tester);
+    final oldRefresh = tester
+        .widget<ListTile>(fixture.notebookOption('Seiten aktualisieren'))
+        .onTap!;
+    await fixture.tap(
+      tester,
+      fixture.notebookOption('Seiten aktualisieren'),
+      settle: false,
     );
+    // The command starts after the owned menu's reverse transition completes.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(count, 2);
+    await fixture.openNotebookOptions(tester, settle: false);
+    final refresh = tester.widget<ListTile>(
+      fixture.notebookOption('Seiten aktualisieren'),
+    );
+    expect(refresh.enabled, isFalse);
+    expect(refresh.onTap, isNull);
+    oldRefresh();
+    await tester.pump();
+    expect(count, 2);
     pending.complete(
       fixture.jsonReply({'items': [], 'total': 0, 'page': 1, 'pages': 1}),
     );

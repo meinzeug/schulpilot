@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
-import 'parent_view_details.dart';
+import 'page_tools.dart';
 
 Future<void> showAdminAuditExplorer(
   BuildContext context,
@@ -251,281 +251,304 @@ class _AdminAuditExplorerState extends State<AdminAuditExplorer> {
       ? const SizedBox.shrink()
       : PopScope(
           canPop: !exporting,
-          child: Dialog(
-            insetPadding: const EdgeInsets.all(12),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Gesamtes Betriebsprotokoll',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Schließen',
-                          onPressed: exporting
-                              ? null
-                              : () {
-                                  if (context.mounted &&
-                                      current &&
-                                      ModalRoute.of(context)?.isCurrent ==
-                                          true) {
-                                    Navigator.pop(context);
-                                  }
-                                },
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: ListView(
+          child: PageToolsHost(
+            state: widget.state,
+            child: Dialog(
+              insetPadding: const EdgeInsets.all(12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 900,
+                  maxHeight: 900,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
                         children: [
-                          const Notice(
-                            'Ausschließlich berechtigte Betriebsmetadaten. Filtern oder Öffnen führt keine frühere Aktion erneut aus und zeigt keine privaten Lerninhalte.',
+                          const Expanded(
+                            child: Text(
+                              'Gesamtes Betriebsprotokoll',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
-                          ParentViewDetails(
-                            title: 'Protokoll suchen & eingrenzen',
-                            subtitle:
-                                query.isNotEmpty ||
-                                    actor.isNotEmpty ||
-                                    action.isNotEmpty ||
-                                    start != null ||
-                                    end != null
-                                ? 'Filter aktiv · betrifft den vollständigen berechtigten Zeitbereich'
-                                : 'Suche, Akteur, Aktion und UTC-Zeitraum',
-                            scope: ('audit-filters', ObjectKey(account)),
-                            isCurrent: () => current,
-                            children: [
-                              ParentCollectionSearch(
-                                controller: search,
-                                label: 'Gesamtes Protokoll durchsuchen',
-                                appliedQuery: query,
-                                enabled: !loading && !exporting,
-                                helperText: 'Sucht nach Aktionscode, Ziel- oder Akteurkennung, auch außerhalb der200er-Vorschau.',
-                                onSearch: () =>
-                                    filter(() => query = search.text.trim()),
-                                onClear: () => filter(() {
-                                  query = '';
-                                  search.clear();
-                                }),
-                              ),
-                              ExpansionTile(
-                                title: const Text(
-                                  'Akteur, Aktion und UTC-Zeitraum eingrenzen',
-                                ),
-                                children: [
-                                  ParentChoiceFilter(
-                                    label: 'Exakter Aktionscode',
-                                    value: action,
-                                    enabled: !loading && !exporting,
-                                    choices: [
-                                      ('', 'Alle Aktionen'),
-                                      for (final code in actions) (code, code),
-                                    ],
-                                    onChanged: (v) => filter(() => action = v),
-                                  ),
-                                  ParentChoiceFilter(
-                                    label: 'Exakte Akteurkennung',
-                                    value: actor,
-                                    enabled: !loading && !exporting,
-                                    choices: [
-                                      ('', 'Alle Akteure'),
-                                      for (final code in actors) (code, code),
-                                    ],
-                                    onChanged: (v) => filter(() => actor = v),
-                                  ),
-                                  if (optionsTruncated)
-                                    const Text(
-                                      'Die Auswahl zeigt höchstens200 unterschiedliche Kennungen. Weitere Kennungen findest du über die Suche.',
-                                    ),
-                                  const Text(
-                                    'Die folgenden Kalendertage gelten in UTC, damit sie mit Serverprotokollen übereinstimmen.',
-                                  ),
-                                  ParentDateRange(
-                                    start: start,
-                                    end: end,
-                                    enabled: !loading && !exporting,
-                                    onApply: (from, to) => filter(() {
-                                      start = from;
-                                      end = to;
-                                    }),
-                                  ),
-                                ],
-                              ),
-                              ParentChoiceFilter(
-                                label: 'Zeitliche Reihenfolge',
-                                value: order,
-                                enabled: !loading && !exporting,
-                                choices: const [
-                                  ('newest', 'Neueste Ereignisse zuerst'),
-                                  ('oldest', 'Älteste Ereignisse zuerst'),
-                                ],
-                                onChanged: (v) => filter(() => order = v),
-                              ),
-                            ],
+                          const PageToolsButton(),
+                          IconButton(
+                            tooltip: 'Schließen',
+                            onPressed: exporting
+                                ? null
+                                : () {
+                                    if (context.mounted &&
+                                        current &&
+                                        ModalRoute.of(context)?.isCurrent ==
+                                            true) {
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                            icon: const Icon(Icons.close),
                           ),
-                          if (query.isNotEmpty ||
-                              actor.isNotEmpty ||
-                              action.isNotEmpty ||
-                              start != null ||
-                              end != null)
-                            TextButton.icon(
-                              onPressed: loading || exporting
-                                  ? null
-                                  : () => filter(() {
-                                      query = actor = action = '';
-                                      start = end = null;
-                                      search.clear();
-                                    }),
-                              icon: const Icon(Icons.filter_alt_off),
-                              label: const Text(
-                                'Serverseitige Protokollfilter zurücksetzen',
-                              ),
-                            ),
-                          if (actionCounts.isNotEmpty)
-                            ExpansionTile(
-                              title: const Text(
-                                'Aktionen in diesem Zeitbereich',
-                              ),
-                              subtitle: Text(
-                                countsTruncated
-                                    ? 'Die20 häufigsten Aktionscodes der Auswahl'
-                                    : 'Tatsächliche Ereigniszahlen je Aktionscode',
-                              ),
-                              children: [
-                                for (final row in actionCounts)
-                                  ListTile(
-                                    title: Text(row['action']),
-                                    subtitle: Text(
-                                      '${row['count']} Ereignisse',
-                                    ),
-                                    trailing: const Icon(
-                                      Icons.filter_alt_outlined,
-                                    ),
-                                    onTap: loading || exporting
-                                        ? null
-                                        : () => filter(
-                                            () => action = row['action'],
-                                          ),
-                                  ),
-                              ],
-                            ),
-                          if (snapshot != null)
-                            Text(
-                              'Fester Zeitbereich bis ${date(snapshot)} UTC. Neue Ereignisse erst durch bewusstes Aktualisieren hinzufügen.',
-                            ),
-                          if (total != null)
-                            Semantics(
-                              liveRegion: true,
-                              child: Text(
-                                '${rows.length} von $total passenden Ereignissen geladen',
-                              ),
-                            ),
-                          if (loading) const LinearProgressIndicator(),
-                          if (error != null) ...[
-                            Semantics(
-                              liveRegion: true,
-                              child: Notice(error!, warning: true),
-                            ),
-                            TextButton(
-                              onPressed: loading || exporting
-                                  ? null
-                                  : () => load(more: retryMore),
-                              child: Text(
-                                retryMore
-                                    ? 'Ältere Ereignisse erneut laden'
-                                    : 'Protokoll erneut laden',
-                              ),
-                            ),
-                          ],
-                          if (!loading && error == null && rows.isEmpty)
-                            const Notice(
-                              'Keine Betriebsereignisse passen zu dieser Auswahl.',
-                            ),
-                          for (final event in rows)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: ActionPanel(
-                                actionLabel:
-                                    'Dieses gespeicherte Ereignis ansehen',
-                                enabled: !loading && !exporting,
-                                onPressed: () {
-                                  if (current &&
-                                      ModalRoute.of(context)?.isCurrent ==
-                                          true) {
-                                    Navigator.pop(context, event);
-                                  }
-                                },
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      event['action'],
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    Text('${date(event['created'])} UTC'),
-                                    Text('Akteur: ${event['actor']}'),
-                                    Text('Ziel: ${event['target']}'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          if (rows.length >= 1000 && cursor != null)
-                            const Notice(
-                              '1.000 Ereignisse sind geladen. Grenze die Suche oder den Zeitraum ein, um weiter gezielt zu prüfen.',
-                            ),
-                          if (cursor != null && rows.length < 1000)
-                            OutlinedButton.icon(
-                              onPressed: loading || exporting
-                                  ? null
-                                  : () => load(more: true),
-                              icon: const Icon(Icons.expand_more),
-                              label: const Text('Weitere Ereignisse laden'),
-                            ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: loading || exporting ? null : () => load(),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Neuen Zeitstand laden'),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: ListView(
+                          children: [
+                            const Notice(
+                              'Ausschließlich berechtigte Betriebsmetadaten. Filtern oder Öffnen führt keine frühere Aktion erneut aus und zeigt keine privaten Lerninhalte.',
+                            ),
+                            PageToolsGroup(
+                              id: 'admin-audit-explorer-filters',
+                              title: 'Protokoll suchen & eingrenzen',
+                              scope: (
+                                'audit-filters',
+                                ObjectKey(account),
+                                widget.state.api.token,
+                              ),
+                              isCurrent: () => current,
+                              active:
+                                  query.isNotEmpty ||
+                                  actor.isNotEmpty ||
+                                  action.isNotEmpty ||
+                                  start != null ||
+                                  end != null ||
+                                  order != 'newest',
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ParentCollectionSearch(
+                                    controller: search,
+                                    label: 'Gesamtes Protokoll durchsuchen',
+                                    appliedQuery: query,
+                                    enabled: !loading && !exporting,
+                                    helperText: 'Sucht nach Aktionscode, Ziel- oder Akteurkennung, auch außerhalb der200er-Vorschau.',
+                                    onSearch: () => filter(
+                                      () => query = search.text.trim(),
+                                    ),
+                                    onClear: () => filter(() {
+                                      query = '';
+                                      search.clear();
+                                    }),
+                                  ),
+                                  ExpansionTile(
+                                    title: const Text(
+                                      'Akteur, Aktion und UTC-Zeitraum eingrenzen',
+                                    ),
+                                    children: [
+                                      ParentChoiceFilter(
+                                        label: 'Exakter Aktionscode',
+                                        value: action,
+                                        enabled: !loading && !exporting,
+                                        choices: [
+                                          ('', 'Alle Aktionen'),
+                                          for (final code in actions)
+                                            (code, code),
+                                        ],
+                                        onChanged: (v) =>
+                                            filter(() => action = v),
+                                      ),
+                                      ParentChoiceFilter(
+                                        label: 'Exakte Akteurkennung',
+                                        value: actor,
+                                        enabled: !loading && !exporting,
+                                        choices: [
+                                          ('', 'Alle Akteure'),
+                                          for (final code in actors)
+                                            (code, code),
+                                        ],
+                                        onChanged: (v) =>
+                                            filter(() => actor = v),
+                                      ),
+                                      if (optionsTruncated)
+                                        const Text(
+                                          'Die Auswahl zeigt höchstens200 unterschiedliche Kennungen. Weitere Kennungen findest du über die Suche.',
+                                        ),
+                                      const Text(
+                                        'Die folgenden Kalendertage gelten in UTC, damit sie mit Serverprotokollen übereinstimmen.',
+                                      ),
+                                      ParentDateRange(
+                                        start: start,
+                                        end: end,
+                                        enabled: !loading && !exporting,
+                                        onApply: (from, to) => filter(() {
+                                          start = from;
+                                          end = to;
+                                        }),
+                                      ),
+                                    ],
+                                  ),
+                                  ParentChoiceFilter(
+                                    label: 'Zeitliche Reihenfolge',
+                                    value: order,
+                                    enabled: !loading && !exporting,
+                                    choices: const [
+                                      ('newest', 'Neueste Ereignisse zuerst'),
+                                      ('oldest', 'Älteste Ereignisse zuerst'),
+                                    ],
+                                    onChanged: (v) => filter(() => order = v),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (query.isNotEmpty ||
+                                actor.isNotEmpty ||
+                                action.isNotEmpty ||
+                                start != null ||
+                                end != null)
+                              TextButton.icon(
+                                onPressed: loading || exporting
+                                    ? null
+                                    : () => filter(() {
+                                        query = actor = action = '';
+                                        start = end = null;
+                                        search.clear();
+                                      }),
+                                icon: const Icon(Icons.filter_alt_off),
+                                label: const Text(
+                                  'Serverseitige Protokollfilter zurücksetzen',
+                                ),
+                              ),
+                            if (actionCounts.isNotEmpty)
+                              ExpansionTile(
+                                title: const Text(
+                                  'Aktionen in diesem Zeitbereich',
+                                ),
+                                subtitle: Text(
+                                  countsTruncated
+                                      ? 'Die20 häufigsten Aktionscodes der Auswahl'
+                                      : 'Tatsächliche Ereigniszahlen je Aktionscode',
+                                ),
+                                children: [
+                                  for (final row in actionCounts)
+                                    ListTile(
+                                      title: Text(row['action']),
+                                      subtitle: Text(
+                                        '${row['count']} Ereignisse',
+                                      ),
+                                      trailing: const Icon(
+                                        Icons.filter_alt_outlined,
+                                      ),
+                                      onTap: loading || exporting
+                                          ? null
+                                          : () => filter(
+                                              () => action = row['action'],
+                                            ),
+                                    ),
+                                ],
+                              ),
+                            if (snapshot != null)
+                              Text(
+                                'Fester Zeitbereich bis ${date(snapshot)} UTC. Neue Ereignisse erst durch bewusstes Aktualisieren hinzufügen.',
+                              ),
+                            if (total != null)
+                              Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  '${rows.length} von $total passenden Ereignissen geladen',
+                                ),
+                              ),
+                            if (loading) const LinearProgressIndicator(),
+                            if (error != null) ...[
+                              Semantics(
+                                liveRegion: true,
+                                child: Notice(error!, warning: true),
+                              ),
+                              TextButton(
+                                onPressed: loading || exporting
+                                    ? null
+                                    : () => load(more: retryMore),
+                                child: Text(
+                                  retryMore
+                                      ? 'Ältere Ereignisse erneut laden'
+                                      : 'Protokoll erneut laden',
+                                ),
+                              ),
+                            ],
+                            if (!loading && error == null && rows.isEmpty)
+                              const Notice(
+                                'Keine Betriebsereignisse passen zu dieser Auswahl.',
+                              ),
+                            for (final event in rows)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: ActionPanel(
+                                  actionLabel:
+                                      'Dieses gespeicherte Ereignis ansehen',
+                                  enabled: !loading && !exporting,
+                                  onPressed: () {
+                                    if (current &&
+                                        ModalRoute.of(context)?.isCurrent ==
+                                            true) {
+                                      Navigator.pop(context, event);
+                                    }
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        event['action'],
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      Text('${date(event['created'])} UTC'),
+                                      Text('Akteur: ${event['actor']}'),
+                                      Text('Ziel: ${event['target']}'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            if (rows.length >= 1000 && cursor != null)
+                              const Notice(
+                                '1.000 Ereignisse sind geladen. Grenze die Suche oder den Zeitraum ein, um weiter gezielt zu prüfen.',
+                              ),
+                            if (cursor != null && rows.length < 1000)
+                              OutlinedButton.icon(
+                                onPressed: loading || exporting
+                                    ? null
+                                    : () => load(more: true),
+                                icon: const Icon(Icons.expand_more),
+                                label: const Text('Weitere Ereignisse laden'),
+                              ),
+                          ],
                         ),
-                        FilledButton.icon(
-                          onPressed: loading || exporting || rows.isEmpty
-                              ? null
-                              : export,
-                          icon: const Icon(Icons.download_outlined),
-                          label: Text(
-                            exporting
-                                ? 'Wird gespeichert …'
-                                : 'Nur geladene Auswahl als CSV',
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: loading || exporting
+                                ? null
+                                : () => load(),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Neuen Zeitstand laden'),
                           ),
-                        ),
-                      ],
-                    ),
-                    const Text(
-                      'Die CSV umfasst ausschließlich die tatsächlich geladenen Ereignisse, höchstens1.000, mit internen Kennungen. Kein kompletter Datenexport.',
-                    ),
-                  ],
+                          FilledButton.icon(
+                            onPressed: loading || exporting || rows.isEmpty
+                                ? null
+                                : export,
+                            icon: const Icon(Icons.download_outlined),
+                            label: Text(
+                              exporting
+                                  ? 'Wird gespeichert …'
+                                  : 'Nur geladene Auswahl als CSV',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Text(
+                        'Die CSV umfasst ausschließlich die tatsächlich geladenen Ereignisse, höchstens1.000, mit internen Kennungen. Kein kompletter Datenexport.',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

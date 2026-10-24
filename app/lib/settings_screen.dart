@@ -16,6 +16,7 @@ import 'parent_profile_dialog.dart';
 import 'parent_export_dialog.dart';
 import 'parent_operator_audit.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'google_login.dart';
 import 'public_trial.dart';
 import 'settings_reading_tools.dart';
@@ -1856,6 +1857,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 child: AdminFamilyList(
                   key: ValueKey('family-location-$familyLocateVersion'),
                   widget.state,
+                  toolsEnabled: section == 2,
                   initialSearch: familyLookup,
                   revision: (version, familyVersion),
                   onEdit: editFamily,
@@ -1878,6 +1880,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       builder: (events, _) => AdminAuditList(
                         events,
                         state: widget.state,
+                        toolsEnabled: section == 3,
                         onOpenProvider: () => selectSection(1),
                         onOpenCosts: () => selectSection(4),
                         onOpenFamily: (id) {
@@ -1907,6 +1910,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     AiCostPanel(
                       widget.state,
                       key: ValueKey('costs-$version'),
+                      toolsEnabled: section == 4,
                       onOpenRouting: () => selectSection(1),
                     ),
                   ],
@@ -2038,6 +2042,7 @@ class _CompactAdminDashboardTabsState
 /// Metadata-only operations list; the API applies the admin role and filters.
 class AdminFamilyList extends StatefulWidget {
   final AppState state;
+  final bool toolsEnabled;
   final String? initialSearch;
   final Object revision;
   final Future<void> Function(Json family) onEdit;
@@ -2045,6 +2050,7 @@ class AdminFamilyList extends StatefulWidget {
   const AdminFamilyList(
     this.state, {
     super.key,
+    this.toolsEnabled = true,
     this.initialSearch,
     required this.revision,
     required this.onEdit,
@@ -2055,13 +2061,6 @@ class AdminFamilyList extends StatefulWidget {
 }
 
 class _AdminFamilyListState extends State<AdminFamilyList> {
-  bool? filtersExpanded;
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    filtersExpanded ??= MediaQuery.sizeOf(context).width >= 720;
-  }
-
   final search = TextEditingController();
   late final Object? owner = widget.state.user;
   int page = 1, generation = 0;
@@ -2222,98 +2221,114 @@ class _AdminFamilyListState extends State<AdminFamilyList> {
           subtitle: 'Berechtigungen und Kontingente. Private Lerninhalte bleiben geschützt.',
           icon: Icons.family_restroom_rounded,
         ),
-        ExpansionTile(
-          key: const ValueKey('admin-family-filters'),
-          title: const Text('Suche & Haushaltsfilter'),
-          subtitle: appliedSearch.isEmpty && kind == 'all'
-              ? null
-              : Text(
-                  [
-                    if (appliedSearch.isNotEmpty) 'Suche: $appliedSearch',
-                    if (kind != 'all')
-                      kind == 'synthetic' ? 'Demo / Test' : 'Regulär',
-                  ].join(' · '),
+        if (appliedSearch.isNotEmpty || kind != 'all')
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                [
+                  if (appliedSearch.isNotEmpty) 'Suche: $appliedSearch',
+                  if (kind != 'all')
+                    kind == 'synthetic' ? 'Demo / Test' : 'Regulär',
+                ].join(' · '),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: loading
+                      ? null
+                      : () => clearSearch(resetKind: true),
+                  icon: const Icon(Icons.filter_alt_off_outlined),
+                  label: const Text('Alle Haushaltsfilter zurücksetzen'),
                 ),
-          tilePadding: EdgeInsets.zero,
-          initiallyExpanded: (filtersExpanded ?? false),
-          maintainState: true,
-          onExpansionChanged: (value) {
-            if (own) setState(() => filtersExpanded = value);
-          },
-          children: [
-            ExcludeFocus(
-              excluding: !(filtersExpanded ?? false),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    controller: search,
-                    maxLength: 80,
-                    autocorrect: false,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => applySearch(),
-                    decoration: InputDecoration(
-                      labelText: 'Familie suchen',
-                      hintText: 'Familienkennung oder Tarif',
-                      helperText: 'Mit Suchen bestätigen. Alle berechtigten Metadaten durchsuchen.',
-                      helperMaxLines: 3,
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Familiensuche leeren',
-                              onPressed: loading ? null : clearSearch,
-                              icon: const Icon(Icons.clear_rounded),
-                            ),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: loading ? null : applySearch,
-                        icon: const Icon(Icons.search_rounded),
-                        label: const Text('Suchen'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: loading ? null : load,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Familienliste aktualisieren'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final filter in [
-                        ('all', 'Alle Haushalte'),
-                        ('regular', 'Regulär'),
-                        ('synthetic', 'Demo / Test'),
-                      ])
-                        ChoiceChip(
-                          label: Text(filter.$2),
-                          selected: kind == filter.$1,
-                          onSelected: loading
-                              ? null
-                              : (_) {
-                                  FocusManager.instance.primaryFocus?.unfocus();
-                                  kind = filter.$1;
-                                  page = 1;
-                                  load();
-                                },
+              ),
+            ],
+          ),
+        PageToolsGroup(
+          key: const ValueKey('admin-family-filters'),
+          id: 'admin-family-filters',
+          title: 'Suche & Haushaltsfilter',
+          scope: (
+            'admin-family-filters',
+            ObjectKey(owner),
+            widget.state.familyId,
+            widget.state.api.token,
+          ),
+          isCurrent: () => own && widget.toolsEnabled,
+          active: appliedSearch.isNotEmpty || kind != 'all',
+          summary: [
+            if (appliedSearch.isNotEmpty) 'Suche: $appliedSearch',
+            if (kind != 'all') kind == 'synthetic' ? 'Demo / Test' : 'Regulär',
+          ].join(' · '),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: search,
+                maxLength: 80,
+                autocorrect: false,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => applySearch(),
+                decoration: InputDecoration(
+                  labelText: 'Familie suchen',
+                  hintText: 'Familienkennung oder Tarif',
+                  helperText: 'Mit Suchen bestätigen. Alle berechtigten Metadaten durchsuchen.',
+                  helperMaxLines: 3,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: search.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Familiensuche leeren',
+                          onPressed: loading ? null : clearSearch,
+                          icon: const Icon(Icons.clear_rounded),
                         ),
-                    ],
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: loading ? null : applySearch,
+                    icon: const Icon(Icons.search_rounded),
+                    label: const Text('Suchen'),
                   ),
-                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: loading ? null : load,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Familienliste aktualisieren'),
+                  ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final filter in [
+                    ('all', 'Alle Haushalte'),
+                    ('regular', 'Regulär'),
+                    ('synthetic', 'Demo / Test'),
+                  ])
+                    ChoiceChip(
+                      label: Text(filter.$2),
+                      selected: kind == filter.$1,
+                      onSelected: loading
+                          ? null
+                          : (_) {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              kind = filter.$1;
+                              page = 1;
+                              load();
+                            },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
         if (loading)
           Padding(
@@ -2449,11 +2464,13 @@ String _adminSignalAge(num seconds) {
 class AdminAuditList extends StatefulWidget {
   final List<dynamic> events;
   final AppState? state;
+  final bool toolsEnabled;
   final VoidCallback? onOpenProvider, onOpenCosts;
   final ValueChanged<String>? onOpenFamily;
   const AdminAuditList(
     this.events, {
     super.key,
+    this.toolsEnabled = true,
     this.state,
     this.onOpenProvider,
     this.onOpenCosts,
@@ -2466,7 +2483,6 @@ class AdminAuditList extends StatefulWidget {
 class _AdminAuditListState extends State<AdminAuditList> {
   String query = '', actor = '', period = 'all', actionKind = 'all';
   final search = TextEditingController();
-  bool toolsExpanded = false;
   @override
   void dispose() {
     search.dispose();
@@ -2596,114 +2612,114 @@ class _AdminAuditListState extends State<AdminAuditList> {
         const Text(
           'Lokale Suche in höchstens den 200 zuletzt geladenen Ereignissen. Keine vollständige Historie.',
         ),
-        ExpansionTile(
+        PageToolsGroup(
           key: const ValueKey('admin-audit-tools'),
-          title: const Text('Protokoll durchsuchen & filtern'),
-          tilePadding: EdgeInsets.zero,
-          maintainState: true,
-          onExpansionChanged: (value) {
-            if (!value) FocusManager.instance.primaryFocus?.unfocus();
-            setState(() => toolsExpanded = value);
-          },
-          children: [
-            ExcludeFocus(
-              excluding: !toolsExpanded,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (widget.state?.isAdmin == true)
-                    OutlinedButton.icon(
-                      onPressed: () => showAdminAuditExplorer(
-                        context,
-                        widget.state!,
-                        onSelected: details,
-                      ),
-                      icon: const Icon(Icons.manage_search),
-                      label: const Text(
-                        'Gesamtes Protokoll gezielt durchsuchen',
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: search,
-                    onChanged: (v) =>
-                        setState(() => query = v.trim().toLowerCase()),
-                    decoration: const InputDecoration(
-                      labelText: 'Protokoll durchsuchen',
-                      prefixIcon: Icon(Icons.search_rounded),
-                      hintText: 'Aktion, Ziel- oder Akteurkennung',
-                    ),
+          id: 'admin-audit-tools',
+          title: 'Protokoll durchsuchen & filtern',
+          scope: (
+            'admin-audit-tools',
+            ObjectKey(widget.state?.user),
+            widget.state?.familyId,
+            widget.state?.api.token,
+          ),
+          isCurrent: () =>
+              mounted &&
+              widget.toolsEnabled &&
+              (widget.state == null || widget.state!.isAdmin),
+          active: filterSummary.isNotEmpty,
+          summary: filterSummary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.state?.isAdmin == true)
+                OutlinedButton.icon(
+                  onPressed: () => showAdminAuditExplorer(
+                    context,
+                    widget.state!,
+                    onSelected: details,
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('audit-actor-$actor'),
-                    initialValue: actor,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Akteur im geladenen Ausschnitt',
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: '',
-                        child: Text('Alle Akteure'),
-                      ),
-                      for (final id in actors)
-                        DropdownMenuItem(
-                          value: id,
-                          child: Text(id, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => actor = v ?? ''),
+                  icon: const Icon(Icons.manage_search),
+                  label: const Text('Gesamtes Protokoll gezielt durchsuchen'),
+                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: search,
+                onChanged: (v) =>
+                    setState(() => query = v.trim().toLowerCase()),
+                decoration: const InputDecoration(
+                  labelText: 'Protokoll durchsuchen',
+                  prefixIcon: Icon(Icons.search_rounded),
+                  hintText: 'Aktion, Ziel- oder Akteurkennung',
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                key: ValueKey('audit-actor-$actor'),
+                initialValue: actor,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Akteur im geladenen Ausschnitt',
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: '',
+                    child: Text('Alle Akteure'),
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('audit-period-$period'),
-                    initialValue: period,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Zeitraum im geladenen Ausschnitt',
+                  for (final id in actors)
+                    DropdownMenuItem(
+                      value: id,
+                      child: Text(id, overflow: TextOverflow.ellipsis),
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'all',
-                        child: Text('Gesamter geladener Ausschnitt'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'today',
-                        child: Text('Heute (Gerätezeit)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'week',
-                        child: Text('Letzte 7 Tage (Gerätezeit)'),
-                      ),
-                    ],
-                    onChanged: (v) => setState(() => period = v ?? 'all'),
+                ],
+                onChanged: (v) => setState(() => actor = v ?? ''),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                key: ValueKey('audit-period-$period'),
+                initialValue: period,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Zeitraum im geladenen Ausschnitt',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'all',
+                    child: Text('Gesamter geladener Ausschnitt'),
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final item in const [
-                        ('all', 'Alle Ereignisse'),
-                        ('changes', 'Änderungen'),
-                        ('checks', 'Prüfungen'),
-                        ('reads', 'Lesezugriffe'),
-                      ])
-                        ChoiceChip(
-                          label: Text(item.$2),
-                          selected: actionKind == item.$1,
-                          onSelected: (_) {
-                            FocusManager.instance.primaryFocus?.unfocus();
-                            setState(() => actionKind = item.$1);
-                          },
-                        ),
-                    ],
+                  DropdownMenuItem(
+                    value: 'today',
+                    child: Text('Heute (Gerätezeit)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'week',
+                    child: Text('Letzte 7 Tage (Gerätezeit)'),
                   ),
                 ],
+                onChanged: (v) => setState(() => period = v ?? 'all'),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final item in const [
+                    ('all', 'Alle Ereignisse'),
+                    ('changes', 'Änderungen'),
+                    ('checks', 'Prüfungen'),
+                    ('reads', 'Lesezugriffe'),
+                  ])
+                    ChoiceChip(
+                      label: Text(item.$2),
+                      selected: actionKind == item.$1,
+                      onSelected: (_) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        setState(() => actionKind = item.$1);
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
         if (filterSummary.isNotEmpty)
           Semantics(

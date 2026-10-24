@@ -134,23 +134,45 @@ void main() {
       for (final label in [
         'Alle Hefter',
         'Heftfoto hinzufügen',
-        'Themen entdecken',
+        'Hefteroptionen',
       ]) {
         final target = _headerIcon(label);
         _minimumTarget(tester, target);
         expect(target.hitTestable(), findsOneWidget);
       }
+      final beforeOptions = calls.length;
       for (final label in ['Blättern', 'Kacheln', 'Liste']) {
-        _minimumTarget(tester, find.widgetWithText(OutlinedButton, label));
+        expect(find.widgetWithText(ListTile, label), findsNothing);
       }
       for (final label in [
         'Im Hefter suchen',
         'Filter',
         'Seiten aktualisieren',
       ]) {
-        _minimumTarget(tester, _icon(label));
-        expect(_icon(label).hitTestable(), findsOneWidget);
+        expect(_icon(label), findsNothing);
       }
+      await n.openNotebookOptions(tester);
+      for (final label in [
+        'Blättern',
+        'Kacheln',
+        'Liste',
+        'Im Hefter suchen',
+        'Filter',
+        'Seiten aktualisieren',
+        'Themen entdecken',
+      ]) {
+        final action = n.notebookOption(label);
+        await tester.ensureVisible(action);
+        await tester.pumpAndSettle();
+        _minimumTarget(tester, action);
+        expect(action.hitTestable(), findsOneWidget);
+      }
+      expect(
+        tester.widget<ListTile>(n.notebookOption('Blättern')).selected,
+        isTrue,
+      );
+      await n.tap(tester, find.byTooltip('Hefteroptionen schließen'));
+      expect(calls.length, beforeOptions);
       expect(
         calls.where((request) => request.url.path.endsWith('/image')),
         hasLength(1),
@@ -183,14 +205,23 @@ void main() {
         for (final label in [
           'Alle Hefter',
           'Heftfoto hinzufügen',
-          'Themen entdecken',
+          'Hefteroptionen',
         ]) {
           _minimumTarget(tester, _headerIcon(label));
         }
         for (final label in ['Blättern', 'Kacheln', 'Liste']) {
-          _minimumTarget(tester, find.widgetWithText(OutlinedButton, label));
+          expect(find.widgetWithText(ListTile, label), findsNothing);
         }
-        await n.tap(tester, _icon('Filter'));
+        await n.openNotebookOptions(tester);
+        for (final label in ['Blättern', 'Kacheln', 'Liste']) {
+          final action = n.notebookOption(label);
+          await tester.ensureVisible(action);
+          await tester.pumpAndSettle();
+          _minimumTarget(tester, action);
+          expect(action.hitTestable(), findsOneWidget);
+        }
+        await n.tap(tester, find.byTooltip('Hefteroptionen schließen'));
+        await n.openNotebookFilters(tester);
         expect(find.text('Seiten auswählen'), findsOneWidget);
         await n.tap(tester, find.text('Abbrechen'));
         await tester.ensureVisible(_frame);
@@ -261,20 +292,21 @@ void main() {
   ) async {
     final (_, _, calls) = await _open(tester);
     final before = calls.length;
-    await n.tap(tester, _icon('Im Hefter suchen'));
-    expect(
-      find.widgetWithText(TextField, 'In diesem Hefter suchen'),
-      findsOneWidget,
-    );
-    await n.tap(tester, _icon('Suchfeld einklappen'));
-    await n.tap(tester, _icon('Filter'));
+    await n.openNotebookSearch(tester);
+    final search = find.widgetWithText(TextField, 'In diesem Hefter suchen');
+    expect(search, findsOneWidget);
+    await tester.enterText(search, 'Noch nicht übernommene Suche');
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(calls.length, before);
+    await n.tap(tester, find.text('Abbrechen'));
+    await n.openNotebookFilters(tester);
     await n.tap(tester, find.text('Abbrechen'));
     expect(calls.length, before);
-    await n.tap(tester, find.text('Kacheln'));
+    await n.chooseNotebookView(tester, 'Kacheln');
     expect(find.text('1–20 von 47'), findsWidgets);
-    await n.tap(tester, find.text('Liste'));
+    await n.chooseNotebookView(tester, 'Liste');
     expect(find.byType(ListView), findsOneWidget);
-    await n.tap(tester, find.text('Blättern'));
+    await n.chooseNotebookView(tester, 'Blättern');
     expect(find.text('1 von 47'), findsWidgets);
     await n.tap(tester, _headerIcon('Heftfoto hinzufügen'));
     expect(find.text('Deine neuen Heftfotos'), findsOneWidget);
@@ -326,9 +358,13 @@ void main() {
       'old focused header action $label is inert after account change',
       (tester) async {
         final (state, router, calls) = await _open(tester);
-        final oldAction = tester
-            .widget<IconButton>(_headerIcon(label))
-            .onPressed!;
+        final VoidCallback oldAction;
+        if (label == 'Themen entdecken') {
+          await n.openNotebookOptions(tester);
+          oldAction = tester.widget<ListTile>(n.notebookOption(label)).onTap!;
+        } else {
+          oldAction = tester.widget<IconButton>(_headerIcon(label)).onPressed!;
+        }
         state.user = {...state.user!};
         state.notifyListeners();
         await tester.pumpAndSettle();
@@ -360,7 +396,7 @@ void main() {
     for (final label in [
       'Alle Hefter',
       'Heftfoto hinzufügen',
-      'Themen entdecken',
+      'Hefteroptionen',
     ]) {
       _minimumTarget(tester, _headerIcon(label));
       expect(_headerIcon(label).hitTestable(), findsOneWidget);

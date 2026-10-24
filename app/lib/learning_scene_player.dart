@@ -371,33 +371,6 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (model.steps.length > 1) ...[
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      key: const ValueKey('scene-compare'),
-                      onPressed: active ? compare : null,
-                      icon: Icon(
-                        comparing
-                            ? Icons.view_agenda_outlined
-                            : Icons.compare_arrows_rounded,
-                      ),
-                      label: Text(
-                        comparing ? 'Einzelansicht' : 'Zustände vergleichen',
-                      ),
-                    ),
-                    TextButton.icon(
-                      key: const ValueKey('scene-reset-view'),
-                      onPressed: active ? resetView : null,
-                      icon: const Icon(Icons.restart_alt_rounded),
-                      label: const Text('Ansicht zurücksetzen'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
               if (comparing)
                 comparison(model, index, description)
               else
@@ -537,6 +510,33 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                       : 'Sieh dir die Schritte einzeln an.',
                   style: TextStyle(color: context.palette.muted, fontSize: 13),
                 ),
+              ],
+              if (model.steps.length > 1) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('scene-compare'),
+                      onPressed: active ? compare : null,
+                      icon: Icon(
+                        comparing
+                            ? Icons.view_agenda_outlined
+                            : Icons.compare_arrows_rounded,
+                      ),
+                      label: Text(
+                        comparing ? 'Einzelansicht' : 'Zustände vergleichen',
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const ValueKey('scene-reset-view'),
+                      onPressed: active ? resetView : null,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: const Text('Ansicht zurücksetzen'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
               ],
               const SizedBox(height: 14),
               ExpansionTile(

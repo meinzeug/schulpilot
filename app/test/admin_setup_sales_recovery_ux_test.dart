@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -525,9 +527,9 @@ void main() {
         MaterialApp.router(theme: appTheme(), routerConfig: router),
       );
       await tester.pumpAndSettle();
-      await helper.tap(
+      await toggleParentDetails104(
         tester,
-        find.text('Bestellungen suchen, filtern & exportieren'),
+        'Bestellungen suchen, filtern & exportieren',
       );
       expect(find.text('Zahlung offen (1)'), findsOneWidget);
       expect(find.text('Beendet (1)'), findsOneWidget);

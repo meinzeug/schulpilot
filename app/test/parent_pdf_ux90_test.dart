@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'parent_pdf_filters_ux88_test.dart' as pdf;
 import 'parent_filters_ux88_test.dart' show choose;
 import 'parent_messages_ux88_test.dart' as messages;
@@ -80,7 +82,7 @@ void main() {
     (tester) async {
       final f = pdf.Fixture();
       await f.mount(tester);
-      await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+      await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       await choose(
         tester,
         'Deine Übernahmeauswahl',
@@ -99,9 +101,9 @@ void main() {
       await f.mount(tester);
       await decision(tester, 'Mathematik', 'Nicht übernehmen');
       await impact(tester, 'Übernahme der gesamten Vorschau: 0 neu');
-      await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+      await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       if (find.text('Letzte Zuordnung zurücknehmen').evaluate().isEmpty) {
-        await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+        await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       }
       await tap(tester, find.text('Letzte Zuordnung zurücknehmen'));
       await impact(tester, 'Übernahme der gesamten Vorschau: 1 neu');
@@ -113,7 +115,7 @@ void main() {
     (tester) async {
       final f = pdf.Fixture();
       await f.mount(tester);
-      await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+      await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       await choose(tester, 'Fach in der PDF', 'Mathematik');
       await tap(tester, find.text('Angezeigte Übernahmen auslassen'));
       expect(find.textContaining('1 angezeigte neue'), findsOneWidget);
@@ -131,11 +133,11 @@ void main() {
       );
       await tap(tester, find.text('PDF-Filter zurücksetzen'));
       if (find.text('Letzte Zuordnung zurücknehmen').evaluate().isEmpty) {
-        await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+        await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       }
-      await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+      await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       if (find.text('Letzte Zuordnung zurücknehmen').evaluate().isEmpty) {
-        await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+        await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       }
       await tap(tester, find.text('Letzte Zuordnung zurücknehmen'));
       await impact(tester, 'Übernahme der gesamten Vorschau: 1 neu');
@@ -195,7 +197,7 @@ void main() {
     (tester) async {
       final f = pdf.Fixture();
       await f.mount(tester);
-      await tap(tester, find.text('Fächer dieser PDF im Überblick'));
+      await toggleParentDetails104(tester, 'Fächer dieser PDF im Überblick');
       expect(
         find.text('1 gelesene Einträge · 1 Zuordnungen offen'),
         findsOneWidget,
@@ -221,7 +223,7 @@ void main() {
     (tester) async {
       final f = pdf.Fixture();
       await f.mount(tester, width: 320, scale: 2);
-      await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
+      await toggleParentDetails104(tester, 'PDF-Einträge gezielt prüfen');
       await choose(
         tester,
         'Deine Übernahmeauswahl',

@@ -7,7 +7,7 @@ import 'api.dart';
 import 'homework_screen.dart' show homeworkKey;
 import 'learning_content.dart';
 import 'ui.dart';
-import 'parent_view_details.dart';
+import 'page_tools.dart';
 
 String reviewDate(dynamic value) => value is num
     ? DateFormat('dd.MM.yyyy · HH:mm').format(
@@ -499,26 +499,27 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
             const Divider(height: 28),
           ],
           if (data!['can_manage'] == true)
-            ParentViewDetails(
+            PageToolsGroup(
+              id: 'parent-insight-settings',
               title: 'Regelmäßige KI-Auswertung',
-              subtitle: data!['settings']['enabled'] == true
-                  ? 'Aktiv · höchstens täglich'
-                  : 'Ausgeschaltet',
-              initiallyExpanded: widget.compact,
               scope: ('insight-settings', ObjectKey(owner), family, child),
               isCurrent: () => own && child == widget.childId,
-              children: [
-                if (data!['can_manage'] == true)
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Regelmäßig mit KI auswerten'),
-                    subtitle: const Text(
-                      'Bei neuen Übungsbelegen höchstens täglich, innerhalb deines KI-Kontingents. Du kannst das jederzeit abschalten.',
+              active: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (data!['can_manage'] == true)
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Regelmäßig mit KI auswerten'),
+                      subtitle: const Text(
+                        'Bei neuen Übungsbelegen höchstens täglich, innerhalb deines KI-Kontingents. Du kannst das jederzeit abschalten.',
+                      ),
+                      value: data!['settings']['enabled'] == true,
+                      onChanged: busy || loading ? null : enable,
                     ),
-                    value: data!['settings']['enabled'] == true,
-                    onChanged: busy || loading ? null : enable,
-                  ),
-              ],
+                ],
+              ),
             ),
           if (pending)
             const Text(

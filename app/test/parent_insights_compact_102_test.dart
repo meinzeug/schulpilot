@@ -112,6 +112,7 @@ void main() {
         final initialRequests = f.requests.length;
 
         await tapVisible(tester, find.text('KI-Lernkompass'));
+        await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
         expect(find.text('Regelmäßig mit KI auswerten'), findsOneWidget);
         expect(find.text('Jetzt mit KI auswerten'), findsOneWidget);
         expect(find.textContaining('Unterstützung war nötig.'), findsOneWidget);
@@ -217,6 +218,7 @@ void main() {
       final f = CompactInsightsFixture();
       await f.mount(tester);
       await tapVisible(tester, find.text('KI-Lernkompass'));
+      await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
       expect(find.text('Regelmäßig mit KI auswerten'), findsOneWidget);
       final requestCount = f.requests.length;
       f.state.user = Json.from(f.state.user!);

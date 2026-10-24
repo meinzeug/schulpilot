@@ -14,6 +14,8 @@ import 'material_screen.dart';
 import 'material_actions.dart';
 import 'notebook_shelf.dart';
 import 'ui.dart';
+import 'page_tools.dart';
+import 'learning_start_illustration.dart';
 import 'ideas100_local_views.dart';
 import 'parent_child_navigation.dart';
 
@@ -193,7 +195,8 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
   String status = 'all', sort = 'subject', section = 'ready';
   DateTimeRange? dates;
   int page = 1, pageSize = 20, generation = 0;
-  bool loading = true, toolsExpanded = false;
+  bool loading = true;
+  final toolsKey = GlobalKey();
   bool get simpleLearning =>
       widget.learning && widget.state.isChild && widget.onSelect == null;
   late Json? owner;
@@ -239,7 +242,6 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
       }
     }
     if (widget.onSelect != null) status = 'confirmed';
-    toolsExpanded = filtered;
     load();
   }
 
@@ -733,7 +735,11 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
 
   void focusLearningSearch() {
     if (!active || !widget.learning) return;
-    setState(() => toolsExpanded = true);
+    final groupContext = toolsKey.currentContext;
+    if (groupContext == null ||
+        !PageToolsHost.open(groupContext, 'learning-tools')) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (active && searchFocus.canRequestFocus) searchFocus.requestFocus();
     });
@@ -1026,21 +1032,6 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                       }, scroll: true),
                     ),
                   ),
-                  if (compact)
-                    IconButton(
-                      tooltip: toolsExpanded
-                          ? 'Suche schließen'
-                          : 'Suchen & filtern',
-                      isSelected: toolsExpanded,
-                      onPressed: () {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        setState(() => toolsExpanded = !toolsExpanded);
-                      },
-                      icon: Badge(
-                        isLabelVisible: filtered,
-                        child: Icon(Icons.search_rounded),
-                      ),
-                    ),
                 ],
               ),
               if (data?['paused'] == true)
@@ -1052,130 +1043,160 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                 ),
               SizedBox(height: compact ? 8 : 16),
             ],
-            if (simpleLearning && !compact)
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        setState(() => toolsExpanded = !toolsExpanded);
-                      },
-                      icon: Badge(
-                        isLabelVisible: filtered,
-                        child: const Icon(Icons.search_rounded),
-                      ),
-                      label: Text(
-                        toolsExpanded ? 'Suche schließen' : 'Suchen & filtern',
-                      ),
-                    ),
-                  ),
-                  if (!toolsExpanded)
-                    IconButton(
-                      tooltip: 'Liste aktualisieren',
-                      onPressed: loading ? null : load,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                ],
+            PageToolsGroup(
+              key: toolsKey,
+              id: 'learning-tools',
+              title: widget.learning
+                  ? 'Lernrunden suchen & ordnen'
+                  : 'Heftseiten suchen & ordnen',
+              scope: (
+                ObjectKey(owner),
+                family,
+                session,
+                widget.childId,
+                widget.learning,
+                section,
               ),
-            if (!simpleLearning || toolsExpanded) ...[
-              TextField(
-                controller: search,
-                focusNode: searchFocus,
-                maxLength: 120,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  labelText: widget.learning
-                      ? 'Thema suchen'
-                      : 'Heftseiten durchsuchen',
-                  counterText: '',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: search.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Suche löschen',
-                          onPressed: () => change(search.clear),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                ),
-                onChanged: (_) => change(() {}, delayed: true),
-                onSubmitted: (_) {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  load();
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
+              isCurrent: () => active,
+              active: filtered || sort != 'subject',
+              summary: '$total ${widget.learning ? 'Einträge' : 'Seiten'}',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      key: ValueKey(subject),
-                      initialValue: subject,
-                      isExpanded: true,
-                      hint: const Text('Alle Fächer'),
-                      decoration: const InputDecoration(labelText: 'Fach'),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('Alle Fächer'),
-                        ),
-                        for (final value in choices)
-                          DropdownMenuItem(
-                            value: value,
-                            child: Text(
-                              value.isEmpty ? 'Fach noch offen' : value,
-                              overflow: TextOverflow.ellipsis,
+                  TextField(
+                    controller: search,
+                    focusNode: searchFocus,
+                    maxLength: 120,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      labelText: widget.learning
+                          ? 'Thema suchen'
+                          : 'Heftseiten durchsuchen',
+                      counterText: '',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Suche löschen',
+                              onPressed: () => change(search.clear),
+                              icon: const Icon(Icons.close_rounded),
                             ),
-                          ),
+                    ),
+                    onChanged: (_) => change(() {}, delayed: true),
+                    onSubmitted: (_) {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      load();
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey(subject),
+                          initialValue: subject,
+                          isExpanded: true,
+                          hint: const Text('Alle Fächer'),
+                          decoration: const InputDecoration(labelText: 'Fach'),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Alle Fächer'),
+                            ),
+                            for (final value in choices)
+                              DropdownMenuItem(
+                                value: value,
+                                child: Text(
+                                  value.isEmpty ? 'Fach noch offen' : value,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          onChanged: (value) {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            change(() => subject = value);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Filter und Sortierung',
+                        onPressed: filters,
+                        icon: Badge(
+                          isLabelVisible:
+                              status != 'all' ||
+                              dates != null ||
+                              sort != 'subject',
+                          smallSize: 7,
+                          child: const Icon(Icons.tune_rounded),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Liste aktualisieren',
+                        onPressed: loading ? null : load,
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  if (widget.learning)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: focusLearningSearch,
+                          icon: const Icon(Icons.keyboard),
+                          label: const Text('Suche fokussieren · Strg/⌘ F'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Karten'),
+                          selected: !compactRows,
+                          onSelected: (_) =>
+                              setState(() => compactRows = false),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Kompakte Zeilen'),
+                          selected: compactRows,
+                          onSelected: (_) => setState(() => compactRows = true),
+                        ),
                       ],
-                      onChanged: (value) {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        change(() => subject = value);
-                      },
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    tooltip: 'Filter und Sortierung',
-                    onPressed: filters,
-                    icon: Badge(
-                      isLabelVisible:
-                          status != 'all' || dates != null || sort != 'subject',
-                      smallSize: 7,
-                      child: const Icon(Icons.tune_rounded),
+                  if (recentQueries.isNotEmpty)
+                    ExpansionTile(
+                      title: const Text(
+                        'Letzte Lernsuchbegriffe dieses Besuchs',
+                      ),
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final term in recentQueries)
+                              ActionChip(
+                                label: Text(term),
+                                onPressed: () =>
+                                    change(() => search.text = term),
+                              ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () => setState(recentQueries.clear),
+                          child: const Text(
+                            'Suchverlauf dieses Besuchs löschen',
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Liste aktualisieren',
-                    onPressed: loading ? null : load,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
                 ],
               ),
-              const SizedBox(height: 14),
-            ],
+            ),
             if (widget.learning) ...[
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  if (toolsExpanded) ...[
-                    OutlinedButton.icon(
-                      onPressed: focusLearningSearch,
-                      icon: const Icon(Icons.keyboard),
-                      label: const Text('Suche fokussieren · Strg/⌘ F'),
-                    ),
-                    ChoiceChip(
-                      label: const Text('Karten'),
-                      selected: !compactRows,
-                      onSelected: (_) => setState(() => compactRows = false),
-                    ),
-                    ChoiceChip(
-                      label: const Text('Kompakte Zeilen'),
-                      selected: compactRows,
-                      onSelected: (_) => setState(() => compactRows = true),
-                    ),
-                  ],
                   if (search.text.trim().isNotEmpty)
                     InputChip(
                       label: Text('Suche: ${search.text.trim()}'),
@@ -1195,27 +1216,6 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                     ),
                 ],
               ),
-              if (toolsExpanded && recentQueries.isNotEmpty)
-                ExpansionTile(
-                  title: const Text('Letzte Lernsuchbegriffe dieses Besuchs'),
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final term in recentQueries)
-                          ActionChip(
-                            label: Text(term),
-                            onPressed: () => change(() => search.text = term),
-                          ),
-                      ],
-                    ),
-                    TextButton(
-                      onPressed: () => setState(recentQueries.clear),
-                      child: const Text('Suchverlauf dieses Besuchs löschen'),
-                    ),
-                  ],
-                ),
               if (rememberedRounds.isNotEmpty)
                 ExpansionTile(
                   title: Text(
@@ -1291,6 +1291,12 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                 Panel(
                   child: Column(
                     children: [
+                      if (widget.learning &&
+                          !filtered &&
+                          sort == 'subject' &&
+                          section == 'ready')
+                        const LearningStartIllustration(),
+
                       Icon(
                         widget.learning
                             ? Icons.auto_stories_outlined

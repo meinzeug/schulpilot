@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -131,7 +133,7 @@ void main() {
     ) async {
       final f = collection();
       await f.mount(tester, '/parent-plan/child?ansicht=topics');
-      await tap(tester, find.text('Suche & alle Themenfilter'));
+      await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
       await choose(tester, item.$1, item.$2);
       expect(f.requests.last.url.queryParameters[item.$3], item.$4);
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);
@@ -147,7 +149,7 @@ void main() {
       (tester) async {
         final f = collection();
         await f.mount(tester, '/parent-plan/child?ansicht=topics');
-        await tap(tester, find.text('Suche & alle Themenfilter'));
+        await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
         await tap(tester, find.text('Aufträge gezielt filtern'));
         await choose(tester, item.$1, item.$2);
         expect(f.requests.last.url.queryParameters[item.$3], item.$4);
@@ -248,7 +250,7 @@ void main() {
       final f = collection();
       await f.mount(tester, path);
       if (path.startsWith('/parent-homework')) {
-        await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+        await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
       }
       await tap(
         tester,
@@ -395,7 +397,7 @@ void main() {
   ) async {
     final f = collection();
     await f.mount(tester, '/parent-homework/child');
-    await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+    await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
     await choose(tester, 'Reihenfolge der Fotos', 'Älteste Fotos zuerst');
     expect(f.requests.last.url.queryParameters['order'], 'oldest');
     expect(f.requests.last.url.queryParameters.containsKey('cursor'), isFalse);
@@ -405,7 +407,7 @@ void main() {
     (tester) async {
       final f = collection();
       await f.mount(tester, '/parent-homework/child');
-      await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+      await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
       await tap(tester, find.text('Zeitraum und Bearbeitung eingrenzen'));
       await choose(
         tester,
@@ -425,7 +427,7 @@ void main() {
     final f = collection();
     f.homework['collection_totals'] = {'all': 30, 'needs_review': 4};
     await f.mount(tester, '/parent-homework/child');
-    await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+    await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
     expect(
       find.textContaining('30 Aufgabenfotos · 4 Fotos noch als Quelle prüfen'),
       findsOneWidget,

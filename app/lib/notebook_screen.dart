@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
-import 'child_section_ui.dart';
 import 'learning_tips.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
@@ -64,10 +62,9 @@ class _NotebookContext extends StatefulWidget {
   State<_NotebookContext> createState() => _NotebookScreenState();
 }
 
-class _NotebookScreenState extends State<_NotebookContext> {
+class _NotebookScreenState extends State<_NotebookContext>
+    with WidgetsBindingObserver {
   final search = TextEditingController();
-  final searchFocus = FocusNode();
-  Timer? debounce;
   late final Json? owner;
   late final String? family, session;
   final privateRoutes = <Route<dynamic>>{};
@@ -77,9 +74,13 @@ class _NotebookScreenState extends State<_NotebookContext> {
   DateTimeRange? dates;
   int index = 0, generation = 0;
   int stateRevision = 0;
+  int toolsEpoch = 0;
+  bool get toolsForeground =>
+      WidgetsBinding.instance.lifecycleState == null ||
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
   String? activeQuery;
   double swipeDistance = 0;
-  bool loading = true, showSearch = false;
+  bool loading = true;
   bool deleting = false, selecting = false, allMatching = false;
   final selectedIds = <String>{};
   final comparePages = <String, Json>{};
@@ -106,6 +107,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     owner = widget.state.user;
     family = widget.state.familyId;
     session = widget.state.api.token;
@@ -118,7 +120,6 @@ class _NotebookScreenState extends State<_NotebookContext> {
         ? 'review'
         : saved?['status'] ?? 'all';
     search.text = saved?['q'] ?? '';
-    showSearch = search.text.isNotEmpty;
     index = saved?['index'] ?? 0;
     if (saved?['since'] != null && saved?['until'] != null) {
       dates = DateTimeRange(
@@ -133,7 +134,6 @@ class _NotebookScreenState extends State<_NotebookContext> {
     if (mounted && !current) {
       closePrivateRoutes();
       generation++;
-      debounce?.cancel();
       setState(() {
         data = subject = null;
         error = null;
@@ -148,13 +148,20 @@ class _NotebookScreenState extends State<_NotebookContext> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      toolsEpoch++;
+      closePrivateRoutes();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     generation++;
-    debounce?.cancel();
     widget.state.removeListener(identityChanged);
     closePrivateRoutes();
     search.dispose();
-    searchFocus.dispose();
     listPosition.dispose();
     gridPosition.dispose();
     super.dispose();
@@ -183,7 +190,10 @@ class _NotebookScreenState extends State<_NotebookContext> {
   }
 
   bool validDialog(BuildContext ctx) =>
-      current && ctx.mounted && ModalRoute.of(ctx)?.isCurrent == true;
+      current &&
+      toolsForeground &&
+      ctx.mounted &&
+      ModalRoute.of(ctx)?.isCurrent == true;
 
   void remember() {
     if (current) {
@@ -253,7 +263,6 @@ class _NotebookScreenState extends State<_NotebookContext> {
     if (activeQuery == signature) return;
     activeQuery = signature;
     final request = ++generation;
-    debounce?.cancel();
     setState(() {
       loading = true;
       error = null;
@@ -642,9 +651,8 @@ class _NotebookScreenState extends State<_NotebookContext> {
         : 'Unbekannter Schultag';
   }
 
-  void change(VoidCallback action, {bool delayed = false}) {
+  void change(VoidCallback action) {
     if (!current) return;
-    debounce?.cancel();
     generation++;
     setState(() {
       action();
@@ -655,11 +663,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
       error = null;
     });
     remember();
-    if (delayed) {
-      debounce = Timer(Duration(milliseconds: 350), load);
-    } else {
-      load();
-    }
+    load();
   }
 
   Future<void> jump() async {
@@ -725,15 +729,23 @@ class _NotebookScreenState extends State<_NotebookContext> {
   }
 
   Future<void> filters() async {
-    if (!current) return;
+    final host = ModalRoute.of(context);
+    if (!current || !toolsForeground || host?.isCurrent != true) return;
+    final snapshot = toolsScope;
+    bool same() =>
+        current &&
+        toolsForeground &&
+        snapshot == toolsScope &&
+        host?.isActive == true;
+    bool validFilter(BuildContext ctx) => same() && validDialog(ctx);
     FocusManager.instance.primaryFocus?.unfocus();
     var draftStatus = status, draftSort = sort;
     var draftDates = dates;
     var draftGroupDays = groupDays;
-    final compactTools =
-        widget.state.isChild && MediaQuery.sizeOf(context).width < 720;
-    final accepted = await privateDialog<bool>(
-      (ctx) => Dialog(
+    ModalRoute<bool>? dialog;
+    final accepted = await privateDialog<bool>((ctx) {
+      dialog = ModalRoute.of<bool>(ctx);
+      return Dialog(
         child: StatefulBuilder(
           builder: (ctx, set) => SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -767,7 +779,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
                     ),
                   ],
                   onChanged: (v) {
-                    if (validDialog(ctx) && v != null) set(() => draftSort = v);
+                    if (validFilter(ctx) && v != null) set(() => draftSort = v);
                   },
                 ),
                 SizedBox(height: 14),
@@ -788,19 +800,19 @@ class _NotebookScreenState extends State<_NotebookContext> {
                     ),
                   ],
                   onChanged: (v) {
-                    if (validDialog(ctx) && v != null) {
+                    if (validFilter(ctx) && v != null) {
                       set(() => draftStatus = v);
                     }
                   },
                 ),
                 SizedBox(height: 14),
-                if (compactTools && view != 'album')
+                if (view != 'album')
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Geladene Seiten nach Schultag gliedern'),
                     value: draftGroupDays,
                     onChanged: (value) {
-                      if (validDialog(ctx)) set(() => draftGroupDays = value);
+                      if (validFilter(ctx)) set(() => draftGroupDays = value);
                     },
                   ),
                 OutlinedButton.icon(
@@ -811,7 +823,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
                         : '${DateFormat('dd.MM.yy').format(draftDates!.start)} – ${DateFormat('dd.MM.yy').format(draftDates!.end)}',
                   ),
                   onPressed: () async {
-                    if (!validDialog(ctx)) return;
+                    if (!validFilter(ctx)) return;
                     Route<dynamic>? dateRoute;
                     final result = await showDateRangePicker(
                       context: ctx,
@@ -820,12 +832,13 @@ class _NotebookScreenState extends State<_NotebookContext> {
                       initialDateRange: draftDates,
                       builder: (dateContext, child) {
                         final route = ModalRoute.of(dateContext);
+                        dateRoute = route;
                         if (route != null) privateRoutes.add(route);
                         return child!;
                       },
                     );
                     privateRoutes.remove(dateRoute);
-                    if (ctx.mounted && validDialog(ctx) && result != null) {
+                    if (ctx.mounted && validFilter(ctx) && result != null) {
                       set(() => draftDates = result);
                     }
                   },
@@ -833,14 +846,14 @@ class _NotebookScreenState extends State<_NotebookContext> {
                 if (draftDates != null)
                   TextButton(
                     onPressed: () {
-                      if (validDialog(ctx)) set(() => draftDates = null);
+                      if (validFilter(ctx)) set(() => draftDates = null);
                     },
                     child: Text('Zeitraum aufheben'),
                   ),
                 SizedBox(height: 14),
                 FilledButton(
                   onPressed: () {
-                    if (validDialog(ctx)) Navigator.pop(ctx, true);
+                    if (validFilter(ctx)) Navigator.pop(ctx, true);
                   },
                   child: Text('Anzeigen'),
                 ),
@@ -854,10 +867,12 @@ class _NotebookScreenState extends State<_NotebookContext> {
             ),
           ),
         ),
-      ),
-    );
+      );
+    });
+    await dialog?.completed;
+    if (!same() || host?.isCurrent != true) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    if (current && accepted == true) {
+    if (accepted == true) {
       if (groupDays != draftGroupDays &&
           sort == draftSort &&
           status == draftStatus &&
@@ -908,14 +923,190 @@ class _NotebookScreenState extends State<_NotebookContext> {
     openRoute(context, '/material/${item['id']}');
   }
 
-  void toggleSearch() {
-    if (!current) return;
-    searchFocus.unfocus();
-    setState(() => showSearch = !showSearch);
-    if (showSearch) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (current && showSearch) searchFocus.requestFocus();
-      });
+  Object get toolsScope => (
+    toolsEpoch,
+    widget.childId,
+    widget.subjectId,
+    widget.state.revision,
+    generation,
+    index,
+    view,
+    sort,
+    status,
+    groupDays,
+    search.text,
+    dates?.start,
+    dates?.end,
+    selected?['id'],
+    selected?['revision'],
+  );
+
+  Future<void> openOptions() async {
+    final host = ModalRoute.of(context);
+    if (!current || !toolsForeground || host?.isCurrent != true) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    final snapshot = toolsScope;
+    bool same() =>
+        current &&
+        toolsForeground &&
+        snapshot == toolsScope &&
+        host?.isActive == true;
+    ModalRoute<String>? menu;
+    final command = await privateDialog<String>((ctx) {
+      menu = ModalRoute.of<String>(ctx);
+      Widget action(
+        String id,
+        String label,
+        IconData icon, {
+        bool enabled = true,
+      }) => ListTile(
+        minTileHeight: 48,
+        leading: Icon(icon),
+        title: Text(label),
+        selected: id == view,
+        trailing: id == view ? const Icon(Icons.check_rounded) : null,
+        enabled: enabled,
+        onTap: !enabled
+            ? null
+            : () {
+                if (same() && validDialog(ctx)) Navigator.pop(ctx, id);
+              },
+      );
+      return Dialog(
+        key: const ValueKey('notebook-options-dialog'),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Hefteroptionen',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Hefteroptionen schließen',
+                      onPressed: () {
+                        if (validDialog(ctx)) Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                Text(pageSummary, style: TextStyle(color: ctx.palette.muted)),
+                const SizedBox(height: 8),
+                action('album', 'Blättern', Icons.auto_stories_outlined),
+                action('grid', 'Kacheln', Icons.grid_view_rounded),
+                action('list', 'Liste', Icons.view_list_rounded),
+                const Divider(),
+                action('search', 'Im Hefter suchen', Icons.search_rounded),
+                action('filters', 'Filter', Icons.tune_rounded),
+                action(
+                  'refresh',
+                  'Seiten aktualisieren',
+                  Icons.refresh_rounded,
+                  enabled: !loading,
+                ),
+                if (widget.subjectId != 'unassigned')
+                  action(
+                    'topics',
+                    'Themen entdecken',
+                    Icons.ondemand_video_outlined,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+    await menu?.completed;
+    if (!mounted || !same() || host?.isCurrent != true || command == null) {
+      return;
+    }
+    switch (command) {
+      case 'album':
+      case 'grid':
+      case 'list':
+        selectView(command);
+      case 'search':
+        await searchDialog();
+      case 'filters':
+        await filters();
+      case 'refresh':
+        if (!loading) await (subject == null ? loadSubject() : load());
+      case 'topics':
+        if (widget.subjectId != 'unassigned') {
+          await showTopicBrowser(
+            context,
+            widget.state,
+            widget.childId,
+            widget.subjectId,
+          );
+        }
+    }
+  }
+
+  Future<void> searchDialog() async {
+    final host = ModalRoute.of(context);
+    if (!current || !toolsForeground || host?.isCurrent != true) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    final snapshot = toolsScope;
+    bool same() =>
+        current &&
+        toolsForeground &&
+        snapshot == toolsScope &&
+        host?.isActive == true;
+    final draft = TextEditingController(text: search.text);
+    ModalRoute<String>? dialog;
+    final query = await privateDialog<String>((ctx) {
+      dialog = ModalRoute.of<String>(ctx);
+      void apply() {
+        if (same() && validDialog(ctx)) Navigator.pop(ctx, draft.text.trim());
+      }
+
+      return DialogControllerScope(
+        controllers: [draft],
+        child: AlertDialog(
+          key: const ValueKey('notebook-search-dialog'),
+          title: const Text('Im Hefter suchen'),
+          scrollable: true,
+          content: TextField(
+            controller: draft,
+            autofocus: true,
+            maxLength: 120,
+            textInputAction: TextInputAction.search,
+            decoration: const InputDecoration(
+              labelText: 'In diesem Hefter suchen',
+            ),
+            onSubmitted: (_) => apply(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (validDialog(ctx)) Navigator.pop(ctx);
+              },
+              child: const Text('Abbrechen'),
+            ),
+            FilledButton(onPressed: apply, child: const Text('Suchen')),
+          ],
+        ),
+      );
+    });
+    await dialog?.completed;
+    if (dialog == null) draft.dispose();
+    if (!same() || host?.isCurrent != true) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (query != null && query != search.text.trim()) {
+      change(() => search.text = query);
     }
   }
 
@@ -928,6 +1119,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
             : ''}${dates == null ? '' : ' · Zeitraum'}';
 
   void selectView(String value) {
+    if (!current || ModalRoute.of(context)?.isCurrent != true) return;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       view = value;
@@ -940,6 +1132,12 @@ class _NotebookScreenState extends State<_NotebookContext> {
   Widget build(BuildContext context) {
     if (!current) return SizedBox();
     final compactNotebook = widget.state.isChild;
+    final renderedScope = toolsScope;
+    final renderedRoute = ModalRoute.of(context);
+    bool renderedCurrent() =>
+        current &&
+        renderedScope == toolsScope &&
+        renderedRoute?.isCurrent == true;
     return PageFrame(
       focusContent: compactNotebook,
       state: widget.state,
@@ -953,307 +1151,92 @@ class _NotebookScreenState extends State<_NotebookContext> {
               childId: widget.childId,
               selected: 'materials',
             ),
-          if (compactNotebook) ...[
-            Row(
-              key: const ValueKey('notebook-compact-heading'),
-              children: [
-                IconButton(
-                  tooltip: 'Alle Hefter',
-                  onPressed: () {
-                    if (current && ModalRoute.of(context)?.isCurrent == true) {
-                      context.go('/library/${widget.childId}');
-                    }
-                  },
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      subject?['title'] ?? 'Dein Hefter',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Heftfoto hinzufügen',
-                  onPressed: addPhoto,
-                  icon: const Icon(Icons.add_a_photo_outlined),
-                ),
-                if (widget.subjectId != 'unassigned')
-                  IconButton(
-                    tooltip: 'Themen entdecken',
-                    onPressed: () {
-                      if (current &&
-                          ModalRoute.of(context)?.isCurrent == true) {
-                        showTopicBrowser(
-                          context,
-                          widget.state,
-                          widget.childId,
-                          widget.subjectId,
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.ondemand_video_outlined),
-                  ),
-              ],
+          Row(
+            key: ValueKey(
+              compactNotebook ? 'notebook-compact-heading' : 'notebook-heading',
             ),
-            ChildSectionTabs(
-              tabs: const [
-                (
-                  id: 'album',
-                  label: 'Blättern',
-                  icon: Icons.auto_stories_outlined,
-                ),
-                (id: 'grid', label: 'Kacheln', icon: Icons.grid_view_rounded),
-                (id: 'list', label: 'Liste', icon: Icons.view_list_rounded),
-              ],
-              selected: view,
-              onSelected: selectView,
-            ),
-          ] else if (widget.state.isChild) ...[
-            ChildSectionHero(
-              eyebrow: 'Hefte',
-              compactTitle: subject?['title'] ?? 'Dein Hefter',
-              title: subject?['title'] ?? 'Dein Hefter',
-              description: 'Deine Seiten an einem Ort. Blättere durch deinen Hefter oder öffne den Text zum Lernen.',
-              icon: Icons.auto_stories_outlined,
-              action: Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  onPressed: addPhoto,
-                  icon: const Icon(Icons.add_a_photo_outlined),
-                  label: const Text('Heftfoto hinzufügen'),
-                ),
+            children: [
+              IconButton(
+                tooltip: 'Alle Hefter',
+                onPressed: () {
+                  if (renderedCurrent()) {
+                    context.go('/library/${widget.childId}');
+                  }
+                },
+                icon: const Icon(Icons.arrow_back_rounded),
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              children: [
-                TextButton.icon(
-                  onPressed: () => context.go('/library/${widget.childId}'),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('Alle Hefter'),
-                ),
-                if (widget.subjectId != 'unassigned')
-                  TextButton.icon(
-                    onPressed: () => showTopicBrowser(
-                      context,
-                      widget.state,
-                      widget.childId,
-                      widget.subjectId,
-                    ),
-                    icon: const Icon(Icons.ondemand_video_outlined),
-                    label: const Text('Themen entdecken'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ChildSectionTabs(
-              tabs: const [
-                (
-                  id: 'album',
-                  label: 'Blättern',
-                  icon: Icons.auto_stories_outlined,
-                ),
-                (id: 'grid', label: 'Kacheln', icon: Icons.grid_view_rounded),
-                (id: 'list', label: 'Liste', icon: Icons.view_list_rounded),
-              ],
-              selected: view,
-              onSelected: selectView,
-            ),
-          ] else
-            Row(
-              children: [
-                IconButton(
-                  tooltip: 'Alle Hefter',
-                  onPressed: () => context.go('/library/${widget.childId}'),
-                  icon: Icon(Icons.arrow_back_rounded),
-                ),
-                SizedBox(width: 8),
-                Expanded(
+              const SizedBox(width: 4),
+              Expanded(
+                child: Semantics(
+                  header: true,
                   child: Text(
                     subject?['title'] ?? 'Dein Hefter',
-                    maxLines: 2,
-                    style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
-                if (widget.state.isChild || canManage)
-                  IconButton(
-                    tooltip: 'Heftfoto hinzufügen',
-                    onPressed: addPhoto,
-                    icon: Icon(Icons.add_a_photo_outlined),
-                  ),
-                if (widget.subjectId != 'unassigned')
-                  IconButton(
-                    tooltip: 'Themen entdecken',
-                    onPressed: () => showTopicBrowser(
-                      context,
-                      widget.state,
-                      widget.childId,
-                      widget.subjectId,
-                    ),
-                    icon: Icon(Icons.ondemand_video_outlined),
-                  ),
-              ],
-            ),
-          SizedBox(height: compactNotebook ? 4 : 14),
-          Panel(
-            tone: PanelTone.subtle,
-            padding: compactNotebook ? EdgeInsets.zero : EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showSearch) ...[
-                  TextField(
-                    controller: search,
-                    focusNode: searchFocus,
-                    maxLength: 120,
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      labelText: 'In diesem Hefter suchen',
-                      prefixIcon: Icon(Icons.search_rounded),
-                      suffixIcon: IconButton(
-                        tooltip: 'Suchfeld einklappen',
-                        onPressed: toggleSearch,
-                        icon: Icon(Icons.close),
-                      ),
-                    ),
-                    onChanged: (_) => change(() {}, delayed: true),
-                    onSubmitted: (_) {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                      load();
-                    },
-                  ),
-                  SizedBox(height: 10),
-                ],
-                if (!showSearch && search.text.trim().isNotEmpty) ...[
-                  InputChip(
-                    label: Text('Suche: ${search.text.trim()}'),
-                    onPressed: toggleSearch,
-                    onDeleted: () => change(search.clear),
-                    deleteButtonTooltipMessage: 'Suchbegriff entfernen',
-                  ),
-                  SizedBox(height: 10),
-                ],
-                if (status != 'all' || dates != null) ...[
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (status != 'all')
-                        InputChip(
-                          label: Text(
-                            status == 'review'
-                                ? 'Noch prüfen'
-                                : 'Geprüfte Seiten',
-                          ),
-                          onDeleted: () => change(() => status = 'all'),
-                          deleteButtonTooltipMessage: 'Seitenstatus aufheben',
-                        ),
-                      if (dates != null)
-                        InputChip(
-                          label: Text(
-                            '${DateFormat('dd.MM.yy').format(dates!.start)} – ${DateFormat('dd.MM.yy').format(dates!.end)}',
-                          ),
-                          onDeleted: () => change(() => dates = null),
-                          deleteButtonTooltipMessage: 'Zeitraum aufheben',
-                        ),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                ],
-                if (!widget.state.isChild)
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      for (final mode in [
-                        ('album', 'Blättern', Icons.auto_stories_outlined),
-                        ('grid', 'Kacheln', Icons.grid_view_rounded),
-                        ('list', 'Liste', Icons.view_list_rounded),
-                      ])
-                        ChoiceChip(
-                          label: Text(mode.$2),
-                          avatar: Icon(mode.$3, size: 19),
-                          showCheckmark: false,
-                          selected: view == mode.$1,
-                          onSelected: (_) => selectView(mode.$1),
-                        ),
-                    ],
-                  ),
-                if (widget.state.isChild) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          pageSummary,
-                          style: TextStyle(color: context.palette.muted),
-                        ),
-                      ),
-                      if (!showSearch)
-                        IconButton(
-                          tooltip: 'Im Hefter suchen',
-                          onPressed: toggleSearch,
-                          icon: const Icon(Icons.search_rounded),
-                        ),
-                      IconButton(
-                        tooltip: 'Filter',
-                        onPressed: filters,
-                        icon: const Icon(Icons.tune_rounded),
-                      ),
-                      IconButton(
-                        tooltip: 'Seiten aktualisieren',
-                        onPressed: loading
-                            ? null
-                            : (subject == null ? loadSubject : load),
-                        icon: const Icon(Icons.refresh_rounded),
-                      ),
-                    ],
-                  ),
-                ] else
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          pageSummary,
-                          style: TextStyle(
-                            color: context.palette.muted,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (!showSearch)
-                        IconButton(
-                          tooltip: 'Im Hefter suchen',
-                          onPressed: toggleSearch,
-                          icon: Icon(Icons.search_rounded),
-                        ),
-                      IconButton(
-                        tooltip: 'Filter',
-                        onPressed: filters,
-                        icon: Icon(Icons.tune_rounded),
-                      ),
-                      IconButton(
-                        tooltip: 'Seiten aktualisieren',
-                        onPressed: loading
-                            ? null
-                            : (subject == null ? loadSubject : load),
-                        icon: Icon(Icons.refresh_rounded),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
+              ),
+              if (widget.state.isChild || canManage)
+                IconButton(
+                  tooltip: 'Heftfoto hinzufügen',
+                  onPressed: () {
+                    if (renderedCurrent()) addPhoto();
+                  },
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                ),
+              IconButton(
+                key: const ValueKey('notebook-options'),
+                tooltip: 'Hefteroptionen',
+                onPressed: () {
+                  if (renderedCurrent()) openOptions();
+                },
+                icon: const Icon(Icons.more_horiz_rounded),
+              ),
+            ],
           ),
+          if (search.text.trim().isNotEmpty || status != 'all' || dates != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (search.text.trim().isNotEmpty)
+                    InputChip(
+                      label: Text('Suche: ${search.text.trim()}'),
+                      onPressed: () {
+                        if (renderedCurrent()) searchDialog();
+                      },
+                      onDeleted: () {
+                        if (renderedCurrent()) change(search.clear);
+                      },
+                      deleteButtonTooltipMessage: 'Suchbegriff entfernen',
+                    ),
+                  if (status != 'all')
+                    InputChip(
+                      label: Text(
+                        status == 'review' ? 'Noch prüfen' : 'Geprüfte Seiten',
+                      ),
+                      onDeleted: () {
+                        if (renderedCurrent()) change(() => status = 'all');
+                      },
+                      deleteButtonTooltipMessage: 'Seitenstatus aufheben',
+                    ),
+                  if (dates != null)
+                    InputChip(
+                      label: Text(
+                        '${DateFormat('dd.MM.yy').format(dates!.start)} – ${DateFormat('dd.MM.yy').format(dates!.end)}',
+                      ),
+                      onDeleted: () {
+                        if (renderedCurrent()) change(() => dates = null);
+                      },
+                      deleteButtonTooltipMessage: 'Zeitraum aufheben',
+                    ),
+                ],
+              ),
+            ),
           if (comparePages.isNotEmpty)
             Wrap(
               spacing: 8,
@@ -1663,12 +1646,6 @@ class _NotebookScreenState extends State<_NotebookContext> {
             ))
           selectionToolbar(),
         pageControls(overview: true),
-        if (!widget.state.isChild || MediaQuery.sizeOf(context).width >= 720)
-          SwitchListTile(
-            title: const Text('Geladene Seiten nach Schultag gliedern'),
-            value: groupDays,
-            onChanged: (v) => setState(() => groupDays = v),
-          ),
         SizedBox(height: 10),
         SizedBox(
           height: (MediaQuery.sizeOf(context).height * 0.65).clamp(

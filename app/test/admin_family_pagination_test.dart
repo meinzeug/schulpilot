@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -85,7 +87,7 @@ Future<void> mount(
   );
   await t.pumpAndSettle();
   // Existing filter scenarios explicitly open the optional102 tools.
-  if (openFilters) await press(t, find.text('Suche & Haushaltsfilter'));
+  if (openFilters) await toggleParentDetails104(t, 'Suche & Haushaltsfilter');
 }
 
 Future<void> clean(WidgetTester t, AppState s) async {

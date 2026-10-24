@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -82,6 +84,7 @@ Future<GoRouter> open(
   WidgetTester tester,
   AppState state, {
   bool overview = false,
+  bool openTools = true,
   Brightness brightness = Brightness.dark,
   double width = 390,
   double scale = 1,
@@ -125,13 +128,11 @@ Future<GoRouter> open(
     ),
   );
   await tester.pumpAndSettle();
-  if (overview && width < 720) {
-    final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
-    if (filters.evaluate().isNotEmpty) {
-      await tester.ensureVisible(filters);
-      await tester.tap(filters);
-      await tester.pumpAndSettle();
-    }
+  if (overview &&
+      openTools &&
+      state.isChild &&
+      find.byKey(const ValueKey('page-tools-button')).evaluate().isNotEmpty) {
+    await page_tools.openPageTools(tester, 'homework-photo-tools');
   }
   addTearDown(() async {
     await tester.pumpWidget(SizedBox());
@@ -447,6 +448,7 @@ void main() {
             tester,
             state,
             overview: true,
+            openTools: false,
             brightness: brightness,
             width: width,
             scale: width == 320 ? 2 : 1,
@@ -484,7 +486,9 @@ void main() {
             expect(find.text('Was hast du heute auf?'), findsNothing);
             expect(photoAction.hitTestable(), findsOneWidget);
           }
-          expect(find.byTooltip('Aktualisieren'), findsOneWidget);
+          expect(find.byTooltip('Aktualisieren'), findsNothing);
+          await page_tools.openPageTools(tester, 'homework-photo-tools');
+          expect(find.text('Aufgabenfotos aktualisieren'), findsOneWidget);
           expect(methods.every((m) => m == 'GET'), isTrue);
           expect(tester.takeException(), isNull);
         },

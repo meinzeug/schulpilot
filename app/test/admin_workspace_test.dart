@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -212,7 +214,7 @@ void main() {
       await mount(tester, requests);
       await tap(tester, find.widgetWithText(ChoiceChip, 'Familientarife'));
       expect(find.textContaining('synthetic-family-a'), findsOneWidget);
-      await tap(tester, find.text('Suche & Haushaltsfilter'));
+      await toggleParentDetails104(tester, 'Suche & Haushaltsfilter');
       final search = find.widgetWithText(TextField, 'Familie suchen');
       await tester.ensureVisible(search);
       await tester.enterText(search, 'Plus');

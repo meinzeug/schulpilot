@@ -12,6 +12,8 @@ import 'language_options.dart';
 import 'material_screen.dart';
 import 'material_words.dart';
 import 'ui.dart';
+import 'page_tools.dart';
+import 'learning_start_illustration.dart';
 import 'collection_view_tools.dart';
 import 'parent_child_navigation.dart';
 
@@ -189,6 +191,29 @@ class _VocabularyScreenState extends State<_VocabularyBody>
       family == widget.state.familyId &&
       sessionToken == widget.state.api.token;
 
+  Widget vocabularyTools({
+    required String summary,
+    required bool filtered,
+    required Widget child,
+  }) => widget.state.isChild
+      ? PageToolsGroup(
+          id: 'vocabulary-tools',
+          title: 'Wörter suchen & ordnen',
+          scope: (
+            ObjectKey(owner),
+            family,
+            sessionToken,
+            widget.childId,
+            widget.materialId,
+            locale,
+          ),
+          isCurrent: () => current && foreground,
+          summary: summary,
+          active: filtered,
+          child: child,
+        )
+      : ChildFilterTools(summary: summary, filtered: filtered, child: child);
+
   @override
   void initState() {
     super.initState();
@@ -257,6 +282,30 @@ class _VocabularyScreenState extends State<_VocabularyBody>
     super.dispose();
   }
 
+  void pollImportStatusAfterTools() {
+    poll?.cancel();
+    if (!pollingAllowed ||
+        !imports.any((row) => ['queued', 'running'].contains(row['status']))) {
+      return;
+    }
+    final host = ModalRoute.of(context), request = generation;
+    final snapshot = wordSnapshot(data);
+    poll = Timer(const Duration(seconds: 3), () {
+      if (!pollingAllowed ||
+          request != generation ||
+          snapshot != wordSnapshot(data) ||
+          !identical(host, ModalRoute.of(context)) ||
+          host?.isActive == false) {
+        return;
+      }
+      if (PageToolsHost.isMenuCovering(widget.state, host)) {
+        pollImportStatusAfterTools();
+      } else if (host?.isCurrent != false) {
+        load();
+      }
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -264,6 +313,10 @@ class _VocabularyScreenState extends State<_VocabularyBody>
     // trigger a reload that invalidates that same reviewed selection.
     if (localMenuOpen) {
       poll?.cancel();
+      return;
+    }
+    if (PageToolsHost.isMenuCovering(widget.state, ModalRoute.of(context))) {
+      pollImportStatusAfterTools();
       return;
     }
     final wasVisible = routeVisible;
@@ -1051,6 +1104,31 @@ class _VocabularyScreenState extends State<_VocabularyBody>
           busy ||
           request != generation ||
           !identical(snapshot, data)) {
+        return;
+      }
+      action();
+    };
+  }
+
+  VoidCallback wordToolAction(VoidCallback action) {
+    final request = generation, snapshot = wordSnapshot(data);
+    final host = ModalRoute.of(context);
+    final account = owner, token = sessionToken;
+    final child = widget.childId, source = widget.materialId, language = locale;
+    return () {
+      if (!current ||
+          !foreground ||
+          !routeVisible ||
+          loading ||
+          busy ||
+          !identical(owner, account) ||
+          sessionToken != token ||
+          widget.childId != child ||
+          widget.materialId != source ||
+          locale != language ||
+          request != generation ||
+          snapshot != wordSnapshot(data) ||
+          host?.isCurrent != true) {
         return;
       }
       action();
@@ -3070,64 +3148,68 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                               : itemAction(importDialog),
                           icon: const Icon(Icons.add_rounded),
                         ),
-                      PopupMenuButton<String>(
-                        tooltip: 'Weitere Wörteraktionen',
-                        onOpened: beginLocalMenu,
-                        onCanceled: finishLocalMenu,
-                        enabled: !busy && !loading,
-                        onSelected: localMenuSelection((action) {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          switch (action) {
-                            case 'photo':
-                              importMaterial(
-                                context,
-                                widget.state,
-                                widget.childId,
-                              );
-                            case 'apply':
-                              openRoute(
-                                context,
-                                '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
-                              );
-                            case 'layout':
-                              setState(
-                                () => wordLayout = wordLayout == 'list'
-                                    ? 'cards'
-                                    : 'list',
-                              );
-                            case 'refresh':
-                              load();
-                          }
-                        }),
-                        itemBuilder: (_) => localMenuItems([
-                          if (widget.state.isChild || widget.state.canManage)
+                      if (!widget.state.isChild)
+                        PopupMenuButton<String>(
+                          tooltip: 'Weitere Wörteraktionen',
+                          onOpened: beginLocalMenu,
+                          onCanceled: finishLocalMenu,
+                          enabled: !busy && !loading,
+                          onSelected: localMenuSelection((action) {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            switch (action) {
+                              case 'photo':
+                                importMaterial(
+                                  context,
+                                  widget.state,
+                                  widget.childId,
+                                );
+                              case 'apply':
+                                openRoute(
+                                  context,
+                                  '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
+                                );
+                              case 'layout':
+                                setState(
+                                  () => wordLayout = wordLayout == 'list'
+                                      ? 'cards'
+                                      : 'list',
+                                );
+                              case 'refresh':
+                                load();
+                            }
+                          }),
+                          itemBuilder: (_) => localMenuItems([
+                            if (widget.state.isChild || widget.state.canManage)
+                              const PopupMenuItem(
+                                value: 'photo',
+                                child: Text('Vokabelseite fotografieren'),
+                              ),
                             const PopupMenuItem(
-                              value: 'photo',
-                              child: Text('Vokabelseite fotografieren'),
+                              value: 'apply',
+                              child: Text('Wörter anwenden'),
                             ),
-                          const PopupMenuItem(
-                            value: 'apply',
-                            child: Text('Wörter anwenden'),
-                          ),
-                          PopupMenuItem(
-                            value: 'layout',
-                            child: Text(
-                              wordLayout == 'list'
-                                  ? 'Wortkarten anzeigen'
-                                  : 'Wortliste anzeigen',
+                            PopupMenuItem(
+                              value: 'layout',
+                              child: Text(
+                                wordLayout == 'list'
+                                    ? 'Wortkarten anzeigen'
+                                    : 'Wortliste anzeigen',
+                              ),
                             ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'refresh',
-                            child: Text('Aktualisieren'),
-                          ),
-                        ]),
-                      ),
+                            const PopupMenuItem(
+                              value: 'refresh',
+                              child: Text('Aktualisieren'),
+                            ),
+                          ]),
+                        ),
                     ],
                   ),
                   action: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (widget.state.isChild && noWords && !filtered)
+                        const LearningStartIllustration(),
+
                       if (data != null) ...[
                         Text(
                           '${learningLocales[locale] ?? locale} · ${counted((scopeSummary!['confirmed_words'] as num).toInt(), 'Wort', 'Wörter')}',
@@ -3338,8 +3420,7 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                     ),
                 ],
                 if (section == 'words') ...[
-                  ChildFilterTools(
-                    enabled: true,
+                  vocabularyTools(
                     summary: collection == null
                         ? 'Alle Wörter'
                         : 'Gewählte Sammlung',
@@ -3347,6 +3428,46 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (widget.state.isChild)
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              TextButton.icon(
+                                onPressed: busy || loading
+                                    ? null
+                                    : wordToolAction(
+                                        () => importMaterial(
+                                          context,
+                                          widget.state,
+                                          widget.childId,
+                                        ),
+                                      ),
+                                icon: const Icon(Icons.add_a_photo_outlined),
+                                label: const Text('Vokabelseite fotografieren'),
+                              ),
+                              TextButton.icon(
+                                onPressed: busy || loading
+                                    ? null
+                                    : wordToolAction(
+                                        () => openRoute(
+                                          context,
+                                          '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
+                                        ),
+                                      ),
+                                icon: const Icon(Icons.translate_rounded),
+                                label: const Text('Wörter anwenden'),
+                              ),
+                              TextButton.icon(
+                                onPressed: busy || loading
+                                    ? null
+                                    : wordToolAction(load),
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Aktualisieren'),
+                              ),
+                            ],
+                          ),
+
                         Wrap(
                           spacing: 12,
                           runSpacing: 12,

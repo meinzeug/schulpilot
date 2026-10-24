@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'ui.dart';
+import 'page_tools.dart';
 
 /// Explicit local view controls. Submitting performs a read only; typing never
 /// silently changes which saved collection the results claim to represent.
@@ -164,6 +165,7 @@ class _CompactParentHeroState extends State<_CompactParentHero> {
                   ),
                 ),
               ),
+              const PageToolsButton(),
               Semantics(
                 expanded: expanded,
                 child: IconButton(

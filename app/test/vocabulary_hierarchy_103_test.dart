@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -169,11 +171,10 @@ void main() {
     (tester) async {
       final calls = <http.Request>[];
       await fixture.open(tester, calls, openTools: false, cards: false);
-      final toggle = find.byKey(const ValueKey('child-mobile-filter-toggle'));
-      await fixture.tap(tester, toggle);
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
       await tester.enterText(input('Wörter suchen'), 'Apfel');
       await tester.pumpAndSettle();
-      await fixture.tap(tester, toggle);
+      await page_tools.togglePageTools(tester, 'vocabulary-tools');
       expect(input('Wörter suchen'), findsNothing);
       final hidden = find
           .byType(TextField, skipOffstage: false)
@@ -182,7 +183,7 @@ void main() {
           .whereType<TextField>()
           .firstWhere((w) => w.decoration?.labelText == 'Wörter suchen');
       expect(hidden.controller!.text, 'Apfel');
-      await fixture.tap(tester, toggle);
+      await page_tools.togglePageTools(tester, 'vocabulary-tools');
       expect(
         tester.widget<TextField>(input('Wörter suchen')).controller!.text,
         'Apfel',
@@ -217,7 +218,7 @@ void main() {
     final calls = <http.Request>[];
     await fixture.open(tester, calls, openTools: false, cards: false);
     final count = calls.length;
-    for (final label in ['Wortaktionen', 'Weitere Wörteraktionen']) {
+    for (final label in ['Wortaktionen', 'Seitenoptionen']) {
       await fixture.tap(tester, find.byTooltip(label));
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
@@ -252,11 +253,11 @@ void main() {
       final calls = <http.Request>[];
       await fixture.open(tester, calls, openTools: false, cards: false);
       final before = calls.length;
-      await fixture.tap(tester, find.byTooltip('Weitere Wörteraktionen'));
-      await fixture.tap(tester, find.text('Wortkarten anzeigen'));
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
+      await fixture.tap(tester, find.widgetWithText(ChoiceChip, 'Wortkarten'));
       expect(find.text('Wort aufdecken'), findsOneWidget);
       expect(calls.length, before);
-      await fixture.tap(tester, find.byTooltip('Weitere Wörteraktionen'));
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
       await fixture.tap(tester, find.text('Aktualisieren'));
       expect(calls.length, before + 2);
       expect(calls.every((r) => r.method == 'GET'), isTrue);

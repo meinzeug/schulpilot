@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -17,9 +19,7 @@ Json data(http.Request r, {int page = 1, int pages = 1}) => {
   },
 };
 Future<void> tools(WidgetTester t) async {
-  await t.ensureVisible(find.text('Zeitraum, Suche & Reihenfolge'));
-  await t.tap(find.text('Zeitraum, Suche & Reihenfolge'));
-  await t.pumpAndSettle();
+  await page_tools.openPageTools(t, 'progress-tools');
 }
 
 Future<void> tap(WidgetTester t, Finder target) async {

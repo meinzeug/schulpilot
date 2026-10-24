@@ -7,6 +7,8 @@ import 'package:schulpilot/notification_panel.dart';
 import 'package:schulpilot/parent_child_navigation.dart';
 import 'package:schulpilot/parent_overview.dart';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'admin_family_pagination_test.dart' as families;
 import 'notification_cards_ux88_test.dart' as notices;
 import 'operator_incidents_test.dart' as incidents;
@@ -121,19 +123,18 @@ void main() {
         final f = timeline.Fixture();
         await f.mount(tester, width: 320, scale: scale);
         final before = f.requests.length;
-        final drawer = find.text('Suche & Aktivitätsfilter');
         expect(field('Geladenen Verlauf durchsuchen'), findsNothing);
         expectHiddenFieldCannotFocus(tester, 'Geladenen Verlauf durchsuchen');
-        await press(tester, drawer);
+        await toggleParentDetails104(tester, 'Suche & Aktivitätsfilter');
         await tester.enterText(
           field('Geladenen Verlauf durchsuchen'),
           'eigener lokaler Entwurf',
         );
         await tester.pumpAndSettle();
-        await press(tester, drawer);
+        await toggleParentDetails104(tester, 'Suche & Aktivitätsfilter');
         expect(field('Geladenen Verlauf durchsuchen'), findsNothing);
         expectHiddenFieldCannotFocus(tester, 'Geladenen Verlauf durchsuchen');
-        await press(tester, drawer);
+        await toggleParentDetails104(tester, 'Suche & Aktivitätsfilter');
         expect(
           tester
               .widget<TextField>(field('Geladenen Verlauf durchsuchen'))
@@ -153,7 +154,7 @@ void main() {
     (tester) async {
       final f = timeline.Fixture();
       await f.mount(tester, width: 320, scale: 2);
-      await press(tester, find.text('Suche & Aktivitätsfilter'));
+      await openParentDetails103(tester, 'Suche & Aktivitätsfilter');
       await tester.enterText(
         field('Geladenen Verlauf durchsuchen'),
         'Familienentwurf',
@@ -211,13 +212,13 @@ void main() {
         final before = f.requests.length;
         expect(find.text('decision_closed · decision'), findsOneWidget);
         expect(field('Technischen Code oder Funktion suchen'), findsNothing);
-        await press(tester, find.text('Suche & Fehlerfilter'));
+        await toggleParentDetails104(tester, 'Suche & Fehlerfilter');
         await tester.enterText(
           field('Technischen Code oder Funktion suchen'),
           'unabgeschickter Filter',
         );
         await tester.pumpAndSettle();
-        await press(tester, find.text('Suche & Fehlerfilter'));
+        await toggleParentDetails104(tester, 'Suche & Fehlerfilter');
         expectHiddenFieldCannotFocus(
           tester,
           'Technischen Code oder Funktion suchen',
@@ -265,19 +266,19 @@ void main() {
         final before = f.requests.length;
         expect(find.text('Künstliche Meldung new'), findsOneWidget);
         expect(field('Geladene Neuigkeiten durchsuchen'), findsNothing);
-        await press(tester, find.text('Suche & Neuigkeitenfilter'));
+        await toggleParentDetails104(tester, 'Suche & Neuigkeitenfilter');
         await tester.enterText(
           field('Geladene Neuigkeiten durchsuchen'),
           'Künstliche',
         );
         await tester.pumpAndSettle();
-        await press(tester, find.text('Suche & Neuigkeitenfilter'));
+        await toggleParentDetails104(tester, 'Suche & Neuigkeitenfilter');
         expect(find.text('Suche: künstliche'), findsOneWidget);
         expectHiddenFieldCannotFocus(
           tester,
           'Geladene Neuigkeiten durchsuchen',
         );
-        await press(tester, find.text('Suche & Neuigkeitenfilter'));
+        await toggleParentDetails104(tester, 'Suche & Neuigkeitenfilter');
         expect(
           tester
               .widget<TextField>(field('Geladene Neuigkeiten durchsuchen'))

@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -48,14 +50,11 @@ void main() {
       ];
       final (state, _) = await v.open(tester, requests, wordListing: listing);
       await tap(tester, find.text('Kompakte Wortliste'));
-      final mobileTools = find.byKey(
-        const ValueKey('child-mobile-filter-toggle'),
-      );
-      await tap(tester, mobileTools);
+      await page_tools.closePageTools(tester, 'vocabulary-tools');
       expect(find.text('Kompakte Wortliste'), findsNothing);
       expect(find.text('Wortkarten'), findsNothing);
       expect(find.byTooltip('Wort einzeln ansehen'), findsNWidgets(2));
-      await tap(tester, mobileTools);
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
       expect(
         tester
             .widget<ChoiceChip>(
@@ -64,7 +63,7 @@ void main() {
             .selected,
         isTrue,
       );
-      await tap(tester, mobileTools);
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
       expect(
         tester
             .widgetList<VisibleSearchText>(find.byType(VisibleSearchText))

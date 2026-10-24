@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'parent_hierarchy_test_tools.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -216,7 +218,7 @@ void main() {
       expect(find.text('KI-Notfallstopp aktiviert'), findsOneWidget);
       expect(find.text('Aktion: future.action'), findsOneWidget);
       expect(find.text('Akteur: synthetic-op-b'), findsOneWidget);
-      await tap(tester, find.text('Protokoll durchsuchen & filtern'));
+      await toggleParentDetails104(tester, 'Protokoll durchsuchen & filtern');
       final actor = find.byType(DropdownButtonFormField<String>).first;
       await tap(tester, actor);
       await tester.tap(find.text('synthetic-op-b').last);
@@ -243,7 +245,7 @@ void main() {
           {'action': 'future.action', 'actor': 'other-op', 'target': 'target'},
         ]),
       );
-      await tap(tester, find.text('Protokoll durchsuchen & filtern'));
+      await toggleParentDetails104(tester, 'Protokoll durchsuchen & filtern');
       await tester.enterText(find.byType(TextField), 'gespeichert');
       await tester.pump();
       expect(find.text('1 von 2 geladenen Einträgen'), findsOneWidget);
@@ -433,12 +435,13 @@ void main() {
         });
       });
       await mount(tester, AiCostPanel(state));
+      await openParentDetails103(tester, 'Modellverbrauch filtern');
       await tap(tester, find.text('Offene Kosten / unbrauchbar'));
       expect(find.text('healthy'), findsNothing);
       expect(find.text('open'), findsOneWidget);
       await tap(tester, find.text('Was bedeuten P50 und P95?'));
       expect(find.textContaining('Die Hälfte'), findsOneWidget);
-      await tap(tester, find.text('Kostenstellen'));
+      await toggleParentDetails104(tester, 'Kostenstellen');
       expect(
         find.text('Noch keine zugeordneten Kostenstellen.'),
         findsOneWidget,

@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -65,7 +67,7 @@ Future<void> mountPage(
 }
 
 Future<void> revealTools(WidgetTester tester) =>
-    local.tap(tester, find.byKey(const ValueKey('child-mobile-filter-toggle')));
+    page_tools.togglePageTools(tester);
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
@@ -284,18 +286,29 @@ void main() {
           width: width,
           photos: false,
         );
-        final search = find.byWidgetPredicate(
-          (w) => w is IconButton && w.tooltip == 'Im Hefter suchen',
-        );
-        final filter = find.byWidgetPredicate(
-          (w) => w is IconButton && w.tooltip == 'Filter',
-        );
+        expect(find.byTooltip('Im Hefter suchen'), findsNothing);
+        expect(find.byTooltip('Filter'), findsNothing);
+        final options = find.byKey(const ValueKey('notebook-options'));
+        expect(options, findsOneWidget);
+        expect(tester.getSize(options).shortestSide, greaterThanOrEqualTo(48));
+        final before = calls.length;
+        await books.openNotebookOptions(tester);
+        final search = books.notebookOption('Im Hefter suchen');
+        final filter = books.notebookOption('Filter');
         expect(search, findsOneWidget);
         expect(filter, findsOneWidget);
         expect(tester.getSize(search).height, greaterThanOrEqualTo(48));
         expect(tester.getSize(filter).height, greaterThanOrEqualTo(48));
         await local.tap(tester, search);
         expect(local.input('In diesem Hefter suchen'), findsOneWidget);
+        await tester.enterText(
+          local.input('In diesem Hefter suchen'),
+          'lokaler Entwurf',
+        );
+        await tester.pump(const Duration(milliseconds: 450));
+        expect(calls.length, before);
+        await local.tap(tester, find.text('Abbrechen'));
+        expect(calls.length, before);
         expect(calls.every((r) => r.method == 'GET'), isTrue);
         expect(tester.takeException(), isNull);
       },
@@ -332,7 +345,7 @@ void main() {
       expect(find.byType(ChoiceChip), findsNothing);
       expect(find.text('Mathematik'), findsOneWidget);
       final before = calls.length;
-      await local.tap(tester, find.text('Zeitraum, Suche & Reihenfolge'));
+      await page_tools.openPageTools(tester, 'progress-tools');
       expect(calls.length, before);
       await local.tap(
         tester,

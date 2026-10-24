@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -204,10 +206,7 @@ void main() {
       ];
       await f.show(tester, f.mailbox(state, data));
       await f.tap(tester, find.text('Meine Wünsche'));
-      await f.tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await f.tap(tester, find.text('Lernideen'));
       expect(find.text('Tiere erforschen'), findsOneWidget);
       expect(find.text('Am Mittwoch lernen'), findsNothing);

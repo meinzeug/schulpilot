@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
-import 'child_section_ui.dart';
 import 'ui.dart';
+import 'page_tools.dart';
 import 'parent_child_navigation.dart';
 
 class SchoolDayHistory extends StatelessWidget {
@@ -335,38 +335,23 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
                     childId: widget.childId,
                     selected: 'materials',
                   ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: loading ? null : () => load(reset: true),
-                      icon: Icon(Icons.refresh_rounded),
-                      label: Text('Diese Tagesansicht aktualisieren'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: loading ? null : chooseDate,
-                      icon: Icon(Icons.date_range_rounded),
-                      label: Text('Zu einem Datum'),
-                    ),
-                    if (pageStart != null)
-                      TextButton(
-                        onPressed: loading
-                            ? null
-                            : () => load(reset: true, latest: true),
-                        child: Text('Neueste Tagespakete'),
-                      ),
-                  ],
-                ),
                 if (pageStart != null)
                   Text(
                     'Du siehst einen geladenen Datumausschnitt. Über „Neueste Tagespakete“ kommst du wieder zum Anfang.',
                   ),
                 SizedBox(height: 12),
-                ChildFilterTools(
-                  enabled: widget.state.isChild,
+                PageToolsGroup(
+                  id: 'school-history-tools',
+                  title: 'Tagespakete suchen & ordnen',
+                  scope: (
+                    ObjectKey(account),
+                    family,
+                    sessionToken,
+                    widget.childId,
+                  ),
+                  isCurrent: () => current,
                   summary: '${days.length} geladene Tagespakete',
-                  filtered:
+                  active:
                       search.text.trim().isNotEmpty ||
                       status != 'all' ||
                       subject != 'all' ||
@@ -374,6 +359,30 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: loading ? null : () => load(reset: true),
+                            icon: Icon(Icons.refresh_rounded),
+                            label: Text('Diese Tagesansicht aktualisieren'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: loading ? null : chooseDate,
+                            icon: Icon(Icons.date_range_rounded),
+                            label: Text('Zu einem Datum'),
+                          ),
+                          if (pageStart != null)
+                            TextButton(
+                              onPressed: loading
+                                  ? null
+                                  : () => load(reset: true, latest: true),
+                              child: Text('Neueste Tagespakete'),
+                            ),
+                        ],
+                      ),
+
                       TextField(
                         controller: search,
                         maxLength: 120,
@@ -483,6 +492,30 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
                     ],
                   ),
                 ),
+                if (search.text.trim().isNotEmpty ||
+                    status != 'all' ||
+                    subject != 'all' ||
+                    order != 'newest')
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (search.text.trim().isNotEmpty)
+                        Chip(label: Text('Suche: ${search.text.trim()}')),
+                      if (subject != 'all') Chip(label: Text('Fach: $subject')),
+                      if (status != 'all')
+                        Chip(
+                          label: Text(switch (status) {
+                            'open' => 'Noch offen',
+                            'done' => 'Runden bearbeitet',
+                            'collecting' => 'Fotos sammeln',
+                            _ => 'Seiten prüfen',
+                          }),
+                        ),
+                      if (order != 'newest')
+                        const Chip(label: Text('Älteste zuerst')),
+                    ],
+                  ),
                 Semantics(
                   liveRegion: true,
                   child: Text(

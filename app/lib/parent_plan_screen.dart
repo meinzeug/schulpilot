@@ -16,6 +16,8 @@ import 'parent_insights_panel.dart';
 import 'parent_workspace_ui.dart';
 import 'parent_deadlines_dialog.dart';
 import 'ui.dart';
+import 'page_tools.dart';
+import 'learning_start_illustration.dart';
 import 'parent_view_details.dart';
 import 'learning_plan_ui.dart';
 
@@ -1123,8 +1125,10 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           ),
                       ],
                     ),
-                    ParentViewDetails(
+                    PageToolsGroup(
                       key: ValueKey(('all-topic-filters', widget.childId)),
+                      id: 'parent-plan-filters',
+                      title: 'Suche & alle Themenfilter',
                       scope: (
                         'plan-filters',
                         ObjectKey(owner),
@@ -1132,158 +1136,160 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         viewChild,
                       ),
                       isCurrent: () => own && viewChild == widget.childId,
-                      title: 'Suche & alle Themenfilter',
-                      subtitle: filtered
-                          ? 'Aktive Bedingungen bleiben oberhalb sichtbar.'
-                          : 'Gespeicherten Bestand eingrenzen',
-                      children: [
-                        ParentCollectionSearch(
-                          controller: search,
-                          label: 'Lernaufträge suchen',
-                          appliedQuery: query,
-                          enabled: !loading && !busy,
-                          onSearch: applySearch,
-                          onClear: () => applySearch(clear: true),
-                        ),
-                        if ((data!['subjects'] as List? ?? []).isNotEmpty)
-                          ParentChoiceFilter(
-                            label: 'Fach der Lernaufträge',
-                            value: subjectFilter ?? 'all',
+                      active: filtered,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ParentCollectionSearch(
+                            controller: search,
+                            label: 'Lernaufträge suchen',
+                            appliedQuery: query,
                             enabled: !loading && !busy,
-                            choices: [
-                              ('all', 'Alle Fächer'),
-                              for (final value in data!['subjects'])
-                                (value as String, value),
+                            onSearch: applySearch,
+                            onClear: () => applySearch(clear: true),
+                          ),
+                          if ((data!['subjects'] as List? ?? []).isNotEmpty)
+                            ParentChoiceFilter(
+                              label: 'Fach der Lernaufträge',
+                              value: subjectFilter ?? 'all',
+                              enabled: !loading && !busy,
+                              choices: [
+                                ('all', 'Alle Fächer'),
+                                for (final value in data!['subjects'])
+                                  (value as String, value),
+                              ],
+                              onChanged: (value) => filterTopics(
+                                () => subjectFilter = value == 'all'
+                                    ? null
+                                    : value,
+                              ),
+                            ),
+                          ExpansionTile(
+                            title: const Text('Aufträge gezielt filtern'),
+                            subtitle: Text(
+                              'Quelle · ${obligation == 'all'
+                                  ? 'alle Verbindlichkeiten'
+                                  : obligation == 'mandatory'
+                                  ? 'verbindlich'
+                                  : 'freiwillig'} · ${timing == 'all' ? 'alle Termine' : 'Terminfilter aktiv'}',
+                            ),
+                            children: [
+                              ParentChoiceFilter(
+                                label: 'Quelle des Auftrags',
+                                value: sourceFilter,
+                                enabled: !loading && !busy,
+                                choices: const [
+                                  ('all', 'Alle Quellen'),
+                                  ('notebook', 'Mit Heftquelle'),
+                                  ('manual', 'Ohne Heftfoto'),
+                                  ('changed', 'Geänderte Quelle prüfen'),
+                                  ('confirmed', 'Bestätigte Auftragsgrundlage'),
+                                ],
+                                onChanged: (value) =>
+                                    filterTopics(() => sourceFilter = value),
+                              ),
+                              ParentChoiceFilter(
+                                label: 'Verbindlichkeit',
+                                value: obligation,
+                                enabled: !loading && !busy,
+                                choices: const [
+                                  ('all', 'Alle Aufträge'),
+                                  ('mandatory', 'Verbindlich'),
+                                  ('voluntary', 'Freiwillig'),
+                                ],
+                                onChanged: (value) =>
+                                    filterTopics(() => obligation = value),
+                              ),
+                              ParentChoiceFilter(
+                                label: 'Auftragstermin',
+                                value: timing,
+                                enabled: !loading && !busy,
+                                choices: const [
+                                  ('all', 'Alle Termine'),
+                                  ('today', 'Termin heute'),
+                                  ('past', 'Termin liegt zurück'),
+                                  ('future', 'Zukünftiger Termin'),
+                                  ('undated', 'Ohne Termin'),
+                                ],
+                                onChanged: (value) =>
+                                    filterTopics(() => timing = value),
+                              ),
+                              ParentChoiceFilter(
+                                label: 'Gespeicherte Runden',
+                                value: rounds,
+                                enabled: !loading && !busy,
+                                choices: const [
+                                  ('all', 'Mit und ohne Runden'),
+                                  ('open', 'Mit fortsetzbarer Runde'),
+                                  ('none', 'Noch keine gespeicherte Runde'),
+                                  ('finished', 'Mit abgeschlossener Runde'),
+                                ],
+                                onChanged: (v) =>
+                                    filterTopics(() => rounds = v),
+                              ),
+                              ParentChoiceFilter(
+                                label: 'Auftragsart',
+                                value: kindFilter,
+                                enabled: !loading && !busy,
+                                choices: const [
+                                  ('all', 'Alle Auftragsarten'),
+                                  ('parent', 'Lernauftrag'),
+                                  ('exam', 'Klassenarbeit / Test'),
+                                  ('homework', 'Notierte Hausaufgabe'),
+                                  ('interest', 'Interesse'),
+                                ],
+                                onChanged: (v) =>
+                                    filterTopics(() => kindFilter = v),
+                              ),
+                              ParentChoiceFilter(
+                                label: 'Frühester Lernbeginn',
+                                value: startFilter,
+                                enabled: !loading && !busy,
+                                choices: const [
+                                  ('all', 'Alle Startzeiten'),
+                                  ('available', 'Heute bereits möglich'),
+                                  ('later', 'Für später vorgesehen'),
+                                ],
+                                onChanged: (v) =>
+                                    filterTopics(() => startFilter = v),
+                              ),
                             ],
-                            onChanged: (value) => filterTopics(
-                              () =>
-                                  subjectFilter = value == 'all' ? null : value,
-                            ),
                           ),
-                        ExpansionTile(
-                          title: const Text('Aufträge gezielt filtern'),
-                          subtitle: Text(
-                            'Quelle · ${obligation == 'all'
-                                ? 'alle Verbindlichkeiten'
-                                : obligation == 'mandatory'
-                                ? 'verbindlich'
-                                : 'freiwillig'} · ${timing == 'all' ? 'alle Termine' : 'Terminfilter aktiv'}',
+                          ParentChoiceFilter(
+                            label: 'Auftragsstatus',
+                            value: completion,
+                            enabled: !loading && !busy,
+                            choices: const [
+                              ('open', 'Offene Themen'),
+                              ('done', 'Erledigte Themen'),
+                              ('all', 'Offene und erledigte Themen'),
+                            ],
+                            onChanged: (v) => filterTopics(() {
+                              completion = v;
+                              includeCompleted = v == 'all';
+                            }),
                           ),
-                          children: [
-                            ParentChoiceFilter(
-                              label: 'Quelle des Auftrags',
-                              value: sourceFilter,
-                              enabled: !loading && !busy,
-                              choices: const [
-                                ('all', 'Alle Quellen'),
-                                ('notebook', 'Mit Heftquelle'),
-                                ('manual', 'Ohne Heftfoto'),
-                                ('changed', 'Geänderte Quelle prüfen'),
-                                ('confirmed', 'Bestätigte Auftragsgrundlage'),
-                              ],
-                              onChanged: (value) =>
-                                  filterTopics(() => sourceFilter = value),
-                            ),
-                            ParentChoiceFilter(
-                              label: 'Verbindlichkeit',
-                              value: obligation,
-                              enabled: !loading && !busy,
-                              choices: const [
-                                ('all', 'Alle Aufträge'),
-                                ('mandatory', 'Verbindlich'),
-                                ('voluntary', 'Freiwillig'),
-                              ],
-                              onChanged: (value) =>
-                                  filterTopics(() => obligation = value),
-                            ),
-                            ParentChoiceFilter(
-                              label: 'Auftragstermin',
-                              value: timing,
-                              enabled: !loading && !busy,
-                              choices: const [
-                                ('all', 'Alle Termine'),
-                                ('today', 'Termin heute'),
-                                ('past', 'Termin liegt zurück'),
-                                ('future', 'Zukünftiger Termin'),
-                                ('undated', 'Ohne Termin'),
-                              ],
-                              onChanged: (value) =>
-                                  filterTopics(() => timing = value),
-                            ),
-                            ParentChoiceFilter(
-                              label: 'Gespeicherte Runden',
-                              value: rounds,
-                              enabled: !loading && !busy,
-                              choices: const [
-                                ('all', 'Mit und ohne Runden'),
-                                ('open', 'Mit fortsetzbarer Runde'),
-                                ('none', 'Noch keine gespeicherte Runde'),
-                                ('finished', 'Mit abgeschlossener Runde'),
-                              ],
-                              onChanged: (v) => filterTopics(() => rounds = v),
-                            ),
-                            ParentChoiceFilter(
-                              label: 'Auftragsart',
-                              value: kindFilter,
-                              enabled: !loading && !busy,
-                              choices: const [
-                                ('all', 'Alle Auftragsarten'),
-                                ('parent', 'Lernauftrag'),
-                                ('exam', 'Klassenarbeit / Test'),
-                                ('homework', 'Notierte Hausaufgabe'),
-                                ('interest', 'Interesse'),
-                              ],
-                              onChanged: (v) =>
-                                  filterTopics(() => kindFilter = v),
-                            ),
-                            ParentChoiceFilter(
-                              label: 'Frühester Lernbeginn',
-                              value: startFilter,
-                              enabled: !loading && !busy,
-                              choices: const [
-                                ('all', 'Alle Startzeiten'),
-                                ('available', 'Heute bereits möglich'),
-                                ('later', 'Für später vorgesehen'),
-                              ],
-                              onChanged: (v) =>
-                                  filterTopics(() => startFilter = v),
-                            ),
-                          ],
-                        ),
-                        ParentChoiceFilter(
-                          label: 'Auftragsstatus',
-                          value: completion,
-                          enabled: !loading && !busy,
-                          choices: const [
-                            ('open', 'Offene Themen'),
-                            ('done', 'Erledigte Themen'),
-                            ('all', 'Offene und erledigte Themen'),
-                          ],
-                          onChanged: (v) => filterTopics(() {
-                            completion = v;
-                            includeCompleted = v == 'all';
-                          }),
-                        ),
-                        ParentChoiceFilter(
-                          label: 'Reihenfolge der Aufträge',
-                          value: order,
-                          enabled: !loading && !busy,
-                          choices: const [
-                            ('default', 'Verbindlich und zuletzt angelegt'),
-                            ('due', 'Nächster Termin zuerst'),
-                            ('oldest', 'Zuerst angelegte Ziele'),
-                            ('subject', 'Nach Fach und Thema'),
-                          ],
-                          onChanged: (v) => filterTopics(() => order = v),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Kompakte Auftragsliste'),
-                          value: compactTopics,
-                          onChanged: (value) =>
-                              setState(() => compactTopics = value),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                          ParentChoiceFilter(
+                            label: 'Reihenfolge der Aufträge',
+                            value: order,
+                            enabled: !loading && !busy,
+                            choices: const [
+                              ('default', 'Verbindlich und zuletzt angelegt'),
+                              ('due', 'Nächster Termin zuerst'),
+                              ('oldest', 'Zuerst angelegte Ziele'),
+                              ('subject', 'Nach Fach und Thema'),
+                            ],
+                            onChanged: (v) => filterTopics(() => order = v),
+                          ),
+                          SwitchListTile(
+                            title: const Text('Kompakte Auftragsliste'),
+                            value: compactTopics,
+                            onChanged: (value) =>
+                                setState(() => compactTopics = value),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                     if (assignmentId != null)
                       Panel(
@@ -1323,6 +1329,8 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         'Für diese Ansicht ist die Themenliste noch nicht geladen.',
                       ),
                     if (!loading && !loadFailed) ...[
+                      if ((data!['topics'] as List).isEmpty && !filtered)
+                        const LearningStartIllustration(),
                       if ((data!['topics'] as List).isEmpty)
                         Notice(
                           filtered
@@ -1384,7 +1392,8 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         ),
                       ],
                     ),
-                    ParentViewDetails(
+                    PageToolsGroup(
+                      id: 'parent-plan-tools',
                       title: 'Weitere Themenwerkzeuge',
                       scope: (
                         'plan-tools',
@@ -1393,69 +1402,75 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         viewChild,
                       ),
                       isCurrent: () => own && viewChild == widget.childId,
-                      children: [
-                        if (data!['can_manage'] == true) ...[
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: busy || loading
-                                    ? null
-                                    : () async {
-                                        final child = widget.childId;
-                                        final selected =
-                                            await pickLibraryMaterial(
-                                              context,
-                                              widget.state,
-                                              child,
-                                            );
-                                        if (own &&
-                                            child == widget.childId &&
-                                            selected != null) {
-                                          await add(source: selected);
-                                        }
-                                      },
-                                icon: const Icon(Icons.auto_stories_outlined),
-                                label: const Text('Aus Heftseite übernehmen'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Ein Ziel speichern bereitet noch keine KI-Aufgaben vor. Die Vorbereitung startest du bewusst. Bestehende Antworten bleiben erhalten.',
-                          ),
-                          const SizedBox(height: 16),
-                          if ((data!['recent_round_topics'] as List).isNotEmpty)
-                            ExpansionTile(
-                              title: const Text(
-                                'Thema aus einer vorhandenen Übung übernehmen',
-                              ),
+                      active: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (data!['can_manage'] == true) ...[
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
                               children: [
-                                for (final unit in data!['recent_round_topics'])
-                                  ListTile(
-                                    title: Text(
-                                      '${unit['subject']} · ${unit['topic']}',
-                                    ),
-                                    trailing: const Icon(
-                                      Icons.add_circle_outline,
-                                    ),
-                                    onTap: busy || loading
-                                        ? null
-                                        : () =>
-                                              add(sourceUnit: Json.from(unit)),
-                                  ),
+                                OutlinedButton.icon(
+                                  onPressed: busy || loading
+                                      ? null
+                                      : () async {
+                                          final child = widget.childId;
+                                          final selected =
+                                              await pickLibraryMaterial(
+                                                context,
+                                                widget.state,
+                                                child,
+                                              );
+                                          if (own &&
+                                              child == widget.childId &&
+                                              selected != null) {
+                                            await add(source: selected);
+                                          }
+                                        },
+                                  icon: const Icon(Icons.auto_stories_outlined),
+                                  label: const Text('Aus Heftseite übernehmen'),
+                                ),
                               ],
                             ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Ein Ziel speichern bereitet noch keine KI-Aufgaben vor. Die Vorbereitung startest du bewusst. Bestehende Antworten bleiben erhalten.',
+                            ),
+                            const SizedBox(height: 16),
+                            if ((data!['recent_round_topics'] as List)
+                                .isNotEmpty)
+                              ExpansionTile(
+                                title: const Text(
+                                  'Thema aus einer vorhandenen Übung übernehmen',
+                                ),
+                                children: [
+                                  for (final unit
+                                      in data!['recent_round_topics'])
+                                    ListTile(
+                                      title: Text(
+                                        '${unit['subject']} · ${unit['topic']}',
+                                      ),
+                                      trailing: const Icon(
+                                        Icons.add_circle_outline,
+                                      ),
+                                      onTap: busy || loading
+                                          ? null
+                                          : () => add(
+                                              sourceUnit: Json.from(unit),
+                                            ),
+                                    ),
+                                ],
+                              ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ],
                   if (section == 2 && !loading && !loadFailed) ...[
-                    ParentViewDetails(
+                    PageToolsGroup(
+                      id: 'parent-plan-week-tools',
                       title: 'Vorgaben & Kalender',
-                      subtitle:
-                          '${data!['child']['preferences']['daily_minutes']} Min. am Tag · ${data!['child']['preferences']['weekly_minutes']} Min. pro Woche',
                       scope: (
                         'plan-week-tools',
                         ObjectKey(owner),
@@ -1463,72 +1478,76 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         viewChild,
                       ),
                       isCurrent: () => own && viewChild == widget.childId,
-                      children: [
-                        Notice(
-                          data!['ai_guidance'] != null
-                              ? 'KI-Schwerpunkte vom ${reviewDate(data!['ai_guidance']['finished'])} ergänzen diesen Vorschlag. Begonnene Runden, Termine und Elternvorgaben haben Vorrang.'
-                              : 'Der Wochenvorschlag nutzt aktuell deine Vorgaben und gespeicherte Lernbelege. Eine passende aktuelle KI-Auswertung kann zusätzliche Schwerpunkte setzen.',
-                        ),
-                        Panel(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const Text(
-                                'Zeit & Rahmen',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
+                      active: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Notice(
+                            data!['ai_guidance'] != null
+                                ? 'KI-Schwerpunkte vom ${reviewDate(data!['ai_guidance']['finished'])} ergänzen diesen Vorschlag. Begonnene Runden, Termine und Elternvorgaben haben Vorrang.'
+                                : 'Der Wochenvorschlag nutzt aktuell deine Vorgaben und gespeicherte Lernbelege. Eine passende aktuelle KI-Auswertung kann zusätzliche Schwerpunkte setzen.',
+                          ),
+                          Panel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Zeit & Rahmen',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Mindestziel: ${data!['child']['preferences']['daily_minutes']} Minuten pro Tag · ${data!['child']['preferences']['weekly_minutes']} pro Woche',
-                              ),
-                              Text(
-                                'Empfohlene Runde: ${data!['child']['preferences']['session_minutes']} Minuten · Pause: ${data!['child']['preferences']['break_minutes']} Minuten',
-                              ),
-                              const Text(
-                                'Minuten sind Mindestziele, keine Sperre freiwilligen Lernens. Ein Wochenvorschlag erzeugt keine zusätzlichen Pflichtaufgaben.',
-                              ),
-                              if (data!['can_manage'] == true)
-                                TextButton.icon(
-                                  onPressed: () async {
-                                    await preferencesDialog(
-                                      context,
-                                      widget.state,
-                                      Json.from(data!['child']),
-                                    );
-                                    if (own) await load();
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Mindestziel: ${data!['child']['preferences']['daily_minutes']} Minuten pro Tag · ${data!['child']['preferences']['weekly_minutes']} pro Woche',
+                                ),
+                                Text(
+                                  'Empfohlene Runde: ${data!['child']['preferences']['session_minutes']} Minuten · Pause: ${data!['child']['preferences']['break_minutes']} Minuten',
+                                ),
+                                const Text(
+                                  'Minuten sind Mindestziele, keine Sperre freiwilligen Lernens. Ein Wochenvorschlag erzeugt keine zusätzlichen Pflichtaufgaben.',
+                                ),
+                                if (data!['can_manage'] == true)
+                                  TextButton.icon(
+                                    onPressed: () async {
+                                      await preferencesDialog(
+                                        context,
+                                        widget.state,
+                                        Json.from(data!['child']),
+                                      );
+                                      if (own) await load();
+                                    },
+                                    icon: const Icon(Icons.tune_rounded),
+                                    label: const Text('Lernvorgaben anpassen'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            onPressed: loading || busy
+                                ? null
+                                : () {
+                                    if (own && viewChild == widget.childId) {
+                                      showParentDeadlines(
+                                        context,
+                                        widget.state,
+                                        widget.childId,
+                                        isCurrent: () =>
+                                            own && viewChild == widget.childId,
+                                        onRoute: (route) => editorRoute = route,
+                                      );
+                                    }
                                   },
-                                  icon: const Icon(Icons.tune_rounded),
-                                  label: const Text('Lernvorgaben anpassen'),
-                                ),
-                            ],
+                            icon: const Icon(Icons.calendar_month_outlined),
+                            label: const Text(
+                              'Gespeicherte Termine & Kalenderdatei',
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: loading || busy
-                              ? null
-                              : () {
-                                  if (own && viewChild == widget.childId) {
-                                    showParentDeadlines(
-                                      context,
-                                      widget.state,
-                                      widget.childId,
-                                      isCurrent: () =>
-                                          own && viewChild == widget.childId,
-                                      onRoute: (route) => editorRoute = route,
-                                    );
-                                  }
-                                },
-                          icon: const Icon(Icons.calendar_month_outlined),
-                          label: const Text(
-                            'Gespeicherte Termine & Kalenderdatei',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                     for (final conflict
                         in data!['plan']['conflicts'] as List? ?? [])

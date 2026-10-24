@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -222,6 +224,49 @@ Future<void> tap(
   }
 }
 
+Finder notebookOption(String label) => find.descendant(
+  of: find.byKey(const ValueKey('notebook-options-dialog')),
+  matching: find.widgetWithText(ListTile, label),
+);
+
+Future<void> openNotebookOptions(
+  WidgetTester tester, {
+  bool settle = true,
+}) async {
+  await tap(
+    tester,
+    find.byKey(const ValueKey('notebook-options')),
+    settle: settle,
+  );
+  expect(find.byKey(const ValueKey('notebook-options-dialog')), findsOneWidget);
+}
+
+Future<void> chooseNotebookView(WidgetTester tester, String label) async {
+  await openNotebookOptions(tester);
+  await tap(tester, notebookOption(label));
+  expect(find.byKey(const ValueKey('notebook-options-dialog')), findsNothing);
+}
+
+Future<void> openNotebookSearch(WidgetTester tester) async {
+  await openNotebookOptions(tester);
+  await tap(tester, notebookOption('Im Hefter suchen'));
+  expect(
+    find.widgetWithText(TextField, 'In diesem Hefter suchen'),
+    findsOneWidget,
+  );
+}
+
+Future<void> openNotebookFilters(WidgetTester tester) async {
+  await openNotebookOptions(tester);
+  await tap(tester, notebookOption('Filter'));
+  expect(find.text('Seitenstatus'), findsOneWidget);
+}
+
+Future<void> refreshNotebook(WidgetTester tester, {bool settle = true}) async {
+  await openNotebookOptions(tester, settle: settle);
+  await tap(tester, notebookOption('Seiten aktualisieren'), settle: settle);
+}
+
 void main() {
   test(
     'Only known cover keys are paths; private subjects use the generic picture',
@@ -265,14 +310,17 @@ void main() {
         expect(requests, hasLength(1));
         expect(requests.single.url.path.endsWith('/subjects'), isTrue);
         expect(find.byType(TextField), findsNothing);
-        if (textScale == 1) {
-          expect(
-            tester
-                .getSize(find.byKey(const ValueKey('notebook-toolbar')))
-                .height,
-            lessThanOrEqualTo(64),
-          );
-        }
+        expect(find.byKey(const ValueKey('notebook-toolbar')), findsNothing);
+        // The preceding explicit tab selection scrolls that tab into view.
+        // Return to the header before proving its options target is usable.
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('page-tools-button')),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('page-tools-button')).hitTestable(),
+          findsOneWidget,
+        );
         final heading = find.byKey(const ValueKey('compact-child-heading'));
         expect(heading, findsOneWidget);
         expect(
@@ -289,23 +337,25 @@ void main() {
         expect(find.byType(SubjectBadge), findsWidgets);
         expect(find.byType(NotebookCover), findsNothing);
         expect(find.byType(GridView), findsNothing);
+        await page_tools.openPageTools(tester, 'notebook-shelf-tools');
         await tap(tester, find.byTooltip('Kacheln'));
         expect(find.byType(GridView), findsOneWidget);
         expect(find.byType(NotebookCover), findsWidgets);
-        await tap(tester, find.text('Fach suchen'));
         await tester.enterText(find.byType(TextField), 'Biologie');
         await tester.testTextInput.receiveAction(TextInputAction.search);
         await tester.pumpAndSettle();
         expect(find.text('Mathematik'), findsNothing);
         expect(find.byType(NotebookCover), findsOneWidget);
         expect(find.text('Biologie'), findsWidgets);
-        await tap(tester, find.byTooltip('Suche schließen'));
+        await tap(tester, find.byTooltip('Fachsuche leeren'));
+        await page_tools.closePageTools(tester, 'notebook-shelf-tools');
         expect(find.byType(TextField), findsNothing);
         await tap(tester, find.text('Meine Fächer'));
         expect(find.text('Biologie'), findsNothing);
         expect(find.text('Mathematik'), findsOneWidget);
         expect(find.text('Noch zuordnen'), findsOneWidget);
         await tap(tester, find.text('Alle Fächer'));
+        await page_tools.openPageTools(tester, 'notebook-shelf-tools');
         await tap(tester, find.byTooltip('Liste'));
         expect(find.byType(GridView), findsNothing);
         await tap(tester, find.byTooltip('Kacheln'));
@@ -369,7 +419,7 @@ void main() {
         await tap(tester, find.text('Vergrößern'));
         expect(find.byType(InteractiveViewer), findsOneWidget);
         await tap(tester, find.byTooltip('Schließen'));
-        await tap(tester, find.text('Kacheln'));
+        await chooseNotebookView(tester, 'Kacheln');
         expect(find.text('21–40 von 47'), findsWidgets);
         final photos = requests
             .where((r) => r.url.path.endsWith('/image'))
@@ -378,7 +428,7 @@ void main() {
           photos,
           lessThan(25),
         ); // bounded window, never all47 full-size photos
-        await tap(tester, find.text('Liste'));
+        await chooseNotebookView(tester, 'Liste');
         expect(find.byType(ListView), findsOneWidget);
         await tap(tester, find.byTooltip('Nächste Übersicht'));
         expect(find.text('41–47 von 47'), findsWidgets);
@@ -411,6 +461,7 @@ void main() {
         await tester.pumpAndSettle();
       }
 
+      await page_tools.openPageTools(tester, 'notebook-shelf-tools');
       await tap(tester, find.byTooltip('Kacheln'));
       expect(find.byType(GridView), findsOneWidget);
       expect(find.byType(NotebookCover), findsWidgets);
@@ -418,6 +469,7 @@ void main() {
       await leaveAndReturn();
       expect(find.byType(GridView), findsOneWidget);
       expect(find.byType(NotebookCover), findsWidgets);
+      await page_tools.openPageTools(tester, 'notebook-shelf-tools');
       expect(find.byTooltip('Liste'), findsOneWidget);
 
       await tap(tester, find.byTooltip('Liste'));
@@ -429,6 +481,7 @@ void main() {
       expect(find.byType(GridView), findsNothing);
       expect(find.byType(NotebookCover), findsNothing);
       expect(find.byType(SubjectBadge), findsWidgets);
+      await page_tools.openPageTools(tester, 'notebook-shelf-tools');
       expect(find.byTooltip('Kacheln'), findsOneWidget);
       expect(requests.every((request) => request.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);
@@ -484,6 +537,7 @@ void main() {
     final (_, _, requests) = await open(tester, shelf: true, parent: true);
     expect(find.byType(GridView), findsOneWidget);
     expect(find.byType(NotebookCover), findsWidgets);
+    await page_tools.openPageTools(tester, 'notebook-shelf-tools');
     expect(find.byTooltip('Liste'), findsOneWidget);
     expect(requests.every((request) => request.method == 'GET'), isTrue);
     expect(tester.takeException(), isNull);
@@ -542,10 +596,10 @@ void main() {
         tester.getSize(find.byTooltip('Heftseite löschen')).shortestSide,
         greaterThanOrEqualTo(48),
       );
-      await tap(tester, find.text('Kacheln'));
+      await chooseNotebookView(tester, 'Kacheln');
       expect(find.byTooltip('Heftseite löschen'), findsWidgets);
       expect(find.byTooltip('Mit KI neu lesen'), findsWidgets);
-      await tap(tester, find.text('Liste'));
+      await chooseNotebookView(tester, 'Liste');
       expect(find.byTooltip('Heftseite löschen'), findsWidgets);
       expect(find.byTooltip('Mit KI neu lesen'), findsWidgets);
       await tap(
@@ -661,7 +715,7 @@ void main() {
           );
         },
       );
-      await tap(tester, find.text('Liste'));
+      await chooseNotebookView(tester, 'Liste');
       await tap(tester, find.text('Seiten auswählen'));
       await tap(tester, find.text('Alle auswählen'));
       expect(find.text('Auswahl löschen (47)'), findsOneWidget);
@@ -706,7 +760,7 @@ void main() {
           return jsonReply(pages(request, photos: false));
         },
       );
-      await tap(tester, find.text('Liste'));
+      await chooseNotebookView(tester, 'Liste');
       await tap(tester, find.text('Seiten auswählen'));
       await tap(tester, find.byType(Checkbox).first);
       expect(find.text('Auswahl löschen (1)'), findsOneWidget);
@@ -741,7 +795,7 @@ void main() {
       },
     );
     for (final view in ['Blättern', 'Kacheln', 'Liste']) {
-      await tap(tester, find.text(view));
+      await chooseNotebookView(tester, view);
       expect(find.byTooltip('Heftseite löschen'), findsNothing);
       expect(find.byTooltip('Mit KI neu lesen'), findsNothing);
       expect(find.text('Alles löschen'), findsNothing);
@@ -753,13 +807,14 @@ void main() {
     'Selection resets on search and account changes, without writes',
     (tester) async {
       final (state, _, requests) = await open(tester, photos: false);
-      await tap(tester, find.text('Liste'));
+      await chooseNotebookView(tester, 'Liste');
       await tap(tester, find.text('Seiten auswählen'));
       await tap(tester, find.text('Alle auswählen'));
       expect(find.text('Auswahl löschen (47)'), findsOneWidget);
-      await tap(tester, find.byTooltip('Im Hefter suchen'));
+      await openNotebookSearch(tester);
       await tester.enterText(find.byType(TextField), 'Brüche');
       await tester.pump(const Duration(milliseconds: 400));
+      await tap(tester, find.text('Suchen'));
       await tester.pumpAndSettle();
       expect(find.text('Auswahl löschen (47)'), findsNothing);
       expect(find.text('Seiten auswählen'), findsOneWidget);
@@ -796,7 +851,7 @@ void main() {
         return jsonReply(pages(request, photos: false));
       },
     );
-    await tap(tester, find.text('Liste'));
+    await chooseNotebookView(tester, 'Liste');
     await tap(tester, find.text('Alles löschen'), settle: false);
     expect(find.text('47 Heftseiten löschen?'), findsOneWidget);
     await tap(tester, find.text('Abbrechen'), settle: false);
@@ -816,7 +871,7 @@ void main() {
     await open(tester, parent: true, canManage: false);
     expect(find.byTooltip('Heftseite löschen'), findsNothing);
     expect(find.byTooltip('Mit KI neu lesen'), findsNothing);
-    await tap(tester, find.text('Liste'));
+    await chooseNotebookView(tester, 'Liste');
     expect(find.text('Seiten auswählen'), findsNothing);
     expect(find.text('Alles löschen'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -833,15 +888,15 @@ void main() {
       reducedMotion: true,
       photos: false,
     );
-    await tap(tester, find.text('Liste'));
+    await chooseNotebookView(tester, 'Liste');
     await tap(tester, find.text('Seiten auswählen'));
     await tap(tester, find.text('Alle auswählen'));
     expect(find.text('Auswahl löschen (47)'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tap(tester, find.text('Auswahl aufheben'));
-    await tap(tester, find.text('Kacheln'));
+    await chooseNotebookView(tester, 'Kacheln');
     expect(tester.takeException(), isNull);
-    await tap(tester, find.text('Blättern'));
+    await chooseNotebookView(tester, 'Blättern');
     expect(
       find
           .byType(AnimatedSwitcher)
@@ -886,9 +941,10 @@ void main() {
     (tester) async {
       final (_, _, requests) = await open(tester);
       expect(find.byType(TextField), findsNothing);
-      await tap(tester, find.byTooltip('Im Hefter suchen'));
+      await openNotebookSearch(tester);
       await tester.enterText(find.byType(TextField), 'Brüche');
       await tester.pump(const Duration(milliseconds: 400));
+      await tap(tester, find.text('Suchen'));
       await tester.pumpAndSettle();
       expect(
         requests
@@ -898,7 +954,15 @@ void main() {
             .queryParameters['q'],
         'Brüche',
       );
-      await tap(tester, find.byTooltip('Suchfeld einklappen'));
+      expect(find.byType(TextField), findsNothing);
+      final beforeCancel = requests.length;
+      await tap(tester, find.text('Suche: Brüche'));
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'Brüche',
+      );
+      await tap(tester, find.text('Abbrechen'));
+      expect(requests.length, beforeCancel);
       expect(find.byType(TextField), findsNothing);
       expect(
         requests
@@ -979,8 +1043,11 @@ void main() {
             textScale: width == 320 ? 2 : 1,
             photos: false,
           );
-          expect(find.byType(ChildSectionTabs), findsOneWidget);
+          expect(find.byType(ChildSectionTabs), findsNothing);
           expect(find.byType(ChoiceChip), findsNothing);
+          expect(find.text('Blättern'), findsNothing);
+          expect(find.text('Kacheln'), findsNothing);
+          expect(find.text('Liste'), findsNothing);
           expect(find.byType(ChildSectionHero), findsNothing);
           final heading = find.byKey(
             const ValueKey('notebook-compact-heading'),
@@ -993,7 +1060,7 @@ void main() {
           for (final label in [
             'Alle Hefter',
             'Heftfoto hinzufügen',
-            'Themen entdecken',
+            'Hefteroptionen',
           ]) {
             final action = find.descendant(
               of: heading,
@@ -1008,15 +1075,15 @@ void main() {
           }
           expect(tester.takeException(), isNull);
 
-          await tap(tester, find.text('Liste'));
-          expect(
-            tester
-                .widget<ChildSectionTabs>(find.byType(ChildSectionTabs))
-                .selected,
-            'list',
-          );
+          await chooseNotebookView(tester, 'Liste');
           expect(find.byType(ListView), findsOneWidget);
-          await tap(tester, find.byTooltip('Filter'));
+          await openNotebookOptions(tester);
+          expect(
+            tester.widget<ListTile>(notebookOption('Liste')).selected,
+            isTrue,
+          );
+          await tap(tester, find.byTooltip('Hefteroptionen schließen'));
+          await openNotebookFilters(tester);
           expect(find.text('Seitenstatus'), findsOneWidget);
           if (width == 1280) {
             await tap(tester, find.text('Zeitraum wählen'));
@@ -1046,10 +1113,11 @@ void main() {
     final (_, _, requests) = await open(tester, parent: true, canManage: true);
     expect(find.byType(ChildSectionHero), findsNothing);
     expect(find.byType(ChildSectionTabs), findsNothing);
-    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    expect(find.byType(ChoiceChip), findsNothing);
     expect(find.byTooltip('Heftfoto hinzufügen'), findsOneWidget);
     expect(find.byTooltip('Alle Hefter'), findsOneWidget);
-    await tap(tester, find.text('Liste'));
+    expect(find.byKey(const ValueKey('notebook-options')), findsOneWidget);
+    await chooseNotebookView(tester, 'Liste');
     expect(find.byType(ListView), findsOneWidget);
     expect(requests.every((request) => request.method == 'GET'), isTrue);
     expect(tester.takeException(), isNull);

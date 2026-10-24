@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'ui.dart';
+import 'page_tools.dart';
 
 /// Shared, open section heading. The work itself stays in the foreground.
 class ChildSectionHero extends StatelessWidget {
@@ -72,6 +73,7 @@ class _CompactChildHeroState extends State<_CompactChildHero> {
               ),
             ),
             if (content.compactAction != null) content.compactAction!,
+            const PageToolsButton(),
             Semantics(
               expanded: expanded,
               child: IconButton(

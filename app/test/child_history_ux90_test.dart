@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -63,10 +65,7 @@ void main() {
         });
       });
       await open(tester, state);
-      await f.tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await tester.enterText(
         f.input('Geladene Tagespakete durchsuchen'),
         'Biologie',
@@ -104,10 +103,7 @@ void main() {
         }),
       );
       await open(tester, state);
-      await f.tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await f.tap(tester, drop('Arbeitsstand'));
       await f.tap(tester, find.text('Runden bearbeitet').last);
       expect(find.text('Tagespaket vom 19.10.2026 öffnen'), findsOneWidget);
@@ -130,10 +126,7 @@ void main() {
       }),
     );
     await open(tester, state);
-    await f.tap(
-      tester,
-      find.byKey(const ValueKey('child-mobile-filter-toggle')),
-    );
+    await page_tools.togglePageTools(tester);
     await f.tap(tester, drop('Reihenfolge'));
     await f.tap(tester, find.text('Älteste zuerst').last);
     final labels = tester
@@ -164,6 +157,7 @@ void main() {
         }),
       );
       await open(tester, state);
+      await page_tools.openPageTools(tester, 'school-history-tools');
       await f.tap(tester, find.text('Diese Tagesansicht aktualisieren'));
       expect(find.text('1 gespeicherte Runde'), findsOneWidget);
       expect(find.text('1 Runde bearbeitet'), findsOneWidget);
@@ -197,10 +191,7 @@ void main() {
       });
       await open(tester, state);
       await f.tap(tester, find.text('Ältere Tage laden'));
-      await f.tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       await tester.enterText(
         f.input('Geladene Tagespakete durchsuchen'),
         'Mathematik',
@@ -208,10 +199,7 @@ void main() {
       await tester.pump();
       await tester.pumpWidget(SizedBox());
       await open(tester, state);
-      await f.tap(
-        tester,
-        find.byKey(const ValueKey('child-mobile-filter-toggle')),
-      );
+      await page_tools.togglePageTools(tester);
       expect(requests.last.url.queryParameters['before'], '2026-10-20');
       expect(find.text('Tagespaket vom 01.10.2026 öffnen'), findsOneWidget);
       expect(find.text('Tagespaket vom 20.10.2026 öffnen'), findsNothing);

@@ -214,7 +214,7 @@ Future<({AppState state, GoRouter router})> mountParent(
   );
   await tester.pumpAndSettle();
   for (final title in ['Zeit & Mindestziele', 'Lernzeit & Mindestziele']) {
-    if (find.text(title).evaluate().isNotEmpty) {
+    if (hasParentDetails104(tester, title)) {
       await openParentDetails103(tester, title);
     }
   }
@@ -407,9 +407,15 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(requests.length, beforeResume + 1);
+      final resumedAt = tester.binding.clock.now();
+      await openParentDetails103(tester, 'Zeit & Mindestziele');
       final before = requests.length;
       data['plan']['daily_active_seconds'] = 780;
-      await tester.pump(const Duration(seconds: 14));
+      final untilFourteenSeconds =
+          const Duration(seconds: 14) -
+          tester.binding.clock.now().difference(resumedAt);
+      expect(untilFourteenSeconds.isNegative, isFalse);
+      await tester.pump(untilFourteenSeconds);
       expect(requests.length, before);
       expect(find.text('12:00 / 20 Min.'), findsOneWidget);
       await tester.pump(const Duration(seconds: 1));
@@ -446,6 +452,8 @@ void main() {
         tester.binding.handleAppLifecycleStateChanged(lifecycle);
       }
       await tester.pumpAndSettle();
+      expect(requests.length, before + 1);
+      await openParentDetails103(tester, 'Zeit & Mindestziele');
       expect(requests.length, before + 1);
       expect(find.text('14:00 / 20 Min.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
@@ -610,7 +618,7 @@ void main() {
       await tapText(tester, 'Meine Themen');
       expect(find.text('Mathematik · Brüche'), findsWidgets);
       expect(find.text('Englisch · Verben'), findsNothing);
-      await tapText(tester, 'Suche & alle Themenfilter');
+      await toggleParentDetails104(tester, 'Suche & alle Themenfilter');
       final status = find.byWidgetPredicate(
         (w) =>
             w is DropdownButtonFormField<String> &&

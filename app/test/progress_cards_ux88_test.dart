@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -250,9 +252,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('1 Aufgabe geübt'), findsNothing);
-      await tester.ensureVisible(find.text('Zeitraum, Suche & Reihenfolge'));
-      await tester.tap(find.text('Zeitraum, Suche & Reihenfolge'));
-      await tester.pumpAndSettle();
+      await page_tools.openPageTools(tester, 'progress-tools');
       await tester.ensureVisible(
         find.widgetWithText(ChoiceChip, 'Alle Ergebnisse'),
       );

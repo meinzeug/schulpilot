@@ -160,7 +160,7 @@ class _Fixture {
     }
     if (path.startsWith('/insights/') &&
         settle &&
-        find.text('Regelmäßige KI-Auswertung').evaluate().isNotEmpty) {
+        hasParentDetails104(tester, 'Regelmäßige KI-Auswertung')) {
       await openParentDetails103(tester, 'Regelmäßige KI-Auswertung');
     }
     return router;
@@ -777,7 +777,7 @@ void main() {
       final f = _Fixture();
       f.homework['photos'][0]['task_count'] = 5;
       await f.mount(tester, path: '/homework/child-a');
-      await click(tester, 'Suche & Hausaufgabenfilter');
+      await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
       await click(tester, 'Mit Häkchen');
       expect(
         find.text(
@@ -812,7 +812,7 @@ void main() {
       await f.mount(tester, path: '/homework/child-a');
       await click(tester, 'Weitere Fotos laden');
       final count = f.requests.length;
-      await click(tester, 'Suche & Hausaufgabenfilter');
+      await toggleParentDetails104(tester, 'Suche & Hausaufgabenfilter');
       await click(tester, 'Alle Fotos');
       expect(f.requests.length, count);
       expect(find.text('Erstes künstliches Foto'), findsOneWidget);

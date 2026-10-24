@@ -1,5 +1,5 @@
-import 'dart:ui' show SemanticsAction;
 import 'dart:convert';
+import 'dart:ui' show SemanticsAction;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,10 +14,14 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/auth_screens.dart';
 import 'package:schulpilot/installation_screen.dart';
 import 'package:schulpilot/notification_panel.dart';
+import 'package:schulpilot/page_tools.dart';
 import 'package:schulpilot/public_trial.dart';
 import 'package:schulpilot/settings_screen.dart';
 import 'package:schulpilot/store_screens.dart';
 import 'package:schulpilot/ui.dart';
+
+import 'page_tools_104_test_helpers.dart';
+import 'parent_hierarchy_test_tools.dart';
 
 const _provider = <String, dynamic>{
   'provider': 'disabled',
@@ -402,10 +406,9 @@ void main() {
           ),
           findsNothing,
         );
-        await _tap(
-          tester,
-          find.widgetWithText(ExpansionTile, 'Konfiguration & Nachweise'),
-        );
+        final beforeOptions = f.requests.length;
+        await openPageTool104(tester, 'admin-push-config');
+        expect(f.requests.length, beforeOptions);
         expect(
           find.text(
             'Projekt: synthetic-project\nSenderkonto: synthetic@example.invalid',
@@ -578,18 +581,17 @@ void main() {
           try {
             await f.mount(
               tester,
-              Scaffold(
-                body: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: AdminAuditList([
-                    {
-                      'action': 'admin.provider_update',
-                      'actor': 'synthetic-operator',
-                      'target': 'disabled',
-                      'created': 1792600000,
-                    },
-                  ], state: f.state),
-                ),
+              PageFrame(
+                state: f.state,
+                title: 'Administratives Protokoll',
+                child: AdminAuditList([
+                  {
+                    'action': 'admin.provider_update',
+                    'actor': 'synthetic-operator',
+                    'target': 'disabled',
+                    'created': 1792600000,
+                  },
+                ], state: f.state),
               ),
               width: width,
               scale: scale,
@@ -597,13 +599,39 @@ void main() {
             expect(find.byType(TextField), findsNothing);
             expect(find.byType(DropdownButtonFormField<String>), findsNothing);
             final tools = find.byKey(const ValueKey('admin-audit-tools'));
-            expect(tester.widget<ExpansionTile>(tools).maintainState, isTrue);
+            expect(
+              tester.widget<PageToolsGroup>(tools).id,
+              'admin-audit-tools',
+            );
+            final body = find.byKey(
+              const ValueKey('page-tools-body:admin-audit-tools'),
+            );
+            expect(tester.widget<Offstage>(body).offstage, isTrue);
+            final trigger = find.byKey(const ValueKey('page-tools-button'));
+            expect(trigger, findsOneWidget);
+            expect(trigger.hitTestable(), findsOneWidget);
+            expect(
+              tester.getSize(trigger).shortestSide,
+              greaterThanOrEqualTo(48),
+            );
             final first = find.text('KI-Konfiguration gespeichert');
             expect(first, findsOneWidget);
             expect(
               tester.getTopLeft(first).dy - tester.getBottomLeft(tools).dy,
               inInclusiveRange(0, 230),
             );
+            if (scale == 1) {
+              expect(first.hitTestable(), findsOneWidget);
+            }
+            final beforeOptions = f.requests.length;
+            await openPageTool104(tester, 'admin-audit-tools');
+            expect(
+              find.widgetWithText(TextField, 'Protokoll durchsuchen'),
+              findsOneWidget,
+            );
+            await closePageTool104(tester, 'admin-audit-tools');
+            expect(tester.widget<Offstage>(body).offstage, isTrue);
+            expect(f.requests.length, beforeOptions);
             await _tap(tester, first);
             expect(
               find.text(
@@ -652,13 +680,42 @@ void main() {
               findsOneWidget,
             );
             final tools = find.byKey(const ValueKey('admin-order-tools'));
-            expect(tester.widget<ExpansionTile>(tools).maintainState, isTrue);
+            expect(
+              tester.widget<PageToolsGroup>(tools).id,
+              'admin-order-tools',
+            );
+            final body = find.byKey(
+              const ValueKey('page-tools-body:admin-order-tools'),
+            );
+            expect(tester.widget<Offstage>(body).offstage, isTrue);
+            final trigger = find.byKey(const ValueKey('page-tools-button'));
+            expect(trigger, findsOneWidget);
+            expect(trigger.hitTestable(), findsOneWidget);
+            expect(
+              tester.getSize(trigger).shortestSide,
+              greaterThanOrEqualTo(48),
+            );
             final first = find.text('SCH-103');
             expect(first, findsOneWidget);
             expect(
               tester.getTopLeft(first).dy - tester.getBottomLeft(tools).dy,
               inInclusiveRange(0, 80),
             );
+            if (scale == 1) {
+              expect(first.hitTestable(), findsOneWidget);
+            }
+            final beforeOptions = f.requests.length;
+            await openPageTool104(tester, 'admin-order-tools');
+            expect(
+              find.widgetWithText(
+                TextField,
+                'Verwendungszweck, Bestell-ID oder Tarif suchen',
+              ),
+              findsOneWidget,
+            );
+            await closePageTool104(tester, 'admin-order-tools');
+            expect(tester.widget<Offstage>(body).offstage, isTrue);
+            expect(f.requests.length, beforeOptions);
             await _tap(tester, first);
             expect(find.text('Gespeicherte Bestellung'), findsOneWidget);
             f.onlyReads();
@@ -734,30 +791,30 @@ void main() {
       try {
         await f.mount(
           tester,
-          Scaffold(
-            body: SingleChildScrollView(
-              child: AdminAuditList([
-                {
-                  'action': 'admin.provider_update',
-                  'actor': 'synthetic-a',
-                  'target': 'disabled',
-                },
-                {
-                  'action': 'admin.provider_check',
-                  'actor': 'synthetic-b',
-                  'target': 'disabled',
-                },
-              ], state: f.state),
-            ),
+          PageFrame(
+            state: f.state,
+            title: 'Administratives Protokoll',
+            child: AdminAuditList([
+              {
+                'action': 'admin.provider_update',
+                'actor': 'synthetic-a',
+                'target': 'disabled',
+              },
+              {
+                'action': 'admin.provider_check',
+                'actor': 'synthetic-b',
+                'target': 'disabled',
+              },
+            ], state: f.state),
           ),
         );
-        final tools = find.text('Protokoll durchsuchen & filtern');
-        await _tap(tester, tools);
+
+        await toggleParentDetails104(tester, 'Protokoll durchsuchen & filtern');
         final field = find.widgetWithText(TextField, 'Protokoll durchsuchen');
         final controller = tester.widget<TextField>(field).controller!;
         await tester.enterText(field, 'synthetic-a');
         await tester.pumpAndSettle();
-        await _tap(tester, tools);
+        await toggleParentDetails104(tester, 'Protokoll durchsuchen & filtern');
         expect(find.byType(TextField), findsNothing);
         expect(
           find.text('Protokollfilter: Suche: „synthetic-a“'),
@@ -782,7 +839,7 @@ void main() {
         await _tap(tester, find.text('Alle Protokollfilter zurücksetzen'));
         expect(find.text('KI-Konfiguration gespeichert'), findsOneWidget);
         expect(find.text('Anbieterverbindung geprüft'), findsOneWidget);
-        await _tap(tester, tools);
+        await toggleParentDetails104(tester, 'Protokoll durchsuchen & filtern');
         expect(tester.widget<TextField>(field).controller, same(controller));
         expect(controller.text, isEmpty);
         f.onlyReads();
@@ -811,8 +868,11 @@ void main() {
         final payment = find.widgetWithText(TextField, 'Betrag in EUR');
         await tester.enterText(payment, '12,00');
         final paymentController = tester.widget<TextField>(payment).controller!;
-        final tools = find.text('Bestellungen suchen, filtern & exportieren');
-        await _tap(tester, tools);
+
+        await toggleParentDetails104(
+          tester,
+          'Bestellungen suchen, filtern & exportieren',
+        );
         final field = find.widgetWithText(
           TextField,
           'Verwendungszweck, Bestell-ID oder Tarif suchen',
@@ -820,7 +880,10 @@ void main() {
         final controller = tester.widget<TextField>(field).controller!;
         await tester.enterText(field, 'SCH-103');
         await tester.pumpAndSettle();
-        await _tap(tester, tools);
+        await toggleParentDetails104(
+          tester,
+          'Bestellungen suchen, filtern & exportieren',
+        );
         expect(field, findsNothing);
         expect(find.text('Bestellansicht: Suche: „SCH-103“'), findsOneWidget);
         final hidden = find.widgetWithText(
@@ -847,18 +910,21 @@ void main() {
         await _tap(tester, find.text('Bestellansicht zurücksetzen'));
         expect(find.text('SCH-103'), findsOneWidget);
         expect(paymentController.text, '12,00');
-        await _tap(tester, tools);
+        await toggleParentDetails104(
+          tester,
+          'Bestellungen suchen, filtern & exportieren',
+        );
         expect(tester.widget<TextField>(field).controller, same(controller));
         expect(controller.text, isEmpty);
         final stale = tester
-            .widget<ExpansionTile>(
-              find.byKey(const ValueKey('admin-order-tools')),
+            .widget<IconButton>(
+              find.byKey(const ValueKey('page-tools-close:admin-order-tools')),
             )
-            .onExpansionChanged!;
+            .onPressed!;
         f.state.user = {...f.state.user!};
         f.state.refreshState();
         await tester.pumpAndSettle();
-        stale(false);
+        stale();
         await tester.pumpAndSettle();
         expect(find.text('SCH-103'), findsNothing);
         expect(field, findsNothing);

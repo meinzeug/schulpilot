@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -164,10 +166,7 @@ void main() {
       (t) async {
         final calls = <http.Request>[];
         await form(t, calls);
-        await f.tap(
-          t,
-          find.byKey(const ValueKey('child-mobile-filter-toggle')),
-        );
+        await page_tools.togglePageTools(t);
         await f.tap(t, find.text('Projektansicht anpassen'));
         final control = scenario.$1 == 'RQ066'
             ? picker(scenario.$2)
@@ -200,7 +199,7 @@ void main() {
       t.testTextInput.hide();
       FocusManager.instance.primaryFocus?.unfocus();
       await t.pumpAndSettle();
-      await f.tap(t, find.byKey(const ValueKey('child-mobile-filter-toggle')));
+      await page_tools.togglePageTools(t);
       await f.tap(t, find.text('Projektansicht anpassen'));
       await f.tap(t, find.text('Nur Projekte mit Heftquellen'));
       expect(find.text('Meine Schulwörter'), findsNothing);

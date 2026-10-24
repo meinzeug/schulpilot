@@ -82,7 +82,8 @@ void main() {
       );
       await p.open(t, state, 'plan', width: 320, scale: 2);
       await p.tap(t, 'Meine Themen');
-      expect(find.text('Suche & alle Themenfilter'), findsOneWidget);
+      expect(find.text('Suche & alle Themenfilter'), findsNothing);
+      expect(find.byKey(const ValueKey('page-tools-button')), findsWidgets);
       expect(
         find.byWidgetPredicate(
           (w) =>
@@ -91,7 +92,7 @@ void main() {
         ),
         findsNothing,
       );
-      await p.tap(t, 'Suche & alle Themenfilter');
+      await openParentDetails103(t, 'Suche & alle Themenfilter');
       expect(
         find.byWidgetPredicate(
           (w) =>
@@ -101,7 +102,7 @@ void main() {
         findsOneWidget,
       );
       await p.tap(t, 'Kompakte Auftragsliste');
-      await p.tap(t, 'Suche & alle Themenfilter');
+      await openParentDetails103(t, 'Suche & alle Themenfilter');
       expect(find.textContaining('Quelle geändert · prüfen'), findsWidgets);
       expect(find.text('Ziel & Termin bearbeiten'), findsNothing);
       await p.tap(t, 'Mathematik · Bruchaddition');

@@ -1,3 +1,5 @@
+import 'page_tools_test_helpers.dart' as page_tools;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -179,11 +181,15 @@ Future<(AppState, GoRouter)> open(
   // Existing behavior tests deliberately open tools and exercise the optional
   // card branch. First-impression tests pass openTools:false and cards:false.
   if (!workshop && (openTools || cards)) {
-    final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
-    if (filters.evaluate().isNotEmpty) {
-      await tester.ensureVisible(filters);
-      await tester.tap(filters);
-      await tester.pumpAndSettle();
+    if (state.isChild) {
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
+    } else {
+      final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
+      if (filters.evaluate().isNotEmpty) {
+        await tester.ensureVisible(filters);
+        await tester.tap(filters);
+        await tester.pumpAndSettle();
+      }
     }
     if (cards) {
       await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Wortkarten'));
@@ -191,9 +197,18 @@ Future<(AppState, GoRouter)> open(
       await tester.pumpAndSettle();
     }
     if (!openTools) {
-      await tester.ensureVisible(filters);
-      await tester.tap(filters);
-      await tester.pumpAndSettle();
+      if (state.isChild) {
+        await page_tools.closePageTools(tester, 'vocabulary-tools');
+      } else {
+        final filters = find.byKey(
+          const ValueKey('child-mobile-filter-toggle'),
+        );
+        if (filters.evaluate().isNotEmpty) {
+          await tester.ensureVisible(filters);
+          await tester.tap(filters);
+          await tester.pumpAndSettle();
+        }
+      }
     }
   }
   return (state, router);
@@ -207,6 +222,11 @@ Future<void> tap(WidgetTester tester, Finder finder) async {
       await tester.ensureVisible(menu);
       await tester.tap(menu);
       await tester.pumpAndSettle();
+    } else if (find
+        .byKey(const ValueKey('page-tools-button'))
+        .evaluate()
+        .isNotEmpty) {
+      await page_tools.openPageTools(tester, 'vocabulary-tools');
     }
   }
   await tester.ensureVisible(finder);
