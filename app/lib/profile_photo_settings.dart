@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as raster;
 
 import 'api.dart';
 import 'profile_avatar.dart';
@@ -14,6 +14,68 @@ String _avatarRequestKey() => List.generate(
   24,
   (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
 ).join();
+
+/// Reads only encoded header metadata, on Android and Flutter Web alike.
+/// The existing backend still decodes and normalizes the actual image pixels.
+({int width, int height}) profilePhotoDimensions(Uint8List bytes) {
+  if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
+    throw ApiError('Bitte ein Foto bis 5 MB auswählen.');
+  }
+  final jpeg =
+      bytes.length >= 3 &&
+      bytes[0] == 0xff &&
+      bytes[1] == 0xd8 &&
+      bytes[2] == 0xff;
+  final png =
+      bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4e &&
+      bytes[3] == 0x47 &&
+      bytes[4] == 13 &&
+      bytes[5] == 10 &&
+      bytes[6] == 26 &&
+      bytes[7] == 10;
+  final webp =
+      bytes.length >= 12 &&
+      String.fromCharCodes(bytes.take(4)) == 'RIFF' &&
+      String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP';
+  final raster.Decoder decoder;
+  if (jpeg) {
+    decoder = raster.JpegDecoder(maxPixels: 8_000_000);
+  } else if (png) {
+    decoder = raster.PngDecoder(maxPixels: 8_000_000);
+  } else if (webp) {
+    decoder = raster.WebPDecoder()..maxPixels = 8_000_000;
+  } else {
+    throw ApiError('Bitte ein JPEG-, PNG- oder WebP-Foto auswählen.');
+  }
+  try {
+    // In image 4.12 these three startDecode implementations parse headers and
+    // compressed-data locations; only decode/decodeFrame allocates a raster.
+    final info = decoder.startDecode(bytes);
+    if (info == null || info.width <= 0 || info.height <= 0) {
+      throw ApiError(
+        'Bitte ein gültiges JPEG-, PNG- oder WebP-Foto auswählen.',
+      );
+    }
+    if (info.width * info.height > 8_000_000) {
+      throw ApiError('Bitte ein Foto mit höchstens 8 Megapixeln auswählen.');
+    }
+    if (info.numFrames > 1) {
+      throw ApiError(
+        'Bitte ein einzelnes Foto statt einer Animation auswählen.',
+      );
+    }
+    return (width: info.width, height: info.height);
+  } on ApiError {
+    rethrow;
+  } catch (_) {
+    throw ApiError(
+      'Bitte ein gültiges einzelnes JPEG-, PNG- oder WebP-Foto bis 8 Megapixel auswählen.',
+    );
+  }
+}
 
 /// Own-account image selection is local until the explicit save action.
 class ProfilePhotoSettings extends StatefulWidget {
@@ -189,45 +251,7 @@ class _ProfilePhotoSettingsState extends State<ProfilePhotoSettings>
       if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
         throw ApiError('Bitte ein Foto bis 5 MB auswählen.');
       }
-      final jpeg =
-          bytes.length >= 3 &&
-          bytes[0] == 0xff &&
-          bytes[1] == 0xd8 &&
-          bytes[2] == 0xff;
-      final png =
-          bytes.length >= 8 &&
-          bytes[0] == 0x89 &&
-          bytes[1] == 0x50 &&
-          bytes[2] == 0x4e &&
-          bytes[3] == 0x47 &&
-          bytes[4] == 13 &&
-          bytes[5] == 10 &&
-          bytes[6] == 26 &&
-          bytes[7] == 10;
-      final webp =
-          bytes.length >= 12 &&
-          String.fromCharCodes(bytes.take(4)) == 'RIFF' &&
-          String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP';
-      if (!jpeg && !png && !webp) {
-        throw ApiError('Bitte ein JPEG-, PNG- oder WebP-Foto auswählen.');
-      }
-      final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-      try {
-        final descriptor = await ui.ImageDescriptor.encoded(buffer);
-        try {
-          if (descriptor.width <= 0 ||
-              descriptor.height <= 0 ||
-              descriptor.width * descriptor.height > 8_000_000) {
-            throw ApiError(
-              'Bitte ein Foto mit höchstens 8 Megapixeln auswählen.',
-            );
-          }
-        } finally {
-          descriptor.dispose();
-        }
-      } finally {
-        buffer.dispose();
-      }
+      profilePhotoDimensions(bytes);
       if (!valid(stamp)) return;
       setState(() {
         discard();

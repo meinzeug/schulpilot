@@ -24,6 +24,19 @@ final _png = Uint8List.fromList(
 final _jpeg = Uint8List.fromList(
   raster.encodeJpg(raster.Image(width: 8, height: 8)),
 );
+Uint8List _jpegHeaderWithDimensions(int width, int height) {
+  final bytes = Uint8List.fromList(_jpeg);
+  for (var index = 0; index + 8 < bytes.length; index++) {
+    if (bytes[index] == 0xff && [0xc0, 0xc1, 0xc2].contains(bytes[index + 1])) {
+      final view = ByteData.sublistView(bytes);
+      view.setUint16(index + 5, height);
+      view.setUint16(index + 7, width);
+      return bytes;
+    }
+  }
+  throw StateError('Synthetic JPEG fixture has no frame header');
+}
+
 Json _metadata({bool present = true, String revision = _revision}) => {
   'has_avatar': present,
   'avatar_revision': revision,
@@ -167,6 +180,50 @@ void _resume(WidgetTester tester) {
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  for (final format in ['png', 'jpeg', 'webp']) {
+    test(
+      'profile photo reads $format header dimensions without dart ui descriptors',
+      () {
+        final bytes = format == 'png'
+            ? _png
+            : format == 'jpeg'
+            ? _jpeg
+            : Uint8List.fromList(
+                raster.encodeWebP(raster.Image(width: 8, height: 8)),
+              );
+        expect(profilePhotoDimensions(bytes), (width: 8, height: 8));
+      },
+    );
+  }
+  test('profile photo checks the declared pixel boundary before raster decoding', () {
+    // These are deliberately header-only changes to a tiny encoded image.
+    // No full 8MP image allocation is needed to test either side of the bound.
+    expect(profilePhotoDimensions(_jpegHeaderWithDimensions(4000, 2000)), (
+      width: 4000,
+      height: 2000,
+    ));
+    expect(
+      () => profilePhotoDimensions(_jpegHeaderWithDimensions(4000, 2001)),
+      throwsA(isA<ApiError>()),
+    );
+    expect(
+      () => profilePhotoDimensions(_jpegHeaderWithDimensions(60000, 60000)),
+      throwsA(isA<ApiError>()),
+    );
+  });
+  for (final invalid in [
+    Uint8List.fromList(_png.take(12).toList()),
+    Uint8List.fromList([0xff, 0xd8, 0xff]),
+    Uint8List.fromList(utf8.encode('<svg/>')),
+  ]) {
+    test(
+      'corrupt or unsupported profile header ${invalid.length} is rejected locally',
+      () {
+        expect(() => profilePhotoDimensions(invalid), throwsA(isA<ApiError>()));
+      },
+    );
+  }
 
   test('avatar upload uses only own route with bearer, CAS and idempotency multipart headers', () async {
     final calls = <http.Request>[];
