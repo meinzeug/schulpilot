@@ -1,4 +1,32 @@
-# Aktuell: kompakte Oberfläche in allen Rollen · 1.29.0+102
+# Aktuell: Inhalt zuerst, Werkzeuge auf Wunsch · 1.30.0+103
+
+Live https://schulpilot.dorfspy.de · Produktcommit `d0b1913a25b41835ee2734b4b324857f90c1dc4b` ·
+Release `20261024T003848Z-d0b1913`.
+37 Dart-Produktdateien ordnen Kopf, Inhalt und Zusatzwerkzeuge neu: Wörter und
+Lernrunden zuerst, konzentrierter Kinder-Fachhefter mit echten Foto-/Textseiten,
+schmale Desktoprail, mobile Rückkehr und kompakter Elternkontext. Adminwarnungen,
+Notfallstopp, Quellen-/Kontogrenzen, Entwürfe und ausdrückliche Aktionen bleiben.
+Die 47 Routen sind ein Quelleninventar, keine 47-fache Liveabnahme.
+
+Final lokal 983 bestanden / 8 übersprungen in 63 Dateien; 195 neue Fälle in 11 Sammlungen.
+Vollständige CI40033786810 grün: 2211 Backend / 33 übersprungen und
+3188 Flutter / 19 übersprungen; Ruff, Analyse und CI-Webbuild erfolgreich.
+Reguläre signierte Artefakte aus demselben sauberen Commit, öffentliche APK/JS
+bytegleich. Fünf Dienste aktiv, Schema 0031, 17/17 frische Konfigurationskopien
+bytegleich einschließlich Caddy; Google-Nachweise erhalten, Sicherung erfolgreich,
+Reparaturquelle mit 608 Dateien hashgeprüft.
+
+Browserrollen lokal mit künstlichen GET-only-Daten; nach Deployment Englisch-
+Fachhefter im Bestandskonto mit ausdrücklich künstlicher Seite ausschließlich
+lesend bei 390 × 844 und 1280 × 800 geprüft; private Bilder danach gelöscht.
+Kein echter Wörter-Postflight oder befüllter Sprachwerkstatt-/Lernstand-/
+Heftsammlungsnachweis. Keine neuen Modellaufrufe oder physische Androidprüfung.
+[Release103](RELEASE_103_2026_10_24.md) ·
+[47-Routeninventar](CLEAR_LAYOUT_103_2026_10_23.md).
+
+---
+
+# Vorheriger Produktionsstand · 1.29.0+102
 
 Live https://schulpilot.dorfspy.de · Produktcommit `40d6ec1bd1357d170e686d3032637ddbedac85ac` · Release `20261023T165444Z-40d6ec1`.
 44 Oberflächendateien und gemeinsame Komponenten decken alle 47 Routenmuster ab.

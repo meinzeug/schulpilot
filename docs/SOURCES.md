@@ -914,3 +914,27 @@ fremden Texte, Icons, Schriftdateien oder Bilder in das Produkt übernommen.
 Admin- und öffentliche Seiten. Quellprüfung, synthetische Browserfixtures,
 Widgettests und spätere reguläre Veröffentlichung sind getrennte Belege.
 Keine zusätzliche Modellanfrage oder physische Geräteprüfung in dieser Runde.
+
+
+### Informationshierarchie103 ·24.10.2026
+
+Erneut tatsächlich im angemeldeten Simpleclub-Browser betrachtet: Bibliothek
+bei 390 × 844 und 1280 × 800 mit leeren gespeicherten Karteikarten sowie
+Energieerhaltungsthema und sichtbarer Aufgaben-Einstieg. Der erneute Übungsstart
+wurde vom automatischen Freigabecheck abgelehnt; keine Antwortprüfung dieser
+Referenzrunde und kein befülltes Kartenset behauptet. Einstiegspunkte:
+https://app.simpleclub.com/home und https://app.simpleclub.com/library.
+Schmale Iconnavigation, kurze Detailköpfe und Inhalt vor Zusatzwerkzeugen dienen
+als Muster für eigene Komponenten; keine fremden Assets, Inhalte oder
+Schriftdateien übernommen.
+
+[47-Routen-Inventar](CLEAR_LAYOUT_103_2026_10_23.md) und
+[Release103](RELEASE_103_2026_10_24.md) trennen Quellprüfung, 195 neue Widgetfälle,
+synthetische schreibgesperrte Browseransichten, vollständige CI und gebundene
+Veröffentlichung. Nach Deployment wurde der Englisch-Fachhefter im Bestandskonto mit ausdrücklich
+als künstlich beschrifteter Seite mobil und am Desktop ausschließlich lesend
+geprüft; private Bilder danach gelöscht. Kein Produktionspostflight
+der Wörterseite, keine inhaltliche Abnahme befüllter Sprachwerkstatt-, Lernstand-
+oder Heftsammlungsansichten. Keine zusätzliche Modellanfrage, Referenzassets oder
+physische Androidgeräteprüfung in dieser Runde. Persistente Lernbelege bleiben
+davon getrennt.
