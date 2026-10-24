@@ -222,6 +222,9 @@ Ein getrennt noch gültiger Klassenarbeitstermin darf dabei erhalten bleiben.
 
 Migration0039 ergänzt Regeln, Änderungen und Ereignisse additiv. Änderungen
 verwenden Revision und Idempotenzschlüssel; Familienentzug und Kontolöschung
-bereinigen die Zuordnung. Ereignisse werden nach30Tagen entfernt. API-,
+bereinigen die Zuordnung. Beim Familienentzug werden die persönlichen Regeln
+atomar deaktiviert und ihre Revision erhöht; eine schnelle erneute Einladung
+aktiviert sie nicht wieder. Bereits gespeicherte Prüfereignisse und
+Speicherversuchsbelege werden dabei nicht umgeschrieben. Ereignisse werden nach30Tagen entfernt. API-,
 Worker-, Transport- und Oberflächentests verwenden künstliche Konten; eine
 sichtbare Android-Hintergrundzustellung ist erst mit beobachtetem Endgerät belegt.

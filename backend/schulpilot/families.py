@@ -373,6 +373,20 @@ def revoke_member(family_id: str, membership_id: str, p=Depends(parent), db=Depe
         raise HTTPException(403, "Familieninhaber kann hier nicht entfernt werden.")
     from .erasure import flush_journal, request
 
+    # Personal reminder edits take Child before reading membership. Use the
+    # same lock here, so an in-flight save cannot restore an opt-in after this
+    # revocation. Keep saved checks and request receipts as historical facts.
+    # Serialize with create_child before taking the family-wide child snapshot.
+    db.execute(update(Family).where(Family.id == family_id).values(name=Family.name))
+    child_ids = list(db.scalars(select(Child.id).where(Child.family_id == family_id).order_by(Child.id)))
+    for child_id in child_ids:
+        db.execute(update(Child).where(Child.id == child_id).values(grade=Child.grade))
+    from .parent_reminder_models import ParentGoalReminder
+
+    db.execute(update(ParentGoalReminder).where(
+        ParentGoalReminder.user_id == membership.user_id,
+        ParentGoalReminder.child_id.in_(child_ids),
+    ).values(enabled=False, revision=ParentGoalReminder.revision + 1, updated=int(now()), next_check=0))
     request(db, "membership", membership.id)
     db.delete(membership)
     # Revoke sessions as well as checking membership on every request.

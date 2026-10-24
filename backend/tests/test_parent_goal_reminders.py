@@ -491,6 +491,72 @@ def test_lost_membership_purges_personal_optin_but_not_child_learning(api, house
         assert db.scalar(select(func.count()).select_from(Activity)) == 1
 
 
+@pytest.mark.parametrize("permission", ["view", "manage"])
+def test_revoke_then_reinvite_without_sweep_never_restores_personal_optin(api, household, clock, mailbox, permission):
+    owner, child = household
+    family_id = owner["families"][0]["id"]
+    sibling = create_child(api, owner, username="reminder-sibling")
+    save(api, household)
+    activity(child, clock, 300)
+    with TestClient(app, headers=HEADERS) as reader:
+        other = register(reader, mailbox, "returning-reader@example.org")
+        unrelated = create_child(reader, other, username="unrelated-reminder-child")
+        assert reader.put(route(unrelated), headers=headers(other), json=body()).status_code == 200
+
+        def invite_and_accept():
+            response = api.post(f"/api/families/{family_id}/invitations", json={
+                "email": "returning-reader@example.org", "permission": permission})
+            assert response.status_code == 201, response.text
+            response = reader.post("/api/invitations/accept", json={
+                "token": mailbox[-1]["token"], "password": "secure-parent-pass-123"})
+            assert response.status_code == 200, response.text
+
+        invite_and_accept()
+        replay_key = uuid.uuid4().hex
+        assert reader.put(route(child), headers=headers(other, replay_key), json=body()).status_code == 200
+        assert reader.put(route(sibling), headers=headers(other), json=body()).status_code == 200
+        sweep(clock)
+        with DB() as db:
+            membership_id = db.scalar(select(Membership.id).where(
+                Membership.user_id == other["id"], Membership.family_id == family_id))
+            event_ids = set(db.scalars(select(ParentGoalReminderEvent.id)))
+            changes = db.scalar(select(func.count()).select_from(ParentGoalReminderChange))
+            assert event_ids
+        response = api.delete(f"/api/families/{family_id}/members/{membership_id}")
+        assert response.status_code == 200, response.text
+        # No scheduler tick between revoke and re-invitation: revocation itself
+        # must invalidate the old opt-in and stale configuration revisions.
+        with DB() as db:
+            for selected in (child, sibling):
+                rule = db.get(ParentGoalReminder, (other["id"], selected["id"]))
+                assert not rule.enabled and rule.revision == 2
+            assert db.get(ParentGoalReminder, (owner["id"], child["id"])).enabled
+            assert db.get(ParentGoalReminder, (other["id"], unrelated["id"])).enabled
+            assert set(db.scalars(select(ParentGoalReminderEvent.id))) == event_ids
+            assert db.scalar(select(func.count()).select_from(ParentGoalReminderChange)) == changes
+            assert db.scalar(select(func.count()).select_from(Activity)) == 1
+            assert db.scalar(select(func.count()).select_from(Job)) == 0
+            assert db.scalar(select(func.count()).select_from(Usage)) == 0
+        invite_and_accept()
+        login = reader.post("/api/auth/login", json={
+            "username": "returning-reader@example.org", "password": "secure-parent-pass-123"})
+        assert login.status_code == 200, login.text
+        reader.headers["Authorization"] = "Bearer " + login.json()["token"]
+        current = reader.get(route(child), headers=headers(other, False)).json()
+        assert current["enabled"] is False and current["revision"] == 2
+        replay = reader.put(route(child), headers=headers(other, replay_key), json=body())
+        assert replay.status_code == 200 and replay.json()["enabled"] is False
+        assert reader.put(route(child), headers=headers(other), json=body(revision=1)).status_code == 409
+        with DB() as db:
+            assert all(event.child_id not in (child["id"], sibling["id"])
+                for event, _, _ in reminders.due_events(db, other["id"], clock))
+            assert set(db.scalars(select(ParentGoalReminderEvent.id))) == event_ids
+        # Only a new conscious save against the current revision re-enables it.
+        response = reader.put(route(child), headers=headers(other), json=body(revision=2))
+        assert response.status_code == 200 and response.json()["enabled"] is True
+        assert response.json()["revision"] == 3
+
+
 def test_quiet_period_keeps_inapp_but_does_not_queue_until_outside(api, household, clock, tmp_path):
     enable(tmp_path)
     save(api, household)

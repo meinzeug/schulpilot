@@ -1096,3 +1096,22 @@ Flutterfälle für Auszüge/Elternformular, zusätzlich bereits24bestehende
 Glocken-/Posteingangsfälle. Flutter-Analyse und Ruff ohne Befund. Die bekannten
 16geschützten lokalen Geheimnisquellen wurden vor Commit ohne Fund geprüft.
 Dies ersetzt weder die vollständige CI noch die nachfolgende Browserabnahme.
+
+Nachtrag vor109-Veröffentlichung: Entzug und unmittelbarer Wiedereintritt ohne
+Workerlauf konnten eine alte Elternregel erhalten. Der Entzug deaktiviert sie
+nun unter denselben Kindersperren wie ein Speicherversuch; Revisionen steigen,
+historische Ereignisse bleiben erhalten. Beide neuen Regressionsfälle waren
+vorher rot. Danach76SQLite- und82PostgreSQL16-Fälle bestanden.
+
+Das Elternformular wurde im echten Browser bei390×844 und1102×884 geprüft:
+bewusst gespeichert, Bestätigung sichtbar, Serverereignis in der Glocke geöffnet.
+Zwei lokale Sweeps erzeugten genau ein Ereignis, ohne Providerverbrauch,
+Push-Gerät oder FCM-Aufruf. Dies ist keine native Zustellabnahme.
+
+Weitere Livegrenze bleibt getrennt offen: Nach abgeschlossener Quellenprüfung
+wurde ein großer Paketauftrag vor Versand durch die bestehende konservative
+Kostenvorprüfung blockiert. Dessen Anfrage enthielt131697Textbytes und lag mit
+projizierten311586µUSD über der150000µUSD-Reservierung. Das ist kein Kinderlimit.
+Dieser kostenfreie Nichtversand ist weder erfolgreiche Paketerstellung noch
+ein Anlass, Budget-/Ausgabegrenzen stillschweigend zu erhöhen. Die Anfragegröße
+wird separat untersucht.
