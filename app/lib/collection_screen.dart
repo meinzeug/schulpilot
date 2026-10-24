@@ -93,6 +93,15 @@ class CollectionScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
+        if (learning && !state.isAdmin)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => openRoute(context, '/discover/$childId'),
+              icon: const Icon(Icons.auto_awesome_outlined),
+              label: const Text('Themen mit Grafiken entdecken'),
+            ),
+          ),
         if (!learning && state.isChild) ...[
           ChildSectionHero(
             eyebrow: 'Hefte',

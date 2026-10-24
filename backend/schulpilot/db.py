@@ -951,6 +951,7 @@ from . import (  # noqa: E402,F401  # noqa: E402,F401
     competence_models,
     exam_models,
     exam_review_models,
+    learning_asset_models,
     order_withdrawal_models,
     parent_reminder_models,
     payment_models,

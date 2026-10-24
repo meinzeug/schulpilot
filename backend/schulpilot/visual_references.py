@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from .subject_content import PROFILES, public_presentation, validate_question
 from .visual_reference_models import UnitVisualSnapshot, VisualReference
@@ -49,8 +49,11 @@ def candidates(db, subject, text=""):
     if subject not in PROFILES:
         return []
     result = []
-    for row in db.scalars(select(VisualReference).order_by(VisualReference.id, VisualReference.version)):
+    for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only")).order_by(VisualReference.id, VisualReference.version)):
         recipe = row.recipe
+        # AI exploration templates are NEVER a vetted source-bound recipe.
+        if recipe.get("scope") == "exploration_only":
+            continue
         if subject not in recipe["subjects"] and "*" not in recipe["subjects"]:
             continue
         if recipe["kind"] not in PROFILES[subject]:

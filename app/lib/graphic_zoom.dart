@@ -11,12 +11,14 @@ class GraphicZoom extends StatefulWidget {
   final Json block;
   final Widget Function(Json) render;
   final bool compact;
+  final Widget? toolbarAction;
   const GraphicZoom({
     super.key,
     required this.state,
     required this.block,
     required this.render,
     this.compact = false,
+    this.toolbarAction,
   });
   @override
   State<GraphicZoom> createState() => _GraphicZoomState();
@@ -91,6 +93,7 @@ class _GraphicZoomState extends State<GraphicZoom> {
         child: Scaffold(
           appBar: AppBar(
             title: Text('${block['title'] ?? 'Fachgrafik'}'),
+            actions: [if (widget.toolbarAction != null) widget.toolbarAction!],
             leading: IconButton(
               tooltip: 'Zur Aufgabe zurück',
               icon: const Icon(Icons.close_rounded),

@@ -554,6 +554,9 @@ def export_child(db, child):
     from .exams import export_exams
 
     result["source_lineage"] = source_lineage.export_sources(db, child.id)
+    from .learning_assets import export_child as export_asset_instances
+
+    result["learning_asset_instances"] = export_asset_instances(db, child.id)
     result["unit_visual_snapshots"] = visual_references.export_child(db, child.id)
     result["visual_positions"] = visual_positions.export_user(db, child.user_id)
     result["competences"] = competences.export_child(db, child.id)
@@ -605,9 +608,10 @@ def export_one_child(child_id: str, include_photos: bool = True, p=Depends(paren
         output = Path(temporary.name)
     try:
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+            from .learning_assets import export_user as asset_instance_export
             from .parent_goal_reminders import export_own as export_parent_reminders
 
-            archive.writestr("child.json", json.dumps(export_child(db, child) | {"parent_goal_reminders": export_parent_reminders(db, p.user.id, [child.id]), "export_scope": {"include_photos": include_photos}}, ensure_ascii=False, indent=2))
+            archive.writestr("child.json", json.dumps(export_child(db, child) | {"parent_learning_asset_instances": asset_instance_export(db, p.user.id, [child.id]), "parent_goal_reminders": export_parent_reminders(db, p.user.id, [child.id]), "export_scope": {"include_photos": include_photos}}, ensure_ascii=False, indent=2))
             if include_photos:
                 from .profile_images import add_to_export
 
@@ -629,6 +633,7 @@ def export_one_child(child_id: str, include_photos: bool = True, p=Depends(paren
 def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
     from .commerce import orders_export, trial_data
     from .db import FamilyTrial, NotificationRead, SchulbuddyTurn
+    from .learning_assets import export_user as asset_instance_export
     from .parent_goal_reminders import export_own as export_parent_reminders
     from .profile_images import add_to_export
     from .profile_images import export_metadata as avatar_metadata
@@ -656,6 +661,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                     },
                     "children": [export_child(db, c) for c in children],
                     "visual_positions": visual_position_export(db, p.user.id),
+                    "learning_asset_instances": asset_instance_export(db, p.user.id, [c.id for c in children]),
                     "parent_goal_reminders": export_parent_reminders(db, p.user.id, [c.id for c in children]),
                     "schulbuddy_turns": [{column.name: getattr(row, column.name)
                         for column in SchulbuddyTurn.__table__.columns if column.name != "session_id"}

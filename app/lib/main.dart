@@ -32,6 +32,7 @@ import 'store_screens.dart';
 import 'notification_panel.dart';
 import 'google_login.dart';
 import 'learning_preparation_screen.dart';
+import 'learning_assets_screen.dart';
 import 'progress_screen.dart';
 import 'grades_screen.dart';
 import 'vocabulary_screen.dart';
@@ -222,6 +223,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           path.startsWith('/material/') ||
           path.startsWith('/library/') ||
           path.startsWith('/learn/') ||
+          path.startsWith('/discover/') ||
           path.startsWith('/homework/') ||
           path.startsWith('/learning-preparation/') ||
           path.startsWith('/progress/') ||
@@ -251,6 +253,9 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         return '/admin';
       }
       if (path.startsWith('/grades/') && !widget.state.isParent) return '/app';
+      if (path.startsWith('/discover/') && widget.state.isAdmin) {
+        return '/admin';
+      }
       if ((path.startsWith('/parent-plan/') ||
               path.startsWith('/parent-homework/')) &&
           !widget.state.isParent) {
@@ -436,6 +441,16 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           key: ValueKey(s.uri.path),
           childId: s.pathParameters['childId']!,
           materialId: s.pathParameters['materialId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/discover/:id',
+        builder: (context, s) => LearningAssetsScreen(
+          widget.state,
+          key: ValueKey(
+            'discover:${widget.state.user?['id']}:${s.pathParameters['id']}',
+          ),
+          childId: s.pathParameters['id']!,
         ),
       ),
       GoRoute(

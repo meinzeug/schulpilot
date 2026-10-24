@@ -13,6 +13,7 @@ PageKind = Literal["today", "learn", "words", "homework", "notebooks", "account"
 class BuddyScope(Strict):
     page_kind: PageKind = "general"
     child_id: str | None = Field(default=None, min_length=1, max_length=32)
+    learning_asset_instance_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
     unit_id: str | None = Field(default=None, min_length=1, max_length=32)
     material_id: str | None = Field(default=None, min_length=1, max_length=32)
     material_revision: int | None = Field(default=None, ge=1, le=1_000_000_000, strict=True)
@@ -31,6 +32,11 @@ class BuddyScope(Strict):
 
     @model_validator(mode="after")
     def graphic_scope(self):
+        if self.learning_asset_instance_id and any(getattr(self, key) is not None for key in (
+                "unit_id", "material_id", "material_revision", "day_id", "question_id", "exam_id",
+                "exam_session_id", "review_task_id", "exam_tab", "exam_revision", "explanation_kind",
+                "explanation_step_id", "graphic_index", "graphic_phase")):
+            raise ValueError("Eine öffentliche Erkundung darf nicht mit privaten Aufgaben oder Quellen vermischt werden.")
         if self.material_revision is not None and not self.material_id:
             raise ValueError("Eine betrachtete Quellenfassung benötigt ihre Heftseite.")
         if self.explanation_step_id is not None:
@@ -84,6 +90,11 @@ current_explanation stammt ausschließlich aus dem geöffneten gespeicherten Erk
 Seine graphic_state ist eine begrenzte lokale Ansicht, keine Kinderantwort oder Kompetenz.
 Erkläre genau die dort vorhandenen Beschriftungen, Zahlen und markierten Teile; erfinde keine anderen Phasen.
 Die Darstellung ist keine zusätzliche Quelle. Fachliche Aussagen bleiben an geprüfte sources gebunden.
+current_learning_asset ist die tatsächlich geöffnete öffentliche KI-Erkundung, KEINE fachlich geprüfte Quelle.
+Beschreibe ihre sichtbaren Texte, Beschriftungen, Zahlen und Zusammenhänge ausdrücklich als ungeprüftes KI-Beispiel.
+Ihre explorations sind offene Denkimpulse ohne Antwortschlüssel; weder bewerten noch Kompetenz daraus ableiten.
+Ohne geprüfte sources keine Richtigkeit bestätigen oder neue Fachregeln aus dem Beispiel ableiten.
+Die Betrachtung dieser Erkundung erzeugt keinen Versuch, Hilfebeleg, Fortschritt oder Lernzeit.
 source_exclusions nennt ausdrücklich aus der Lernbasis ausgeschlossene Originalblöcke;
 diese weder still reparieren noch als fachliche Regel verwenden. Bei nötiger Klärung auf Originalprüfung verweisen.
 page und navigation beschreiben die tatsächliche App. Erfinde keine Buttons, gespeicherten Zustände oder Funktionen.

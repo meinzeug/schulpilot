@@ -19,7 +19,15 @@ class SubjectPresentation extends StatelessWidget {
   final Json? data;
   final Set<String>? stages;
   final AppState? state;
-  const SubjectPresentation(this.data, {super.key, this.stages, this.state});
+  final SchulbuddyContext? buddyContext;
+  const SubjectPresentation(
+    this.data, {
+    super.key,
+    this.stages,
+    this.state,
+    this.buddyContext,
+  });
+
   @override
   Widget build(BuildContext context) {
     if (data?['version'] != 1) return const SizedBox.shrink();
@@ -65,6 +73,12 @@ class SubjectPresentation extends StatelessWidget {
                       state: state!,
                       compact: true,
                       block: Json.from(entry.$2),
+                      toolbarAction: buddyContext == null
+                          ? null
+                          : SchulbuddyPageContext(
+                              contextValue: buddyContext!,
+                              child: const SchulbuddyButton(),
+                            ),
                       render: (value) => SubjectGraphic(value, state: state),
                     ),
             ),

@@ -53,9 +53,9 @@ def fingerprint(value):
 
 
 def protocol_fields(value):
-    """Additive nullable exam fields must not change existing history/replay keys."""
+    """Additive nullable context fields must not change existing history/replay keys."""
     result = value.model_dump()
-    for key in ("exam_id", "exam_session_id", "review_task_id", "exam_tab", "exam_revision", "explanation_kind", "explanation_step_id", "graphic_index", "graphic_phase", "material_revision"):
+    for key in ("exam_id", "exam_session_id", "review_task_id", "exam_tab", "exam_revision", "explanation_kind", "explanation_step_id", "graphic_index", "graphic_phase", "material_revision", "learning_asset_instance_id"):
         if result.get(key) is None:
             result.pop(key, None)
     return result
@@ -64,10 +64,14 @@ def protocol_fields(value):
 def resolve(db, p, scope):
     """Client IDs name a scope, never grant a role/family or upload free context."""
     if p.user.role == "admin":
-        if scope.child_id or scope.unit_id or scope.material_id or scope.day_id or scope.question_id or scope.exam_id or scope.exam_session_id or scope.review_task_id or scope.explanation_step_id:
+        if scope.child_id or scope.unit_id or scope.material_id or scope.day_id or scope.question_id or scope.exam_id or scope.exam_session_id or scope.review_task_id or scope.explanation_step_id or scope.learning_asset_instance_id:
             raise HTTPException(403, "Betriebsadministratoren erhalten keinen privaten Kinderkontext.")
         return None, []
     targets = []
+    if scope.learning_asset_instance_id:
+        from .schulbuddy_assets import resolve_asset
+
+        targets.append(("learning_asset_instance_id", resolve_asset(db, p, scope.learning_asset_instance_id)))
     from .schulbuddy_exams import resolve_exam
 
     exam = resolve_exam(db, p, scope)
@@ -130,6 +134,15 @@ def scope_context(db, p, scope):
         return child, normalized, context_key, label, payload, refs, fingerprint([normalized, p.user.role])
     by_kind = dict(targets)
     materials, unit = [], by_kind.get("unit_id")
+    asset = by_kind.get("learning_asset_instance_id")
+    if asset is not None:
+        from .schulbuddy_assets import bind_asset
+
+        label, guard = bind_asset(db, asset, payload)
+        signature = fingerprint([normalized, child.family_id, child.grade, child.preferences, guard])
+        payload["grade"] = child.grade
+        payload["page_inventory"] = {}
+        return child, normalized, context_key, label, payload, refs, signature
     if exam := by_kind.get("exam_id"):
         from .schulbuddy_exams import bind
 
@@ -247,6 +260,12 @@ def scope_context(db, p, scope):
 def source_changed(db, turn):
     from .source_lineage import learning_source
 
+    if turn.scope.get("learning_asset_instance_id"):
+        try:
+            user, job = db.get(User, turn.user_id), db.get(Job, turn.job_id)
+            return not user or not job or scope_context(db, Principal(user, None), BuddyScope(**turn.scope))[6] != job.payload.get("signature")
+        except (HTTPException, ValueError, KeyError):
+            return True
     pages = {}
     for ref in turn.source_revisions:
         material = db.get(Material, ref["id"])
@@ -296,6 +315,8 @@ def starters_for(page_kind, label, payload):
         "general": "Wo finde ich Hefte, Lernrunden und gespeicherte Rückmeldungen?",
     }[page_kind]
     rows = [page]
+    if payload.get("current_learning_asset"):
+        return ["Erkläre mir diese Grafik.", "Was kann ich an diesem ungeprüften Beispiel erkunden?"]
     if payload.get("source_review", {}).get("confirmation_required"):
         return ["Wie prüfe und bestätige ich den erkannten Text dieser Seite?"]
     if payload.get("material_page") and any(source.get("evidence_kind") != "written_work_original" for source in payload["sources"]):
@@ -320,6 +341,7 @@ def starters_for(page_kind, label, payload):
 
 @router.get("/schulbuddy/context")
 def read_context(page_kind: PageKind = "general", child_id: str | None = Query(None, max_length=32),
+                 learning_asset_instance_id: str | None = Query(None, max_length=32),
                  unit_id: str | None = Query(None, max_length=32), material_id: str | None = Query(None, max_length=32),
                  day_id: str | None = Query(None, max_length=32), question_id: str | None = Query(None, max_length=80),
                  exam_id: str | None = Query(None, max_length=32),
@@ -337,7 +359,7 @@ def read_context(page_kind: PageKind = "general", child_id: str | None = Query(N
                           question_id=question_id, exam_id=exam_id, exam_session_id=exam_session_id,
                           review_task_id=review_task_id, exam_tab=exam_tab, explanation_kind=explanation_kind,
                           explanation_step_id=explanation_step_id, graphic_index=graphic_index, graphic_phase=graphic_phase,
-                          material_revision=material_revision)
+                          material_revision=material_revision, learning_asset_instance_id=learning_asset_instance_id)
     except ValidationError:
         raise HTTPException(422, "Ungültiger Schulbuddy-Bereich.") from None
     child, _, key, label, payload, _, _ = scope_context(db, p, scope)
@@ -529,7 +551,7 @@ def record_help(db, turn, units, refs, reply, *, feedback_only=False):
     """
     # Discussing an already saved answer is not help for the unseen next
     # exercise and must never rewrite the competence of the saved attempt.
-    if not units or feedback_only:
+    if not units or feedback_only or turn.scope.get("learning_asset_instance_id"):
         return
     revisions = {source["id"]: source["revision"] for source in refs}
     by_unit = {}
@@ -588,7 +610,7 @@ def process(job_id):
                 LearningUnit.child_id == job.child_id, LearningUnit.status.in_(("active", "paused")),
                 LearningUnit.completed.is_(None), LearningUnit.synthetic.is_(False))
                 .order_by(LearningUnit.id).with_for_update().execution_options(populate_existing=True))) \
-                if payload["role"] == "child" else []
+                if payload["role"] == "child" and not payload.get("current_learning_asset") else []
             db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
             turn = db.get(SchulbuddyTurn, job.payload["turn_id"])
             if not turn:

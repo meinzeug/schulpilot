@@ -9,7 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 
 from . import schemas as s
 from .config import settings
@@ -91,6 +91,11 @@ def process(job_id):
     with DB() as db:
         candidate = db.get(Job, job_id)
         kind = candidate.kind if candidate else None
+    if kind == "learning_asset":
+        from .learning_assets import process as process_asset
+
+        process_asset(job_id)
+        return
     if kind == "unit_visuals":
         from .visual_jobs import process as process_visuals
 
@@ -572,6 +577,11 @@ def process(job_id):
 
 
 def maintenance():
+    from .learning_assets import reap_interrupted as reap_asset_jobs
+
+    # Asset publication and expiry share Child -> Build locks. Do not inherit
+    # unrelated commerce/family locks from the large maintenance transaction.
+    reap_asset_jobs()
     paths = []
     repair_paths = []
     with DB.begin() as db:
@@ -582,7 +592,8 @@ def maintenance():
         withdrawal_maintenance(db)
         commerce_maintenance(db)
         repair_paths = incident_maintenance(db)
-        stale = list(db.scalars(select(Job).where(Job.status == "running", Job.started < int(now()) - 240)))
+        stale = list(db.scalars(select(Job).where(Job.status == "running", Job.started < int(now()) - 240,
+            or_(Job.kind.is_(None), Job.kind != "learning_asset"))))
         for job in stale:
             job.status = "failed"
             job.error_code = "interrupted"
@@ -669,9 +680,11 @@ def maintenance():
         purge_expired_exams(db, exam_cutoff)
         db.execute(delete(Exam).where(Exam.updated < exam_cutoff))
         from .child_cost_controls import purge_expired as purge_old_cost_changes
+        from .learning_assets import purge_expired as purge_old_asset_instances
         from .source_lineage import expire_diagnostic_outputs
         from .visual_reference_models import UnitVisualPosition
 
+        purge_old_asset_instances(db)
         purge_old_cost_changes(db)
         expire_diagnostic_outputs(db, int(now()) - 86400)
         db.execute(delete(UnitVisualPosition).where(UnitVisualPosition.updated < int(now()) - 30 * 86400))

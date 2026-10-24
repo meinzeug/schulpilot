@@ -1169,3 +1169,46 @@ wurde aber als `invalid_output` abgewiesen. Eine erfolgreiche Paketerstellung
 ist deshalb weiterhin NICHT belegt.4000gemeldete Ausgabetokens allein beweisen
 weder den genauen Ablehnungsgrund noch eine tatsächlich gespeicherte Lernrunde.
 Kein blinder weiterer Modellaufruf und kein Aufweichen der Aufgabenprüfung.
+
+Ein anschließend ausschließlich lesend abgerufener OpenRouter-Generationbeleg
+bestätigte für genau diesen Auftrag66870µUSD sowie `finish_reason=length` und
+`native_finish_reason=max_output_tokens`. Die native Ausgabe umfasste4000Tokens,
+davon1552Reasoningtokens. Damit ist die Längenbegrenzung für diesen einzelnen
+Auftrag jetzt tatsächlich belegt. Der Abruf erzeugte keinen Modellaufruf und
+keine Änderung an Kinder-/Lerndaten. Die bisherige Rechnungssumme dieser
+Arbeitseinheit beträgt164064µUSD; weitere reale Erzeugung wurde nicht gestartet.
+
+## Bedarfsgerechte gemeinsame Bausteine111 · 24.10.2026
+
+Der weitere Ausbau folgt dem ausdrücklichen neuen Betreiberauftrag: öffentliche
+Lernbausteine bei Bedarf erzeugen, versioniert speichern und über Konten hinweg
+wiederverwenden, statt alle Referenzportalthemen manuell nachzubauen. Der Vertrag
+und seine Grenzen stehen in [GENERATED_LEARNING_ASSETS.md](GENERATED_LEARNING_ASSETS.md).
+Private Heftinhalte und Lernbelege werden nicht global veröffentlicht.
+
+Die gemeinsame Flutter-Ansicht verwendet vorhandene Renderer und kontogebundene
+GET-Wiederaufnahme. Vierzehn gezielte UI-Fälle bestanden einschließlich bewusster
+Erzeugung, unveränderter Wiederholungskennung bei unklarem Transport, altem
+Kontokontext, nachgeladenen öffentlichen Themen und320/390/800/1280Pixeln bei
+200Prozent Schriftgröße. Fehlerstatus sowie überdeckte Route und Hintergrund
+wurden zusätzlich geprüft. Analyse der betroffenen Oberfläche ohne Befund.
+Die bestehende Workspace-Navigation bestand zusätzlich14Fälle. Der neue
+Zoom-Tutor wurde mit aktiver Tutorscope auf tatsächliche Erreichbarkeit,
+Bildschirmgrenzen und Klick geprüft; ein vorheriger Testfinder hatte nur seine
+Existenz gezählt und wurde entsprechend präzisiert.
+Diese Nachweise verwenden künstliche Daten; sie belegen keinen echten neuen
+Sol-Erfolg und keine vollständige fachliche Abnahme aller Themen.
+
+Der eingefrorene Backendpfad bestand33PostgreSQL16-Fälle einschließlich echter
+Alembic0039→0040-Prüfung und109Nachbarfälle zu Provider, Routing, Referenzen,
+Grafikaufträgen und Export. Der erste SQLite-Gesamtlauf hatte31Erfolge und zwei
+Testfixturefehler; nach deren enger Korrektur bestanden fünf gezielt frisch
+ausgeführte SQLite-Fälle. Der integrierte Hauptstand bestand vier zusätzliche
+Adapter-/Vertikalprüfungen mit isolierter SQLite-Datenbank. Keine dieser
+Modellantworten stammte aus einem echten externen Aufruf.
+
+Die zusätzliche Buddy-Anbindung bestand26SQLite- und26PostgreSQL16-Prüfungen,
+darunter sieben neue Fälle sowie vorhandene Kontext-/Grafikfälle. Ein separates
+Zehnergate auf PostgreSQL undSQLite prüfte die Asset-Wartung und verspätete Kostenbelege:
+Ein terminaler Auftrag bleibt terminal, seine Generationkennung bleibt für den
+normalen Preisabgleich erhalten. Modell-/Metadatenaufrufe waren dabei gemockt.

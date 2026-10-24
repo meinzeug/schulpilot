@@ -56,7 +56,7 @@ class SchulbuddyContext {
     if (state.isChild) put('child_id', state.user?['child_id']);
     final kind = switch (first) {
       'app' => 'today',
-      'learn' || 'learning-preparation' || 'unit' => 'learn',
+      'learn' || 'discover' || 'learning-preparation' || 'unit' => 'learn',
       'vocabulary' || 'words' || 'language-projects' => 'words',
       'homework' || 'parent-homework' => 'homework',
       'library' || 'material' || 'after-school' => 'notebooks',
@@ -74,6 +74,7 @@ class SchulbuddyContext {
         put('material_id', parts[1]);
       } else if ([
         'learn',
+        'discover',
         'learning-preparation',
         'vocabulary',
         'language-projects',

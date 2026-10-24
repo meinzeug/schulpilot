@@ -1565,6 +1565,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     }
     if (state.isChild &&
         (path.startsWith('/unit/') ||
+            path.startsWith('/discover/') ||
             path.startsWith('/progress/') ||
             path.startsWith('/learning-preparation/'))) {
       return 1;

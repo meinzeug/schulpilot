@@ -966,6 +966,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .exam_review_schemas import ExamReviewOutput
 
         model_type = ExamReviewOutput
+    if function == "learning_asset":
+        from .db import DB
+        from .learning_asset_schemas import LearningAssetOutput
+        from .learning_assets import public_spec as canonical_asset_spec
+
+        # Internal callers cannot accidentally globalize a private payload.
+        with DB() as asset_db:
+            actual = canonical_asset_spec(asset_db, payload["public_spec"]["selector"])
+        if payload != {"public_spec": actual, "required_subject": actual["subject"]}:
+            raise ProviderError("Der öffentliche Bausteinauftrag enthält nicht freigegebene Daten.")
+        model_type = LearningAssetOutput
     if function == "unit_visuals":
         from .visual_reference_schemas import VisualExplanationOutput
 
@@ -1062,7 +1073,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     from . import subject_content
 
     review_only = function == "coach" and bool(payload.get("defer_practice"))
-    visual_functions = function in ("unit", "package", "unit_visuals") or (function == "coach" and not review_only)
+    visual_functions = function in ("unit", "package", "unit_visuals", "learning_asset") or (function == "coach" and not review_only)
     if visual_functions:
         subjects = subject_content.generation_subjects(payload)
     excerpt_candidates = None
@@ -1346,7 +1357,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             instructions += " Beachte instructional_support je selected_groups-Eintrag: guided_example braucht besonders kleine erklärte Zwischenschritte."
     compact_openrouter = (
         config.provider == "openrouter"
-        and function not in ("extract", "tutor", "vocabulary_import", "language_unit", "language_project", "decision", "unit_visuals")
+        and function not in ("extract", "tutor", "vocabulary_import", "language_unit", "language_project", "decision", "unit_visuals", "learning_asset")
         and not review_only
     )
     block_count = payload.get("study_block", {}).get("question_count") if function == "unit" else None
@@ -1463,7 +1474,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
             )
     indexed_choices = (
-        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "schulbuddy", "vocabulary_import", "decision", "unit_visuals") and not review_only
+        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "schulbuddy", "vocabulary_import", "decision", "unit_visuals", "learning_asset") and not review_only
     )
     if indexed_choices:
         indexed_choice_schema(schema, bounded_matches=compact_openrouter)
@@ -1569,9 +1580,22 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         outgoing_payload = transport_payload(function, payload)
         if outgoing_payload is not payload:
             instructions += "\nmaterial.content_ref verweist auf die vollständig enthaltenen Quellen in materials[].content."
+    if function == "learning_asset":
+        from .learning_assets import RULES as ASSET_RULES
+        from .learning_assets import bind_schema as bind_asset_schema
+
+        bind_asset_schema(schema, payload)
+        prune_schema(schema)
+        from .package_transport import schema_projection
+
+        wire_schema = schema_projection(schema)
+        # This deliberately separate exploration contract never asks for a
+        # private Unit, answer keys or invented confirmed-photo evidence.
+        instructions = ASSET_RULES + subject_content.rules_for(subjects)
+        outgoing_payload = {"public_spec": payload["public_spec"]}
     user_text = json.dumps(outgoing_payload, ensure_ascii=False, separators=(",", ":"))
     schema_text = (json.dumps(wire_schema, ensure_ascii=False, separators=(",", ":"))
-                   if function == "package" else json.dumps(wire_schema))
+                   if function in ("package", "learning_asset") else json.dumps(wire_schema))
     # Image transport bytes are not text tokens. A separately approved exact-
     # route allowance is an operator estimate, never an invented tokenizer rule.
     image_data = base64.b64encode(image_bytes).decode() if image_bytes else ""
@@ -1969,6 +1993,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             from .learning_entry import validate_entry_output
 
             validate_entry_output(payload, data)
+        if function == "learning_asset":
+            from .db import DB
+            from .learning_assets import checked_output as checked_asset_output
+
+            with DB() as asset_db:
+                checked_asset_output(asset_db, data, payload["public_spec"])
         if visual_functions:
             subject_content.validate_output(data, payload, bounded_matching=compact_openrouter)
             if payload.get("visual_context"):
