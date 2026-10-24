@@ -16,6 +16,8 @@ import 'collection_screen.dart';
 import 'notebook_screen.dart';
 import 'material_screen.dart';
 import 'homework_screen.dart';
+import 'exams_screen.dart';
+import 'exam_landing.dart';
 import 'parent_homework_screen.dart';
 import 'parent_plan_screen.dart';
 import 'material_actions.dart';
@@ -95,25 +97,34 @@ class _SchulpilotAppState extends State<SchulpilotApp>
     widget.state.familyCalls.onNativeIntent = _handleCallIntent;
     _syncInbox();
     widget.state.push.onOpen = () {
-      widget.state.push.openPending = false;
-      router.go('/notifications');
+      if (mounted) router.go(widget.state.push.takeOpenTarget());
     };
     widget.state.push.onForeground = () {
       if (!mounted || widget.state.user == null) return;
+      final owner = widget.state.user;
+      final family = widget.state.familyId;
+      final token = widget.state.api.token;
+      final target = widget.state.push.foregroundTarget ?? '/notifications';
       messenger.currentState?.showSnackBar(
         SnackBar(
           content: const Text('Es gibt Neuigkeiten in SCHULPILOT.'),
           action: SnackBarAction(
             label: 'Öffnen',
-            onPressed: () => router.go('/notifications'),
+            onPressed: () {
+              if (mounted &&
+                  identical(widget.state.user, owner) &&
+                  widget.state.familyId == family &&
+                  widget.state.api.token == token) {
+                router.go(target);
+              }
+            },
           ),
         ),
       );
     };
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.state.push.openPending) {
-        widget.state.push.openPending = false;
-        router.go('/notifications');
+        router.go(widget.state.push.takeOpenTarget());
       }
     });
   }
@@ -197,6 +208,8 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           path == '/notifications' ||
           path == '/bestellungen' ||
           path == '/words' ||
+          path == '/exams' ||
+          path.startsWith('/exams/') ||
           path.startsWith('/vocabulary/') ||
           path.startsWith('/language-projects/') ||
           path.startsWith('/bestellen/') ||
@@ -247,9 +260,14 @@ class _SchulpilotAppState extends State<SchulpilotApp>
               path.startsWith('/messages/') ||
               path.startsWith('/vocabulary/') ||
               path.startsWith('/homework/') ||
-              path.startsWith('/language-projects/')) &&
+              path.startsWith('/language-projects/') ||
+              path == '/exams' ||
+              path.startsWith('/exams/')) &&
           widget.state.isAdmin) {
         return '/admin';
+      }
+      if (path == '/exams' && widget.state.isChild) {
+        return '/exams/${widget.state.user!['child_id']}';
       }
       if (path == '/words' && widget.state.isChild) {
         return '/vocabulary/${widget.state.user!['child_id']}';
@@ -384,6 +402,23 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         builder: (context, s) => ParentHomeworkScreen(
           widget.state,
           childId: s.pathParameters['childId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/exams',
+        builder: (context, s) => ExamLandingScreen(widget.state),
+      ),
+      GoRoute(
+        path: '/exams/:childId',
+        builder: (context, s) => ExamsScreen(
+          widget.state,
+          key: ValueKey((ObjectKey(widget.state.user), s.uri.toString())),
+          childId: s.pathParameters['childId']!,
+          examId: s.uri.queryParameters['exam'],
+          sessionId: s.uri.queryParameters['session'],
+          initialTab: s.uri.queryParameters['tab'] == 'review'
+              ? 'review'
+              : 'prepare',
         ),
       ),
       GoRoute(

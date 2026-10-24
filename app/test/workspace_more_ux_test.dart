@@ -43,6 +43,7 @@ Future<void> workspace(
         '/library/synthetic-child',
         '/learn/synthetic-child',
         '/homework/synthetic-child',
+        '/exams/synthetic-child',
       ])
         GoRoute(
           path: path,
@@ -84,6 +85,22 @@ Future<void> workspace(
 }
 
 void main() {
+  testWidgets('long section names keep a compact More navigation label', (
+    tester,
+  ) async {
+    await workspace(tester, (state, router, focus) async {
+      router.go('/exams/synthetic-child');
+      await tester.pumpAndSettle();
+      final navigation = tester.widget<NavigationBar>(
+        find.byType(NavigationBar),
+      );
+      expect(navigation.selectedIndex, 3);
+      final more = navigation.destinations.last as NavigationDestination;
+      expect(more.label, 'Mehr');
+      expect(more.tooltip, 'Klassenarbeiten · Weitere Bereiche');
+      expect(tester.takeException(), isNull);
+    });
+  });
   testWidgets(
     'More leaves the keyboard and still reaches the last item in a short large-text view',
     (tester) async {

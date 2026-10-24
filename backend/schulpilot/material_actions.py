@@ -83,6 +83,7 @@ def selection_query(db, p, child, selection):
     if selection.ids:
         conditions.append(Material.id.in_(selection.ids))
     else:
+        conditions.append(Material.purpose != "exam")
         f = selection.filters
         if f.subject_id == "unassigned":
             conditions.append(Material.subject_id.is_(None))
@@ -322,6 +323,8 @@ def reprocess(
     if not idempotency or len(idempotency) > 80:
         raise HTTPException(422, "Ein eindeutiger Idempotency-Key (max. 80 Zeichen) ist erforderlich.")
     source, child = get_material(db, p, material_id, True)
+    if source.purpose == "exam":
+        raise HTTPException(409, "Bitte Arbeitsfotos über die gemeinsame Fotoabgabe neu fotografieren und abgeben.")
     existing = db.scalar(select(Job).where(Job.idempotency == p.user.id + ":" + idempotency))
     if existing:
         guard = existing.payload.get("reprocess_guard") or {}

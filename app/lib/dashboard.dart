@@ -1035,6 +1035,14 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
         learningJob != null ||
         pendingReview != null ||
         pageCount > 0;
+    final examSessions = (data['exam_sessions'] as List? ?? [])
+        .whereType<Map>()
+        .where(
+          (item) =>
+              item['route'] is String &&
+              (item['route'] as String).startsWith('/exams/${child['id']}?'),
+        )
+        .toList();
     final name = state.user?['display_name'] ?? child['display_name'] ?? 'du';
     final day = DateTime.tryParse(plan['date']?.toString() ?? '');
     final photoLabel = photosWaiting
@@ -1226,6 +1234,17 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
           ),
         ),
         hero,
+        if (examSessions.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ChildTodayTile(
+            title: 'Für deine Klassenarbeit',
+            subtitle:
+                '${examSessions.first['title']} · ${examSessions.first['subject']} · etwa ${examSessions.first['minutes']} Min.${examSessions.length > 1 ? ' · ${examSessions.length - 1} weitere Lerntermine' : ''}',
+            icon: Icons.event_available_outlined,
+            accent: context.palette.cyanInk,
+            onTap: () => openSaved(examSessions.first['route'] as String),
+          ),
+        ],
         if (!photoPrimary) ...[
           SizedBox(height: 14),
           ChildTodayTile(

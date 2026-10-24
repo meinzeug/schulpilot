@@ -11,12 +11,20 @@ from . import schemas as s
 from .config import runtime_settings, settings
 from .db import Assignment, Child, Family, Job, LearningUnit, Material, ProviderConfig, UnitSource, get_db, uid
 from .fixtures import FIXTURE_ID, LIVE_FIXTURE_IDS, worksheet
-from .learning import material_data, record
+from .learning import material_data as learning_material_data
+from .learning import record
 from .providers import ProviderError, config_for_function, external_allowed, reserve
 from .security import authenticated, child_access, rate_limit
 
 router = APIRouter(tags=["Materialien und KI-Aufträge"])
 Image.MAX_IMAGE_PIXELS = 16_000_000
+
+
+def material_data(material):
+    value = learning_material_data(material)
+    if material.purpose == "exam":
+        value.update(vocabulary_preview=None, task_preview=[], confirmed_tasks=[], supports_task_confirmation=False)
+    return value
 
 
 @router.post("/children/{child_id}/materials/synthetic-fixture", status_code=201)
@@ -57,11 +65,23 @@ def upload(
     idempotency_key: str | None = Header(None),
     p=Depends(authenticated),
     db=Depends(get_db),
+    exam_id: str | None = None,
+    exam_revision: int | None = None,
 ):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
-    if purpose not in ("notebook", "homework") or (purpose == "homework" and school_day_id):
+    if purpose not in ("notebook", "homework", "exam") or (purpose in ("homework", "exam") and school_day_id):
         raise HTTPException(422, "Bitte einen gültigen Fotobereich wählen.")
-    if purpose == "homework" and not isinstance(idempotency_key, str):
+    if purpose == "exam":
+        from .exam_review import access
+
+        if not exam_id or type(exam_revision) is not int or exam_revision < 1:
+            raise HTTPException(422, "Bitte das Foto einer aktuellen schriftlichen Arbeit zuordnen.")
+        exam, owner = access(db, p, exam_id, write=True)
+        if owner.id != child.id:
+            raise HTTPException(404, "Arbeit nicht gefunden.")
+    elif exam_id is not None or exam_revision is not None:
+        raise HTTPException(422, "Diese Fotozuordnung gehört zu einer schriftlichen Arbeit.")
+    if purpose in ("homework", "exam") and not isinstance(idempotency_key, str):
         raise HTTPException(422, "Für dieses Foto wird ein Upload-Schlüssel benötigt.")
     family = db.get(Family, child.family_id)
     if family.synthetic:
@@ -114,7 +134,15 @@ def upload(
         if existing:
             if existing.image_digest != digest or existing.school_day_id != school_day_id or existing.purpose != purpose:
                 raise HTTPException(409, "Dieser Upload-Schlüssel gehört bereits zu einem anderen Foto.")
+            if purpose == "exam":
+                from .exam_review import validate_upload
+
+                validate_upload(db, p, child, exam_id, exam_revision, existing=existing)
             return material_data(existing)
+    if purpose == "exam":
+        from .exam_review import validate_upload
+
+        validate_upload(db, p, child, exam_id, exam_revision)
     rate_limit(db, "upload:" + p.user.id, 30, 3600, commit=False)
     page_number = None
     if school_day_id:
@@ -148,9 +176,14 @@ def upload(
         path=path,
         synthetic=False,
     )
-    db.add(material)
-    record(db, child.id, "material_uploaded")
     try:
+        db.add(material)
+        if purpose == "exam":
+            from .exam_review import attach_uploaded
+
+            db.flush()
+            attach_uploaded(db, p, child, material, exam_id, exam_revision)
+        record(db, child.id, "material_uploaded")
         db.commit()
     except Exception:
         destination.unlink(missing_ok=True)
@@ -191,7 +224,11 @@ def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)
     material, _ = get_material(db, p, material_id)
     extraction = db.scalar(select(Job).where(Job.child_id == material.child_id, Job.kind == "extract",
         Job.payload["material_id"].as_string() == material.id).order_by(Job.created.desc(), Job.id.desc()).limit(1))
-    return material_data(material) | {"duplicate_candidates": duplicate_sources(db, material),
+    linked_exam = None
+    if material.purpose == "exam":
+        from .exam_review_models import ExamReviewPage
+        linked_exam = db.scalar(select(ExamReviewPage.exam_id).where(ExamReviewPage.material_id == material.id))
+    return material_data(material) | ({"exam_id": linked_exam} if material.purpose == "exam" else {}) | {"duplicate_candidates": duplicate_sources(db, material),
         "has_image": bool(material.path), "fixed_example": bool(material.fixture_id),
         "processing_job": ({"id": extraction.id, "kind": extraction.kind, "status": extraction.status,
                             "error": extraction.error, "error_code": extraction.error_code} if extraction else None)}
@@ -238,6 +275,8 @@ def task_preview(material_id: str, data: s.MaterialConfirm, p=Depends(authentica
     material, _ = get_material(db, p, material_id)
     if data.revision is not None and data.revision != material.revision:
         raise HTTPException(409, "Die Seite wurde geändert. Bitte die aktuelle Seite neu laden.")
+    if material.purpose == "exam":
+        return {"items": [], "duplicates": []}
     return {"items": preview(data.content, data.homework, material.task_decisions), "duplicates": duplicate_sources(db, material)}
 
 
@@ -252,6 +291,8 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
     material = db.get(Material, material_id, populate_existing=True)
     if not material:
         raise HTTPException(404, "Heftseite nicht mehr vorhanden.")
+    if material.purpose == "exam" and (data.task_decisions or data.vocabulary):
+        raise HTTPException(422, "Aus einer korrigierten Arbeit werden keine Hausaufgaben oder Wörter übernommen.")
     confirmation_digest = material_tasks.fingerprint(data.model_dump(mode="json", exclude={"revision"}))
     if material.confirmed and material.confirmation_digest == confirmation_digest:
         return material_data(material)
@@ -310,7 +351,8 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
         for unit in units:
             observe(db, unit, "material_revised", "source:" + material.id + ":" + str(material.revision),
                 ["material:" + material.id + ":" + str(material.revision)])
-    tasks = material_tasks.apply_decisions(db, material, child, data.task_decisions, source_changed=source_changed)
+    tasks = ({"added": 0, "duplicates": 0, "unplanned": 0} if material.purpose == "exam" else
+             material_tasks.apply_decisions(db, material, child, data.task_decisions, source_changed=source_changed))
     material.task_decisions = [row.model_dump(mode="json") for row in data.task_decisions]
     record(
         db,
@@ -331,6 +373,8 @@ def material_words_status(material_id: str, p=Depends(authenticated), db=Depends
     from .material_vocabulary import source_status
 
     material, _ = get_material(db, p, material_id)
+    if material.purpose == "exam":
+        return {"confirmed_words": 0, "review_words": 0, "unpaired_lines": 0, "imports": []}
     return source_status(db, material)
 
 
@@ -339,8 +383,8 @@ def material_words_preview(material_id: str, data: s.MaterialVocabularyPreview,
                            p=Depends(authenticated), db=Depends(get_db)):
     from .material_vocabulary import preview
 
-    get_material(db, p, material_id)
-    return {"preview": preview(data.subject, data.topic, data.content)}
+    material, _ = get_material(db, p, material_id)
+    return {"preview": None if material.purpose == "exam" else preview(data.subject, data.topic, data.content)}
 
 
 @router.post("/materials/{material_id}/vocabulary")
@@ -352,6 +396,8 @@ def material_words(material_id: str, data: s.MaterialWords, p=Depends(authentica
     material = db.get(Material, material_id, populate_existing=True)
     if not material:
         raise HTTPException(404, "Heftseite nicht mehr vorhanden.")
+    if material.purpose == "exam":
+        raise HTTPException(409, "Die alte Antwort aus einer Arbeit ist keine bestätigte Vokabelquelle.")
     result = transfer(db, p, child, material, data)
     db.commit()
     return result
@@ -453,6 +499,8 @@ def extract(
     db=Depends(get_db),
 ):
     material, child = get_material(db, p, material_id, True)
+    if material.purpose == "exam":
+        raise HTTPException(409, "Bitte Arbeitsfotos über die gemeinsame Fotoabgabe lesen lassen.")
     if material.confirmed:
         raise HTTPException(409, "Bestätigtes Material wird nicht erneut überschrieben.")
     return enqueue(db, p, child, "extract", {"material_id": material.id}, idempotency)
@@ -514,6 +562,8 @@ def create_unit(
         material = db.get(Material, material_id)
         if not material or material.child_id != child.id:
             raise HTTPException(404, "Material nicht gefunden.")
+        if material.purpose == "exam":
+            raise HTTPException(409, "Für neue Übungen bitte bestätigte Heftseiten aus der Arbeitsbesprechung auswählen.")
         if not material.confirmed:
             raise HTTPException(409, "Bitte den erkannten Stoff und unsichere Stellen zuerst bestätigen.")
         if material.fixture_id and data.assignment_id:

@@ -132,3 +132,31 @@ Audit, entfernte Identitäten, widerrufene Sitzung und Kinderlogin401 sind in
 alle Browsermenüs noch die verbleibende 320px-Elternnavigation gelten durch
 diese einzelne Schulbuddy-Probe als vollständig abgenommen. Spätere 92-,
 Reparatur- und Cleanup-Belege werden gesondert ergänzt.
+
+## Aktueller sichtbarer Inhalt · 1.32.0+106
+
+Öffnen verwendet den aktuell registrierten Seitenkontext. Die jeweils sichtbare
+Heftseite eines Fachalbums wird über ihre ID und lokale Revisionsbindung
+übergeben; Übungsfragen werden weiterhin serverseitig gegen den tatsächlich
+aktuellen Lernschritt geprüft. Klassenarbeiten ergänzen begrenzte Plan- und
+Originalaufgabenkontexte. Alte Papierantworten und Lehrermarkierungen sind
+Originalbeobachtungen, keine bestätigten richtigen Lösungen. Unbestätigte oder
+zu umfangreiche Inhalte führen zu einer konkreten Prüf-/Auswahlaufforderung.
+Keine Fotos, freien Clienttexte als Kontext, privaten Elternnotizen oder noch
+nicht eingereichten Berichtigungsentwürfe werden dadurch an den Chat gegeben.
+
+Gespräche und RAM-Entwürfe bleiben nach Quelle und Kontositzung getrennt.
+Seitenwechsel dürfen keine vorige Quelle unbemerkt zur aktuellen machen.
+Der Status lautet nur „Schulbuddy denkt nach …“. Der offene Chat fragt den
+Status ohne überlappende Requests jede Sekunde ab; Modell, Reasoning,
+Quellenprüfungen, Tokenlimit und Antwortschema werden dafür nicht abgesenkt.
+Die Änderung verkürzt die zusätzliche Anzeigeverzögerung, verspricht keine
+kürzere Modellberechnung.
+
+Beim Einblenden der Android-Tastatur bleibt das Composer-Element über einen
+stabilen GlobalKey erhalten. Der Wechsel zwischen fester und kurzer
+Scrollansicht zerstört deshalb weder EditableText noch dessen Fokus oder
+IME-Verbindung. Die Regression wechselt mehrfach über die 560px-Grenze und
+prüft Elementidentität, Text, Fokus und ausbleibendes hide/clearClient. Der alte
+Stand scheitert an dieser Gegenprobe; ein physischer Android-Test ist davon
+getrennt zu berichten.

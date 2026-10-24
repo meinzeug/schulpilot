@@ -16,6 +16,8 @@ from . import (
     coaching,
     commerce,
     controller_jobs,
+    exam_review,
+    exams,
     families,
     family_calls,
     google_login,
@@ -88,6 +90,8 @@ def request_body_limit(path: str) -> int:
             return 7 * 1024 * 1024
         if "/grade-imports/" in path and path.endswith("/confirm"):
             return 512 * 1024
+    if path.startswith("/api/exams/") and path.endswith("/pages"):
+        return 12 * 1024 * 1024
     if path.startswith("/api/materials/") and path.endswith("/confirm"):
         return 256 * 1024
     return 64 * 1024
@@ -267,6 +271,8 @@ for router in (
     library.router,
     coaching.router,
     materials.router,
+    exams.router,
+    exam_review.router,
     synthetic.router,
     admin.router,
     operator_incidents.router,

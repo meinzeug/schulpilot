@@ -1060,6 +1060,7 @@ class _MaterialReviewState extends State<MaterialReview>
     final data = widget.data;
     final hasText = content.text.trim().isNotEmpty;
     final hasNotebook =
+        data['purpose'] != 'exam' &&
         data['subject_id'] is String &&
         RegExp(r'^[a-f0-9]{32}$').hasMatch(data['subject_id']);
     final actions = <String, String>{
@@ -1365,6 +1366,7 @@ class _MaterialReviewState extends State<MaterialReview>
       previewContent == content.text;
 
   Json? get wordPreview {
+    if (widget.data['purpose'] == 'exam') return null;
     if (editedPreviewCurrent) return editedWordPreview;
     final value = widget.data['vocabulary_preview'];
     if (value is! Map ||
@@ -1537,6 +1539,41 @@ class _MaterialReviewState extends State<MaterialReview>
     }
   }
 
+  Widget examReturn(Json data) {
+    final examId = data['exam_id'];
+    final child = data['child_id'];
+    final valid =
+        examId is String &&
+        RegExp(r'^[a-f0-9]{32}$').hasMatch(examId) &&
+        child is String &&
+        RegExp(r'^[a-f0-9]{32}$').hasMatch(child);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Original einer geschriebenen Arbeit · bestätigter Text ist noch keine richtige Musterlösung.',
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.arrow_back),
+          label: const Text('Zur Nacharbeit der Arbeit'),
+          onPressed: () {
+            if (!sourceCurrent(data) ||
+                ModalRoute.of(context)?.isCurrent != true) {
+              return;
+            }
+            openRoute(
+              context,
+              valid
+                  ? '/exams/$child?exam=$examId&tab=review'
+                  : '/exams/${data['child_id']}?tab=review',
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   Widget pageActions({bool processing = true, bool maintenance = true}) => Wrap(
     spacing: 8,
     runSpacing: 8,
@@ -1556,7 +1593,9 @@ class _MaterialReviewState extends State<MaterialReview>
           icon: Icon(Icons.hourglass_top_rounded),
           label: Text('Einlesen ansehen'),
         ),
-      if (maintenance && materialCanReprocess(widget.state, widget.data))
+      if (maintenance &&
+          widget.data['purpose'] != 'exam' &&
+          materialCanReprocess(widget.state, widget.data))
         ActionButton(
           label: 'Mit KI neu lesen',
           secondary: true,
@@ -1650,16 +1689,25 @@ class _MaterialReviewState extends State<MaterialReview>
           spacing: 8,
           runSpacing: 8,
           children: [
-            Tag(synthetic ? 'Beispielseite' : 'Deine Heftseite'),
+            Tag(
+              synthetic
+                  ? 'Beispielseite'
+                  : d['purpose'] == 'exam'
+                  ? 'Geschriebene Arbeit'
+                  : 'Deine Heftseite',
+            ),
             Tag(
               d['confirmed']
-                  ? 'Bestätigter Lernstoff'
+                  ? (d['purpose'] == 'exam'
+                        ? 'Originaltext bestätigt'
+                        : 'Bestätigter Lernstoff')
                   : 'Bestätigung erforderlich',
             ),
           ],
         ),
         SizedBox(height: 12),
-        pageActions(),
+        if (d['purpose'] == 'exam') examReturn(d),
+        pageActions(maintenance: d['purpose'] != 'exam'),
         if (dirty && !confirmedHere)
           Semantics(
             liveRegion: true,
@@ -1695,7 +1743,10 @@ class _MaterialReviewState extends State<MaterialReview>
               ),
             ),
           ),
-        if (d['status'] == 'uploaded' && !readonly && !extractionRunning)
+        if (d['purpose'] != 'exam' &&
+            d['status'] == 'uploaded' &&
+            !readonly &&
+            !extractionRunning)
           Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: ActionButton(
@@ -1820,8 +1871,11 @@ class _MaterialReviewState extends State<MaterialReview>
           ),
         ),
         SizedBox(height: 22),
-        if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
-        if (d['confirmed'] && widget.showUnitAction)
+        if (d['purpose'] != 'exam' &&
+            d['confirmed'] == true &&
+            wordPreview != null)
+          savedWordPanel(),
+        if (d['purpose'] != 'exam' && d['confirmed'] && widget.showUnitAction)
           Panel(
             color: context.palette.mint,
             child: Column(
@@ -1857,7 +1911,9 @@ class _MaterialReviewState extends State<MaterialReview>
               ],
             ),
           ),
-        if (d['confirmed'] == true && d['synthetic'] != true)
+        if (d['purpose'] != 'exam' &&
+            d['confirmed'] == true &&
+            d['synthetic'] != true)
           TextButton.icon(
             icon: Icon(Icons.chat_bubble_outline_rounded),
             label: Text('Fragen zu dieser Heftseite'),
@@ -1868,7 +1924,8 @@ class _MaterialReviewState extends State<MaterialReview>
               materialId: d['id'],
             ),
           ),
-        if (d['synthetic'] != true &&
+        if (d['purpose'] != 'exam' &&
+            d['synthetic'] != true &&
             ['review', 'confirmed'].contains(d['status']))
           LearningTips(
             widget.state,
@@ -1885,7 +1942,8 @@ class _MaterialReviewState extends State<MaterialReview>
     if (!current || sourceConflict) return;
     final d = widget.data;
     final owner = widget.state.user;
-    if (d.containsKey('vocabulary_preview') &&
+    if (d['purpose'] != 'exam' &&
+        d.containsKey('vocabulary_preview') &&
         !editedPreviewCurrent &&
         (subject.text != d['subject'] ||
             topic.text != d['topic'] ||
@@ -1936,7 +1994,8 @@ class _MaterialReviewState extends State<MaterialReview>
     };
     if (d['supports_task_confirmation'] == true &&
         d['synthetic'] != true &&
-        d['purpose'] != 'homework') {
+        d['purpose'] != 'homework' &&
+        d['purpose'] != 'exam') {
       final preview = await widget.state.api.post(
         '/materials/${d['id']}/task-preview',
         body,
@@ -2016,6 +2075,7 @@ class _MaterialReviewState extends State<MaterialReview>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (d['purpose'] == 'exam') examReturn(d),
         pageActions(maintenance: false),
         if (dirty && !confirmedHere)
           Semantics(
@@ -2062,7 +2122,11 @@ class _MaterialReviewState extends State<MaterialReview>
           ),
           SizedBox(height: 16),
         ],
-        if (d['status'] == 'uploaded' && !extractionRunning)
+        if (d['purpose'] == 'exam' && d['status'] == 'uploaded')
+          const Notice(
+            'Das Foto ist gespeichert. Gib deine Arbeitsseiten in der Nacharbeit gemeinsam zum Lesen ab.',
+          )
+        else if (d['status'] == 'uploaded' && !extractionRunning)
           ActionButton(
             label: 'Text lesen lassen',
             onPressed: () async {
@@ -2217,14 +2281,17 @@ class _MaterialReviewState extends State<MaterialReview>
               ],
             ),
           ),
-        if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
+        if (d['purpose'] != 'exam' &&
+            d['confirmed'] == true &&
+            wordPreview != null)
+          savedWordPanel(),
         if (canConfirm && dirty && !synthetic)
           TextButton.icon(
             onPressed: changing ? null : discardCorrection,
             icon: Icon(Icons.undo_rounded),
             label: Text('Eigene Korrektur zurücknehmen'),
           ),
-        if (confirmed && widget.showUnitAction) ...[
+        if (d['purpose'] != 'exam' && confirmed && widget.showUnitAction) ...[
           SizedBox(height: 16),
           ActionButton(
             label: languageMaterial ? 'Wörter & Sprache üben' : 'Jetzt lernen',
@@ -2250,7 +2317,7 @@ class _MaterialReviewState extends State<MaterialReview>
             },
           ),
         ],
-        if (confirmed && d['synthetic'] != true) ...[
+        if (d['purpose'] != 'exam' && confirmed && d['synthetic'] != true) ...[
           SizedBox(height: 12),
           TextButton.icon(
             icon: Icon(Icons.translate_rounded),
@@ -2271,7 +2338,8 @@ class _MaterialReviewState extends State<MaterialReview>
             ),
           ),
         ],
-        if (d['synthetic'] != true &&
+        if (d['purpose'] != 'exam' &&
+            d['synthetic'] != true &&
             ['review', 'confirmed'].contains(d['status']))
           LearningTips(
             widget.state,

@@ -114,14 +114,19 @@ def service_worker():
     }
     # Configuration must be present synchronously when the worker starts;
     # fetching it asynchronously can lose the first background push event.
-    script = """self.addEventListener('notificationclick', event => {
+    from .exam_notifications import EXAM_PATH_PATTERN
+
+    script = r"""self.addEventListener('notificationclick', event => {
   event.stopImmediatePropagation(); event.notification.close();
-  event.waitUntil(clients.openWindow('/app'));
+  const data = event.notification.data || {};
+  const path = (data.FCM_MSG && data.FCM_MSG.data ? data.FCM_MSG.data : data).exam_path;
+  const target = typeof path === 'string' && /^(?:EXAM_PATH)(?![\s\S])/.test(path) ? path : '/app';
+  event.waitUntil(clients.openWindow(target));
 });
 importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js');
 firebase.initializeApp(CONFIG); firebase.messaging();
-""".replace("CONFIG", json.dumps(firebase).replace("<", "\\u003c"))
+""".replace("CONFIG", json.dumps(firebase).replace("<", "\\u003c")).replace("EXAM_PATH", EXAM_PATH_PATTERN.replace("/", "\\/"))
     return Response(
         script,
         media_type="application/javascript",
@@ -464,6 +469,9 @@ def due_kinds(db, device, current):
         ):
             result.add("reply")
         if user.role == "child" and device.reminders:
+            from .exam_notifications import events_for_child
+
+            result.update(event["kind"] for event in events_for_child(db, child, current, retention=86400))
             from .school_preparation import notice_allowed
 
             # One neutral daily bundle. Re-check the submitting session as well
@@ -540,7 +548,11 @@ class FcmError(Exception):
         self.code, self.unregistered = code, unregistered
 
 
-def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_data=None):
+def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_data=None, exam_path=None):
+    from .exam_notifications import valid_exam_path
+
+    if exam_path is not None and not valid_exam_path(exam_path):
+        raise FcmError("INVALID_EXAM_PATH")
     site = runtime_settings()
     config = public_config(testing=testing)
     if not config["available"]:
@@ -590,6 +602,9 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_da
                 "fcm_options": {"link": site.public_url + "/app"},
             },
         }
+        if exam_path is not None:
+            message["data"]["exam_path"] = exam_path
+            message["webpush"]["fcm_options"]["link"] = site.public_url + exam_path
         if call_data is not None:
             # Data-only: Android's own call notification owns the ringtone and
             # call-style actions. Never include a private name, subject or text.
@@ -635,7 +650,7 @@ def deliver_one(DB, *, call_id=None):
         db.commit()
         device = db.get(PushDevice, device_id)
         testing = kind in ("test_validate", "test_send")
-        call_data = None
+        call_data, exam_path = None, None
         if kind in ("family_call_incoming", "family_call_ended"):
             from .db import FamilyCall
 
@@ -657,6 +672,18 @@ def deliver_one(DB, *, call_id=None):
             delivery.status = "suppressed"
             db.commit()
             return True
+        if kind in ("exam_reminder", "exam_ready"):
+            from .exam_notifications import events_for_child
+
+            user = db.get(User, device.user_id)
+            candidates = [event for child in children_for(db, user)
+                for event in events_for_child(db, child, int(now()), retention=86400) if event["kind"] == kind]
+            today = datetime.fromtimestamp(int(now()), ZoneInfo(device.timezone)).strftime("%Y-%m-%d")
+            if not candidates or delivery.dedup_key != device.id + ":" + kind + ":" + today:
+                delivery.status = "suppressed"
+                db.commit()
+                return True
+            exam_path = max(candidates, key=lambda event: (event["created"], event["id"]))["route"]
         token = decrypt(device.encrypted_token)
         ttl = min(60, seconds_before_quiet(int(now()), device.timezone, device.quiet_start, device.quiet_end))
         if call_data is not None:
@@ -676,6 +703,8 @@ def deliver_one(DB, *, call_id=None):
     try:
         if call_data is not None:
             send_fcm(token, kind, ttl, testing=testing, call_data=call_data)
+        elif exam_path is not None:
+            send_fcm(token, kind, ttl, exam_path=exam_path)
         elif testing:
             send_fcm(token, kind, ttl, testing=True, validate_only=kind == "test_validate")
         else:

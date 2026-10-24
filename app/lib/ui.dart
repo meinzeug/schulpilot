@@ -1533,6 +1533,12 @@ class _WorkspaceShellState extends State<WorkspaceShell>
         'Hefte',
         '/library/${state.user!['child_id']}',
       ),
+    if (!state.isAdmin)
+      (
+        Icons.assignment_turned_in_outlined,
+        'Klassenarbeiten',
+        state.isChild ? '/exams/${state.user!['child_id']}' : '/exams',
+      ),
     if (state.isAdmin) ...[
       (Icons.tune_rounded, 'Einrichtung', '/admin/settings'),
       (Icons.storefront_outlined, 'Verkauf', '/admin/verkauf'),
@@ -1546,6 +1552,9 @@ class _WorkspaceShellState extends State<WorkspaceShell>
   int _selected(List<(IconData, String, String)> entries, String path) {
     final index = entries.indexWhere((entry) => path == entry.$3);
     if (index >= 0) return index;
+    if (!state.isAdmin && (path == '/exams' || path.startsWith('/exams/'))) {
+      return entries.indexWhere((entry) => entry.$2 == 'Klassenarbeiten');
+    }
     if (state.isChild && path.startsWith('/homework/')) {
       return entries.indexWhere((entry) => entry.$2 == 'Hausaufgaben');
     }
@@ -1722,9 +1731,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                             if (compactChild)
                               NavigationDestination(
                                 icon: LearningNavIcon(Icons.more_horiz_rounded),
-                                label: selected >= 3
-                                    ? entries[selected].$2
-                                    : 'Mehr',
+                                label: 'Mehr',
                                 tooltip: selected >= 3
                                     ? '${entries[selected].$2} · Weitere Bereiche'
                                     : 'Weitere Bereiche',
@@ -2502,6 +2509,7 @@ String notificationActionLabel(Json item) {
   if (path.startsWith('/after-school/')) return 'Schultag ansehen';
   if (path.startsWith('/family-call/')) return 'Live-Hilfe öffnen';
   if (path.startsWith('/parent-plan/')) return 'Lernplan ansehen';
+  if (path.startsWith('/exams/')) return 'Lerntermin öffnen';
   if (path.startsWith('/progress/')) return 'Lernstand ansehen';
   return 'Neuigkeit öffnen';
 }

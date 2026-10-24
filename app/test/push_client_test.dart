@@ -198,6 +198,28 @@ void main() {
       expect(open, 1);
     },
   );
+  test('exam destinations stay bound to opt-in and clear on account cleanup', () async {
+    const target =
+        '/exams/11111111111111111111111111111111?exam=22222222222222222222222222222222&session=33333333333333333333333333333333';
+    await push.enable({'reminders': true});
+    transport.opened.add(target);
+    expect(push.openPending, isTrue);
+    expect(push.takeOpenTarget(), target);
+    expect(push.openPending, isFalse);
+    expect(push.openTarget, isNull);
+    transport.incoming.add(target);
+    await Future<void>.delayed(Duration.zero);
+    expect(push.foregroundTarget, target);
+    transport.onNativeOpen?.call();
+    expect(push.takeOpenTarget(), target);
+    transport.opened.add('/exams/11111111111111111111111111111111?exam=bad');
+    expect(push.openPending, isFalse);
+    await push.forget();
+    expect(push.foregroundTarget, isNull);
+    expect(push.openTarget, isNull);
+    transport.opened.add(target);
+    expect(push.openPending, isFalse);
+  });
   test('ordinary push opt-in never grants incoming family calls', () async {
     await push.enable({'help_requests': true});
     expect(transport.binding, isNull);

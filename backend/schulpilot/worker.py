@@ -60,6 +60,7 @@ def unit_sources(db, job):
             not material
             or material.child_id != job.child_id
             or not material.confirmed
+            or (job.kind in ("unit", "package") and material.purpose == "exam")
             or material.revision != snapshot["revision"]
         ):
             raise ProviderError("Eine Quelle der Wiederholung wurde geändert oder gelöscht. Bitte neu vorbereiten.")
@@ -90,6 +91,11 @@ def process(job_id):
     with DB() as db:
         candidate = db.get(Job, job_id)
         kind = candidate.kind if candidate else None
+    if kind == "exam_review":
+        from .exam_review import process as process_exam_review
+
+        process_exam_review(job_id)
+        return
     if kind == "vocabulary_import":
         from .vocabulary import process as process_vocabulary
 
@@ -130,9 +136,22 @@ def process(job_id):
             from .material_actions import validate_reprocess_job
 
             validate_reprocess_job(db, job)
+            if job.payload.get("exam_scan_id"):
+                from .exam_review import validate_scan_job
+
+                validate_scan_job(db, job)
             from .homework import validate_practice_job
 
             validate_practice_job(db, job)
+
+            if job.payload.get("exam_round_id"):
+                from .exams import guard_preparation
+
+                guard_preparation(db, job)
+            if job.payload.get("exam_review_practice"):
+                from .exam_review import validate_practice_job as validate_exam_practice
+
+                validate_exam_practice(db, job)
             child = db.get(Child, job.child_id)
             family = db.get(Family, child.family_id)
             if family.expires and family.expires < now():
@@ -262,6 +281,17 @@ def process(job_id):
                     f"Heftseite {m.page_number or i + 1}:\n{m.content}" for i, m in enumerate(source_pages)
                 )
                 payload["material"]["uncertainties"] = [warning for m in source_pages for warning in m.uncertainties]
+            if job.kind == "unit" and job.payload.get("exam_round_id"):
+                from .exams import preparation_context
+
+                selected_exam = preparation_context(db, job)
+                selected_exam.pop("previous_unit_ids", None)
+                payload.update(selected_exam, exam_preparation=True,
+                    study_block={"mode": "recall", "question_count": selected_exam["requested_question_count"]})
+            if job.kind == "unit" and job.payload.get("exam_review_practice"):
+                from .exam_review import add_practice_context
+
+                payload = add_practice_context(db, job, payload)
             if job.kind == "unit" and job.payload.get("homework_practice"):
                 from .homework import practice_exclusions
 
@@ -330,9 +360,22 @@ def process(job_id):
             from .material_actions import validate_reprocess_job
 
             validate_reprocess_job(db, job)
+            if job.payload.get("exam_scan_id"):
+                from .exam_review import validate_scan_job
+
+                validate_scan_job(db, job)
             from .homework import validate_practice_job
 
             validate_practice_job(db, job)
+
+            if job.payload.get("exam_round_id"):
+                from .exams import guard_preparation
+
+                guard_preparation(db, job)
+            if job.payload.get("exam_review_practice"):
+                from .exam_review import validate_practice_job as validate_exam_practice
+
+                validate_exam_practice(db, job)
             material = db.get(Material, job.payload["material_id"]) if job.payload.get("material_id") else None
             assignment = db.get(Assignment, job.payload["assignment_id"]) if job.payload.get("assignment_id") else None
             if job.payload.get("material_id") and (
@@ -392,6 +435,14 @@ def process(job_id):
                     if data["subject"].casefold() != material.subject.casefold() or data["topic"].casefold() != material.topic.casefold():
                         raise ProviderError("Die neue Lernrunde weicht vom bestätigten Hausaufgabenstoff ab.")
                     validate_practice_output(data, practice_exclusions(db, material))
+                if job.payload.get("exam_round_id"):
+                    from .exams import validate_prepared_output
+
+                    validate_prepared_output(db, job, data)
+                if job.payload.get("exam_review_practice"):
+                    from .exam_review import validate_practice_output as validate_exam_practice_output
+
+                    validate_exam_practice_output(db, job, data)
                 goal = (
                     db.get(Assignment, job.payload.get("assignment_id")) if job.payload.get("assignment_id") else None
                 )
@@ -421,6 +472,14 @@ def process(job_id):
                 db.flush()
                 for source in source_pages:
                     db.add(UnitSource(unit_id=unit.id, material_id=source.id, revision=source.revision))
+                if job.payload.get("exam_round_id"):
+                    from .exams import attach_prepared_unit
+
+                    attach_prepared_unit(db, job, unit)
+                if job.payload.get("exam_review_practice"):
+                    from .exam_review import attach_practice_unit
+
+                    attach_practice_unit(db, job, unit)
                 job.result = {"unit_id": unit.id}
                 record(
                     db,
@@ -556,6 +615,12 @@ def maintenance():
             for day in db.scalars(select(SchoolDay).where(SchoolDay.child_id == child_id, SchoolDay.id.in_(day_ids))):
                 day.revision += 1
                 sources_removed(db, day)
+        from .exam_models import Exam
+        from .exam_review import purge_expired as purge_expired_exams
+
+        exam_cutoff = int(now()) - 365 * 86400
+        purge_expired_exams(db, exam_cutoff)
+        db.execute(delete(Exam).where(Exam.updated < exam_cutoff))
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
         from .db import (
@@ -688,6 +753,9 @@ def main():
             from .school_preparation import advance_one
 
             advance_one()
+            from .exam_review import advance_scan_one
+
+            advance_scan_one()
             if now() - last_maintenance > 60:
                 maintenance()
                 from .ai_accounting import reconcile_one

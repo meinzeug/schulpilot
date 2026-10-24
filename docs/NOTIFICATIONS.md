@@ -167,3 +167,20 @@ das eigene Kind. Auch ältere Clients bekommen keine gelöschten/fremden Links;
 die ursprüngliche Nachricht bleibt erhalten. Jobtombstones nach Rundenlöschung
 erzeugen keine neue „Sprachübung bereit“-Meldung. Vorbereitungszeilen mit mehr
 als zwei Fächern kennzeichnen die gekürzte Auswahl. GETs bleiben ohne Writes/KI.
+
+## Klassenarbeiten · 1.32.0+106
+
+`exam_reminder` und `exam_ready` stammen aus aktuellen gespeicherten
+Lernterminen/Runden bzw. Arbeitsbesprechungen. Keine kostenpflichtige Arbeit
+startet durch Lesen oder eine Erinnerung. Geräteeinwilligung, Kinderfreigabe,
+beide Ruhezeiten, aktuelle Sitzung/Mitgliedschaft und Quellenrevisionen bleiben
+Pflicht. Ein ausdrücklich aktivierter Exam-Termin braucht nicht zusätzlich
+den allgemeinen Tageserinnerungsschalter. Fertigmeldungen nach einem bewusst
+angeforderten Auftrag folgen dem vorhandenen Geräte-Erinnerungsopt-in.
+
+Das Glocken-Capability `exams-v1` ermöglicht den gezielten App-Einstieg.
+FCM `data.route` bleibt `/app`; ein optionales `exam_path` nimmt ausschließlich
+den servererzeugten lokalen Exam-Pfad mit festen UUID-Parametern oder eine
+Unit-ID an. Web-Serviceworker und Flutter prüfen denselben endlichen Pfadraum.
+Kein Name, Fach, Prüfungstitel, Notentext oder privater Inhalt im Push.
+Kontowechsel/Abmeldung verwerfen vorgemerkte Ziele und Vordergrundaktionen.

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'schulbuddy.dart';
 import 'learning_tips.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
@@ -1138,193 +1139,212 @@ class _NotebookScreenState extends State<_NotebookContext>
         current &&
         renderedScope == toolsScope &&
         renderedRoute?.isCurrent == true;
-    return PageFrame(
-      focusContent: compactNotebook,
-      retainNavigation: true,
-      state: widget.state,
-      title: subject?['title'] ?? 'Dein Hefter',
-      showTitle: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (widget.state.isParent)
-            ParentChildNavigation(
-              childId: widget.childId,
-              selected: 'materials',
-            ),
-          Row(
-            key: ValueKey(
-              compactNotebook ? 'notebook-compact-heading' : 'notebook-heading',
-            ),
-            children: [
-              IconButton(
-                tooltip: 'Alle Hefter',
-                onPressed: () {
-                  if (renderedCurrent()) {
-                    context.go('/library/${widget.childId}');
-                  }
-                },
-                icon: const Icon(Icons.arrow_back_rounded),
+    return SchulbuddyPageContext(
+      contextValue: SchulbuddyContext(
+        'notebooks',
+        {
+          'child_id': widget.childId,
+          if (!loading && view == 'album' && selected?['id'] is String)
+            'material_id': selected!['id'],
+        },
+        !loading && view == 'album' && selected != null
+            ? '${selected!['id']}:${selected!['revision']}'
+            : null,
+      ),
+      child: PageFrame(
+        focusContent: compactNotebook,
+        retainNavigation: true,
+        state: widget.state,
+        title: subject?['title'] ?? 'Dein Hefter',
+        showTitle: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.state.isParent)
+              ParentChildNavigation(
+                childId: widget.childId,
+                selected: 'materials',
               ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    subject?['title'] ?? 'Dein Hefter',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+            Row(
+              key: ValueKey(
+                compactNotebook
+                    ? 'notebook-compact-heading'
+                    : 'notebook-heading',
+              ),
+              children: [
+                IconButton(
+                  tooltip: 'Alle Hefter',
+                  onPressed: () {
+                    if (renderedCurrent()) {
+                      context.go('/library/${widget.childId}');
+                    }
+                  },
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      subject?['title'] ?? 'Dein Hefter',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (widget.state.isChild || canManage)
+                if (widget.state.isChild || canManage)
+                  IconButton(
+                    tooltip: 'Heftfoto hinzufügen',
+                    onPressed: () {
+                      if (renderedCurrent()) addPhoto();
+                    },
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                  ),
                 IconButton(
-                  tooltip: 'Heftfoto hinzufügen',
+                  key: const ValueKey('notebook-options'),
+                  tooltip: 'Hefteroptionen',
                   onPressed: () {
-                    if (renderedCurrent()) addPhoto();
+                    if (renderedCurrent()) openOptions();
                   },
-                  icon: const Icon(Icons.add_a_photo_outlined),
-                ),
-              IconButton(
-                key: const ValueKey('notebook-options'),
-                tooltip: 'Hefteroptionen',
-                onPressed: () {
-                  if (renderedCurrent()) openOptions();
-                },
-                icon: const Icon(Icons.more_horiz_rounded),
-              ),
-            ],
-          ),
-          if (search.text.trim().isNotEmpty || status != 'all' || dates != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (search.text.trim().isNotEmpty)
-                    InputChip(
-                      label: Text('Suche: ${search.text.trim()}'),
-                      onPressed: () {
-                        if (renderedCurrent()) searchDialog();
-                      },
-                      onDeleted: () {
-                        if (renderedCurrent()) change(search.clear);
-                      },
-                      deleteButtonTooltipMessage: 'Suchbegriff entfernen',
-                    ),
-                  if (status != 'all')
-                    InputChip(
-                      label: Text(
-                        status == 'review' ? 'Noch prüfen' : 'Geprüfte Seiten',
-                      ),
-                      onDeleted: () {
-                        if (renderedCurrent()) change(() => status = 'all');
-                      },
-                      deleteButtonTooltipMessage: 'Seitenstatus aufheben',
-                    ),
-                  if (dates != null)
-                    InputChip(
-                      label: Text(
-                        '${DateFormat('dd.MM.yy').format(dates!.start)} – ${DateFormat('dd.MM.yy').format(dates!.end)}',
-                      ),
-                      onDeleted: () {
-                        if (renderedCurrent()) change(() => dates = null);
-                      },
-                      deleteButtonTooltipMessage: 'Zeitraum aufheben',
-                    ),
-                ],
-              ),
-            ),
-          if (comparePages.isNotEmpty)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                Text('${comparePages.length} von 2 Fotos vorgemerkt'),
-                OutlinedButton.icon(
-                  onPressed: comparePages.length == 2 ? comparePhotos : null,
-                  icon: const Icon(Icons.compare),
-                  label: const Text('Fotos vergleichen'),
-                ),
-                TextButton(
-                  onPressed: () => setState(comparePages.clear),
-                  child: const Text('Vergleich leeren'),
+                  icon: const Icon(Icons.more_horiz_rounded),
                 ),
               ],
             ),
-          if (selecting && (allMatching || selectedIds.isNotEmpty))
-            selectionTray(),
-          SizedBox(height: compactNotebook ? 0 : 16),
-          if (loading)
-            Padding(
-              padding: EdgeInsets.all(44),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (error != null) ...[
-            Notice(error!, warning: true),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton(
-                onPressed: loading
-                    ? null
-                    : (subject == null ? loadSubject : load),
-                child: Text('Erneut laden'),
-              ),
-            ),
-          ] else if (total == 0)
-            Panel(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Column(
+            if (search.text.trim().isNotEmpty ||
+                status != 'all' ||
+                dates != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Icon(
-                      Icons.folder_open_rounded,
-                      size: 50,
-                      color: context.palette.teal,
-                    ),
-                    SizedBox(height: 14),
-                    Text(
-                      search.text.isEmpty && status == 'all' && dates == null
-                          ? 'Hier sind noch keine Heftseiten vorhanden.'
-                          : 'Dazu gibt es gerade keine Seiten.',
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 16),
-                    if (search.text.isNotEmpty ||
-                        status != 'all' ||
-                        dates != null)
-                      OutlinedButton(
-                        onPressed: () => change(() {
-                          search.clear();
-                          status = 'all';
-                          dates = null;
-                        }),
-                        child: Text('Alle Seiten zeigen'),
+                    if (search.text.trim().isNotEmpty)
+                      InputChip(
+                        label: Text('Suche: ${search.text.trim()}'),
+                        onPressed: () {
+                          if (renderedCurrent()) searchDialog();
+                        },
+                        onDeleted: () {
+                          if (renderedCurrent()) change(search.clear);
+                        },
+                        deleteButtonTooltipMessage: 'Suchbegriff entfernen',
                       ),
-                    if (widget.state.isChild || canManage)
-                      FilledButton.icon(
-                        onPressed: addPhoto,
-                        icon: Icon(Icons.add_a_photo_outlined),
+                    if (status != 'all')
+                      InputChip(
                         label: Text(
-                          search.text.isEmpty &&
-                                  status == 'all' &&
-                                  dates == null
-                              ? 'Erstes Heftfoto hinzufügen'
-                              : 'Heftfoto hinzufügen',
+                          status == 'review'
+                              ? 'Noch prüfen'
+                              : 'Geprüfte Seiten',
                         ),
+                        onDeleted: () {
+                          if (renderedCurrent()) change(() => status = 'all');
+                        },
+                        deleteButtonTooltipMessage: 'Seitenstatus aufheben',
+                      ),
+                    if (dates != null)
+                      InputChip(
+                        label: Text(
+                          '${DateFormat('dd.MM.yy').format(dates!.start)} – ${DateFormat('dd.MM.yy').format(dates!.end)}',
+                        ),
+                        onDeleted: () {
+                          if (renderedCurrent()) change(() => dates = null);
+                        },
+                        deleteButtonTooltipMessage: 'Zeitraum aufheben',
                       ),
                   ],
                 ),
               ),
-            )
-          else if (view == 'album')
-            album()
-          else
-            overview(),
-        ],
+            if (comparePages.isNotEmpty)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Text('${comparePages.length} von 2 Fotos vorgemerkt'),
+                  OutlinedButton.icon(
+                    onPressed: comparePages.length == 2 ? comparePhotos : null,
+                    icon: const Icon(Icons.compare),
+                    label: const Text('Fotos vergleichen'),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(comparePages.clear),
+                    child: const Text('Vergleich leeren'),
+                  ),
+                ],
+              ),
+            if (selecting && (allMatching || selectedIds.isNotEmpty))
+              selectionTray(),
+            SizedBox(height: compactNotebook ? 0 : 16),
+            if (loading)
+              Padding(
+                padding: EdgeInsets.all(44),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (error != null) ...[
+              Notice(error!, warning: true),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton(
+                  onPressed: loading
+                      ? null
+                      : (subject == null ? loadSubject : load),
+                  child: Text('Erneut laden'),
+                ),
+              ),
+            ] else if (total == 0)
+              Panel(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.folder_open_rounded,
+                        size: 50,
+                        color: context.palette.teal,
+                      ),
+                      SizedBox(height: 14),
+                      Text(
+                        search.text.isEmpty && status == 'all' && dates == null
+                            ? 'Hier sind noch keine Heftseiten vorhanden.'
+                            : 'Dazu gibt es gerade keine Seiten.',
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      if (search.text.isNotEmpty ||
+                          status != 'all' ||
+                          dates != null)
+                        OutlinedButton(
+                          onPressed: () => change(() {
+                            search.clear();
+                            status = 'all';
+                            dates = null;
+                          }),
+                          child: Text('Alle Seiten zeigen'),
+                        ),
+                      if (widget.state.isChild || canManage)
+                        FilledButton.icon(
+                          onPressed: addPhoto,
+                          icon: Icon(Icons.add_a_photo_outlined),
+                          label: Text(
+                            search.text.isEmpty &&
+                                    status == 'all' &&
+                                    dates == null
+                                ? 'Erstes Heftfoto hinzufügen'
+                                : 'Heftfoto hinzufügen',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              )
+            else if (view == 'album')
+              album()
+            else
+              overview(),
+          ],
+        ),
       ),
     );
   }

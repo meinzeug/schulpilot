@@ -81,6 +81,9 @@ def create_session(db, user, response, request, device):
     )
     for old in sessions[9:]:
         old.revoked = True
+        from .exam_review import clear_user_drafts
+
+        clear_user_drafts(db, user.id, old.id)
     token = secrets.token_urlsafe(48)
     db.add(
         Session(
@@ -205,6 +208,9 @@ def login(data: s.Login, request: Request, response: Response, db=Depends(get_db
         previous = db.scalar(select(Session).where(Session.token_hash == digest(previous_token)))
         if previous:
             previous.revoked = True
+            from .exam_review import clear_user_drafts
+
+            clear_user_drafts(db, previous.user_id, previous.id)
             from sqlalchemy import delete
 
             from .db import PushDevice
@@ -226,6 +232,9 @@ def logout(response: Response, p=Depends(authenticated), db=Depends(get_db)):
     if p.user.role == "child":
         db.execute(update(Child).where(Child.user_id == p.user.id).values(grade=Child.grade))
     db.execute(update(Session).where(Session.id == p.session.id).values(revoked=True))
+    from .exam_review import clear_user_drafts
+
+    clear_user_drafts(db, p.user.id, p.session.id)
     if p.user.role == "child":
         from .homework import clear_drafts
 
@@ -255,6 +264,9 @@ def revoke(session_id: str, p=Depends(authenticated), db=Depends(get_db)):
     )
     if not result.rowcount:
         raise HTTPException(404, "Sitzung nicht gefunden.")
+    from .exam_review import clear_user_drafts
+
+    clear_user_drafts(db, p.user.id, session_id)
     db.commit()
     return {"message": "Zugang auf diesem Gerät widerrufen."}
 
@@ -284,6 +296,9 @@ def reset(data: s.ResetRequest, db=Depends(get_db)):
     user.password_hash = password_hash(data.password)
     user.verified = True
     db.execute(update(Session).where(Session.user_id == user.id).values(revoked=True))
+    from .exam_review import clear_user_drafts
+
+    clear_user_drafts(db, user.id)
     db.execute(update(Token).where(Token.user_id == user.id, Token.purpose == "recovery").values(used=True))
     db.commit()
     return {"message": "Passwort erneuert. Alle bisherigen Sitzungen wurden beendet."}

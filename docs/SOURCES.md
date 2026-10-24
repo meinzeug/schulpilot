@@ -954,3 +954,17 @@ Die neuen transparenten Figuren und Headergrafiken wurden mit dem eingebauten Im
 Der tatsächliche Flutter-Webdateiimport deckte einen im gepinnten SDK nicht unterstützten ImageDescriptor-Abmessungszugriff auf. JPEG-/PNG-/WebP-Header werden nun vor Pixeldekodierung mit der bereits fixierten image 4.12.0 gelesen. Reale lokale Dateiauswahl und nicht gespeicherte Vorschau wurden im Browser bedient; erfolgreicher Serverupload ist getrennt durch Backend-/Widgettests belegt. Avatarbilder bleiben privat und werden nicht an KI gesendet.
 
 [Release105](RELEASE_105_2026_10_24.md) bindet CI 40078603562, reguläre Artefakte, öffentliche Hashvergleiche, Schema 0032 und SSH-Nachprüfung an `7ba70c8a8bdc83aa3493b31c4cb4b9fcca02a567`. Anschließender Livebrowser: Kinder-Heute, Mathematikhefter mit bleibender Navigation, schwebender Buddy/Chat/Andocken, Logorückweg, Geräte-/Profilreiter. Temporäre Viewports zurückgesetzt, eigene Vorschau beendet, keine Produktionsfotoänderung oder neue Modellanfrage. Native JUnitressourcenprüfung und gescheiterter TCG-Emulatorlauf werden ausdrücklich von einer physischen Geräteabnahme getrennt. Diese Runde behauptet keine erneute vollständige Simpleclub-Recherche oder fachliche KI-Abnahme.
+
+Klassenarbeiten und Schulbuddy24.10.2026 · Umsetzung1.32.0+106:
+Der Ausbau folgt dem ausdrücklichen Betreiberauftrag für LK-/KA-Vorbereitung,
+Fotoimport zurückgegebener Arbeiten, individuelle Aufgabenmengen und aktuellen
+Schulbuddy-Seitenbezug. Keine neue Simpleclub-Inhaltsübernahme oder Behauptung
+einer vollständigen Fachabnahme. Gemeinsame vorhandene Gestaltung, lokale
+Nunito-Schrift und fachliche Flutter-Renderer bleiben maßgeblich.
+
+Primäre Implementierungsbelege: [EXAMS.md](EXAMS.md),
+[SCHULBUDDY.md](SCHULBUDDY.md), [NOTIFICATIONS.md](NOTIFICATIONS.md),
+`backend/schulpilot/exams.py`, `exam_review.py`, `schulbuddy_exams.py` und die
+entsprechenden API-/Worker-/Flutter-Gegenproben. Künstliche Browserdaten und
+Provider-Mocks sind keine echte OCR-/LLM-Qualitätsprüfung. Versionsgebundene
+Releasebelege werden nach ihrer tatsächlichen Ausführung ergänzt.

@@ -161,7 +161,7 @@ void main() {
   );
 
   testWidgets(
-    'an explicit switch to an empty context restores hints without changing the old conversation or sending',
+    'opening a new empty page context restores hints without mixing the previous conversation or sending',
     (tester) async {
       final h = await f.open(
         tester,
@@ -181,10 +181,8 @@ void main() {
       h.router.go('/learn/${f.child}');
       await tester.pumpAndSettle();
       await f.tap(tester, find.text('Buddy öffnen'));
-      expect(find.text('Gespräch: Bereich today'), findsOneWidget);
-      _expectIntroduction(false);
-      await f.tap(tester, find.text('Zur aktuellen Seite wechseln'));
       expect(find.text('Gespräch: Bereich learn'), findsOneWidget);
+      expect(find.text('Zur aktuellen Seite wechseln'), findsNothing);
       _expectIntroduction(true);
       expect(find.text('Wie beginne ich?'), findsNothing);
       expect(tester.widget<TextField>(f.field()).controller!.text, isEmpty);

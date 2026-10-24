@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'family_call_native.dart';
+import 'push_routes.dart';
 
 import 'firebase_bootstrap.dart'
     if (dart.library.js_interop) 'firebase_bootstrap_web.dart';
@@ -67,11 +68,10 @@ class PushTransport {
       )
       .timeout(const Duration(seconds: 30));
   Stream<String> get tokenChanges => FirebaseMessaging.instance.onTokenRefresh;
-  Stream<String?> get opens => FirebaseMessaging.onMessageOpenedApp.map(
-    (m) => m.data['route'] as String?,
-  );
+  Stream<String?> get opens =>
+      FirebaseMessaging.onMessageOpenedApp.map((m) => pushMessageRoute(m.data));
   Stream<String?> get messages =>
-      FirebaseMessaging.onMessage.map((m) => m.data['route'] as String?);
+      FirebaseMessaging.onMessage.map((m) => pushMessageRoute(m.data));
   Future<String?> initialRoute() async {
     if (!kIsWeb &&
         await channel
@@ -80,8 +80,8 @@ class PushTransport {
             true) {
       return '/app';
     }
-    return (await FirebaseMessaging.instance.getInitialMessage())?.data['route']
-        as String?;
+    final message = await FirebaseMessaging.instance.getInitialMessage();
+    return message == null ? null : pushMessageRoute(message.data);
   }
 
   Future<Map<String, dynamic>> deviceStatus() async {

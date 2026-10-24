@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/foundation.dart' show ValueListenable;
@@ -19,15 +20,27 @@ import 'ui.dart';
 class SchulbuddyContext {
   final String pageKind;
   final Map<String, String> references;
-  const SchulbuddyContext(this.pageKind, [this.references = const {}]);
+  final String? binding;
+  const SchulbuddyContext(
+    this.pageKind, [
+    this.references = const {},
+    this.binding,
+  ]);
   Json get fields => {'page_kind': pageKind, ...references};
-  String get key => jsonEncode(fields);
+  String get key =>
+      binding == null ? jsonEncode(fields) : jsonEncode([fields, binding]);
+  SchulbuddyContext get navigationFallback => SchulbuddyContext(
+    pageKind == 'exams'
+        ? (references['exam_tab'] == 'review' ? 'notebooks' : 'plan')
+        : pageKind,
+    {if (references['child_id'] case final String id) 'child_id': id},
+  );
   String get path => Uri(
     path: '/schulbuddy/context',
     queryParameters: {'page_kind': pageKind, ...references},
   ).toString();
   SchulbuddyContext withChild(String id) =>
-      SchulbuddyContext(pageKind, {...references, 'child_id': id});
+      SchulbuddyContext(pageKind, {...references, 'child_id': id}, binding);
   static SchulbuddyContext fromLocation(AppState state, String location) {
     final uri = Uri.tryParse(location);
     final parts = uri?.pathSegments ?? const <String>[];
@@ -51,6 +64,7 @@ class SchulbuddyContext {
       'messages' || 'notifications' => 'messages',
       'progress' || 'grades' || 'child' => 'progress',
       'parent-plan' => 'plan',
+      'exams' => 'exams',
       _ => 'general',
     };
     if (parts.length > 1) {
@@ -72,12 +86,20 @@ class SchulbuddyContext {
         'grades',
         'child',
         'parent-plan',
+        'exams',
       ].contains(first)) {
         if (!state.isChild) put('child_id', parts[1]);
         if (first == 'homework' && parts.length > 2) {
           put('material_id', parts[2]);
         }
         if (first == 'after-school') put('day_id', uri?.queryParameters['day']);
+        if (first == 'exams') {
+          put('exam_id', uri?.queryParameters['exam']);
+          put('exam_session_id', uri?.queryParameters['session']);
+          refs['exam_tab'] = uri?.queryParameters['tab'] == 'review'
+              ? 'review'
+              : 'prepare';
+        }
       }
     }
     return SchulbuddyContext(kind, Map.unmodifiable(refs));
@@ -97,6 +119,71 @@ class SchulbuddyScope extends InheritedWidget {
       context.dependOnInheritedWidgetOfExactType<SchulbuddyScope>();
   @override
   bool updateShouldNotify(SchulbuddyScope oldWidget) => open != oldWidget.open;
+}
+
+/// Publishes IDs of the actually visible page, never its private text or pixels.
+class SchulbuddyPageContext extends StatefulWidget {
+  final SchulbuddyContext contextValue;
+  final Widget child;
+  const SchulbuddyPageContext({
+    super.key,
+    required this.contextValue,
+    required this.child,
+  });
+  @override
+  State<SchulbuddyPageContext> createState() => _SchulbuddyPageContextState();
+}
+
+class _BuddyPageEntry {
+  final ModalRoute<dynamic>? route;
+  final SchulbuddyContext value;
+  final String? location;
+  final bool wasCurrent;
+  _BuddyPageEntry(this.route, this.value, this.location)
+    : wasCurrent = route?.isCurrent == true;
+  bool get current => route?.isCurrent == true;
+}
+
+class _SchulbuddyPageContextState extends State<SchulbuddyPageContext> {
+  _SchulbuddyHostState? host;
+  ModalRoute<dynamic>? route;
+  void register() {
+    String? location;
+    try {
+      location = GoRouterState.of(context).uri.toString();
+    } catch (_) {
+      /* Standalone widget: current route remains the gate. */
+    }
+    host?.registerPage(
+      this,
+      _BuddyPageEntry(route, widget.contextValue, location),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final next = _BuddyDockScope.maybeOf(context)?.host;
+    if (next != host) host?.unregisterPage(this);
+    host = next;
+    route = ModalRoute.of(context);
+    register();
+  }
+
+  @override
+  void didUpdateWidget(covariant SchulbuddyPageContext oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    register();
+  }
+
+  @override
+  void dispose() {
+    host?.unregisterPage(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _BuddyDockEntry {
@@ -303,6 +390,8 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
   final page = ValueNotifier(const SchulbuddyContext('general'));
   final surface = GlobalKey();
   final entries = <Object, _BuddyDockEntry>{};
+  final pageEntries = <Object, _BuddyPageEntry>{};
+  String? pageLocation;
   DialogRoute<void>? dialog;
   DialogRoute<String>? placementMenu;
   SchulbuddyContext? conversation;
@@ -343,16 +432,71 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
     updatePage();
   }
 
-  void updatePage() => page.value = SchulbuddyContext.fromLocation(
-    widget.state,
-    widget.location,
-  );
+  void updatePage() {
+    final base = SchulbuddyContext.fromLocation(widget.state, widget.location);
+    final registered = pageEntries.values
+        .where(
+          (entry) =>
+              entry.current ||
+              (dialog?.isCurrent == true &&
+                  entry.route?.isActive == true &&
+                  entry.location == widget.location),
+        )
+        .lastOrNull;
+    final unit = entries.values
+        .where(
+          (entry) =>
+              entry.unitId != null &&
+              (entry.current ||
+                  (dialog?.isCurrent == true &&
+                      entry.route?.isActive == true &&
+                      entry.unitId == base.references['unit_id'])),
+        )
+        .lastOrNull;
+    final keepCovered =
+        dialog?.isActive == true && pageLocation == widget.location;
+    final next =
+        registered?.value ??
+        (unit == null
+            ? null
+            : SchulbuddyContext('learn', {
+                if (widget.state.isChild)
+                  'child_id': widget.state.user!['child_id'],
+                'unit_id': unit.unitId!,
+                if (unit.questionId != null) 'question_id': unit.questionId!,
+              })) ??
+        (keepCovered
+            ? page.value
+            : SchulbuddyContext.fromLocation(widget.state, widget.location));
+    pageLocation = widget.location;
+    if (page.value.key != next.key) page.value = next;
+  }
+
+  void registerPage(Object key, _BuddyPageEntry entry) {
+    final old = pageEntries[key];
+    pageEntries[key] = entry;
+    if (old == null ||
+        old.route != entry.route ||
+        old.value.key != entry.value.key ||
+        old.wasCurrent != entry.wasCurrent ||
+        old.location != entry.location) {
+      refreshLater();
+    }
+  }
+
+  void unregisterPage(Object key) {
+    if (pageEntries.remove(key) != null) refreshLater();
+  }
+
   void refreshLater() {
     if (refreshPending) return;
     refreshPending = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       refreshPending = false;
-      if (mounted) setState(() => revision++);
+      if (mounted) {
+        updatePage();
+        setState(() => revision++);
+      }
     });
   }
 
@@ -711,10 +855,10 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
     if (dialog?.isActive != true) {
       conversation = SchulbuddyContext('learn', fields);
     }
-    await open();
+    await open(contextValue: SchulbuddyContext('learn', fields));
   }
 
-  Future<void> open() async {
+  Future<void> open({SchulbuddyContext? contextValue}) async {
     final account = widget.state.user,
         selectedFamily = widget.state.familyId,
         sessionToken = widget.state.api.token;
@@ -728,20 +872,30 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
         placementMenu != null) {
       return;
     }
-    conversation ??= page.value;
+    updatePage();
+    conversation = contextValue ?? page.value;
     final scope = conversation!;
+    final initialPage = page.value.key;
     final route = DialogRoute<void>(
       context: ctx,
-      builder: (_) => _SchulbuddyChat(
-        widget.state,
-        contextValue: scope,
-        currentPage: page,
-        onContext: (value) {
-          if (identical(widget.state.user, account) &&
-              widget.state.familyId == selectedFamily &&
-              widget.state.api.token == sessionToken) {
-            conversation = value;
-          }
+      builder: (_) => ValueListenableBuilder<SchulbuddyContext>(
+        valueListenable: page,
+        builder: (_, value, _) {
+          final target = value.key == initialPage ? scope : value;
+          return _SchulbuddyChat(
+            widget.state,
+            key: ValueKey(target.key),
+            contextValue: target,
+            currentPage: page,
+            contextChanged: value.key != initialPage && value.key != scope.key,
+            onContext: (value) {
+              if (identical(widget.state.user, account) &&
+                  widget.state.familyId == selectedFamily &&
+                  widget.state.api.token == sessionToken) {
+                conversation = value;
+              }
+            },
+          );
         },
       ),
     );
@@ -781,7 +935,7 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
 
   @override
   Widget build(BuildContext context) => SchulbuddyScope(
-    open: open,
+    open: () => open(),
     openForUnit: openForUnit,
     child: _BuddyDockScope(
       host: this,
@@ -882,8 +1036,11 @@ class _SchulbuddyChat extends StatefulWidget {
   final SchulbuddyContext contextValue;
   final ValueListenable<SchulbuddyContext> currentPage;
   final ValueChanged<SchulbuddyContext> onContext;
+  final bool contextChanged;
   const _SchulbuddyChat(
     this.state, {
+    super.key,
+    this.contextChanged = false,
     required this.contextValue,
     required this.currentPage,
     required this.onContext,
@@ -900,6 +1057,9 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
   late SchulbuddyContext scope = widget.contextValue;
   final input = TextEditingController(), inputFocus = FocusNode();
   final scroll = ScrollController();
+  // Keep the live EditableText/IME connection when keyboard insets switch
+  // between the fixed composer and the short-screen scroll layout.
+  final composerKey = GlobalKey(debugLabel: 'schulbuddy-composer');
   Json? contextData;
   final turns = <Json>[];
   List<Json>? children;
@@ -916,6 +1076,18 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
       newQuestionMode = false;
   int generation = 0;
   Timer? timer;
+  ModalRoute<dynamic>? chatRoute;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    chatRoute = ModalRoute.of(context);
+    if (chatRoute?.isCurrent == false) {
+      timer?.cancel();
+    } else {
+      schedule();
+    }
+  }
+
   bool get current =>
       mounted &&
       owner != null &&
@@ -1026,8 +1198,10 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
 
   void schedule() {
     timer?.cancel();
-    if (current && foreground && pending) {
-      timer = Timer(const Duration(seconds: 3), () => unawaited(load()));
+    if (current && foreground && pending && chatRoute?.isCurrent != false) {
+      timer = Timer(const Duration(seconds: 1), () {
+        if (chatRoute?.isCurrent != false) unawaited(load());
+      });
     }
   }
 
@@ -1036,7 +1210,19 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
     final stamp = generation, target = scope;
     setState(() => reading = true);
     try {
-      final data = await widget.state.api.get(target.path);
+      Json data;
+      try {
+        data = await widget.state.api.get(target.path);
+      } on ApiError catch (value) {
+        if (value.status != 422 || target.pageKind != 'exams') rethrow;
+        // An older server knows navigation help but no exam source protocol.
+        if (!current || stamp != generation) return;
+        remember();
+        scope = target.navigationFallback;
+        restored = false;
+        data = await widget.state.api.get(scope.path);
+        data['notice'] = 'Dieser Server kennt hier nur Bereichshilfe. Öffne eine bestätigte Heftseite für eine fachliche Erklärung.';
+      }
       if (!current || stamp != generation) return;
       setState(() {
         contextData = data;
@@ -1311,12 +1497,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
               ),
             ],
           ] else if (['queued', 'running'].contains(turn['status']))
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                'Schulbuddy denkt nach … Du kannst das Fenster schließen.',
-              ),
-            )
+            Semantics(liveRegion: true, child: Text('Schulbuddy denkt nach …'))
           else
             Notice(
               turn['error'] ?? 'Diese Antwort konnte nicht erstellt werden. Deine Frage bleibt gespeichert.',
@@ -1423,6 +1604,10 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
                 ),
             ],
           ),
+          if (widget.contextChanged)
+            const Text(
+              'Neue Seite · Schulbuddy bezieht sich jetzt auf diesen Bereich. Frühere Entwürfe bleiben bei ihrer Quelle.',
+            ),
           ValueListenableBuilder<SchulbuddyContext>(
             valueListenable: widget.currentPage,
             builder: (ctx, value, _) => value.key == scope.key
@@ -1446,7 +1631,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
               'Hier kannst du den vorhandenen Verlauf ansehen. Neue Fragen sind derzeit nicht möglich.',
               style: TextStyle(color: context.palette.muted),
             ),
-          if (loading || reading)
+          if (loading)
             const Padding(
               padding: EdgeInsets.all(12),
               child: LinearProgressIndicator(),
@@ -1521,6 +1706,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
       ),
     );
     final composer = Padding(
+      key: composerKey,
       padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisSize: MainAxisSize.min,

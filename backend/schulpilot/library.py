@@ -100,7 +100,7 @@ def materials(
     child = child_access(db, p, child_id)
     if since and until and since > until:
         raise HTTPException(422, "Der Beginn muss vor dem Ende des Zeitraums liegen.")
-    conditions = [Material.child_id == child.id]
+    conditions = [Material.child_id == child.id, Material.purpose != "exam"]
     if subject_id is not None:
         if subject is not None:
             raise HTTPException(422, "Bitte nur einen Fachfilter verwenden.")

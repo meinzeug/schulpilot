@@ -31,7 +31,7 @@ LIMIT = 50
 router = APIRouter(prefix="/notifications", tags=["Neuigkeiten"])
 
 
-def recent_events(db, user, current=None, *, direct_messages=False):
+def recent_events(db, user, current=None, *, direct_messages=False, direct_exams=False):
     if user.role not in ("child", "parent"):
         if user.role == "admin":
             audit(db, user.id, "admin.private_access_denied", "notification-inbox")
@@ -183,13 +183,20 @@ def recent_events(db, user, current=None, *, direct_messages=False):
                 route,
                 "failed" if failed else kind,
             )
+    from .exam_notifications import events_for_child
+
+    for child in children.values():
+        for event in events_for_child(db, child, current):
+            route = event["route"] if direct_exams else f"/child/{child.id}" if user.role == "parent" else "/app"
+            add(event["id"], child.id, event["created"], event["title"], route, event["kind"])
     return sorted(result, key=lambda row: (row["created"], row["id"]), reverse=True)[:LIMIT]
 
 
 @router.get("/inbox")
 def inbox(p=Depends(authenticated), db=Depends(get_db),
           capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
-    items = recent_events(db, p.user, direct_messages="messages-v1" in (capabilities or "").split(","))
+    items = recent_events(db, p.user, direct_messages="messages-v1" in (capabilities or "").split(","),
+        direct_exams="exams-v1" in (capabilities or "").split(","))
     read = set(
         db.scalars(
             select(NotificationRead.event_key).where(

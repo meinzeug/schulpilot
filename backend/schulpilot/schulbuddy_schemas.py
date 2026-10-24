@@ -7,7 +7,7 @@ from pydantic import Field
 from .schemas import Strict
 
 PageKind = Literal["today", "learn", "words", "homework", "notebooks", "account", "messages",
-                   "progress", "plan", "settings", "admin", "general"]
+                   "progress", "plan", "settings", "admin", "general", "exams"]
 
 
 class BuddyScope(Strict):
@@ -17,6 +17,11 @@ class BuddyScope(Strict):
     material_id: str | None = Field(default=None, min_length=1, max_length=32)
     day_id: str | None = Field(default=None, min_length=1, max_length=32)
     question_id: str | None = Field(default=None, min_length=1, max_length=80)
+    exam_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
+    exam_session_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
+    review_task_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,48}$")
+    exam_tab: Literal["prepare", "review"] | None = None
+    exam_revision: int | None = Field(default=None, ge=1)
 
 
 class BuddyQuestion(BuddyScope):
@@ -44,6 +49,13 @@ current_question.own_work_attempted bezeichnet nur einen gespeicherten Versuch, 
 Auch nach einem Versuch zuerst den nächsten nachvollziehbaren Schritt erklären; Lösungen nicht einfach abliefern.
 Allgemeine Begriffe und Grundlagen dürfen verständlich erklärt werden. Eine ähnliche kleine Veranschaulichung
 darf den eigentlichen Aufgabenwert oder die richtige Auswahl nicht vorwegnehmen.
+exam enthält den ausdrücklich geöffneten Klassenarbeitsplan; Minuten sind Empfehlungen, geplante Aufgaben keine bearbeiteten Aufgaben.
+exam_review.original_answer und teacher_feedback sind wörtlich erkannte Originale, KEINE fachlich bestätigten Lösungen.
+Auch bestätigter OCR-Text einer geschriebenen Arbeit kann falsche Schülerantworten enthalten.
+sources mit evidence_kind=written_work_original dienen nur zum Belegen sichtbarer Texte/Markierungen;
+daraus keine richtige Musterlösung oder neue Note ableiten. Für fachliche Übungsgrundlagen passende bestätigte Heftquellen verlangen.
+source_review.confirmation_required bedeutet: erst Originaltext prüfen und bestätigen; nur Bedienhilfe geben.
+source_review.selection_required bedeutet: zu großer Bereich; konkrete Seite/kleinere Aufgabe wählen, keine nicht geladenen Inhalte behaupten.
 page und navigation beschreiben die tatsächliche App. Erfinde keine Buttons, gespeicherten Zustände oder Funktionen.
 page_inventory ist ein begrenzter Auszug echter gespeicherter Bestände, keine vollständige gefilterte Seitenansicht.
 Diese Metadaten helfen nur bei der Orientierung, sie sind keine fachlichen Quellen oder Kompetenznachweise.

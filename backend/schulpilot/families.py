@@ -242,6 +242,9 @@ def child_password(child_id: str, data: ChildPassword, p=Depends(parent), db=Dep
         raise HTTPException(403, "Elternpasswort ist nicht richtig.")
     db.get(User, child.user_id).password_hash = password_hash(data.password)
     db.execute(update(Session).where(Session.user_id == child.user_id).values(revoked=True))
+    from .exam_review import clear_user_drafts
+
+    clear_user_drafts(db, child.user_id)
     audit(db, p.user.id, "child.password_reset", child.id)
     db.commit()
     return {"message": "Kinderpasswort erneuert und alle Kindersitzungen widerrufen."}
@@ -266,6 +269,9 @@ def revoke_child_session(child_id: str, session_id: str, p=Depends(parent), db=D
     )
     if not result.rowcount:
         raise HTTPException(404, "Sitzung nicht gefunden.")
+    from .exam_review import clear_user_drafts
+
+    clear_user_drafts(db, child.user_id, session_id)
     audit(db, p.user.id, "child.session_revoke", session_id)
     db.commit()
     return {"message": "Sitzung widerrufen."}
@@ -371,6 +377,9 @@ def revoke_member(family_id: str, membership_id: str, p=Depends(parent), db=Depe
     db.delete(membership)
     # Revoke sessions as well as checking membership on every request.
     db.execute(update(Session).where(Session.user_id == membership.user_id).values(revoked=True))
+    from .exam_review import clear_user_drafts
+
+    clear_user_drafts(db, membership.user_id)
     audit(db, p.user.id, "family.member_revoke", membership_id)
     db.commit()
     flush_journal()
@@ -524,6 +533,11 @@ def export_child(db, child):
                                 for row in db.scalars(select(ChildSubject).where(ChildSubject.child_id == child.id))]
     result["subject_definitions"] = [{c.name: getattr(row, c.name) for c in Subject.__table__.columns}
                                      for row in db.scalars(select(Subject).where(Subject.id.in_(child_subject_ids(db, child.id))))]
+    from .exam_review import export_review
+    from .exams import export_exams
+
+    result["exams"] = export_exams(db, child.id)
+    result.update(export_review(db, child.id))
     units = [u["id"] for u in result["learning_units"]]
     result["attempts"] = [
         {c.name: getattr(row, c.name) for c in Attempt.__table__.columns}

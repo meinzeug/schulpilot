@@ -53,7 +53,8 @@ def lock_child(db, child):
 def current_sources(db, child_id, sources):
     for source in sources:
         material = db.get(Material, source["id"])
-        if not material or material.child_id != child_id or not material.confirmed or material.revision != source["revision"]:
+        if (not material or material.child_id != child_id or not material.confirmed
+                or material.purpose == "exam" or material.revision != source["revision"]):
             raise HTTPException(409, "Die Heftseite wurde geändert. Bitte Wörter aus der aktuellen Seite neu bestätigen.")
 
 
@@ -104,7 +105,7 @@ def create_import(child_id: str, data: s.ImportRequest, idempotency_key: str = K
         material = db.get(Material, data.material_id)
         if not material or material.child_id != child.id:
             raise HTTPException(404, "Heftseite nicht gefunden.")
-        if not material.confirmed or not material.content.strip() or material.synthetic:
+        if material.purpose == "exam" or not material.confirmed or not material.content.strip() or material.synthetic:
             raise HTTPException(409, "Zuerst den erkannten Text der eigenen Seite bestätigen.")
         row.source_revisions = [{"id": material.id, "revision": material.revision}]
     db.add(row)

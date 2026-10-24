@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'api.dart';
 import 'push_transport.dart';
+import 'push_routes.dart';
 
 class PushPermissionCancelled implements Exception {
   @override
@@ -46,6 +47,16 @@ class PushClient extends ChangeNotifier {
   String? lastError;
   VoidCallback? onOpen, onActivity, onForeground;
   bool openPending = false;
+  String? openTarget, foregroundTarget;
+  String? _nativeForegroundTarget;
+
+  String takeOpenTarget() {
+    final target = openTarget ?? '/notifications';
+    openPending = false;
+    openTarget = null;
+    return target;
+  }
+
   int get registrationRevision => _generation;
   bool get canOpenSettings => transport.canOpenSettings;
   Future<Json> deviceStatus() => transport.deviceStatus();
@@ -63,6 +74,8 @@ class PushClient extends ChangeNotifier {
     Future<bool?> Function(Future<bool> Function() request)? confirmPermission,
   }) async {
     final generation = ++_generation;
+    openPending = false;
+    openTarget = foregroundTarget = _nativeForegroundTarget = null;
     _owner = api.currentAccount?.call();
     _preferences = null;
     _firebaseConfig = null;
@@ -190,15 +203,18 @@ class PushClient extends ChangeNotifier {
       await messages?.cancel();
       active();
       transport.onNativeOpen = () {
-        if (_current(generation)) _open('/app');
+        if (_current(generation)) _open(_nativeForegroundTarget ?? '/app');
       };
       _opened = transport.opens.listen((route) {
         if (_current(generation)) _open(route);
       });
       _messages = transport.messages.listen((route) async {
-        if (_preferences == null || !_current(generation) || route != '/app') {
+        final target = safePushRoute(route);
+        if (_preferences == null || !_current(generation) || target == null) {
           return;
         }
+        foregroundTarget = target == '/app' ? '/notifications' : target;
+        _nativeForegroundTarget = target;
         onActivity?.call();
         onForeground?.call();
         try {
@@ -324,7 +340,9 @@ class PushClient extends ChangeNotifier {
   }
 
   void _open(String? route) {
-    if (route != '/app' || _preferences == null) return;
+    final target = safePushRoute(route);
+    if (target == null || _preferences == null) return;
+    openTarget = target == '/app' ? '/notifications' : target;
     openPending = true;
     onActivity?.call();
     onOpen?.call();
@@ -427,6 +445,7 @@ class PushClient extends ChangeNotifier {
     _callBinding = null;
     lastError = null;
     openPending = false;
+    openTarget = foregroundTarget = _nativeForegroundTarget = null;
     final refresh = _refresh, opened = _opened, messages = _messages;
     _refresh = null;
     _opened = null;

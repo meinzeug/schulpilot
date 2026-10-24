@@ -43,7 +43,7 @@ from .security import Principal, audit, authenticated, child_access, digest, own
 router = APIRouter(tags=["Schulbuddy"])
 LABELS = {"today": "Heute", "learn": "Lernen", "words": "Wörter", "homework": "Hausaufgaben",
           "notebooks": "Hefte", "account": "Zugang", "messages": "Nachrichten", "progress": "Lernstand",
-          "plan": "Elternplanung", "settings": "Einstellungen", "admin": "Betriebsansicht", "general": "Schulbuddy"}
+          "plan": "Elternplanung", "exams": "Klassenarbeiten", "settings": "Einstellungen", "admin": "Betriebsansicht", "general": "Schulbuddy"}
 NO_CHILD = "Der KI-Chat benötigt einen berechtigten Kinderkontext und dessen Lernbudget. Hier ist nur allgemeine Bedienhilfe verfügbar."
 NOTICE = "Schulbuddy erklärt und fragt nach. Chatantworten sind ungeprüfte Hilfe, keine bewerteten Aufgaben oder Kompetenznachweise."
 
@@ -52,13 +52,27 @@ def fingerprint(value):
     return digest(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")))
 
 
+def protocol_fields(value):
+    """Additive nullable exam fields must not change existing history/replay keys."""
+    result = value.model_dump()
+    for key in ("exam_id", "exam_session_id", "review_task_id", "exam_tab", "exam_revision"):
+        if result.get(key) is None:
+            result.pop(key, None)
+    return result
+
+
 def resolve(db, p, scope):
     """Client IDs name a scope, never grant a role/family or upload free context."""
     if p.user.role == "admin":
-        if scope.child_id or scope.unit_id or scope.material_id or scope.day_id or scope.question_id:
+        if scope.child_id or scope.unit_id or scope.material_id or scope.day_id or scope.question_id or scope.exam_id or scope.exam_session_id or scope.review_task_id:
             raise HTTPException(403, "Betriebsadministratoren erhalten keinen privaten Kinderkontext.")
         return None, []
     targets = []
+    from .schulbuddy_exams import resolve_exam
+
+    exam = resolve_exam(db, p, scope)
+    if exam:
+        targets.append(("exam_id", exam))
     for model, key in ((LearningUnit, "unit_id"), (Material, "material_id"), (SchoolDay, "day_id")):
         if value := getattr(scope, key):
             target = db.get(model, value)
@@ -98,7 +112,7 @@ def resolve(db, p, scope):
 
 def scope_context(db, p, scope):
     child, targets = resolve(db, p, scope)
-    normalized = scope.model_dump()
+    normalized = protocol_fields(scope)
     normalized["child_id"] = child.id if child else None
     # Same actor/role/page/actual child: no cross-account or cross-parent history.
     context_key = fingerprint([p.user.id, p.user.role, normalized])
@@ -112,7 +126,12 @@ def scope_context(db, p, scope):
         return child, normalized, context_key, label, payload, refs, fingerprint([normalized, p.user.role])
     by_kind = dict(targets)
     materials, unit = [], by_kind.get("unit_id")
-    if unit:
+    if exam := by_kind.get("exam_id"):
+        from .schulbuddy_exams import bind
+
+        materials = bind(db, p, child, scope, exam, payload, normalized, current_guard)
+        label = exam.subject + " · " + exam.title
+    elif unit:
         from .learning_controller import source_state
 
         signature, valid, materials = source_state(db, unit)
@@ -154,7 +173,11 @@ def scope_context(db, p, scope):
                 payload["current_question"]["observed_outcome"] = pending["outcome"]
             current_guard.append(["visible_question", question_id, pending["attempt_id"] if pending else None])
     elif material := by_kind.get("material_id"):
-        materials = [material]
+        current_guard.append([material.id, material.revision, material.confirmed, material.status])
+        materials = [material] if material.confirmed and (material.content or "").strip() else []
+        if not materials:
+            payload["source_review"] = {"confirmation_required": True,
+                "notice": "Diese Seite zuerst lesen, prüfen und bestätigen. Ungeprüfter OCR-Text ist noch keine fachliche Quelle."}
         label = material.subject + " · " + material.topic
     elif day := by_kind.get("day_id"):
         current_guard.append([day.id, day.revision])
@@ -173,7 +196,9 @@ def scope_context(db, p, scope):
             raise HTTPException(404, "Heftseite nicht gefunden.")
         refs.append({"id": m.id, "revision": m.revision, "ref": f"p{index+1}",
                      "label": f"{m.subject} · {m.topic}"})
-        payload["sources"].append({"ref": f"p{index+1}", "label": refs[-1]["label"], "content": m.content})
+        payload["sources"].append({"ref": f"p{index+1}", "label": refs[-1]["label"], "content": m.content,
+                                   **({"evidence_kind": "written_work_original", "authoritative_solution": False}
+                                      if m.purpose == "exam" else {})})
     if unit or materials or scope.page_kind in ("today", "learn", "words", "homework", "notebooks", "progress", "plan"):
         from .learning_knowledge import buddy_context
 
@@ -182,6 +207,10 @@ def scope_context(db, p, scope):
     from .schulbuddy_pages import page_context
 
     payload["page_inventory"] = page_context(db, p, child, scope.page_kind)
+    if scope.page_kind == "exams":
+        from .schulbuddy_exams import inventory
+
+        payload["page_inventory"] = inventory(db, p, child)
     # Never forward display names, grades/notes, arbitrary memory or hidden keys.
     # Include the derived question in both conversation identity and the
     # dispatch guard. Advancing an exercise invalidates its prepared answer.
@@ -223,11 +252,14 @@ def starters_for(page_kind, label, payload):
         "messages": "Wie frage ich nach Hilfe?",
         "progress": "Was kann ich schon gut, was übe ich als Nächstes?",
         "plan": "Was unterscheidet Elterntermine von einem Lernvorschlag?",
+        "exams": "Was ist mein nächster Schritt bei dieser Klassenarbeit?",
         "settings": "Wie prüfe ich meinen Entwurf vor dem Speichern?",
         "admin": "Welche Betriebsprüfung verrät keine privaten Kinderinhalte?",
         "general": "Wo finde ich Hefte, Lernrunden und gespeicherte Rückmeldungen?",
     }[page_kind]
     rows = [page]
+    if payload.get("source_review", {}).get("confirmation_required"):
+        rows.insert(0, "Wie prüfe und bestätige ich den erkannten Text dieser Seite?")
     if payload["sources"]:
         rows.insert(0, f"Erkläre mir den bestätigten Stoff zu {label[:100]} in einem kleinen Schritt.")
     goals = payload.get("knowledge", {}).get("goals", [])
@@ -248,10 +280,15 @@ def starters_for(page_kind, label, payload):
 def read_context(page_kind: PageKind = "general", child_id: str | None = Query(None, max_length=32),
                  unit_id: str | None = Query(None, max_length=32), material_id: str | None = Query(None, max_length=32),
                  day_id: str | None = Query(None, max_length=32), question_id: str | None = Query(None, max_length=80),
+                 exam_id: str | None = Query(None, max_length=32),
+                 exam_session_id: str | None = Query(None, max_length=32),
+                 review_task_id: str | None = Query(None, max_length=48),
+                 exam_tab: str | None = Query(None, max_length=16),
                  p=Depends(authenticated), db=Depends(get_db)):
     try:
         scope = BuddyScope(page_kind=page_kind, child_id=child_id, unit_id=unit_id, material_id=material_id, day_id=day_id,
-                          question_id=question_id)
+                          question_id=question_id, exam_id=exam_id, exam_session_id=exam_session_id,
+                          review_task_id=review_task_id, exam_tab=exam_tab)
     except ValidationError:
         raise HTTPException(422, "Ungültiger Schulbuddy-Bereich.") from None
     child, _, key, label, payload, _, _ = scope_context(db, p, scope)
@@ -315,7 +352,7 @@ def ask(data: BuddyQuestion, idempotency_key: str = Header(..., min_length=16, m
         p=Depends(authenticated), db=Depends(get_db)):
     if p.user.role not in ("child", "parent"):
         raise HTTPException(403, NO_CHILD)
-    request_hash = fingerprint(data.model_dump())
+    request_hash = fingerprint(protocol_fields(data))
     # A replay is a read of the original operation, even after the exercise has
     # moved on. It cannot reserve again or reuse a key for another request.
     replay = db.scalar(select(SchulbuddyTurn).where(SchulbuddyTurn.user_id == p.user.id,

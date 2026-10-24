@@ -64,7 +64,7 @@ def child_subjects(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
         sid: {"page_count": count, "photo_count": photos, "review_count": pending}
         for sid, count, photos, pending in db.execute(
             select(Material.subject_id, func.count(), func.count(Material.path), func.sum(sa_case_pending()))
-            .where(Material.child_id == child.id)
+            .where(Material.child_id == child.id, Material.purpose != "exam")
             .group_by(Material.subject_id)
         )
     }

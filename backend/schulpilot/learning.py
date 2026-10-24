@@ -523,7 +523,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
     days = list(db.scalars(select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date)))
     source_ids_by_day = {}
     for material_id, day_id in db.execute(select(Material.id, Material.school_day_id).where(
-            Material.child_id == child.id, Material.confirmed.is_(True))):
+            Material.child_id == child.id, Material.purpose != "exam", Material.confirmed.is_(True))):
         source_ids_by_day.setdefault(day_id, set()).add(material_id)
     unit_ids = {u.id for u in units}
     day_blocks = {d.id: source_backed_blocks(db, d, material_ids=source_ids_by_day.get(d.id, set()),
@@ -637,7 +637,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
     confirmed_materials = list(
         db.scalars(
             select(Material)
-            .where(Material.child_id == child.id, Material.confirmed.is_(True))
+            .where(Material.child_id == child.id, Material.purpose != "exam", Material.confirmed.is_(True))
             .options(defer(Material.content), defer(Material.homework), defer(Material.uncertainties))
             .order_by(Material.created, Material.id)
         )
@@ -880,6 +880,8 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
     from .learning_progress import read_ledger, subject_evidence, totals
 
     child = child_access(db, p, child_id)
+    from .exams import today_sessions
+
     include_language = language_supported(capabilities)
     resume_id = feedback_resume_id(db, child.id, include_language=include_language)
     if resume_id:
@@ -922,7 +924,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
     if compact:
         from .library import MATERIAL_FIELDS, material_summary, unit_summaries
 
-        material_count = db.scalar(select(func.count()).select_from(Material).where(Material.child_id == child.id))
+        material_count = db.scalar(select(func.count()).select_from(Material).where(Material.child_id == child.id, Material.purpose != "exam"))
         pending = list(
             db.scalars(
                 select(Material)
@@ -930,6 +932,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
                 .options(load_only(*MATERIAL_FIELDS))
                 .where(
                     Material.child_id == child.id,
+                    Material.purpose != "exam",
                     Material.confirmed.is_(False),
                     or_(Material.school_day_id.is_(None), SchoolDay.school_date == current_plan["date"]),
                 )
@@ -996,6 +999,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         "daily_capture": capture,
         "feedback_resume": feedback_resume,
         "learning_preparation": {"id": preparing_unit.id, "status": preparing_unit.status} if preparing_unit else None,
+        "exam_sessions": today_sessions(db, child) if isinstance(capabilities, str) and "exams-v1" in capabilities.split(",") else [],
         "pending_preparations": preparations,
         "day_summary": summary(db, child, 1, learning_paths=learning_paths),
         "week_summary": summary(db, child, 7, learning_paths=learning_paths),
@@ -1004,7 +1008,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         if compact
         else [
             material_data(m)
-            for m in db.scalars(select(Material).where(Material.child_id == child.id).order_by(Material.created.desc()))
+            for m in db.scalars(select(Material).where(Material.child_id == child.id, Material.purpose != "exam").order_by(Material.created.desc()))
         ],
         "assignments": [
             assignment_data(a)

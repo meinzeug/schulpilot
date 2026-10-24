@@ -236,7 +236,7 @@ void main() {
     },
   );
   testWidgets(
-    'route changes preserve conversation until an explicit read only context switch',
+    'route changes open the current context and retain the old source-bound draft',
     (t) async {
       final h = await open(t);
       await tap(t, find.text('Buddy öffnen'));
@@ -245,14 +245,18 @@ void main() {
       h.router.go('/learn/$child');
       await t.pumpAndSettle();
       await tap(t, find.text('Buddy öffnen'));
+      expect(find.text('Gespräch: Bereich learn'), findsOneWidget);
+      expect(t.widget<TextField>(field()).controller!.text, isEmpty);
+      expect(find.text('Zur aktuellen Seite wechseln'), findsNothing);
+      await tap(t, find.byTooltip('Schulbuddy schließen'));
+      h.router.go('/app');
+      await t.pumpAndSettle();
+      await tap(t, find.text('Buddy öffnen'));
       expect(find.text('Gespräch: Bereich today'), findsOneWidget);
       expect(
         t.widget<TextField>(field()).controller!.text,
         'Frage zum ersten Bereich',
       );
-      await tap(t, find.text('Zur aktuellen Seite wechseln'));
-      expect(find.text('Gespräch: Bereich learn'), findsOneWidget);
-      expect(t.widget<TextField>(field()).controller!.text, isEmpty);
       expect(h.calls.every((r) => r.method == 'GET'), isTrue);
     },
   );

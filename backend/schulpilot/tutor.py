@@ -91,6 +91,8 @@ def sources_for(db, child, scope):
         raise HTTPException(409, "Bitte zuerst eine Heftseite hinzufügen und den erkannten Text bestätigen.")
     if any(not m or m.child_id != child.id for m in materials):
         raise HTTPException(404, "Heftseite nicht gefunden.")
+    if any(m.purpose == "exam" for m in materials):
+        raise HTTPException(409, "Bitte korrigierte Arbeiten im Bereich Klassenarbeiten besprechen.")
     if any(not m.confirmed or not m.content.strip() for m in materials):
         raise HTTPException(409, "Bitte zuerst den erkannten Text aller zugehörigen Heftseiten bestätigen.")
     if len(materials) > 24 or sum(len(m.content) for m in materials) > MAX_CONTENT:
@@ -580,6 +582,9 @@ def purge_source_turns(db, material_ids, *, child_id=None):
     the material/account deletion workflow. Job payloads contain no private text.
     """
     material_ids = set(material_ids)
+    from .exam_review import source_removed
+
+    source_removed(db, child_id, material_ids)
     from .schulbuddy import purge_sources as purge_buddy_sources
 
     purge_buddy_sources(db, material_ids, child_id=child_id)

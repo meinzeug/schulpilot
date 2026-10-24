@@ -945,7 +945,7 @@ class Audit(Base):
 Index("jobs_queue", Job.status, Job.created)
 
 # Register additive catalog tables after all referenced private models exist.
-from . import catalog_models, order_withdrawal_models, payment_models  # noqa: E402,F401
+from . import catalog_models, exam_models, exam_review_models, order_withdrawal_models, payment_models  # noqa: E402,F401
 
 settings.data_dir.mkdir(parents=True, exist_ok=True)
 engine = create_engine(
