@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def masters_at(root):
     paths = []
-    for (master, _), size in zip(EXPORTS, [(640, 480), (480, 640)], strict=True):
+    for (master, _), size in zip(EXPORTS, [(640, 480), (480, 640), (640, 640)], strict=True):
         path = root / master
         path.parent.mkdir(parents=True, exist_ok=True)
         image = Image.new("RGBA", size, (35, 150, 220, 0))
@@ -28,8 +28,8 @@ def test_header_exports_preserve_masters_proportions_alpha_and_repeatable_pixels
     masters = masters_at(tmp_path)
     before = {path: path.read_bytes() for path in masters}
     paths = export_header_graphics(tmp_path)
-    assert len(paths) == len(EXPORTS) == 2
-    for (master, relative), size in zip(EXPORTS, [(256, 192), (192, 256)], strict=True):
+    assert len(paths) == len(EXPORTS) == 3
+    for (master, relative), size in zip(EXPORTS, [(256, 192), (192, 256), (256, 256)], strict=True):
         with Image.open(tmp_path / master) as source, Image.open(tmp_path / relative) as output:
             assert output.format == "PNG" and output.mode == "RGBA" and output.size == size
             assert output.getchannel("A").getextrema() == (0, 255)
@@ -42,11 +42,11 @@ def test_header_exports_preserve_masters_proportions_alpha_and_repeatable_pixels
 
 
 @pytest.mark.parametrize("kind", ["rgb", "opaque", "invisible"])
-def test_invalid_second_master_preserves_both_previous_exports(tmp_path, kind):
+def test_invalid_last_master_preserves_all_previous_exports(tmp_path, kind):
     masters = masters_at(tmp_path)
     mode = "RGB" if kind == "rgb" else "RGBA"
     colour = (30, 100, 220) if kind == "rgb" else (30, 100, 220, 255 if kind == "opaque" else 0)
-    Image.new(mode, (32, 32), colour).save(masters[1])
+    Image.new(mode, (32, 32), colour).save(masters[-1])
     for _, relative in EXPORTS:
         (tmp_path / relative).write_bytes(b"previous export")
     before = {path: path.read_bytes() for path in masters}

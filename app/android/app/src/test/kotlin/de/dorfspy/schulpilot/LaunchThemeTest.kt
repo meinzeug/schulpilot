@@ -1,12 +1,11 @@
 package de.dorfspy.schulpilot
 
+import java.io.DataInputStream
 import java.io.File
-import javax.imageio.ImageIO
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.*
 import org.junit.Test
 import org.w3c.dom.Element
-import kotlin.math.hypot
 
 /** Resource contracts for the opaque native-to-Flutter startup handoff. */
 class LaunchThemeTest {
@@ -92,25 +91,22 @@ class LaunchThemeTest {
         }
     }
 
-    @Test fun transparentSystemSplashFitsInsideTheAndroidTwoThirdsCircle() {
-        val image = ImageIO.read(res.resolve("drawable-nodpi/schulpilot_splash_logo.png"))
-        assertNotNull(image)
-        assertTrue(image.colorModel.hasAlpha())
-        assertEquals(image.width, image.height)
-        val center = (image.width - 1) / 2.0
-        val safeRadius = image.width / 3.0
-        var visible = 0
-        for (y in 0 until image.height) {
-            for (x in 0 until image.width) {
-                if ((image.getRGB(x, y) ushr 24) != 0) {
-                    visible++
-                    assertTrue("Visible splash pixel ($x,$y) exceeds the system mask",
-                        hypot(x - center, y - center) <= safeRadius)
-                }
-            }
+    @Test fun systemSplashUsesSquareRgbaPng() {
+        // PNG format only: export_brand's Python pixel tests verify mask safety.
+        DataInputStream(res.resolve("drawable-nodpi/schulpilot_splash_logo.png")
+            .inputStream().buffered()).use { input ->
+            val signature = ByteArray(8)
+            input.readFully(signature)
+            assertArrayEquals(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 13, 10, 26, 10), signature)
+            assertEquals("PNG must start with the 13-byte IHDR chunk", 13, input.readInt())
+            val chunkType = ByteArray(4)
+            input.readFully(chunkType)
+            assertEquals("IHDR", String(chunkType, Charsets.US_ASCII))
+            assertEquals("Splash width", 512, input.readInt())
+            assertEquals("Splash height", 512, input.readInt())
+            assertEquals("Eight-bit channels", 8, input.readUnsignedByte())
+            assertEquals("RGBA color type", 6, input.readUnsignedByte())
         }
-        assertTrue("Splash must contain the actual logo", visible > 0)
-        assertEquals(0, image.getRGB(0, 0) ushr 24)
     }
 
     @Test fun launcherUsesTheExistingFlutterActivityAndNormalThemeHandoff() {

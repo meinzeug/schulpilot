@@ -9,13 +9,14 @@ HEADER_SIZE = 256
 EXPORTS = (
     ("app/assets/brand/schulpilot-bell-105.png", "app/assets/brand/schulpilot-bell-header.png"),
     ("app/assets/brand/schulpilot-avatar-105.png", "app/assets/brand/schulpilot-avatar-header.png"),
+    ("app/assets/brand/schulbuddy-ai-105.png", "app/assets/brand/schulbuddy-mark.png"),
 )
 
 
 def export_header_graphics(root=ROOT):
     root = Path(root)
     prepared = []
-    # Validate both inputs before replacing any existing header export.
+    # Validate all inputs before replacing any existing header export.
     for master, relative in EXPORTS:
         with Image.open(root / master) as source:
             if source.format != "PNG" or source.mode != "RGBA":

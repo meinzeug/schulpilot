@@ -420,10 +420,14 @@ class LearningCompanionIllustration extends StatelessWidget {
       width: size,
       height: size,
       child: Image.asset(
-        'assets/illustrations/learning-companion.png',
+        'assets/brand/schulbuddy-mark.png',
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) =>
-            const CustomPaint(painter: _CompanionFallbackPainter()),
+        errorBuilder: (_, _, _) => Image.asset(
+          'assets/illustrations/learning-companion.png',
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) =>
+              const CustomPaint(painter: _CompanionFallbackPainter()),
+        ),
       ),
     ),
   );

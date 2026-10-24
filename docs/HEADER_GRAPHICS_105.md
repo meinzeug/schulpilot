@@ -58,14 +58,43 @@ Absolutely NO letter, text, monogram, number, character, symbol, face, person, p
 
 ## Technische256px-Headerexporte
 
-`scripts/export_header_graphics.py` erzeugt getrennt zwei proportionale256px-PNGs aus dem vollständigen jeweiligen Mastercanvas: ausschließlich Pillow-LANCZOS-Resampling und PNG-Speicherung mit `optimize=True`. Kein Zuschnitt, keine Hintergrundfüllung, Umfärbung oder Alphabereinigung. Der Alphakanal wird wie die übrigen Kanäle resampelt; die beiden Masterbytes bleiben unverändert. Das Headerwerkzeug greift nicht in die17separaten Brand-/Startup-Plattformexporte ein.
+`scripts/export_header_graphics.py` erzeugt drei proportionale256px-PNGs (Glocke, Avatar und fliegender Schulbuddy) aus dem vollständigen jeweiligen Mastercanvas: ausschließlich Pillow-LANCZOS-Resampling und PNG-Speicherung mit `optimize=True`. Kein Zuschnitt, keine Hintergrundfüllung, Umfärbung oder Alphabereinigung. Der Alphakanal wird wie die übrigen Kanäle resampelt; alle Masterbytes bleiben unverändert. Das Headerwerkzeug greift nicht in die17separaten Brand-/Startup-Plattformexporte ein.
 
 | Runtimeasset unter app/ | Format | Größe | Bytes | SHA-256 |
 | --- | --- | --- | --- | --- |
 | `assets/brand/schulpilot-bell-header.png` | PNG/RGBA,Alpha0–255 | 256×256 | 58758 | `63f115bdd7653afd5978d05a368201ee7cea8b42f49a6c856b3cf728c8908113` |
 | `assets/brand/schulpilot-avatar-header.png` | PNG/RGBA,Alpha0–255 | 256×256 | 66865 | `fea86bb7aa4a7985a0dc14063f644f7990b440330c4ce8f59d16dedd43255b31` |
 
-Aufruf im Projektstamm:`.venv/bin/python scripts/export_header_graphics.py`. Fünf isolierte Fälle sichern Masterbytes, volle Proportionen, RGBA-/LANCZOS-Pixel, identische Wiederholung, beide unveränderte vorherige Exporte bei ungültigem zweiten Master und tatsächlich gespeicherte kleine Headerdateien. Im gemeinsamen finalen Lauf mit den Brand-/Spritetests:14bestanden, Exit0, Log`/tmp/schulpilot105-final-brand-tests.log`. Ruff für die beiden Skripte und beiden eigenen Testdateien ist grün(Exit0).
+Aufruf im Projektstamm:`.venv/bin/python scripts/export_header_graphics.py`. Fünf isolierte Fälle sichern Masterbytes, volle Proportionen, RGBA-/LANCZOS-Pixel, identische Wiederholung, alle unveränderten vorherigen Exporte bei ungültigem zweiten Master und tatsächlich gespeicherte kleine Headerdateien. Im gemeinsamen finalen Lauf mit den Brand-/Spritetests:14bestanden, Exit0, Log`/tmp/schulpilot105-final-flying-brand-tests.log`. Ruff für die beiden Skripte und beiden eigenen Testdateien ist grün(Exit0).
+
+## Finaler Schulbuddy: fliegende Buchfigur bleibt erhalten
+
+Direkte jüngste Nutzerkorrektur: die bestehende geflügelte Buch-/Roboterfigur bleibt der Schulbuddy. Die ursprüngliche Silhouette, Flugpose und Blickrichtung mit sichtbaren Buchseiten, Lesezeichenantenne, beiden Origamiflügeln, zwei Armen/Händen, kleinen Finnen und cyanfarbenem Bauch-Antrieb bleiben erkennbar erhalten. Ausschließlich die dunkelblaue äußere Hülle wurde stilistisch etwas violetter und mit passenden Materiallichtern versehen. Kein Doktorhut, kein Headset und kein neuer reiner Kopf. Das ursprüngliche `app/assets/illustrations/learning-companion.png` wurde nicht verändert.
+
+- Finaler Master: `app/assets/brand/schulbuddy-ai-105.png`, PNG/RGBA,1254×1254Pixel,1058023Bytes.
+- Unverändertes generiertes Original: `/home/dennis/.codex/generated_images/01a165ad-c32d-7101-b681-81de003d3b05/exec-b6fb1136-6057-4b6b-9641-140a480ec6e2.png`.
+- Master-SHA-256: `ed644b4a8d1a410a04d0a17912bdb7c95ff47729e877931547bf61d032deae02`.
+- Alpha0–255,1060322vollständig transparente Pixel; sichtbare Kontur bei Alpha≥16:`(13,170,1242,1039)`.
+- Laufzeitexport: `assets/brand/schulbuddy-mark.png` unter `app/`,256×256PNG/RGBA,Alpha0–255,62801Bytes.
+- Laufzeit-SHA-256: `10f396724ff219d51bb86e27ec439ef47bdfb7990749033c13f19b8c225852b6`.
+
+Die primäre Editreferenz war ausschließlich die eigene bestehende fliegende Figur `app/assets/illustrations/learning-companion.png` (SHA-256`51c202855298bdf9a0656f4974408a24c81182c9d262ee4a0dbd3c65b951df06`); das neue eigene `app/assets/brand/schulpilot-ai-105.png` (SHA-256`7f0e01760fff433b43994369356d4bd4347433facea42a45d0c872b7ea0ba487`) diente ausschließlich als Material-/Palettenreferenz. Beide wurden zuerst mit `view_image` geöffnet. Built-in Imagegen mit `transparent_background:true`; das Ergebnis ebenfalls angesehen und vor dem endgültigen Kopieren von Root ausdrücklich visuell bestätigt. Keine zusätzliche kreative Nachbearbeitung. Der256px-Export erfolgt reproduzierbar über denselben LANCZOS-Headerexporter mit nun drei Einträgen. Die Glocken-/Avatar-Master und ihre256px-Runtimeexporte wurden vor/nach diesem Schritt per SHA-256 als bytegleich bestätigt.
+
+**Verworfen und nicht final integriert:** der zuvor kurz erzeugte Kopf-mit-Headset-Entwurf `/home/dennis/.codex/generated_images/01a165ad-c32d-7101-b681-81de003d3b05/exec-3af48b8a-1da9-43f8-9870-739526e6f477.png`. Seine beiden neu angelegten Projektkopien wurden auf ausdrückliche Korrektur vor einer Runtimeintegration nach `/tmp/schulpilot105-discarded-headset/` verschoben. Sie gehören nicht zum finalen Projektbestand. Dieser verworfene Entwurf wurde nicht als fliegender Schulbuddy ausgegeben.
+
+### Vollständiger finaler Schulbuddy-Prompt
+
+```text
+Use case: precise-object-edit / identity-preserve.
+Asset type: transparent Schulpilot SCHULBUDDY FLYING BOOK-ROBOT icon, preserving an existing original character.
+Image1 is the PRIMARY EDIT TARGET: the exact existing OWN flying BOOK-ROBOT with visible cream book pages on top, purple bookmark antenna, dark face screen with cyan eyes, two origami-like purple wings, two articulated arms/hands, small fins and a cyan belly thruster. It has a deliberate diagonal flying pose and specific gaze. PRESERVE THAT COMPLETE ORIGINAL FIGURE, exact full silhouette, all wing/finger/fin/book-page shapes, proportions, pose, tilt, gaze, facial expression, geometry, framing, canvas and every object. It must remain the flying book robot; do NOT turn it into a plain head or a humanoid standing mascot.
+Image2 is ONLY a palette/material-light reference: the OWN new upright violet logo head. DO NOT COPY its head shape, straight pose, plain ears or any geometry.
+Make ONLY a restrained MATERIAL/COLOR adjustment to image1: shift the dark-blue outer book-cover/armor shell somewhat toward rich deep VIOLET/PURPLE, with the softly polished violet/lavender highlights and small cyan accents of image2. Keep the original dark navy face screen, large bright cyan eyes, cream paper pages, existing lavender origami wings and cyan thruster recognizably the same. Preserve internal detail and all colors that identify the original parts. Premium soft3D lighting in the same family, not neon overpainting.
+Strict invariants: NO new hat or graduation cap, NO headset or microphone, NO body/arm/wing removal, NO antenna removal, NO speech bubbles, NO new particles, extra accessories, letters, text, numbers, watermark, badge, border, floor or background. The primary character's design and original pose must remain visibly unchanged.
+Keep genuine TRANSPARENT PNG alpha outside the entire full flying silhouette, between arms/wings/fins and around the bookmark. No opaque tile or backdrop. All existing extremities stay fully inside the canvas. This is a small styling/color edit of the ORIGINAL FLYING CHARACTER, not a redesign.
+```
+
+Finale technische Abnahme:14gezielte synthetische Pythonfälle bestanden (Exit0,3.58s), Log`/tmp/schulpilot105-final-flying-brand-tests.log`; die fünf Headerfälle prüfen jetzt alle drei Master/Laufzeitexporte. Ruff für beide Exportskripte und ihre beiden Testdateien grün (Exit0). Kein Flutter-/Dart-SDK, Git, Versions- oder Deploymentbefehl in diesem Schritt. Die endgültige36px-Header-/Chatdarstellung und Bedienprüfung übernimmt Root separat.
 
 ## Integrationsgrenze
 
