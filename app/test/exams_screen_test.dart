@@ -569,6 +569,47 @@ void main() {
       );
     },
   );
+  for (final savedText in ['', 'Ein eigener gespeicherter Versuch.']) {
+    testWidgets(
+      savedText.isEmpty
+          ? 'empty unchanged correction has no saved draft and sends no write'
+          : 'existing saved correction is shown without another write',
+      (tester) async {
+        final fixture = Fixture();
+        fixture.report['tasks'][0]['draft'] = {
+          'text': savedText,
+          'revision': savedText.isEmpty ? 0 : 2,
+          'updated': savedText.isEmpty ? 0 : 1,
+        };
+        await fixture.mount(tester, selected: 'exam', tab: 'review');
+        final field = find.widgetWithText(
+          TextField,
+          'Dein Verbesserungsversuch',
+        );
+        await tester.ensureVisible(field);
+        await tester.pumpAndSettle();
+        expect(tester.widget<TextField>(field).controller!.text, savedText);
+        expect(find.text('${savedText.runes.length}/2000'), findsOneWidget);
+        final button = find.ancestor(
+          of: find.text(
+            savedText.isEmpty ? 'Noch kein Entwurf' : 'Entwurf gespeichert',
+          ),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is OutlinedButton,
+          ),
+        );
+        expect(button, findsOneWidget);
+        expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+        expect(find.text('Entwurf speichern'), findsNothing);
+        if (savedText.isEmpty) {
+          expect(find.text('Entwurf gespeichert'), findsNothing);
+        }
+        await tester.pump(const Duration(seconds: 5));
+        expect(tester.widget<TextField>(field).controller!.text, savedText);
+        expect(fixture.writes, isEmpty);
+      },
+    );
+  }
   testWidgets('typing is local until explicit session-private draft save', (
     tester,
   ) async {
@@ -590,6 +631,14 @@ void main() {
       'draft_revision': 0,
       'text': 'Ein Halb.',
     });
+    expect(tester.widget<TextField>(field).controller!.text, 'Ein Halb.');
+    final saved = find.ancestor(
+      of: find.text('Entwurf gespeichert'),
+      matching: find.byWidgetPredicate((widget) => widget is OutlinedButton),
+    );
+    expect(saved, findsOneWidget);
+    expect(tester.widget<OutlinedButton>(saved).onPressed, isNull);
+    expect(find.text('Noch kein Entwurf'), findsNothing);
   });
   testWidgets(
     'explicit help saves own attempt first and remains an AI opinion',

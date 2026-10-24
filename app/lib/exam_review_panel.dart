@@ -1085,7 +1085,11 @@ class _ExamReviewPanelState extends State<ExamReviewPanel> {
                       onPressed: busy || !dirty ? null : saveDraft,
                       icon: const Icon(Icons.save_outlined),
                       label: Text(
-                        dirty ? 'Entwurf speichern' : 'Entwurf gespeichert',
+                        dirty
+                            ? 'Entwurf speichern'
+                            : baseline.trim().isEmpty
+                            ? 'Noch kein Entwurf'
+                            : 'Entwurf gespeichert',
                       ),
                     ),
                     OutlinedButton(

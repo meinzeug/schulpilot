@@ -180,6 +180,33 @@ def projection(db, p, exam, child):
             report = copy.deepcopy(row.report)
     tasks = report.get("tasks", [])
     batches = (row.report or {}).get("analysis_batches", []) if row and row.context_revision == signature else []
+    # The first model summary remains an immutable part of the saved report.
+    # Describe the current aggregate from persisted facts instead of presenting
+    # that first extract (or a later empty extract) as the whole current result.
+    latest_successful_batch = None
+    summary = ""
+    if status == "ready":
+        task_count = len(tasks)
+        summary = (
+            "Aktuell ist 1 Aufgabe zur Nacharbeit gespeichert."
+            if task_count == 1
+            else f"Aktuell sind {task_count} Aufgaben zur Nacharbeit gespeichert."
+            if task_count
+            else "Aktuell sind noch keine Aufgaben zur Nacharbeit gespeichert."
+        )
+        summary += " Kleiner KI-Auszug · keine vollständige Auswertung."
+        for number, batch in reversed(list(enumerate(batches, start=1))):
+            if batch.get("status") == "ready":
+                latest_successful_batch = {"number": number, **batch_data(batch)}
+                added = batch.get("added_tasks")
+                summary += f" Letzter erfolgreicher KI-Auszug {number}: "
+                if type(added) is int and added >= 0:
+                    summary += f"{added} neue Aufgabe" + ("." if added == 1 else "n.")
+                else:
+                    summary += "gespeichert."
+                break
+        if not batches:
+            summary += " Gespeicherte Altanalyse ohne Einzelverlauf."
     if p.user.role == "child":
         drafts = list(
             db.scalars(
@@ -223,7 +250,10 @@ def projection(db, p, exam, child):
         "source_revisions": refs,
         "analysis_id": row.id if row else None,
         "analysis_revision": row.revision if row else 0,
-        "summary": report.get("summary", ""),
+        "summary": summary,
+        "report_summary": report.get("summary", ""),
+        "task_count": len(tasks),
+        "latest_successful_batch": latest_successful_batch,
         "uncertainties": report.get("uncertainties", []),
         "tasks": tasks,
         "turns": [turn_data(db, turn) for turn in reversed(turns)],

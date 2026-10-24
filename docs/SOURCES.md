@@ -1115,3 +1115,41 @@ projizierten311586µUSD über der150000µUSD-Reservierung. Das ist kein Kinderli
 Dieser kostenfreie Nichtversand ist weder erfolgreiche Paketerstellung noch
 ein Anlass, Budget-/Ausgabegrenzen stillschweigend zu erhöhen. Die Anfragegröße
 wird separat untersucht.
+
+Die tatsächliche Veröffentlichung109, vollständige CI40105765457, reguläre
+signierte Artefakte, öffentliche Hashvergleiche und unveränderte geschützte
+Konfiguration sind im [Release109-Beleg](RELEASE_109_2026_10_24.md) dokumentiert.
+
+## Pakettransport110 · 24.10.2026
+
+1.34.1+110 verwendet [package-wire-2](PACKAGE_TRANSPORT.md), ohne Migration oder
+neue Abhängigkeit. Die vorhandene Startprüfung und Reservierung bleiben bestehen.
+Referenzaufgelöste Schemavergleiche, drei echte Adapter-Mocks, exakte Unicode-
+Quelltexte, gruppengebundene Verweise und vollständig rückführbare Eingabetabellen
+werden mit künstlichen Daten geprüft. Eine OpenAI-Choice-Regression wurde im
+Peerreview gefunden und vor Integration mit explizitem String-/Indexvertrag
+korrigiert. Keine Antwortvalidierung wurde dafür gelockert.
+
+Der autorisierte reale RAM-Vergleich wurde ohne Anbieteraufruf und ohne DB-Write
+mit aktuellem Quellen-/Familien-/Planungsstand durchgeführt: gleicher kanonischer
+Workerpayload, 131741→50569 Transportbytes, konservative Projektion
+311674→149330µUSD bei unveränderter150000µUSD-Reserve. Das belegt nur die
+Vorprüfung dieses konkreten aktuellen Auftrags, keinen historischen Vollreplay,
+garantierten Rechnungspreis oder erfolgreichen Modelloutput. Der enge verbleibende
+Spielraum und größere weiter gesperrte künstliche Fälle sind ausdrücklich erhalten.
+
+Die Nacharbeitsansicht zeigt ihre aktuelle Aufgabenanzahl und den letzten
+erfolgreichen Auszug aus gespeicherten Fakten; der erste Modellbericht bleibt
+historisch erhalten. Ein leeres unverändertes Antwortfeld behauptet keinen
+gespeicherten Entwurf. Lokale Prüfungen, vollständige CI, Build und anschließende
+Live-Erzeugung werden als getrennte Nachweise geführt.
+
+Der eingefrorene Transportstand bestand258SQLitefälle (ein PG-spezifischer
+Fall übersprungen) und131isolierte PostgreSQL16-Fälle. Die Nacharbeitsprojektion
+bestand54SQLitefälle. Im integrierten Hauptstand bestanden30Flutterfälle der
+Prüfungsansicht; Flutter-Analyse und Ruff ohne Befund. Diese gezielten Prüfungen
+sind kein Ersatz für die nachfolgende vollständige CI und Liveabnahme.
+Die integrierten Transport-, Reparatur- und Auszugsfälle bestanden anschließend
+gemeinsam96SQLiteprüfungen. Ein vorheriger Lauf im eingeschränkten lokalen
+ASGI-Testtransport wurde unterbrochen; erst der erneute vollständige Lauf mit
+den vorhandenen TestClient-Berechtigungen ist der96er-Ergebnisbeleg.

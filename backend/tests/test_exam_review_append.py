@@ -7,6 +7,7 @@ import uuid
 import pytest
 from schulpilot import exam_review
 from schulpilot.db import DB, Job, Material, Usage
+from schulpilot.exam_models import Exam
 from schulpilot.exam_review_models import ExamReview, ExamReviewPage
 from schulpilot.providers import ProviderError
 from sqlalchemy import func, select
@@ -66,6 +67,8 @@ def test_append_has_stable_server_ids_and_preserves_drafts_turns_and_prior_recei
     assert pending["status"] == "ready" and pending["tasks"] == before["tasks"]
     assert pending["analysis_batch"]["status"] == "queued" and not pending["can_analyze_more"]
     assert pending["turns"] == before["turns"]
+    assert pending["task_count"] == 1 and pending["summary"] == before["summary"]
+    assert pending["latest_successful_batch"] == before["latest_successful_batch"]
     with DB() as db:
         assert db.scalar(select(ExamReview)).job_id == receipt
     finish()
@@ -107,6 +110,7 @@ def test_failed_append_preserves_ready_corrections_and_separate_error(paper, tra
     after = paper["client"].get(paper["path"]).json()
     assert after["status"] == "ready" and after["tasks"] == before["tasks"]
     assert after["summary"] == before["summary"] and after["error"] is None
+    assert after["task_count"] == 1 and after["latest_successful_batch"] == before["latest_successful_batch"]
     assert after["analysis_batch"]["status"] == "failed" and after["analysis_batch"]["error"]
     with DB() as db:
         assert db.get(Job, queued.json()["id"]).status == "failed"
@@ -206,7 +210,10 @@ def test_append_source_change_after_inference_discards_only_new_batch(paper, tra
         assert len(row.report["tasks"]) == 1 and row.report["analysis_batches"][-1]["status"] == "failed"
         assert db.get(Job, queued.json()["id"]).status == "failed"
     # Current projection still prevents stale source content from being shown.
-    assert paper["client"].get(paper["path"]).json()["tasks"] == []
+    stale = paper["client"].get(paper["path"]).json()
+    assert stale["tasks"] == [] and stale["task_count"] == 0
+    assert stale["summary"] == stale["report_summary"] == ""
+    assert stale["latest_successful_batch"] is None and stale["analysis_batches"] == []
 
 
 def test_model_exclusion_hint_is_bounded_but_persistence_compares_every_previous_question():
@@ -261,3 +268,108 @@ def test_two_failed_attempts_for_the_same_exclusion_window_require_a_new_scope(p
         assert db.scalar(select(func.count()).select_from(Job)) == 3
         assert db.scalar(select(func.count()).select_from(Usage)) == 3
     assert len(transport["calls"]) == 3
+
+
+def stored_review_state(paper):
+    """Only synthetic persisted review data and reservation counts, for GET purity."""
+    with DB() as db:
+        row = db.scalar(select(ExamReview))
+        exam = db.get(Exam, paper["exam_id"])
+        return {
+            "report": copy.deepcopy(row.report),
+            "revision": row.revision,
+            "updated": row.updated,
+            "receipt": row.job_id,
+            "exam_revision": exam.revision,
+            "exam_updated": exam.updated,
+            "jobs": db.scalar(select(func.count()).select_from(Job)),
+            "usage": db.scalar(select(func.count()).select_from(Usage)),
+        }
+
+
+def empty_extract(summary):
+    return {
+        "summary": summary,
+        "tasks": [],
+        "uncertainties": ["In diesem künstlichen Auszug ist keine weitere Aufgabe sicher zuzuordnen."],
+    }
+
+
+def test_current_summary_after_initial_empty_extract_uses_saved_task_count_and_latest_success(api, paper, transport):
+    old_summary = "Aufgabe 1 nicht aufgenommen; bislang keine sicher zugeordnete Aufgabe."
+    transport["output"] = empty_extract(old_summary)
+    before = ready(paper, transport)
+    assert before["task_count"] == 0 and before["latest_successful_batch"]["number"] == 1
+    original = stored_review_state(paper)
+    transport["output"] = copy.deepcopy(REPORT)
+    assert request(paper).status_code == 202
+    finish()
+    persisted = stored_review_state(paper)
+    # The append and the projection both preserve the first report verbatim.
+    assert persisted["report"]["summary"] == original["report"]["summary"]
+    assert persisted["report"]["analysis_batches"][0] == original["report"]["analysis_batches"][0]
+    calls = len(transport["calls"])
+    for client in (paper["client"], api, paper["client"]):
+        response = client.get(paper["path"])
+        assert response.status_code == 200
+        current = response.json()
+        assert current["task_count"] == len(current["tasks"]) == 1
+        assert "Aktuell ist 1 Aufgabe zur Nacharbeit gespeichert." in current["summary"]
+        assert "Letzter erfolgreicher KI-Auszug 2: 1 neue Aufgabe." in current["summary"]
+        assert old_summary not in current["summary"]
+        assert current["report_summary"] == persisted["report"]["summary"]
+        assert current["latest_successful_batch"] == {"number": 2, **current["analysis_batches"][1]}
+        assert current["analysis_batches"][0]["summary"] == original["report"]["summary"]
+        assert current["analysis_batches"][1]["summary"].endswith(REPORT["summary"])
+        task = current["tasks"][0]
+        assert task["original_answer"] == "1/8" and task["teacher_feedback"] == "Nenner bleibt 4."
+        assert task["score_label"] == "0 von 2" and task["ai_proposal"] == REPORT["tasks"][0]["ai_proposal"]
+    assert stored_review_state(paper) == persisted
+    assert len(transport["calls"]) == calls == 2
+    no_learning()
+
+
+def test_later_successful_empty_extract_reports_zero_added_but_keeps_existing_total(paper, transport):
+    before = start(paper, transport)
+    transport["output"] = empty_extract("Keine weitere Aufgabe in dieser Auswahl sicher erfasst.")
+    assert request(paper).status_code == 202
+    finish()
+    persisted = stored_review_state(paper)
+    current = paper["client"].get(paper["path"]).json()
+    assert current["tasks"] == before["tasks"] and current["task_count"] == 1
+    assert "Aktuell ist 1 Aufgabe zur Nacharbeit gespeichert." in current["summary"]
+    assert "Letzter erfolgreicher KI-Auszug 2: 0 neue Aufgaben." in current["summary"]
+    assert current["latest_successful_batch"]["number"] == 2
+    assert current["latest_successful_batch"]["added_tasks"] == 0
+    assert current["latest_successful_batch"]["summary"].endswith(transport["output"]["summary"])
+    assert current["report_summary"] == before["report_summary"]
+    assert persisted["report"]["tasks"][0]["original_answer"] == "1/8"
+    assert stored_review_state(paper) == persisted and len(transport["calls"]) == 2
+    no_learning()
+
+
+@pytest.mark.parametrize("task_count", [0, 1])
+def test_legacy_report_without_batches_remains_readable_without_inventing_a_batch(paper, transport, task_count):
+    ready(paper, transport)
+    with DB.begin() as db:
+        row = db.scalar(select(ExamReview))
+        report = copy.deepcopy(row.report)
+        del report["analysis_batches"]
+        report["tasks"] = report["tasks"][:task_count]
+        report["summary"] = "Unveränderte künstliche Zusammenfassung einer Altanalyse."
+        row.report = report
+    persisted = stored_review_state(paper)
+    for _ in range(2):
+        current = paper["client"].get(paper["path"]).json()
+        assert current["status"] == "ready" and current["task_count"] == len(current["tasks"]) == task_count
+        assert current["analysis_batch"] is None and current["analysis_batches"] == []
+        assert current["latest_successful_batch"] is None
+        assert "Gespeicherte Altanalyse ohne Einzelverlauf." in current["summary"]
+        assert current["report_summary"] == persisted["report"]["summary"]
+        assert "Letzter erfolgreicher KI-Auszug" not in current["summary"]
+        if task_count:
+            assert "Aktuell ist 1 Aufgabe" in current["summary"]
+        else:
+            assert "Aktuell sind noch keine Aufgaben" in current["summary"]
+    assert stored_review_state(paper) == persisted and len(transport["calls"]) == 1
+    no_learning()

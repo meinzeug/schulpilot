@@ -1552,10 +1552,26 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .exam_review_transport import rules as exam_transport_rules
 
         instructions += exam_transport_rules(config.max_output_tokens)
-    outgoing_payload = transport_payload(function, payload)
-    if outgoing_payload is not payload:
-        instructions += "\nmaterial.content_ref verweist auf die vollständig enthaltenen Quellen in materials[].content."
+    wire_schema = schema
+    if function == "package":
+        from .package_transport import payload_projection, schema_projection
+        from .package_transport import rules as package_rules
+
+        # Entry binding may remove entire answer formats after the earlier
+        # capability pass. Describe only the final reachable formats.
+        payload = {**payload, "content_context": subject_content.generation_context(
+            subject_content.generation_subjects(payload), schema=schema,
+            compact_matching=compact_openrouter)}
+        outgoing_payload = payload_projection(payload)
+        wire_schema = schema_projection(schema)
+        instructions = package_rules(payload, indexed_choices=indexed_choices)
+    else:
+        outgoing_payload = transport_payload(function, payload)
+        if outgoing_payload is not payload:
+            instructions += "\nmaterial.content_ref verweist auf die vollständig enthaltenen Quellen in materials[].content."
     user_text = json.dumps(outgoing_payload, ensure_ascii=False, separators=(",", ":"))
+    schema_text = (json.dumps(wire_schema, ensure_ascii=False, separators=(",", ":"))
+                   if function == "package" else json.dumps(wire_schema))
     # Image transport bytes are not text tokens. A separately approved exact-
     # route allowance is an operator estimate, never an invented tokenizer rule.
     image_data = base64.b64encode(image_bytes).decode() if image_bytes else ""
@@ -1563,7 +1579,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
     account_billing = config.provider == "codex" and settings.codex_auth_mode == "account"
     preflight = None if account_billing else cost_projection(config, function,
-        len((instructions + user_text + json.dumps(schema)).encode()), image_bytes, len(image_data))
+        len((instructions + user_text + schema_text).encode()), image_bytes, len(image_data))
+    if preflight and function == "package":
+        from .package_transport import REVISION as transport_revision
+
+        preflight = {**preflight, "transport_revision": transport_revision, "function": function,
+                     "input_per_million_micros": config.input_per_million_micros,
+                     "output_per_million_micros": config.output_per_million_micros,
+                     "max_output_tokens": config.max_output_tokens}
     worst = preflight["projected_micros"] if preflight else 0
     if worst > config.reserve_micros:
         raise ProviderError(
@@ -1578,7 +1601,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "model": config.model,
             "system": instructions,
             "payload": outgoing_payload,
-            "schema": schema,
+            "schema": wire_schema,
             "image": image_data or None,
             "max_output_tokens": config.max_output_tokens,
             "reserve_micros": config.reserve_micros,
@@ -1592,7 +1615,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             worker_request["reasoning_effort"] = effort
         from .provider_receipts import request_receipt as build_request_receipt
 
-        receipt = build_request_receipt(config.provider, worker_request, schema)
+        receipt = build_request_receipt(config.provider, worker_request, wire_schema)
         transport = httpx.HTTPTransport(uds=settings.codex_socket)
         try:
             with httpx.Client(transport=transport, timeout=155, follow_redirects=False) as client:
@@ -1620,7 +1643,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "max_output_tokens": config.max_output_tokens,
                 "instructions": instructions,
                 "input": [{"role": "user", "content": content}],
-                "text": {"format": {"type": "json_schema", "name": "schulpilot", "strict": True, "schema": schema}},
+                "text": {"format": {"type": "json_schema", "name": "schulpilot", "strict": True, "schema": wire_schema}},
             }
             url = "https://api.openai.com/v1/responses"
         elif config.provider == "openrouter":
@@ -1671,7 +1694,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 },
                 "response_format": {
                     "type": "json_schema",
-                    "json_schema": {"name": "schulpilot", "strict": True, "schema": schema},
+                    "json_schema": {"name": "schulpilot", "strict": True, "schema": wire_schema},
                 },
             }
             if config.model.endswith(":free"):
@@ -1697,7 +1720,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             raise ProviderError("Unbekannter Anbieter.")
         from .provider_receipts import request_receipt as build_request_receipt
 
-        receipt = build_request_receipt(config.provider, body, schema)
+        receipt = build_request_receipt(config.provider, body, wire_schema)
         if preflight:
             receipt["cost_preflight"] = preflight
         try:

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from schema_helpers import object_with
 from schulpilot import providers
 from schulpilot.config import settings
 from schulpilot.db import DB, ProviderConfig
@@ -173,7 +174,7 @@ def test_package_profiles_keep_group_boundaries_and_codex_question_limits(monkey
     assert set(profiles) == {"Geographie", "Informatik"}
     assert "logic_table" in profiles["Informatik"]["graphic_kinds"]
     assert "logic_table" not in profiles["Geographie"]["graphic_kinds"]
-    assert set(schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]) == set(context["graphic_kinds"])
+    assert set(object_with(schema, {"kind", "disclosure", "source_excerpt", "labels"})["properties"]["kind"]["enum"]) == set(context["graphic_kinds"])
     expected = {"choice", "short", "match", "grouped"} if provider == "openrouter" else {"choice", "short"}
     assert set(context["question_types"]) == expected
     assert set(context["answer_ui"]) == expected

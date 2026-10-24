@@ -183,6 +183,19 @@ def _notify(db, day, state, status):
     record(db, day.child_id, "preparation_notice", {"school_day_id": day.id, "status": status})
 
 
+def _transport_repair(db, day, state, job, sources, config):
+    if (not job or job.kind != "package" or job.status != "failed" or job.child_id != day.child_id
+            or state.get("sources") != sources or state.get("day_revision") != day.revision
+            or job.payload.get("sources") != sources):
+        return None
+    from .package_transport import repair_revision
+
+    usage = db.scalar(select(Usage).where(Usage.job_id == job.id).order_by(Usage.created.desc()).limit(1))
+    if usage and usage.child_id == day.child_id:
+        return repair_revision(usage, config)
+    return None
+
+
 def preparation_data(db, day, child=None):
     """Small read-only metadata; never expose actor/session IDs or private state."""
     state = _state(day)
@@ -240,7 +253,8 @@ def preparation_data(db, day, child=None):
     if can_retry and not blocker and error_code == "cost_preflight" and job:
         failed_usage = db.scalar(select(Usage).where(Usage.job_id == job.id).order_by(Usage.created.desc()).limit(1))
         config = db.get(ProviderConfig, 1)
-        if failed_usage and config and failed_usage.config_revision == config.revision:
+        if (failed_usage and config and failed_usage.config_revision == config.revision
+                and not _transport_repair(db, day, state, job, current, config)):
             blocker = {
                 "code": "cost_preflight",
                 "message": "Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.",
@@ -289,10 +303,22 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
         return
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(ACTIVE))):
         raise HTTPException(409, "Für dich wird gerade noch etwas vorbereitet. Bitte kurz warten.")
+    repair = None
     if same and state.get("status") in ("failed", "blocked", "processing"):
         blocker = preparation_data(db, day, child).get("retry_blocker")
         if blocker and blocker.get("code") == "cost_preflight":
             raise HTTPException(409, blocker["message"])
+        from .job_failures import message_code
+
+        failed_job = db.get(Job, state.get("job_id")) if state.get("job_id") else None
+        if failed_job and (failed_job.error_code == "cost_preflight" or message_code(failed_job.error or "") == "cost_preflight"):
+            old_revision = _transport_repair(db, day, state, failed_job, snapshot, db.get(ProviderConfig, 1))
+            if old_revision:
+                from .package_transport import REVISION
+                from .security import audit
+
+                repair = {"failed_job_id": failed_job.id, "from_revision": old_revision, "to_revision": REVISION}
+                audit(db, p.user.id, "school_day.package_transport_repair", failed_job.id + ":" + REVISION)
     rate_limit(db, "school-prepare:" + p.user.id, 10, 60, commit=False)
     if day.stage == "collecting":
         day.stage = "review"
@@ -315,6 +341,8 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
     }
     if all(m.confirmed for m in source_pages):
         state["phase"] = "package"
+    if repair:
+        state["transport_repair"] = repair
     _write(day, state)
     record(db, child.id, "school_day_submitted", {"school_day_id": day.id, "page_count": len(source_pages)})
 
