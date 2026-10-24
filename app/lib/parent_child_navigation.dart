@@ -216,12 +216,12 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
         final actions = <Widget>[if (canPick) childPicker(), back, ?refresh];
         Widget content;
         if (compact) {
-          final hasDetails = canPick || widget.subtitle?.isNotEmpty == true;
           content = Column(
             key: const ValueKey('compact-parent-child-navigation'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                key: const ValueKey('parent-child-context-row'),
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   back,
@@ -229,52 +229,45 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
                   Expanded(
                     child: Text(
                       widget.childName ?? 'Lernübersicht',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                  if (hasDetails)
-                    Semantics(
-                      expanded: details,
-                      child: IconButton(
-                        constraints: const BoxConstraints(
-                          minWidth: 48,
-                          minHeight: 48,
-                        ),
-                        tooltip: canPick
-                            ? 'Infos und Kindwechsel'
-                            : 'Infos zu diesem Kind',
-                        onPressed: () {
-                          if (current()) setState(() => details = !details);
-                        },
-                        icon: Icon(
-                          details
-                              ? Icons.expand_less_rounded
-                              : Icons.more_horiz_rounded,
-                        ),
+                  ?refresh,
+                  Semantics(
+                    expanded: details,
+                    child: IconButton(
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      tooltip: canPick
+                          ? 'Bereiche und Kindwechsel'
+                          : 'Bereiche öffnen',
+                      onPressed: () {
+                        if (current()) setState(() => details = !details);
+                      },
+                      icon: Icon(
+                        details
+                            ? Icons.expand_less_rounded
+                            : Icons.more_horiz_rounded,
                       ),
                     ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 2),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(child: picker),
-                  if (refresh != null) ...[const SizedBox(width: 4), refresh],
-                ],
-              ),
-              if (hasDetails && details) ...[
+              if (details) ...[
                 const SizedBox(height: 8),
-                if (widget.subtitle?.isNotEmpty == true)
+                picker,
+                if (widget.subtitle?.isNotEmpty == true) ...[
+                  const SizedBox(height: 8),
                   Text(
                     widget.subtitle!,
                     style: TextStyle(color: context.palette.muted),
                   ),
+                ],
                 if (canPick)
                   Align(alignment: Alignment.centerLeft, child: childPicker()),
               ],

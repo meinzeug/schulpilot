@@ -223,6 +223,7 @@ Future<({AppState state, GoRouter router})> mountParent(
 
 Future<void> tapText(WidgetTester tester, String label) async {
   if (label == 'Verlauf') {
+    await openParentChildAreas103(tester);
     await tester.ensureVisible(find.byType(ParentChildNavigation));
     await tester.pumpAndSettle();
     await tester.tap(

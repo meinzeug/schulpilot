@@ -422,10 +422,13 @@ void main() {
         (tester) async {
           final harness = await _mount(tester, width: width, browser: browser);
           _reachableControl(tester, _launcher);
-          _reachableControl(
-            tester,
-            find.byKey(const ValueKey('appearance-toggle')),
-          );
+          final appearanceInMenu = !browser || width < 720;
+          final appearance = find.byKey(const ValueKey('appearance-toggle'));
+          if (appearanceInMenu) {
+            expect(appearance, findsNothing);
+          } else {
+            _reachableControl(tester, appearance);
+          }
           _reachableControl(
             tester,
             find.byKey(const ValueKey('notification-bell')),
@@ -433,7 +436,7 @@ void main() {
           _reachableControl(tester, find.byKey(const ValueKey('account-menu')));
           final controls = [
             _launcher,
-            find.byKey(const ValueKey('appearance-toggle')),
+            if (!appearanceInMenu) appearance,
             find.byKey(const ValueKey('notification-bell')),
             find.byKey(const ValueKey('account-menu')),
           ];
@@ -442,6 +445,35 @@ void main() {
               tester.getRect(controls[i - 1]).right,
               lessThanOrEqualTo(tester.getRect(controls[i]).left),
             );
+          }
+          if (appearanceInMenu) {
+            final before = harness.calls.length;
+            final task = harness.task.currentState;
+            final draft = harness.answer.text;
+            final initialAppearance = harness.state.darkAppearance;
+            for (var i = 0; i < 2; i++) {
+              await tester.tap(find.byKey(const ValueKey('account-menu')));
+              await tester.pumpAndSettle();
+              final menuAction = find.widgetWithText(
+                MenuItemButton,
+                harness.state.darkAppearance
+                    ? 'Helles Design'
+                    : 'Dunkles Design',
+              );
+              _reachableControl(tester, menuAction);
+              final previous = harness.state.darkAppearance;
+              await tester.tap(menuAction);
+              await tester.pumpAndSettle();
+              expect(harness.state.darkAppearance, !previous);
+              expect(harness.task.currentState, same(task));
+              expect(harness.answer.text, draft);
+              expect(harness.calls.length, before);
+              expect(
+                harness.router.routeInformationProvider.value.uri.path,
+                '/app',
+              );
+            }
+            expect(harness.state.darkAppearance, initialAppearance);
           }
           await _openAndClose(tester, harness, location: '/app');
         },

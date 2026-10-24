@@ -34,7 +34,9 @@ void main() {
         (w) => w is TextField && w.decoration?.labelText == label,
       );
       await tester.enterText(field('Dein Anzeigename'), 'Künstlicher Entwurf');
-      await tester.tap(find.byKey(const ValueKey('appearance-toggle')));
+      // The public invitation form has no account menu; its appearance action
+      // remains directly in the authentication app bar.
+      await tester.tap(find.byTooltip('Helles Design'));
       await tester.pumpAndSettle();
       expect(state.darkAppearance, isFalse);
       expect(

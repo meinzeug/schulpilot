@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -151,6 +152,49 @@ Finder _navText(double width, String text) => find.descendant(
         ),
 );
 
+Future<void> _expectHoveredNavigationLabel(
+  WidgetTester tester,
+  Finder target,
+  String label,
+) async {
+  expect(target.hitTestable(), findsOneWidget);
+  final tooltip = tester.widget<Tooltip>(target);
+  final wait =
+      tooltip.waitDuration ??
+      TooltipTheme.of(tester.element(target)).waitDuration ??
+      Duration.zero;
+  final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await mouse.addPointer(location: Offset.zero);
+  try {
+    await mouse.moveTo(tester.getCenter(target));
+    await tester.pump();
+    await tester.pump(wait + const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+    // Material tooltips paint Text.rich; the normal section heading is Text.
+    // Match the painted tooltip rather than a hidden NavigationRail label.
+    final paintedLabel = find.byWidgetPredicate(
+      (widget) => widget is Text && widget.textSpan?.toPlainText() == label,
+    );
+    expect(
+      paintedLabel,
+      findsOneWidget,
+      reason: 'Hovering the $label icon reveals its readable tooltip.',
+    );
+    final rect = tester.getRect(paintedLabel);
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    expect(rect.width, greaterThan(0));
+    expect(rect.height, greaterThan(0));
+    expect(rect.left, greaterThanOrEqualTo(0));
+    expect(rect.top, greaterThanOrEqualTo(0));
+    expect(rect.right, lessThanOrEqualTo(size.width));
+    expect(rect.bottom, lessThanOrEqualTo(size.height));
+  } finally {
+    await mouse.removePointer();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+  }
+}
+
 void main() {
   for (final role in ['child', 'parent', 'admin']) {
     for (final width in [320.0, 390.0, 960.0, 1440.0]) {
@@ -189,15 +233,10 @@ void main() {
         for (final label in labels) {
           expect(_navText(width, label), findsOneWidget);
           if (width >= 1050) {
-            expect(
-              find
-                  .descendant(
-                    of: _navigation(width),
-                    matching: find.text(label),
-                  )
-                  .hitTestable(),
-              findsOneWidget,
-              reason: 'Wide navigation keeps $label visibly readable.',
+            await _expectHoveredNavigationLabel(
+              tester,
+              _navText(width, label),
+              label,
             );
           }
         }

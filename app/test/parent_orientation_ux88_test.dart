@@ -58,14 +58,7 @@ void main() {
       expect(data.label, contains('10:00 / 20 Min.'));
       expect(data.label, contains('10:00 / 100 Min.'));
       await tap(tester, find.text('Zeitrahmen und Wochenvorschlag ansehen'));
-      expect(
-        tester
-            .widget<ChoiceChip>(
-              find.widgetWithText(ChoiceChip, 'Woche & Vorgaben'),
-            )
-            .selected,
-        isTrue,
-      );
+      expect(parentPlanModeSelected103(tester, 'Woche & Vorgaben'), isTrue);
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);
     } finally {
       semantics.dispose();
@@ -77,12 +70,7 @@ void main() {
       final f = fixture.Fixture();
       await f.mount(tester, '/overview');
       await tap(tester, find.text('Offene Pflichtaufträge: 1'));
-      expect(
-        tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Meine Themen'))
-            .selected,
-        isTrue,
-      );
+      expect(parentPlanModeSelected103(tester, 'Meine Themen'), isTrue);
       expect(find.text('Mathematik · Bruchaddition'), findsOneWidget);
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);
     },
@@ -92,14 +80,7 @@ void main() {
     (tester) async {
       final f = fixture.Fixture();
       await f.mount(tester, '/parent-plan/child?ansicht=week');
-      expect(
-        tester
-            .widget<ChoiceChip>(
-              find.widgetWithText(ChoiceChip, 'Woche & Vorgaben'),
-            )
-            .selected,
-        isTrue,
-      );
+      expect(parentPlanModeSelected103(tester, 'Woche & Vorgaben'), isTrue);
     },
   );
   testWidgets(
@@ -163,12 +144,7 @@ void main() {
       ];
       await f.mount(tester, '/parent-plan/child?ansicht=week');
       await tap(tester, find.text('Aufträge zu diesem Termin prüfen'));
-      expect(
-        tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Meine Themen'))
-            .selected,
-        isTrue,
-      );
+      expect(parentPlanModeSelected103(tester, 'Meine Themen'), isTrue);
       expect(f.requests.last.url.queryParameters['q'], 'Bruchaddition');
       expect(f.requests.last.url.queryParameters['page'], '1');
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);

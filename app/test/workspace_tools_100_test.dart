@@ -279,7 +279,13 @@ void main() {
     tester,
   ) async {
     await workspace(tester, (state, router) async {
-      await tester.tap(find.byKey(const ValueKey('workspace-context-return')));
+      final back = find.byTooltip('Zu Hefte');
+      expect(back.hitTestable(), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('workspace-context-return')),
+        findsNothing,
+      );
+      await tester.tap(back);
       await tester.pumpAndSettle();
       expect(router.routeInformationProvider.value.uri.path, '/library/child');
     }, initial: '/material/material');

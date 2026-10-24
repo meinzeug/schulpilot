@@ -60,11 +60,22 @@ class _ParentViewDetailsState extends State<ParentViewDetails> {
     final route = ModalRoute.of(context);
     return ExpansionTile(
       key: ValueKey(scope),
+      minTileHeight: 48,
+      dense: true,
       title: Text(
         widget.title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+          fontSize: 16,
+          height: 1.2,
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      subtitle: widget.subtitle == null ? null : Text(widget.subtitle!),
+      subtitle: widget.subtitle == null
+          ? null
+          : Text(
+              widget.subtitle!,
+              style: const TextStyle(fontSize: 14, height: 1.2),
+            ),
       tilePadding: EdgeInsets.zero,
       childrenPadding: const EdgeInsets.only(top: 8, bottom: 8),
       maintainState: true,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -149,12 +150,19 @@ Future<void> tap(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  setUpAll(() async {
+    for (final font in ['Nunito', 'Roboto']) {
+      await (FontLoader(
+        font,
+      )..addFont(rootBundle.load('assets/fonts/Nunito.ttf'))).load();
+    }
+  });
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   for (final size in [const Size(320, 568), const Size(390, 844)]) {
     for (final scale in [1.0, 2.0]) {
       for (final brightness in Brightness.values) {
         testWidgets(
-          'mobile child navigation has two compact rows at $size/$scale/$brightness',
+          'mobile child navigation has one growing context row at $size/$scale/$brightness',
           (tester) async {
             final f = Fixture();
             await f.mount(
@@ -167,19 +175,18 @@ void main() {
               const ValueKey('compact-parent-child-navigation'),
             );
             expect(navigation, findsOneWidget);
-            expect(
-              tester.getSize(navigation).height,
-              lessThanOrEqualTo(scale == 1 ? 125 : 195),
-            );
+            if (scale == 1) {
+              expect(tester.getSize(navigation).height, lessThanOrEqualTo(125));
+            }
             final name = tester.widget<Text>(find.text(childName));
-            expect(name.maxLines, 2);
-            expect(name.overflow, TextOverflow.ellipsis);
+            expect(name.maxLines, isNull);
+            expect(name.overflow, isNot(TextOverflow.ellipsis));
             expect(find.text(description), findsNothing);
             expect(find.text('Anderes Kind'), findsNothing);
             for (final label in [
               'Zur Familie',
               'Aktualisieren',
-              'Infos und Kindwechsel',
+              'Bereiche und Kindwechsel',
             ]) {
               final control = find.byTooltip(label);
               expect(control.hitTestable(), findsOneWidget);
@@ -188,8 +195,7 @@ void main() {
               expect(actual.height, greaterThanOrEqualTo(48));
             }
             final picker = find.byType(DropdownButtonFormField<String>);
-            expect(picker.hitTestable(), findsOneWidget);
-            expect(tester.getSize(picker).height, greaterThanOrEqualTo(48));
+            expect(picker, findsNothing);
             if (scale == 1) {
               expect(
                 tester.getTopLeft(find.text('Gespeicherte Lernschritte')).dy,
@@ -198,7 +204,12 @@ void main() {
             }
             await tap(tester, find.byTooltip('Aktualisieren'));
             expect(f.refreshes, 1);
-            await tap(tester, find.byTooltip('Infos und Kindwechsel'));
+            await tap(tester, find.byTooltip('Bereiche und Kindwechsel'));
+            expect(picker, findsOneWidget);
+            await tester.ensureVisible(picker);
+            await tester.pumpAndSettle();
+            expect(picker.hitTestable(), findsOneWidget);
+            expect(tester.getSize(picker).height, greaterThanOrEqualTo(48));
             expect(find.text(description), findsOneWidget);
             expect(find.text('Anderes Kind'), findsOneWidget);
             expect(f.requests.every((r) => r.method == 'GET'), isTrue);
@@ -221,6 +232,7 @@ void main() {
   ) async {
     final f = Fixture();
     await f.mount(tester, scale: 2);
+    await tap(tester, find.byTooltip('Bereiche und Kindwechsel'));
     await tap(tester, find.byType(DropdownButtonFormField<String>));
     await tap(tester, find.text('Lernstand').last);
     expect(find.text('Lernstand first'), findsOneWidget);
@@ -244,7 +256,7 @@ void main() {
         f.requests.where((r) => r.url.path.endsWith('/families/family')),
         isEmpty,
       );
-      await tap(tester, find.byTooltip('Infos und Kindwechsel'));
+      await tap(tester, find.byTooltip('Bereiche und Kindwechsel'));
       expect(
         f.requests.where((r) => r.url.path.endsWith('/families/family')),
         isEmpty,
@@ -288,6 +300,7 @@ void main() {
   ) async {
     final f = Fixture();
     await f.mount(tester);
+    await tap(tester, find.byTooltip('Bereiche und Kindwechsel'));
     final select = tester
         .widget<DropdownButtonFormField<String>>(
           find.byType(DropdownButtonFormField<String>),

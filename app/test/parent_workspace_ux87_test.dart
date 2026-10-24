@@ -246,12 +246,7 @@ void main() {
       };
       f.plan['pagination'] = {'page': 2, 'pages': 2, 'total': 21};
       final router = await f.mount(tester);
-      expect(
-        tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Meine Themen'))
-            .selected,
-        isTrue,
-      );
+      expect(parentPlanModeSelected103(tester, 'Meine Themen'), isTrue);
       await openParentDetails103(tester, 'Suche & alle Themenfilter');
       expect(
         tester
@@ -267,20 +262,10 @@ void main() {
       expect(f.requests.first.url.queryParameters['include_completed'], 'true');
       router.go('/plan/child-b');
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Meine Themen'))
-            .selected,
-        isTrue,
-      );
+      expect(parentPlanModeSelected103(tester, 'Meine Themen'), isTrue);
       router.go('/plan/child-a');
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Meine Themen'))
-            .selected,
-        isTrue,
-      );
+      expect(parentPlanModeSelected103(tester, 'Meine Themen'), isTrue);
       await openParentDetails103(tester, 'Suche & alle Themenfilter');
       expect(
         tester
@@ -555,14 +540,7 @@ void main() {
         );
         await click(tester, 'Mathematik · Wochenquelle');
         if (kind == 'assignment') {
-          expect(
-            tester
-                .widget<ChoiceChip>(
-                  find.widgetWithText(ChoiceChip, 'Meine Themen'),
-                )
-                .selected,
-            isTrue,
-          );
+          expect(parentPlanModeSelected103(tester, 'Meine Themen'), isTrue);
         } else {
           expect(
             find.text('${kind == 'unit' ? 'Runde' : 'Quelle'} saved'),

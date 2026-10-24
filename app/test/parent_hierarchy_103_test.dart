@@ -13,6 +13,7 @@ import 'parent_learning_overview_test.dart' as overview;
 import 'parent_messages_ux88_test.dart' as messages;
 import 'parent_saved_tools_ux90_test.dart' as saved;
 import 'progress_grades_test.dart' as grades;
+import 'parent_hierarchy_test_tools.dart';
 
 Future<void> press103(WidgetTester tester, Finder target) async {
   await tester.ensureVisible(target);
@@ -280,12 +281,7 @@ void main() {
             : mode == 'saved-week'
             ? 'Woche & Vorgaben'
             : 'KI-Lernweg';
-        expect(
-          tester
-              .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, selected))
-              .selected,
-          isTrue,
-        );
+        expect(parentPlanModeSelected103(tester, selected), isTrue);
         if (mode == 'default') {
           expect(find.text('Eigenes Thema setzen'), findsOneWidget);
           expect(find.text('Als neues Ziel kopieren'), findsNothing);

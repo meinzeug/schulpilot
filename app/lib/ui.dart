@@ -1061,6 +1061,7 @@ class PageFrame extends StatelessWidget {
   final Widget child;
   final List<Widget> actions;
   final bool showTitle;
+  final bool focusContent;
   const PageFrame({
     super.key,
     required this.state,
@@ -1069,6 +1070,7 @@ class PageFrame extends StatelessWidget {
     required this.child,
     this.actions = const [],
     this.showTitle = true,
+    this.focusContent = false,
   });
 
   @override
@@ -1078,6 +1080,7 @@ class PageFrame extends StatelessWidget {
     subtitle: subtitle,
     actions: actions,
     showTitle: showTitle,
+    focusContent: focusContent,
     browser: kIsWeb,
     child: child,
   );
@@ -1091,6 +1094,7 @@ class WorkspaceShell extends StatefulWidget {
   final Widget child;
   final List<Widget> actions;
   final bool showTitle;
+  final bool focusContent;
   final bool browser;
 
   const WorkspaceShell({
@@ -1102,6 +1106,7 @@ class WorkspaceShell extends StatefulWidget {
     required this.browser,
     this.actions = const [],
     this.showTitle = true,
+    this.focusContent = false,
   });
 
   @override
@@ -1537,6 +1542,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     final sidebar = browser && width >= 1050;
     final rail = browser && !sidebar && width >= 720;
     final desktop = sidebar || rail;
+    final focusedMobile = widget.focusContent && !desktop;
     final path = GoRouterState.of(context).uri.path;
     final entries = _entries(sidebar: sidebar);
     final selected = _selected(entries, path);
@@ -1595,9 +1601,24 @@ class _WorkspaceShellState extends State<WorkspaceShell>
         child: Stack(
           children: [
             Scaffold(
-              appBar: desktop
+              appBar: desktop || focusedMobile
                   ? null
                   : AppBar(
+                      leading: returnEntry == null
+                          ? null
+                          : IconButton(
+                              tooltip: 'Zu ${returnEntry.$2}',
+                              constraints: const BoxConstraints(
+                                minWidth: 48,
+                                minHeight: 48,
+                              ),
+                              onPressed: _workspaceLink(
+                                context,
+                                state,
+                                returnEntry.$3,
+                              ),
+                              icon: const Icon(Icons.arrow_back_rounded),
+                            ),
                       title: width < 360
                           ? Semantics(
                               label: 'SCHULPILOT',
@@ -1620,18 +1641,18 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                       toolbarHeight: 56,
                       actions: [
                         SchulbuddyButton(),
-                        AppearanceToggle(state),
                         NotificationBell(state),
                         AccountMenu(
                           state,
                           compact: true,
+                          appearanceInMenu: true,
                           onChooseArea: () => openWorkspaceTool(),
                           onKeyboardHelp: () => openWorkspaceTool(help: true),
                         ),
                         SizedBox(width: 8),
                       ],
                     ),
-              bottomNavigationBar: desktop
+              bottomNavigationBar: desktop || focusedMobile
                   ? null
                   : SafeArea(
                       top: false,
@@ -1688,206 +1709,228 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                         ),
                       ),
                     ),
-              body: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (sidebar)
-                    _WorkspaceSidebar(
-                      state: state,
-                      entries: entries,
-                      selected: selected,
-                      roleLabel: _roleLabel,
-                    ),
-                  if (rail)
-                    _WorkspaceRail(
-                      state: state,
-                      entries: entries,
-                      selected: selected,
-                    ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        if (desktop)
-                          _WorkspaceHeader(
-                            state: state,
-                            roleLabel: _roleLabel,
-                            section: state.isAdmin && path == '/admin/verkauf'
-                                ? 'Verkauf'
-                                : state.isAdmin && path == '/admin/push'
-                                ? 'Push'
-                                : path.startsWith('/messages/')
-                                ? 'Nachrichten & Wünsche'
-                                : path == '/notifications'
-                                ? 'Neuigkeiten'
-                                : entries[selected].$2,
-                            displayName: displayName,
-                            compact: rail,
-                            notificationBell: NotificationBell(state),
-                            onChooseArea: () => openWorkspaceTool(),
-                            onKeyboardHelp: () => openWorkspaceTool(help: true),
-                          ),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              SelectionArea(
-                                child: SingleChildScrollView(
-                                  key: ValueKey('workspace-scroll'),
-                                  controller: scroll,
-                                  padding: EdgeInsets.fromLTRB(
-                                    desktop ? 20 : 16,
-                                    desktop ? 16 : 12,
-                                    desktop ? 20 : 16,
-                                    // Keep final actions clear of the floating
-                                    // return-to-top target from the first scroll.
-                                    96,
-                                  ),
-                                  child: Center(
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxWidth: maxWidth,
-                                      ),
-                                      child: Focus(
-                                        focusNode: contentFocus,
-                                        skipTraversal: true,
-                                        child: Column(
-                                          key: ValueKey('workspace-content'),
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (returnEntry != null)
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                  bottom: 8,
-                                                ),
-                                                child: Wrap(
-                                                  spacing: 6,
-                                                  crossAxisAlignment:
-                                                      WrapCrossAlignment.center,
-                                                  children: [
-                                                    TextButton.icon(
-                                                      key: const ValueKey(
-                                                        'workspace-context-return',
+              body: SafeArea(
+                top: focusedMobile,
+                bottom: focusedMobile,
+                left: focusedMobile,
+                right: focusedMobile,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (sidebar)
+                      _WorkspaceSidebar(
+                        state: state,
+                        entries: entries,
+                        selected: selected,
+                        roleLabel: _roleLabel,
+                      ),
+                    if (rail)
+                      _WorkspaceRail(
+                        state: state,
+                        entries: entries,
+                        selected: selected,
+                      ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          if (desktop && !widget.focusContent)
+                            _WorkspaceHeader(
+                              state: state,
+                              roleLabel: _roleLabel,
+                              section: state.isAdmin && path == '/admin/verkauf'
+                                  ? 'Verkauf'
+                                  : state.isAdmin && path == '/admin/push'
+                                  ? 'Push'
+                                  : path.startsWith('/messages/')
+                                  ? 'Nachrichten & Wünsche'
+                                  : path == '/notifications'
+                                  ? 'Neuigkeiten'
+                                  : entries[selected].$2,
+                              displayName: displayName,
+                              compact: rail,
+                              notificationBell: NotificationBell(state),
+                              onChooseArea: () => openWorkspaceTool(),
+                              onKeyboardHelp: () =>
+                                  openWorkspaceTool(help: true),
+                            ),
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                SelectionArea(
+                                  child: SingleChildScrollView(
+                                    key: ValueKey('workspace-scroll'),
+                                    controller: scroll,
+                                    padding: EdgeInsets.fromLTRB(
+                                      desktop ? 20 : 16,
+                                      desktop
+                                          ? 16
+                                          : focusedMobile
+                                          ? 8
+                                          : 12,
+                                      desktop ? 20 : 16,
+                                      // Keep final actions clear of the floating
+                                      // return-to-top target from the first scroll.
+                                      96,
+                                    ),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: maxWidth,
+                                        ),
+                                        child: Focus(
+                                          focusNode: contentFocus,
+                                          skipTraversal: true,
+                                          child: Column(
+                                            key: ValueKey('workspace-content'),
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (returnEntry != null &&
+                                                  desktop &&
+                                                  !widget.focusContent)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        bottom: 8,
                                                       ),
-                                                      onPressed: _workspaceLink(
-                                                        context,
-                                                        state,
-                                                        returnEntry.$3,
+                                                  child: Wrap(
+                                                    spacing: 6,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment
+                                                            .center,
+                                                    children: [
+                                                      TextButton.icon(
+                                                        key: const ValueKey(
+                                                          'workspace-context-return',
+                                                        ),
+                                                        onPressed:
+                                                            _workspaceLink(
+                                                              context,
+                                                              state,
+                                                              returnEntry.$3,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .arrow_back_rounded,
+                                                          size: 18,
+                                                        ),
+                                                        label: Text(
+                                                          'Zu ${returnEntry.$2}',
+                                                        ),
                                                       ),
-                                                      icon: const Icon(
+                                                      const Icon(
                                                         Icons
-                                                            .arrow_back_rounded,
+                                                            .chevron_right_rounded,
                                                         size: 18,
                                                       ),
-                                                      label: Text(
-                                                        'Zu ${returnEntry.$2}',
+                                                      Text(
+                                                        title,
+                                                        style: TextStyle(
+                                                          color: context
+                                                              .palette
+                                                              .muted,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              if (state.isDemo)
+                                                Padding(
+                                                  padding: EdgeInsets.only(
+                                                    bottom: 12,
+                                                  ),
+                                                  child: Tag(
+                                                    'Demo · nur Beispieldaten',
+                                                  ),
+                                                ),
+                                              if (!state.isDemo &&
+                                                  !state.isAdmin &&
+                                                  state.user?['real_data_enabled'] ==
+                                                      false)
+                                                Notice(
+                                                  'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
+                                                ),
+                                              if (showTitle ||
+                                                  actions.isNotEmpty) ...[
+                                                _WorkspaceHeading(
+                                                  title: showTitle
+                                                      ? title
+                                                      : null,
+                                                  subtitle: showTitle
+                                                      ? subtitle
+                                                      : null,
+                                                  actions: actions,
+                                                ),
+                                                SizedBox(height: 16),
+                                              ],
+                                              child,
+                                              if (browser &&
+                                                  state.user != null &&
+                                                  !state.isChild &&
+                                                  path == '/app') ...[
+                                                SizedBox(height: 28),
+                                                AndroidDownload(state.api),
+                                              ],
+                                              if (!state.isChild ||
+                                                  path == '/settings') ...[
+                                                SizedBox(height: 24),
+                                                Wrap(
+                                                  spacing: 12,
+                                                  children: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          openRoute(
+                                                            context,
+                                                            '/privacy',
+                                                          ),
+                                                      child: Text(
+                                                        'Datenschutz',
                                                       ),
                                                     ),
-                                                    const Icon(
-                                                      Icons
-                                                          .chevron_right_rounded,
-                                                      size: 18,
-                                                    ),
-                                                    Text(
-                                                      title,
-                                                      style: TextStyle(
-                                                        color: context
-                                                            .palette
-                                                            .muted,
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          openRoute(
+                                                            context,
+                                                            '/about',
+                                                          ),
+                                                      child: Text(
+                                                        'Über SCHULPILOT',
                                                       ),
+                                                    ),
+                                                    PublicLegalLinks(
+                                                      state.api.base,
                                                     ),
                                                   ],
                                                 ),
-                                              ),
-                                            if (state.isDemo)
-                                              Padding(
-                                                padding: EdgeInsets.only(
-                                                  bottom: 12,
-                                                ),
-                                                child: Tag(
-                                                  'Demo · nur Beispieldaten',
-                                                ),
-                                              ),
-                                            if (!state.isDemo &&
-                                                !state.isAdmin &&
-                                                state.user?['real_data_enabled'] ==
-                                                    false)
-                                              Notice(
-                                                'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
-                                              ),
-                                            if (showTitle ||
-                                                actions.isNotEmpty) ...[
-                                              _WorkspaceHeading(
-                                                title: showTitle ? title : null,
-                                                subtitle: showTitle
-                                                    ? subtitle
-                                                    : null,
-                                                actions: actions,
-                                              ),
-                                              SizedBox(height: 16),
+                                              ],
                                             ],
-                                            child,
-                                            if (browser &&
-                                                state.user != null &&
-                                                !state.isChild &&
-                                                path == '/app') ...[
-                                              SizedBox(height: 28),
-                                              AndroidDownload(state.api),
-                                            ],
-                                            if (!state.isChild ||
-                                                path == '/settings') ...[
-                                              SizedBox(height: 24),
-                                              Wrap(
-                                                spacing: 12,
-                                                children: [
-                                                  TextButton(
-                                                    onPressed: () => openRoute(
-                                                      context,
-                                                      '/privacy',
-                                                    ),
-                                                    child: Text('Datenschutz'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () => openRoute(
-                                                      context,
-                                                      '/about',
-                                                    ),
-                                                    child: Text(
-                                                      'Über SCHULPILOT',
-                                                    ),
-                                                  ),
-                                                  PublicLegalLinks(
-                                                    state.api.base,
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              if (farDown)
-                                Positioned(
-                                  right: 12,
-                                  bottom: 12,
-                                  child: FloatingActionButton.small(
-                                    heroTag: null,
-                                    tooltip: 'Zum Seitenanfang',
-                                    onPressed: () => goToTop(),
-                                    child: const Icon(
-                                      Icons.vertical_align_top_rounded,
+                                if (farDown)
+                                  Positioned(
+                                    right: 12,
+                                    bottom: 12,
+                                    child: FloatingActionButton.small(
+                                      heroTag: null,
+                                      tooltip: 'Zum Seitenanfang',
+                                      onPressed: () => goToTop(),
+                                      child: const Icon(
+                                        Icons.vertical_align_top_rounded,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             Positioned(
@@ -1939,7 +1982,7 @@ class _WorkspaceSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _WorkspaceIconRail(
     key: const ValueKey('workspace-sidebar'),
-    expanded: MediaQuery.textScalerOf(context).scale(1) <= 1.4,
+    expanded: false,
     state: state,
     entries: entries,
     selected: selected,
@@ -2466,12 +2509,14 @@ MenuStyle _headerMenuStyle(BuildContext context, {double width = 352}) =>
 class AccountMenu extends StatefulWidget {
   final AppState state;
   final bool compact;
+  final bool appearanceInMenu;
   final double nameWidth;
   final VoidCallback? onChooseArea, onKeyboardHelp;
   const AccountMenu(
     this.state, {
     super.key,
     this.compact = false,
+    this.appearanceInMenu = false,
     this.nameWidth = 200,
     this.onChooseArea,
     this.onKeyboardHelp,
@@ -2594,6 +2639,25 @@ class _AccountMenuState extends State<AccountMenu> {
                     }
                   },
             child: const Text('Tastatur & Bedienung'),
+          ),
+        if (widget.appearanceInMenu)
+          MenuItemButton(
+            key: const ValueKey('account-appearance'),
+            leadingIcon: Icon(
+              state.darkAppearance
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+            ),
+            onPressed: _signingOut
+                ? null
+                : () {
+                    if (mounted && _sameHeaderAccount(state, snapshot)) {
+                      state.setAppearance(!state.darkAppearance);
+                    }
+                  },
+            child: Text(
+              state.darkAppearance ? 'Helles Design' : 'Dunkles Design',
+            ),
           ),
         MenuItemButton(
           key: ValueKey('account-logout'),
@@ -2951,6 +3015,22 @@ class _WorkspaceHeading extends StatelessWidget {
             ),
         ],
       );
+      if (constraints.maxWidth < 760 &&
+          title != null &&
+          actions.length == 1 &&
+          actions.single is IconButton) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: heading),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              child: actions.single,
+            ),
+          ],
+        );
+      }
       if (constraints.maxWidth >= 760 && title != null && actions.isNotEmpty) {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,

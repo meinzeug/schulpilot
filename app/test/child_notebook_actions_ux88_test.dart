@@ -243,7 +243,15 @@ void main() {
       expect(find.text('Alle Seiten zeigen'), findsOneWidget);
       expect(
         find.widgetWithText(FilledButton, 'Heftfoto hinzufügen'),
-        findsNWidgets(2),
+        findsOneWidget,
+      );
+      final heading = find.byKey(const ValueKey('notebook-compact-heading'));
+      expect(
+        find.descendant(
+          of: heading,
+          matching: find.byTooltip('Heftfoto hinzufügen'),
+        ),
+        findsOneWidget,
       );
     },
   );
@@ -306,7 +314,10 @@ void main() {
         },
       );
       expect(find.text('Heftseite'), findsOneWidget);
-      expect(find.text('Datum nicht angegeben · Bestätigt'), findsOneWidget);
+      expect(
+        find.text('Textseite · Datum nicht angegeben · Bestätigt'),
+        findsOneWidget,
+      );
       expect(find.text('null'), findsNothing);
       expect(tester.takeException(), isNull);
     },

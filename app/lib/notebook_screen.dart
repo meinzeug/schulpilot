@@ -939,7 +939,9 @@ class _NotebookScreenState extends State<_NotebookContext> {
   @override
   Widget build(BuildContext context) {
     if (!current) return SizedBox();
+    final compactNotebook = widget.state.isChild;
     return PageFrame(
+      focusContent: compactNotebook,
       state: widget.state,
       title: subject?['title'] ?? 'Dein Hefter',
       showTitle: false,
@@ -951,7 +953,69 @@ class _NotebookScreenState extends State<_NotebookContext> {
               childId: widget.childId,
               selected: 'materials',
             ),
-          if (widget.state.isChild) ...[
+          if (compactNotebook) ...[
+            Row(
+              key: const ValueKey('notebook-compact-heading'),
+              children: [
+                IconButton(
+                  tooltip: 'Alle Hefter',
+                  onPressed: () {
+                    if (current && ModalRoute.of(context)?.isCurrent == true) {
+                      context.go('/library/${widget.childId}');
+                    }
+                  },
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      subject?['title'] ?? 'Dein Hefter',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Heftfoto hinzufügen',
+                  onPressed: addPhoto,
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                ),
+                if (widget.subjectId != 'unassigned')
+                  IconButton(
+                    tooltip: 'Themen entdecken',
+                    onPressed: () {
+                      if (current &&
+                          ModalRoute.of(context)?.isCurrent == true) {
+                        showTopicBrowser(
+                          context,
+                          widget.state,
+                          widget.childId,
+                          widget.subjectId,
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.ondemand_video_outlined),
+                  ),
+              ],
+            ),
+            ChildSectionTabs(
+              tabs: const [
+                (
+                  id: 'album',
+                  label: 'Blättern',
+                  icon: Icons.auto_stories_outlined,
+                ),
+                (id: 'grid', label: 'Kacheln', icon: Icons.grid_view_rounded),
+                (id: 'list', label: 'Liste', icon: Icons.view_list_rounded),
+              ],
+              selected: view,
+              onSelected: selectView,
+            ),
+          ] else if (widget.state.isChild) ...[
             ChildSectionHero(
               eyebrow: 'Hefte',
               compactTitle: subject?['title'] ?? 'Dein Hefter',
@@ -1040,10 +1104,10 @@ class _NotebookScreenState extends State<_NotebookContext> {
                   ),
               ],
             ),
-          SizedBox(height: 14),
+          SizedBox(height: compactNotebook ? 4 : 14),
           Panel(
             tone: PanelTone.subtle,
-            padding: EdgeInsets.all(12),
+            padding: compactNotebook ? EdgeInsets.zero : EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1209,7 +1273,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
             ),
           if (selecting && (allMatching || selectedIds.isNotEmpty))
             selectionTray(),
-          SizedBox(height: 16),
+          SizedBox(height: compactNotebook ? 0 : 16),
           if (loading)
             Padding(
               padding: EdgeInsets.all(44),
@@ -1316,10 +1380,42 @@ class _NotebookScreenState extends State<_NotebookContext> {
     ],
   );
 
+  void openAlbumText(Json item) {
+    if (!current ||
+        loading ||
+        selected?['id'] != item['id'] ||
+        selected?['revision'] != item['revision'] ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    detail(item);
+  }
+
+  Widget albumDetails(Json item, {bool textOnly = false}) => ActionPanel(
+    key: textOnly ? ValueKey('notebook-text-page:${item['id']}') : null,
+    actionLabel: item['confirmed'] == true ? 'Text & Lernen' : 'Seite prüfen',
+    onPressed: textOnly ? () => openAlbumText(item) : () => detail(item),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          pageTitle(item),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        SizedBox(height: 6),
+        Text(
+          textOnly ? 'Textseite · ${pageDate(item)}' : pageDate(item),
+          style: TextStyle(color: context.palette.muted),
+        ),
+      ],
+    ),
+  );
+
   Widget album() {
     final item = selected;
     if (item == null) return SizedBox();
     final viewport = MediaQuery.sizeOf(context);
+    final compactNotebook = widget.state.isChild;
     final height = math
         .min(
           (viewport.height * 0.60).clamp(260.0, 760.0),
@@ -1335,6 +1431,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
         LayoutBuilder(
           builder: (context, constraints) {
             final pager = Semantics(liveRegion: true, child: pageControls());
+            if (compactNotebook) return pager;
             if (constraints.maxWidth < 480 ||
                 MediaQuery.textScalerOf(context).scale(1) > 1.3) {
               return Column(
@@ -1383,36 +1480,42 @@ class _NotebookScreenState extends State<_NotebookContext> {
                   move(index + (direction < 0 ? 1 : -1));
                 }
               },
-              child: SizedBox(
-                height: height,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color(0xFFE0E7F1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: context.palette.surfaceBorder),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(14),
-                    child: AnimatedSwitcher(
-                      duration: Duration(milliseconds: reduce ? 0 : 300),
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: AnimatedBuilder(
-                          animation: animation,
-                          child: child,
-                          builder: (_, child) => Transform(
-                            alignment: Alignment.centerLeft,
-                            transform: Matrix4.identity()
-                              ..setEntry(3, 2, 0.001)
-                              ..rotateY((1 - animation.value) * -0.34),
-                            child: child,
+              child: item['has_image'] == true
+                  ? SizedBox(
+                      key: const ValueKey('notebook-photo-frame'),
+                      height: height,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Color(0xFFE0E7F1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: context.palette.surfaceBorder,
                           ),
                         ),
-                      ),
-                      child: SizedBox.expand(
-                        key: ValueKey(item['id']),
-                        child: item['has_image'] == true
-                            ? Semantics(
+                        child: Padding(
+                          padding: EdgeInsets.all(14),
+                          child: AnimatedSwitcher(
+                            duration: Duration(milliseconds: reduce ? 0 : 300),
+                            transitionBuilder: (child, animation) =>
+                                FadeTransition(
+                                  opacity: animation,
+                                  child: AnimatedBuilder(
+                                    animation: animation,
+                                    child: child,
+                                    builder: (_, child) => Transform(
+                                      alignment: Alignment.centerLeft,
+                                      transform: Matrix4.identity()
+                                        ..setEntry(3, 2, 0.001)
+                                        ..rotateY(
+                                          (1 - animation.value) * -0.34,
+                                        ),
+                                      child: child,
+                                    ),
+                                  ),
+                                ),
+                            child: SizedBox.expand(
+                              key: ValueKey(item['id']),
+                              child: Semantics(
                                 button: true,
                                 label: 'Heftfoto vergrößern',
                                 child: InkWell(
@@ -1422,58 +1525,25 @@ class _NotebookScreenState extends State<_NotebookContext> {
                                     materialId: item['id'],
                                   ),
                                 ),
-                              )
-                            : Center(
-                                child: SingleChildScrollView(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.description_outlined,
-                                        size: 48,
-                                        color: context.palette.muted,
-                                      ),
-                                      SizedBox(height: 12),
-                                      Text(
-                                        'Diese Seite enthält Text, kein Foto.',
-                                      ),
-                                      TextButton(
-                                        onPressed: () => detail(item),
-                                        child: Text('Text ansehen'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               ),
+                            ),
+                          ),
+                        ),
                       ),
+                    )
+                  : AnimatedSwitcher(
+                      duration: Duration(milliseconds: reduce ? 0 : 300),
+                      child: albumDetails(item, textOnly: true),
                     ),
-                  ),
-                ),
-              ),
             ),
           ),
         ),
-        SizedBox(height: 14),
-        ActionPanel(
-          actionLabel: item['confirmed'] == true
-              ? 'Text & Lernen'
-              : 'Seite prüfen',
-          onPressed: () => detail(item),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                pageTitle(item),
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-              ),
-              SizedBox(height: 6),
-              Text(
-                pageDate(item),
-                style: TextStyle(color: context.palette.muted),
-              ),
-            ],
-          ),
-        ),
+        if (compactNotebook)
+          Align(alignment: Alignment.centerRight, child: pageActions(item)),
+        if (item['has_image'] == true) ...[
+          SizedBox(height: 14),
+          albumDetails(item),
+        ],
         if (item['has_image'] == true)
           Align(
             alignment: Alignment.centerLeft,

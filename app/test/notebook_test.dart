@@ -87,6 +87,7 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
   String? initialLocation,
   Json? shelfView,
   double width = 390,
+  double height = 1000,
   double textScale = 1,
   bool reducedMotion = false,
   bool photos = true,
@@ -96,7 +97,7 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
   Brightness brightness = Brightness.light,
   Future<http.Response> Function(http.Request)? respond,
 }) async {
-  tester.view.physicalSize = Size(width, 1000);
+  tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -185,7 +186,7 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
       routerConfig: router,
       builder: (_, child) => MediaQuery(
         data: MediaQueryData(
-          size: Size(width, 1000),
+          size: Size(width, height),
           textScaler: TextScaler.linear(textScale),
           disableAnimations: reducedMotion,
         ),
@@ -531,7 +532,11 @@ void main() {
       expect(find.byTooltip('Mit KI neu lesen'), findsOneWidget);
       expect(
         tester.getTopLeft(find.byTooltip('Heftseite löschen')).dy,
-        lessThan(tester.getTopLeft(find.byType(NotebookPhoto).first).dy),
+        greaterThanOrEqualTo(
+          tester
+              .getBottomLeft(find.byKey(const ValueKey('notebook-photo-frame')))
+              .dy,
+        ),
       );
       expect(
         tester.getSize(find.byTooltip('Heftseite löschen')).shortestSide,
@@ -844,7 +849,7 @@ void main() {
           .map((e) => (e.widget as AnimatedSwitcher).duration),
       contains(Duration.zero),
     );
-    expect(find.text('Diese Seite enthält Text, kein Foto.'), findsOneWidget);
+    expect(find.textContaining('Textseite · '), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
@@ -974,16 +979,33 @@ void main() {
             textScale: width == 320 ? 2 : 1,
             photos: false,
           );
-          expect(find.byType(ChildSectionHero), findsOneWidget);
           expect(find.byType(ChildSectionTabs), findsOneWidget);
           expect(find.byType(ChoiceChip), findsNothing);
-          final photoButton = find.descendant(
-            of: find.byType(ChildSectionHero),
-            matching: find.byType(FilledButton),
+          expect(find.byType(ChildSectionHero), findsNothing);
+          final heading = find.byKey(
+            const ValueKey('notebook-compact-heading'),
           );
-          expect(tester.getSize(photoButton).height, greaterThanOrEqualTo(48));
-          expect(find.text('Alle Hefter'), findsOneWidget);
-          expect(find.text('Themen entdecken'), findsOneWidget);
+          expect(heading, findsOneWidget);
+          expect(
+            find.descendant(of: heading, matching: find.text('Mathematik')),
+            findsOneWidget,
+          );
+          for (final label in [
+            'Alle Hefter',
+            'Heftfoto hinzufügen',
+            'Themen entdecken',
+          ]) {
+            final action = find.descendant(
+              of: heading,
+              matching: find.byTooltip(label),
+            );
+            expect(action, findsOneWidget);
+            expect(
+              tester.getSize(action).shortestSide,
+              greaterThanOrEqualTo(48),
+            );
+            expect(action.hitTestable(), findsOneWidget);
+          }
           expect(tester.takeException(), isNull);
 
           await tap(tester, find.text('Liste'));
@@ -1009,7 +1031,7 @@ void main() {
           expect(tester.takeException(), isNull);
           expect(requests.every((request) => request.method == 'GET'), isTrue);
 
-          await tap(tester, find.text('Heftfoto hinzufügen'));
+          await tap(tester, find.byTooltip('Heftfoto hinzufügen'));
           expect(find.text('Deine neuen Heftfotos'), findsOneWidget);
           expect(requests.every((request) => request.method == 'GET'), isTrue);
           await tester.pumpWidget(const SizedBox());

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show mapEquals;
 
 import 'api.dart';
+import 'child_section_ui.dart';
 import 'dashboard.dart' show preferencesDialog;
 import 'parent_assignment_dialog.dart';
 
@@ -854,22 +855,57 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                   icon: Icons.route_outlined,
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final item in const [
-                      (1, 'Meine Themen'),
-                      (2, 'Woche & Vorgaben'),
-                      (0, 'KI-Lernweg'),
-                    ])
-                      ChoiceChip(
-                        label: Text(item.$2),
-                        selected: section == item.$1,
-                        onSelected: (_) => selectSection(item.$1),
+                if (MediaQuery.sizeOf(context).width < 720)
+                  ChildSectionTabs(
+                    key: const ValueKey('parent-plan-modes'),
+                    tabs: const [
+                      (
+                        id: 'topics',
+                        label: 'Meine Themen',
+                        icon: Icons.checklist_rounded,
                       ),
-                  ],
-                ),
+                      (
+                        id: 'week',
+                        label: 'Woche & Vorgaben',
+                        icon: Icons.calendar_month_outlined,
+                      ),
+                      (
+                        id: 'ai',
+                        label: 'KI-Lernweg',
+                        icon: Icons.route_outlined,
+                      ),
+                    ],
+                    selected: switch (section) {
+                      1 => 'topics',
+                      2 => 'week',
+                      _ => 'ai',
+                    },
+                    onSelected: (value) {
+                      final next = const {
+                        'topics': 1,
+                        'week': 2,
+                        'ai': 0,
+                      }[value];
+                      if (next != null) selectSection(next);
+                    },
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final item in const [
+                        (1, 'Meine Themen'),
+                        (2, 'Woche & Vorgaben'),
+                        (0, 'KI-Lernweg'),
+                      ])
+                        ChoiceChip(
+                          label: Text(item.$2),
+                          selected: section == item.$1,
+                          onSelected: (_) => selectSection(item.$1),
+                        ),
+                    ],
+                  ),
                 const SizedBox(height: 12),
                 if (loading) const LinearProgressIndicator(),
                 if (loading && section != 1)
