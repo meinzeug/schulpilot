@@ -41,6 +41,8 @@ class Fixture {
   Json server = policy();
   bool conflict = false;
   Completer<http.Response>? pending;
+  Completer<http.Response>? pendingPut;
+  final enabled = ValueNotifier(true);
   Fixture() {
     state = AppState(
       api: Api(
@@ -104,6 +106,7 @@ class Fixture {
                 : pending!.future;
           }
           if (r.method == 'PUT') {
+            if (pendingPut != null) return pendingPut!.future;
             if (conflict) {
               return http.Response(
                 jsonEncode({
@@ -136,6 +139,7 @@ class Fixture {
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
       state.dispose();
+      enabled.dispose();
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
@@ -148,7 +152,12 @@ class Fixture {
           child: child!,
         ),
         home: Scaffold(
-          body: SingleChildScrollView(child: AdminChildCosts(state)),
+          body: ValueListenableBuilder<bool>(
+            valueListenable: enabled,
+            builder: (context, active, _) => SingleChildScrollView(
+              child: AdminChildCosts(state, enabled: active),
+            ),
+          ),
         ),
       ),
     );
@@ -214,6 +223,28 @@ void main() {
       );
     },
   );
+  testWidgets('switching sections during a save cannot leave the editor busy', (
+    tester,
+  ) async {
+    final f = Fixture();
+    await f.mount(tester);
+    await f.open(tester);
+    f.pendingPut = Completer<http.Response>();
+    await tester.ensureVisible(find.text('Grenzen speichern'));
+    await tester.tap(find.text('Grenzen speichern'));
+    await tester.pump();
+    expect(f.writes.length, 1);
+    f.enabled.value = false;
+    await tester.pump();
+    f.enabled.value = true;
+    await tester.pumpAndSettle();
+    expect(find.text('Wird gespeichert…'), findsNothing);
+    expect(find.text('Grenzen speichern'), findsOneWidget);
+    f.pendingPut!.complete(http.Response(jsonEncode(policy(revision: 2)), 200));
+    await tester.pumpAndSettle();
+    expect(f.writes.length, 1);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('an invalid amount never sends a policy update', (tester) async {
     final f = Fixture();
     await f.mount(tester);

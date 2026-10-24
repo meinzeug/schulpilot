@@ -55,7 +55,8 @@ class _AdminChildCostsState extends State<AdminChildCosts>
     super.didUpdateWidget(oldWidget);
     if (!widget.enabled) {
       epoch++;
-      loading = false;
+      loading = saving = false;
+      needsRead = true;
     }
     if (widget.enabled && needsRead && !loading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -402,3 +402,132 @@ def test_cost_rows_are_exported_and_cascade_with_original_child(api, household, 
     with DB() as db:
         for table in (ChildCostControl, ChildCostControlChange, UsageCostBalance):
             assert db.scalar(select(func.count()).select_from(table)) == 0
+
+
+def historical_fee_pending(fid, child_id, monkeypatch, *, generation_id=None, cost=2000, age=0):
+    """A pre-0038 known USD receipt whose old fee gate kept the EUR hold."""
+    from schulpilot import ai_accounting
+    from schulpilot.db import now
+
+    ident = claim(fid, child_id)
+    with monkeypatch.context() as historical:
+        # Exact old behavior when a fee receipt was unavailable: USD settlement
+        # succeeded, but settle_child returned before releasing the EUR hold.
+        historical.setattr(ai_accounting, "settle_child", lambda *args: None)
+        with DB.begin() as db:
+            usage = db.get(Usage, ident)
+            usage.created = int(now()) - age
+            settle(db, usage, Result({}, 10, 20, cost, cost_source="reported",
+                telemetry={"generation_id": generation_id} if generation_id else {}))
+    with DB() as db:
+        usage = db.get(Usage, ident)
+        assert usage.charged_eur_micros is None and usage.allocated_fee_micros is None
+        assert db.get(UsageCostBalance, ident) is None
+        assert "child_bucket_booking" not in (usage.telemetry or {})
+    return ident
+
+
+def test_policy_balance_sync_is_not_a_historical_legacy_bucket_booking(api, household, operator, monkeypatch):
+    parent, child = household
+    fid = parent["families"][0]["id"]
+    setup_policy(fid)
+    ident = historical_fee_pending(fid, child["id"], monkeypatch)
+    # The real policy endpoint creates an FX balance. This is a projection,
+    # not proof that the old monthly bucket's full hold was already released.
+    response = operator.put(f"/api/admin/children/{child['id']}/cost-controls",
+        headers={"Idempotency-Key": "historical-policy-booking"}, json={"revision": 0, "enabled": True,
+            "timezone": "Europe/Berlin", "daily_limit_eur_micros": None, "monthly_limit_eur_micros": None})
+    assert response.status_code == 200, response.text
+    with DB() as db:
+        usage = db.get(Usage, ident)
+        assert db.get(UsageCostBalance, ident).accounted_eur_micros == 2160
+        assert db.get(ChildCostBucket, usage.child_budget_id).encumbered_eur_micros == 21600
+    with DB.begin() as db:
+        settle_child(db, db.get(Usage, ident))
+        settle_child(db, db.get(Usage, ident))
+    with DB() as db:
+        usage = db.get(Usage, ident)
+        bucket = db.get(ChildCostBucket, usage.child_budget_id)
+        assert (bucket.encumbered_eur_micros, bucket.known_eur_micros, bucket.unknown_calls) == (2160, 2000, 0)
+        assert usage.charged_eur_micros is None  # Fees still explicitly unknown.
+        assert usage.telemetry["child_bucket_booking"] == {"version": 1, "bucket_id": usage.child_budget_id,
+            "accounted_eur_micros": 2160, "known_eur_micros": 2000, "provider_known": True}
+    # A later real fee receipt changes only the remaining delta, once.
+    with DB.begin() as db:
+        db.add(CreditPurchase(id="historical-policy-fee", credits_micros=2000, fee_micros=100))
+        db.flush()
+        settle_child(db, db.get(Usage, ident))
+        settle_child(db, db.get(Usage, ident))
+    with DB() as db:
+        usage = db.get(Usage, ident)
+        bucket = db.get(ChildCostBucket, usage.child_budget_id)
+        assert (bucket.encumbered_eur_micros, bucket.known_eur_micros, bucket.unknown_calls) == (2100, 2100, 0)
+        assert db.get(CreditPurchase, "historical-policy-fee").consumed_micros == 2000
+
+
+def test_metadata_presync_of_second_old_usage_releases_its_actual_full_hold(api, household, monkeypatch):
+    parent, child = household
+    fid = parent["families"][0]["id"]
+    setup_policy(fid)
+    # The fee pass visits this older row; only the second has a generation ID.
+    # Thus the metadata path itself creates the second row's first balance.
+    historical_fee_pending(fid, child["id"], monkeypatch, cost=3000, age=60)
+    target = historical_fee_pending(fid, child["id"], monkeypatch, generation_id="gen-legacy-second")
+    requests = []
+    def metadata(url, **kwargs):
+        assert url == "https://openrouter.ai/api/v1/generation"
+        assert kwargs["params"] == {"id": "gen-legacy-second"}
+        requests.append(url)
+        return httpx.Response(200, json={"data": {"id": "gen-legacy-second", "total_cost": "0.0015"}})
+    monkeypatch.setattr(httpx, "get", metadata)
+    assert reconcile_one() is True
+    assert reconcile_one() is False
+    with DB.begin() as db:
+        settle_child(db, db.get(Usage, target))
+    with DB() as db:
+        usage = db.get(Usage, target)
+        bucket = db.get(ChildCostBucket, usage.child_budget_id)
+        assert (bucket.encumbered_eur_micros, bucket.known_eur_micros, bucket.unknown_calls) == (4860, 4500, 0)
+        assert usage.cost_micros == 1500 and usage.cost_source == "generation"
+        assert db.get(UsageCostBalance, target).accounted_eur_micros == 1620
+        assert len(requests) == 1
+
+
+def test_already_final_historical_charge_is_not_booked_twice_after_balance_backfill(api, household, monkeypatch):
+    from sqlalchemy import delete
+
+    parent, child = household
+    fid = parent["families"][0]["id"]
+    setup_policy(fid)
+    ident = claim(fid, child["id"])
+    with DB.begin() as db:
+        db.add(CreditPurchase(id="historical-final-fee", credits_micros=2000, fee_micros=100))
+        db.flush()
+        usage = db.get(Usage, ident)
+        settle(db, usage, Result({}, 10, 20, 2000, cost_source="reported", telemetry={"generation_id": "gen-old-final"}))
+        # Model the historical fully settled row before 0038 existed.
+        db.execute(delete(UsageCostBalance).where(UsageCostBalance.usage_id == ident))
+        usage.telemetry = {key: value for key, value in usage.telemetry.items() if key != "child_bucket_booking"}
+    with DB.begin() as db:
+        usage = db.get(Usage, ident)
+        assert usage.charged_eur_micros == 2100
+        costs.sync_balance(db, usage)
+        db.flush()
+        settle_child(db, usage)
+        settle_child(db, usage)
+    with DB() as db:
+        usage = db.get(Usage, ident)
+        bucket = db.get(ChildCostBucket, usage.child_budget_id)
+        assert (bucket.encumbered_eur_micros, bucket.known_eur_micros, bucket.unknown_calls) == (2100, 2100, 0)
+        assert db.get(CreditPurchase, "historical-final-fee").consumed_micros == 2000
+    monkeypatch.setattr(httpx, "get", lambda *a, **kw: httpx.Response(200,
+        json={"data": {"id": "gen-old-final", "total_cost": "0.001"}}))
+    assert reconcile_one() is True
+    with DB.begin() as db:
+        settle_child(db, db.get(Usage, ident))
+    with DB() as db:
+        usage = db.get(Usage, ident)
+        bucket = db.get(ChildCostBucket, usage.child_budget_id)
+        assert (bucket.encumbered_eur_micros, bucket.known_eur_micros, bucket.unknown_calls) == (1100, 1000, 0)
+        assert db.get(UsageCostBalance, ident).fee_state == "adjustment_pending"
+        assert db.get(CreditPurchase, "historical-final-fee").consumed_micros == 2000

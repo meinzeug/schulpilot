@@ -118,7 +118,6 @@ def settle_child(db, usage):
     quote = usage_quote(usage, balance=previous)
     if not quote:
         return
-    before = dict(previous.__dict__) if previous else None
     # A later verified provider correction must not allocate the same credits
     # again. Preserve its historical fee basis and explicitly flag a mismatch.
     if usage.cost_micros is not None and usage.allocated_fee_micros is None:
@@ -129,13 +128,28 @@ def settle_child(db, usage):
             previous.fee_basis_usd_micros = usage.cost_micros
     row = sync_balance(db, usage)
     if usage.child_budget_id and usage.cost_micros is not None:
-        old_amount = before["accounted_eur_micros"] if before else usage.reserved_eur_micros
-        old_known = ((before["provider_eur_micros"] or 0) + (before["fee_known_eur_micros"] or 0)) if before else 0
+        booking = (usage.telemetry or {}).get("child_bucket_booking")
+        if not (isinstance(booking, dict) and booking.get("version") == 1
+                and booking.get("bucket_id") == usage.child_budget_id
+                and type(booking.get("accounted_eur_micros")) is int
+                and type(booking.get("known_eur_micros")) is int
+                and type(booking.get("provider_known")) is bool):
+            # 0038 balances did not exist for historical usage. A projection or
+            # policy edit may have created one without changing the legacy
+            # bucket. Its real booked amount is the old final charge, or the
+            # original reservation while a fee/price receipt was missing.
+            final = usage.charged_eur_micros
+            booking = {"accounted_eur_micros": final if final is not None else usage.reserved_eur_micros,
+                "known_eur_micros": final if final is not None else 0,
+                "provider_known": final is not None}
         known = (row.provider_eur_micros or 0) + (row.fee_known_eur_micros or 0)
         db.execute(update(ChildCostBucket).where(ChildCostBucket.id == usage.child_budget_id).values(
-            encumbered_eur_micros=ChildCostBucket.encumbered_eur_micros + row.accounted_eur_micros - old_amount,
-            known_eur_micros=ChildCostBucket.known_eur_micros + known - old_known,
-            unknown_calls=ChildCostBucket.unknown_calls - int(not before or before["provider_eur_micros"] is None)))
+            encumbered_eur_micros=ChildCostBucket.encumbered_eur_micros + row.accounted_eur_micros - booking["accounted_eur_micros"],
+            known_eur_micros=ChildCostBucket.known_eur_micros + known - booking["known_eur_micros"],
+            unknown_calls=ChildCostBucket.unknown_calls - int(not booking["provider_known"])))
+        usage.telemetry = {**(usage.telemetry or {}), "child_bucket_booking": {"version": 1,
+            "bucket_id": usage.child_budget_id, "accounted_eur_micros": row.accounted_eur_micros,
+            "known_eur_micros": known, "provider_known": True}}
     if row and usage.cost_micros is not None and row.fee_state == "actual":
         usage.charged_eur_micros = row.accounted_eur_micros
     else:
