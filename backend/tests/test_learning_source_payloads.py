@@ -321,3 +321,15 @@ def test_literal_source_transport_keeps_critical_math_signs_and_wrong_originals_
                 "V31=31;62;93;114;145", "124;155", "CO ≠ Co", "2⁴", "2,4", "2/4"]
     blocks = [SourceBlock(kind="formula", text=text).model_dump()["text"] for text in literals]
     assert blocks == literals and len(set(blocks)) == len(literals)
+
+
+def test_legacy_tutor_source_without_alias_stays_readable_but_cannot_invent_one(tutor_notebook):
+    from schulpilot.learning_sources import citations_current
+
+    child, material_id = tutor_notebook["child"], tutor_notebook["material_id"]
+    with DB() as db:
+        material = db.get(Material, material_id)
+        refs = [{"id": material.id, "revision": material.revision}]
+        assert citations_current(db, child["id"], refs, [])
+        assert not citations_current(db, child["id"], refs, [{"ref": "p1", "quote": material.content}])
+        assert not citations_current(db, child["id"], [{"id": material.id}], [])

@@ -545,8 +545,10 @@ def test_reprocess_worker_checks_before_and_after_transport_and_keeps_billed_err
             assert usage.cost_micros == 9
         else:
             assert job.status == "failed" and clone.status == "uploaded" and clone.content == ""
-            assert usage.cost_micros == (None if change == "session_before" else 9)
-            assert usage.status == ("failed_unknown" if change == "session_before" else "failed_billed")
+            assert usage.cost_micros == (0 if change == "session_before" else 9)
+            if change == "session_before":
+                assert usage.cost_source == "cancelled" and not calls
+            assert usage.status == ("failed_not_sent" if change == "session_before" else "failed_billed")
         assert db.get(Material, mid).confirmed
     assert len(calls) == (0 if change == "session_before" else 1)
 

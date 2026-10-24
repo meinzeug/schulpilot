@@ -301,7 +301,7 @@ def remember(db, unit, data, payload):
 def public_steps(steps, *, closed=False, hints=0):
     allowed = {"given", *[f"hint{i}" for i in range(1, min(3, hints) + 1)]} | ({"solution"} if closed else set())
     return [{k: v for k, v in step.items() if k not in {"presentation"}} |
-            {"source_refs": [{k: v for k, v in ref.items() if not k.startswith("_")} for ref in step.get("source_refs", [])],
+            {"source_refs": [{k: v for k, v in ref.items() if not k.startswith("_")} for ref in step.get("source_refs", []) if isinstance(ref, dict)],
              "presentation": public_presentation(step["presentation"], closed=closed, hints=hints)}
             for step in steps or [] if step.get("disclosure") in allowed]
 

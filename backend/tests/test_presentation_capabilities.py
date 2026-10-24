@@ -87,12 +87,21 @@ def test_unreachable_question_and_graphic_definitions_do_not_advertise_capabilit
     # Keep dead definitions deliberately: the guide must follow reachable refs,
     # even if a future caller forgets to prune them first.
     schema["properties"]["questions"] = {"type": "null"}
+    schema["properties"]["explanation_steps"] = {"type": "null"}
     context = generation_context(["Technik"], schema=schema, compact_matching=True)
     assert context["question_types"] == []
     assert context["graphic_kinds"] == []
     assert context["max_blocks"] == 0
     assert context["local_interactions"] == {}
     assert "matching" not in context
+
+
+def test_intro_graphics_remain_reachable_without_question_graphics():
+    schema = final_schema(["Technik"])
+    schema["properties"]["questions"] = {"type": "null"}
+    context = generation_context(["Technik"], schema=schema, compact_matching=True)
+    assert context["question_types"] == []
+    assert context["graphic_kinds"]  # A real intro step still has a graphic.
 
 
 def test_fixed_math_request_exposes_only_its_final_short_tasks_without_changing_limits(arithmetic_transport):

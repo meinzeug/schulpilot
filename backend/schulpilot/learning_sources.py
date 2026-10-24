@@ -34,14 +34,19 @@ def citations_current(db, child_id, refs, citations):
     pages = {}
     aliases = {}
     for ref in refs:
+        if not isinstance(ref, dict) or not ref.get("id") or type(ref.get("revision")) is not int:
+            return False
         material = db.get(Material, ref["id"])
         if not material or material.child_id != child_id or material.revision != ref["revision"] or not material.confirmed:
             return False
         value = learning_source(db, material)
         if not value["content"].strip():
             return False
-        pages[ref["ref"]] = value["content"]
-        aliases[material.id] = ref["ref"]
+        # Historical turns may store only id/revision and no provider alias.
+        # Their history remains readable; do not invent a p1 citation binding.
+        alias = ref.get("ref") or material.id
+        pages[alias] = value["content"]
+        aliases[material.id] = alias
     for citation in citations:
         if citation.get("foundation_id"):
             continue  # Existing curated, separately versioned foundation proof.

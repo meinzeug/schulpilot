@@ -69,6 +69,10 @@ def test_tied_attempt_timestamps_use_saved_attempt_order_and_keep_supported_succ
 def test_followup_without_new_report_retains_nonfraction_confirmed_goal_mapping(profile):
     _, uid, mid, _, _, child = profile
     with DB.begin() as db:
+        source = db.get(Material, mid)
+        source.subject, source.topic = "Biologie", "Pflanzen"
+        source.content = "Eine Pflanze hat Wurzeln und Blätter."
+        source.source_blocks = []
         root = db.get(LearningUnit, uid)
         root.subject = "Biologie"
         root.topic = "Pflanzen"
