@@ -353,3 +353,42 @@ def test_worker_saves_whole_transcript_and_explicit_retry_preserves_old_material
         usages = list(db.scalars(select(Usage)))
         assert len(usages) == 2 and all(u.cost_micros == 0 for u in usages)
         assert any(u.status.startswith("failed") for u in usages)
+
+
+def test_compact_transcription_wire_keeps_literal_symbols_marks_regions_and_whitespace():
+    from schulpilot.extraction import TranscriptionBlock
+
+    literal = '    5⅔ = 17/3\n3 ∤ 25\nkgV(8,12)=96\n'
+    block = TranscriptionBlock.model_validate({
+        'k':'formula','t':literal,'p':'example','l':'student_work',
+        'r':{'l':10,'t':20,'r':900,'b':800},
+        'a':[{'k':'correction','q':'96','c':'red','a':'unknown','e':'','r':None}],
+        'u':['Die rote Markierung ist keine geprüfte richtige Lösung.']})
+    wire = block.model_dump(by_alias=True, exclude_none=True)
+    assert 't' in wire and 'text' not in wire
+    data = transcription(blocks=[wire])
+    result = TranscriptionOutput.model_validate(data).as_material()
+    assert result['content'] == literal
+    saved = result['source_blocks'][0]
+    assert saved['text'] == literal and saved['annotations'][0]['quote'] == '96'
+    assert saved['annotations'][0]['color'] == 'red' and saved['annotations'][0]['author'] == 'unknown'
+    assert saved['image_region'] == {'left':10,'top':20,'right':900,'bottom':800}
+    assert 't' not in saved and 'r' not in saved
+    with pytest.raises(ValidationError):
+        TranscriptionBlock.model_validate({**wire, 'r':{'l':900,'t':20,'r':10,'b':800}})
+    with pytest.raises(ValidationError):
+        TranscriptionBlock.model_validate({**wire, 'a':[{'k':'comment','q':'erfunden'}]})
+
+
+def test_compact_wire_saves_repeated_metadata_without_shortening_original_text():
+    from schulpilot.extraction import TranscriptionBlock
+    from schulpilot.subject_content import SourceBlock
+
+    original = SourceBlock(kind='formula', text='2/3 min = 40 s', literal_role='student_work',
+        annotations=[{'kind':'highlight','quote':'40','color':'red'}],
+        image_region={'left':0,'top':100,'right':1000,'bottom':200})
+    block = TranscriptionBlock.model_validate(original.model_dump())
+    full = json.dumps(original.model_dump(exclude_none=True), ensure_ascii=False, separators=(',',':'))
+    compact = json.dumps(block.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False, separators=(',',':'))
+    assert len(compact) < len(full) * 0.75
+    assert TranscriptionBlock.model_validate_json(compact).text == original.text

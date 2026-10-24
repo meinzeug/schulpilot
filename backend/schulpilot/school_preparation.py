@@ -17,6 +17,7 @@ from .commerce import usage_terms
 from .db import DB, Child, Family, Job, Material, ProviderConfig, SchoolDay, Session, Usage, User, now, uid
 from .fixtures import DAY_FIXTURE_IDS, LIVE_FIXTURE_IDS
 from .learning import record
+from .provider_attempts import counts as _attempt_counts
 from .providers import ProviderError, Result, external_allowed, reserve, settle
 from .security import Principal, child_access, digest, rate_limit
 
@@ -205,10 +206,12 @@ def preparation_data(db, day, child=None):
             counts = state.get("extract_attempts", {})
             previous = counts.get(waiting.id, {}) if waiting else {}
             can_retry = not waiting or (
-                previous.get("revision") != waiting.revision or previous.get("count", 0) < MAX_ATTEMPTS
+                _attempt_counts(db, day.child_id, "extract", [{"id": waiting.id, "revision": waiting.revision}],
+                    previous.get("count", 0) if previous.get("revision") == waiting.revision else 0)[1] < MAX_ATTEMPTS
             )
         elif state.get("phase") == "package":
-            can_retry = state.get("package_attempts", {}).get(_fingerprint(current), 0) < MAX_ATTEMPTS
+            can_retry = _attempt_counts(db, day.child_id, "package", current,
+                state.get("package_attempts", {}).get(_fingerprint(current), 0))[1] < MAX_ATTEMPTS
     from .job_failures import generation_availability, message_code
 
     waiting = next((m for m in source_pages if m.status == "uploaded" and not m.confirmed), None)
@@ -396,25 +399,17 @@ def _queue(db, day, child, family, state, kind, payload):
     if kind == "extract":
         counts = state.setdefault("extract_attempts", {})
         old = counts.get(material.id, {})
-        attempts = old.get("count", 0) if old.get("revision") == material.revision else 0
-        historical = sum(
-            j.payload.get("material_id") == material.id and j.payload.get("material_revision") == material.revision
-            for j in db.scalars(select(Job).where(Job.child_id == child.id, Job.kind == "extract"))
-        )
-        attempts = max(attempts, historical)
+        starts, attempts = _attempt_counts(db, child.id, "extract", [{"id": material.id, "revision": material.revision}],
+            old.get("count", 0) if old.get("revision") == material.revision else 0)
         if attempts >= MAX_ATTEMPTS:
             raise ProviderError("Die Erkennung hat zweimal nicht geklappt. Bitte fotografiere die Seite neu.")
-        counts[material.id] = {"revision": material.revision, "count": attempts + 1}
+        counts[material.id] = {"revision": material.revision, "count": starts + 1}
     else:
         counts, name = state.setdefault("package_attempts", {}), _fingerprint(state["sources"])
-        historical = sum(
-            j.payload.get("sources") == state["sources"]
-            for j in db.scalars(select(Job).where(Job.child_id == child.id, Job.kind == "package"))
-        )
-        attempts = max(counts.get(name, 0), historical)
+        starts, attempts = _attempt_counts(db, child.id, "package", state["sources"], counts.get(name, 0))
         if attempts >= MAX_ATTEMPTS:
             raise ProviderError("Das Paket konnte zweimal nicht erstellt werden. Deine Seiten bleiben gespeichert.")
-        counts[name] = attempts + 1
+        counts[name] = starts + 1
     payload = {
         **payload,
         "school_day_id": day.id,

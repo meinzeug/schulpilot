@@ -676,3 +676,42 @@ def test_ready_push_does_not_require_daily_learning_reminders(api, household, mo
         assert len(sent) == 1 and sent[0][1] == "preparation_ready"
         with DB() as db:
             assert db.scalar(select(PushDelivery)).status == "accepted"
+
+
+def test_pre_dispatch_cost_failure_does_not_spend_second_image_attempt(api, household, monkeypatch):
+    _, child = household
+    day, calls = capture(api, child, monkeypatch, 1)
+    successful = __import__('schulpilot.worker', fromlist=['request_provider']).request_provider
+
+    def truncated(*args, **kwargs):
+        raise ProviderError('Die KI hat die begrenzte Ausgabelänge erreicht.',
+            billing_result=Result({}, 20, 4000, 1000, cost_source='reported'))
+
+    monkeypatch.setattr('schulpilot.worker.request_provider', truncated)
+    submit(api, day, 'one-real-call')
+    assert step()
+
+    def not_sent(*args, **kwargs):
+        raise ProviderError('Material überschreitet die konfigurierte konservative Kostenreservierung.',
+            billing_result=Result({}, 0, 0, 0, telemetry={'pre_dispatch': True}, cost_source='cancelled'))
+
+    monkeypatch.setattr('schulpilot.worker.request_provider', not_sent)
+    submit(api, day, 'one-preflight')
+    assert step()
+    before = api.get(f"/api/school-days/{day['id']}").json()['preparation']
+    assert not before['can_retry']
+    with DB.begin() as db:
+        db.get(ProviderConfig, 1).revision += 1  # Explicit reviewed operator fix.
+    ready = api.get(f"/api/school-days/{day['id']}").json()['preparation']
+    assert ready['can_retry'] and ready['total_pages'] == 1
+    assert step() is None  # Read-only GET never retries.
+    monkeypatch.setattr('schulpilot.worker.request_provider', successful)
+    submit(api, day, 'second-real-call')
+    assert step()
+    with DB() as db:
+        saved = db.get(SchoolDay, day['id'])
+        assert next(iter(saved.preparation['extract_attempts'].values()))['count'] == 3
+        jobs = list(db.scalars(select(Job).where(Job.child_id == child['id'])))
+        assert len(jobs) == 3 and sum(j.status == 'failed' for j in jobs) == 2
+        assert sorted(u.cost_micros for u in db.scalars(select(Usage).where(Usage.child_id == child['id']))) == [0, 0, 1000]
+    assert api.get(f"/api/school-days/{day['id']}").json()['preparation']['status'] == 'needs_review'

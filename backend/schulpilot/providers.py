@@ -1095,6 +1095,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         response_type = augmented_model(response_type)
     schema = strict_schema(response_type, preserve_limits=config.provider in ("openrouter", "codex"))
+    exam_analysis = function == "tutor" and payload.get("exam_context", {}).get("action") == "analyze"
+    if exam_analysis:
+        from .exam_review_transport import bind_schema as bind_exam_schema
+
+        bind_exam_schema(schema, config.max_output_tokens)
     if function == "unit" and payload.get("goal") and payload.get("required_topic"):
         for field in ("subject", "topic"):
             schema["properties"][field]["enum"] = [payload["required_" + field]]
@@ -1543,25 +1548,28 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         bind_entry_schema(schema, payload)
         instructions += ENTRY_RULES
+    if exam_analysis:
+        from .exam_review_transport import rules as exam_transport_rules
+
+        instructions += exam_transport_rules(config.max_output_tokens)
     outgoing_payload = transport_payload(function, payload)
     if outgoing_payload is not payload:
         instructions += "\nmaterial.content_ref verweist auf die vollständig enthaltenen Quellen in materials[].content."
     user_text = json.dumps(outgoing_payload, ensure_ascii=False, separators=(",", ":"))
-    # Byte count is deliberately conservative for text; image budget uses the
-    # entire encoded payload rather than an optimistic model-specific formula.
+    # Image transport bytes are not text tokens. A separately approved exact-
+    # route allowance is an operator estimate, never an invented tokenizer rule.
     image_data = base64.b64encode(image_bytes).decode() if image_bytes else ""
-    bound = len((instructions + user_text + json.dumps(schema)).encode()) + len(image_data) + 4096
+    from .provider_cost_preflight import projection as cost_projection
+
     account_billing = config.provider == "codex" and settings.codex_auth_mode == "account"
-    worst = (
-        0
-        if account_billing
-        else (bound * config.input_per_million_micros + config.max_output_tokens * config.output_per_million_micros + 999_999) // 1_000_000
-    )
+    preflight = None if account_billing else cost_projection(config, function,
+        len((instructions + user_text + json.dumps(schema)).encode()), image_bytes, len(image_data))
+    worst = preflight["projected_micros"] if preflight else 0
     if worst > config.reserve_micros:
         raise ProviderError(
             "Material überschreitet die konfigurierte konservative Kostenreservierung. Material kürzen oder Preisobergrenze prüfen.",
             code="cost_preflight",
-            billing_result=Result({}, 0, 0, 0, telemetry={"pre_dispatch": True}, cost_source="cancelled"),
+            billing_result=Result({}, 0, 0, 0, telemetry={"pre_dispatch": True, "cost_preflight": preflight}, cost_source="cancelled"),
         )
     if config.provider == "codex":
         worker_request = {
@@ -1645,7 +1653,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "max_tokens": min(
                     config.max_output_tokens,
                     2600
-                    if function == "tutor"
+                    if function == "tutor" and not exam_analysis
                     else 4200
                     if function == "coach" and payload.get("defer_practice")
                     else 4500
@@ -1690,6 +1698,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .provider_receipts import request_receipt as build_request_receipt
 
         receipt = build_request_receipt(config.provider, body, schema)
+        if preflight:
+            receipt["cost_preflight"] = preflight
         try:
             with httpx.Client(timeout=httpx.Timeout(120, connect=10), follow_redirects=False) as client:
                 response = client.post(url, headers=headers, json=body)
@@ -1846,6 +1856,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             catalog_assignment = checked_assignment(data.pop("catalog_assignment"), catalog_context, data)
         if function == "extract":
             data = TranscriptionOutput.model_validate(data).as_material()
+        if exam_analysis:
+            from .exam_review_transport import validate_bounds as validate_exam_bounds
+
+            validate_exam_bounds(data, config.max_output_tokens)
         if function == "unit" and payload.get("goal") and payload.get("required_topic") and any(
             data[field] != payload["required_" + field] for field in ("subject", "topic")
         ):

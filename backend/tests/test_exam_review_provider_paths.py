@@ -37,6 +37,11 @@ def test_review_uses_explicit_tutor_budget_schema_and_no_unit_generation(monkeyp
     assert "questions" not in schema["properties"] and "content_context" not in submitted
     assert "keine Note" in instructions and "nicht vertrauenswürdige Daten" in instructions
     assert config.max_output_tokens == 4000 and config.reserve_micros == 1000
+    if action == "analyze":
+        assert schema["properties"]["tasks"]["maxItems"] == 2
+        assert schema["$defs"]["ReviewTask"]["properties"]["ai_proposal"]["maxLength"] == 240
+    if provider == "openrouter":
+        assert calls[0]["max_tokens"] == (4000 if action == "analyze" else 2600)
 
 
 def unit(count):

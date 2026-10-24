@@ -7,7 +7,7 @@ from itertools import combinations
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile
 from pydantic import ValidationError
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, select, update
 
 from .commerce import usage_terms
 from .db import DB, Family, Job, Material, ProviderConfig, Session, Usage, User, get_db, now, uid
@@ -1107,6 +1107,13 @@ def scan_data(db, exam, child, *, manage=False):
     job = db.get(Job, state["job_id"]) if state.get("job_id") else None
     if status == "processing" and job and job.status == "failed":
         status = "failed"
+    retry_allowed = state.get("retry_allowed", True)
+    if not retry_allowed and status == "blocked":
+        from .provider_attempts import counts as provider_attempt_counts
+
+        waiting = next((m for m in pages if m.status == "uploaded" and not m.confirmed), None)
+        retry_allowed = bool(waiting and provider_attempt_counts(db, child.id, "extract",
+            [{"id": waiting.id, "revision": waiting.revision}], 0)[1] < 2)
     return {
         "id": row.id if row else None,
         "status": status,
@@ -1117,7 +1124,7 @@ def scan_data(db, exam, child, *, manage=False):
         "can_submit": bool(
             manage
             and status != "processing"
-            and (state.get("retry_allowed", True) or state.get("sources") != sources)
+            and (retry_allowed or state.get("sources") != sources)
             and any(m.status == "uploaded" and not m.confirmed for m in pages)
         ),
     }
@@ -1265,16 +1272,10 @@ def _advance_scan(db, row):
         pages = [db.get(Material, ref["id"]) for ref in state["sources"]]
         waiting = next((m for m in pages if m.status == "uploaded" and not m.confirmed), None)
         if waiting:
-            attempts = db.scalar(
-                select(func.count())
-                .select_from(Job)
-                .where(
-                    Job.child_id == child.id,
-                    Job.kind == "extract",
-                    Job.payload["material_id"].as_string() == waiting.id,
-                    Job.payload["material_revision"].as_integer() == waiting.revision,
-                )
-            )
+            from .provider_attempts import counts as provider_attempt_counts
+
+            _, attempts = provider_attempt_counts(db, child.id, "extract",
+                [{"id": waiting.id, "revision": waiting.revision}], 0)
             if attempts >= 2:
                 state.update(
                     status="blocked",

@@ -1013,3 +1013,48 @@ Die unveränderte Produktionsquellmenge dieses Laufs trägt SHA256
 die Testmenge `3fe33fd84da412c7a32ef4c6da14bbb0b1711d0f3fdf3478d496707512de7189`.
 Vollständige CI, gebundene Builds, Liveprüfung und beobachtete Grenzen werden
 nach tatsächlicher Ausführung im Releasebeleg ergänzt.
+
+
+## Fotoverarbeitung und Arbeitsbesprechung108 · 24.10.2026
+
+1.33.1+108 behält Schema0038 und alle Finanzgrenzen bei. Bild-Base64 ist ein
+Transportformat und kein Texttokenstrom. Die neue optional freigegebene,
+versionierte Bildzulage ist ausdrücklich eine **Betreiberschätzung**, keine
+behauptete modellgenaue Tokenformel oder garantierte Rechnungsobergrenze.
+Ohne exakt zum geprüften Modell und Upstream passendes Profil bleibt der alte
+konservative Pfad erhalten. Tatsächliche OpenRouter-Belege und Notfallstopp bei
+Überschreiten der Reservierung bleiben maßgeblich.
+
+Am24.10.2026 tatsächlich gelesene Primärquellen:
+- https://developers.openai.com/api/docs/guides/images-vision
+- https://developers.openai.com/api/docs/guides/image-cost-calculator
+- https://developers.openai.com/api/docs/models/gpt-6.1-sol
+- https://developers.openai.com/api/docs/models/gpt-6-luna
+- https://openrouter.ai/docs/guides/overview/multimodal/image-understanding
+- https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol/endpoints
+
+Die geladene Bildregel-Tabelle enthält keine explizite GPT-6.1-Sol-/GPT-6-Luna-
+Tokenformel. Die Regel eines anderen Modells wurde deshalb nicht als ihre
+Preisgarantie übernommen. Der aktuelle ausgewählte Azure-Endpunkt weist
+2USD/Million Eingabe- und10USD/Million Ausgabetokens aus; dies sind Metadaten,
+kein praktischer Erkennungsqualitätsnachweis.
+
+Neue OCR-Aufträge verwenden kompakte Metadatenschlüssel und zusammenhängende
+Absatz-/Listenblöcke. Öffentliche und gespeicherte Quellen bleiben im bisherigen
+Format; Inhalt, Einrückung, Bruch-/Relationszeichen und sichtbare falsche
+Schülerantworten werden nicht gekürzt oder fachlich ersetzt. Nachweislich nicht
+versendete, kostenfreie Aufträge zählen nicht als verbrauchter Anbieter-Versuch;
+ihr Verlauf und sämtliche Startzähler bleiben erhalten.
+
+Neue Arbeitsbesprechungen liefern kleine vollständige Aufgabenauszüge statt
+biszuacht langer Aufgaben in einer Antwort. Weitere Auszüge bleiben bewusstes
+Handeln. Die pauschale Tutor-Begrenzung2600 schneidet eine Analyse nicht mehr
+unterhalb ihrer bereits konfigurierten Obergrenze ab. Alte Berichte bleiben lesbar.
+
+107-Abschlussbeleg: exakter Produktstand553a21d92b59a64ca2a9bfa1a72e5306e89942d5,
+CI40096202033 erfolgreich mit2708Backendfällen/36übersprungen und3482Flutterfällen/
+19übersprungen. Gebundener sauberer Build df6cc7f6495ff3a077be4673be770d87;
+öffentliche APK107 und Web-JavaScript stimmen mit den lokal geprüften Artefakten
+überein. Migration0038, fünf eigene Dienste aktiv, bestehende17geschützte
+Konfigurationen und Google-Verifikation erhalten. Kein Nachweis tatsächlicher
+Android-Hintergrundzustellung oder nativer Tastaturbedienung ohne echtes Gerät.

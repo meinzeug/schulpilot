@@ -17,6 +17,20 @@ ROUTING_REASONING_EFFORT = "medium"
 PROMPT_VERSION = "school-20261020-4"
 
 
+class VisionBudget(Strict):
+    """Explicit operator risk allowance, never a claimed provider token rule."""
+
+    version: Literal[1] = 1
+    basis: Literal["operator_estimate"]
+    model: str = Field(min_length=3, max_length=160)
+    upstreams: list[str] = Field(min_length=1, max_length=4)
+    image_tokens: int = Field(ge=1000, le=100_000, strict=True)
+    max_side: int = Field(ge=512, le=3200, strict=True)
+    max_pixels: int = Field(ge=262144, le=16_000_000, strict=True)
+    evidence: str = Field(min_length=20, max_length=500)
+    approved_at: int = Field(ge=1, strict=True)
+
+
 class ModelRoute(Strict):
     model: str = Field(min_length=3, max_length=160, pattern=r"^[a-z0-9_.-]+/[a-z0-9_.:-]+$")
     upstreams: list[str] = Field(min_length=1, max_length=4)
@@ -32,6 +46,7 @@ class ModelRoute(Strict):
     evaluated: bool = False
     under13_approved: bool = False
     verified_at: int = Field(ge=1)
+    vision_budget: VisionBudget | None = None
 
     @model_validator(mode="after")
     def exact_endpoints(self):
@@ -43,6 +58,11 @@ class ModelRoute(Strict):
             raise ValueError("Nur ausdrücklich geprüfte Endpunktkennungen verwenden.")
         if self.under13_approved and (not self.evaluated or not self.privacy_evidence):
             raise ValueError("Kinderroute benötigt Evaluation und dokumentierte Datenschutzprüfung.")
+        if self.vision_budget and (
+            self.vision_budget.model != self.model or self.vision_budget.upstreams != self.upstreams
+            or not self.evaluated or not self.image_capable
+        ):
+            raise ValueError("Die Bildkostenschätzung muss exakt zum geprüften Bildmodell und Endpunkt passen.")
         return self
 
 

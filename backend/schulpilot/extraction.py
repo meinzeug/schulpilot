@@ -11,10 +11,10 @@ import warnings
 from typing import Annotated, Literal
 
 from PIL import Image, UnidentifiedImageError
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, StringConstraints, model_validator
 
 from . import schemas as s
-from .subject_content import SourceBlock
+from .subject_content import SourceAnnotation, SourceBlock, SourceImageRegion
 
 MAX_IMAGE_PIXELS = 16_000_000
 
@@ -27,6 +27,9 @@ Lies die GANZE Seite von oben bis unten, bei Spalten in sinnvoller Lesereihenfol
 Gib zuerst blocks aus: ein Block je sichtbarer Überschrift, Absatz, Listenabschnitt,
 Rechenbeispiel, Tabelle oder beschrifteter Zeichnung. text enthält jeweils den echten Wortlaut,
 alle lesbaren Zeilen dieses Bereichs und alle Zahlen, Brüche, Rechenschritte und Ergebnisse.
+Benachbarte Rechenzeilen, Listenpunkte oder Übungszeilen desselben Bereichs in EINEM
+zusammenhängenden Block mit Zeilenumbrüchen erhalten. Nicht für jede einzelne Zeile
+dieselben Metadaten wiederholen. Dafür keinen Wortlaut kürzen oder auslassen.
 Zeilenumbrüche innerhalb eines Blocks erhalten; Tabellen mit Zeilen und Zelltexten abschreiben.
 Beschriftungen von Skizzen abschreiben, keine Bedeutung der Zeichnung hinzuerfinden.
 Zweidimensionale Formeln symbolgetreu mit Standard-TeX in \\( ... \\) oder \\[ ... \\]
@@ -73,14 +76,45 @@ Eine alleinstehende Überschrift (z.B. 'Probeaufgabe:') ist keine Hausaufgabe.
 Überschrift, Aufgabennummer und zugehörige Rechenzeilen als EINEN zusammenhängenden Eintrag erhalten.
 Probeaufgaben, Beispiele und Unterrichtsübungen ohne ausdrücklichen Hausaufgabenvermerk NICHT in homework aufnehmen.
 Alle Listen/Felder vollständig als JSON nach dem Schema ausgeben. Keine zusätzlichen Quellen erfinden.
+Die kurzen Schema-Schlüssel in blocks sparen nur Transport: k=kind, t=text,
+p=purpose, r=image_region, l=literal_role, a=annotations, u=reading_uncertainties.
+In annotations: k=kind, q=quote, c=color, a=author, e=author_evidence, r=image_region.
+In Bildbereichen: l=left, t=top, r=right, b=bottom. Die Wörter und Formeln in t/q
+bleiben vollständig wörtlich; kurze Schlüssel erlauben KEINE Zusammenfassung.
 purpose klassifiziert nur den sichtbaren Abschnitt: translation nur ausdrücklich bilinguale Wortlisten,
 inflection für Grundform/gebeugte Form derselben Sprache, rule für Grammatik, example für Beispielsätze,
 diagram für Beschriftungen/Zeitachsen, metadata für Seitenfooter/Testhinweise, sonst unknown.
 Bei Unklarheit unknown wählen; die Rolle ist kein Nachweis einer richtigen Übersetzung."""
 
 
+class TranscriptionRegion(SourceImageRegion):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    left: int = Field(ge=0, le=1000, strict=True, alias="l")
+    top: int = Field(ge=0, le=1000, strict=True, alias="t")
+    right: int = Field(ge=0, le=1000, strict=True, alias="r")
+    bottom: int = Field(ge=0, le=1000, strict=True, alias="b")
+
+
+class TranscriptionAnnotation(SourceAnnotation):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    kind: SourceAnnotation.model_fields["kind"].annotation = Field(alias="k")
+    quote: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=500, alias="q")
+    color: SourceAnnotation.model_fields["color"].annotation = Field(default="unknown", alias="c")
+    author: SourceAnnotation.model_fields["author"].annotation = Field(default="unknown", alias="a")
+    author_evidence: str = Field(default="", max_length=160, alias="e")
+    image_region: TranscriptionRegion | None = Field(default=None, alias="r")
+
+
 class TranscriptionBlock(SourceBlock):
     """Literal visible block with a conservative, advisory document role."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    kind: SourceBlock.model_fields["kind"].annotation = Field(alias="k")
+    text: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=12000, pattern=r"\S", alias="t")
+    purpose: SourceBlock.model_fields["purpose"].annotation = Field(default="unknown", alias="p")
+    image_region: TranscriptionRegion | None = Field(default=None, alias="r")
+    literal_role: SourceBlock.model_fields["literal_role"].annotation = Field(default="unknown", alias="l")
+    annotations: list[TranscriptionAnnotation] = Field(default_factory=list, max_length=8, alias="a")
+    reading_uncertainties: list[Annotated[str, Field(min_length=1, max_length=300)]] = Field(default_factory=list, max_length=8, alias="u")
 
 
 class TranscriptionOutput(s.Strict):
