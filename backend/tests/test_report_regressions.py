@@ -2,7 +2,7 @@
 
 import io
 import zipfile
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -15,6 +15,7 @@ from schulpilot.db import (
     Assignment,
     Attempt,
     AttemptAssessment,
+    Child,
     Job,
     LearningUnit,
     Mastery,
@@ -165,10 +166,33 @@ def test_e07_bundles_header_and_formula_and_never_automatically_creates_binding_
         assert db.scalar(select(func.count()).select_from(Job)) == db.scalar(select(func.count()).select_from(Usage)) == 0
 
 
-def test_explicit_task_confirmation_deduplicates_variants_but_keeps_dates_and_provenance(api, household):
+@pytest.mark.parametrize("calendar_day,elapsed_hours", [
+    pytest.param("2026-02-15", 24, id="normal_calendar_day"),
+    pytest.param("2026-03-29", 23, id="spring_dst_23_hours"),
+    pytest.param("2026-10-25", 25, id="fall_dst_25_hours"),
+])
+def test_explicit_task_confirmation_deduplicates_variants_but_keeps_dates_and_provenance(
+    api, household, calendar_day, elapsed_hours
+):
+    from schulpilot.material_tasks import source_day
+
     _, child = household
-    first, rev = task_source(child['id'])
-    second, _ = task_source(child['id'])
+    zone = ZoneInfo("Europe/Berlin")
+    current_date = datetime.fromisoformat(calendar_day).date()
+    next_date = current_date + timedelta(days=1)
+    first_at = datetime.combine(current_date, time(0, 3), zone)
+    second_at = datetime.combine(current_date, time(12), zone)
+    next_at = datetime.combine(next_date, time(0, 3), zone)
+    assert next_at.timestamp() - first_at.timestamp() == elapsed_hours * 3600
+    with DB.begin() as db:
+        record = db.get(Child, child['id'])
+        record.preferences = {**record.preferences, "timezone": zone.key}
+    first, rev = task_source(child['id'], stamp=first_at.timestamp())
+    second, _ = task_source(child['id'], stamp=second_at.timestamp())
+    with DB() as db:
+        record = db.get(Child, child['id'])
+        assert source_day(db, db.get(Material, first), record) == calendar_day
+        assert source_day(db, db.get(Material, second), record) == calendar_day
     body = task_body(rev)
     candidate = api.post(f"/api/materials/{first}/task-preview", json=body).json()['items'][0]['key']
     body['task_decisions'] = [{'key':candidate, 'classification':'homework'}]
@@ -181,8 +205,17 @@ def test_explicit_task_confirmation_deduplicates_variants_but_keeps_dates_and_pr
         assert len(rows) == 1 and rows[0].mandatory and rows[0].origin_kind == 'homework'
         assert {r['id'] for r in rows[0].source_revisions} == {first, second}
         aid = rows[0].id
-    tomorrow, _ = task_source(child['id'], stamp=now()+86400)
+    tomorrow, _ = task_source(child['id'], stamp=next_at.timestamp())
+    with DB() as db:
+        assert source_day(db, db.get(Material, tomorrow), db.get(Child, child['id'])) == next_date.isoformat()
     assert api.put(f"/api/materials/{tomorrow}/confirm", json=body).json()['task_transfer']['added'] == 1
+    with DB() as db:
+        rows = list(db.scalars(select(Assignment)))
+        assert len(rows) == 2
+        assert {r['id'] for r in db.get(Assignment, aid).source_revisions} == {first, second}
+        next_task = next(row for row in rows if row.id != aid)
+        assert next_task.mandatory and next_task.origin_kind == 'homework'
+        assert {r['id'] for r in next_task.source_revisions} == {tomorrow}
     # A correction preserves the original task and links, but withdraws it
     # from new automatic planning until a parent reviews the changed source.
     changed = task_body(rev+1) | {'content':TASK_PAGE+'\nGeänderter Rechenschritt.'}

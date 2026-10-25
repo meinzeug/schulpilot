@@ -1390,3 +1390,32 @@ Die erneuten drei vollständigen Collect-only-Läufe enthalten weiterhin
 vollständig. Ihre nur durch kurze Testnamen geänderten Receipts sind je rund
 812KB groß; gemeinsamer neuer Sammlungsdigest:
 `cda5a790acd9b4ddee7d6effcc2814d0112e1243d769e320c65a6ae758d32911`.
+
+Der dritte112-Lauf40135917063 auf `36bbba3` exportierte erstmals alle drei
+vollständigen lesbaren Backendprotokolle samt exakt übereinstimmenden
+Sammlungsbelegen. Gruppen1/2 bestanden1263/855Fälle mit13/14Skips. Gruppe0
+stoppte nach754Erfolgen/14Skips an der kalendarischen Aufgaben-Deduplikation;
+295Fälle blieben durch den frühen Abbruch ungetestet. Am tatsächlichen
+CI-Zeitpunkt2026-10-24T22:03Z lag Berlin bereits am25.Oktober00:03. Wegen der
+Zeitumstellung ist24Stunden später dort weiterhin der25.Oktober23:03. Die
+Produktlogik dedupliziert diesen gleichen lokalen Tag korrekt. Der Test ersetzt
+Sekundenarithmetik für »morgen« durch ausdrückliche lokale Kalenderdaten und
+prüft normale,23- und25-Stundentage. Die vollständige Backendmatrix behält
+25Minuten je Gruppe und führt künftig auch nach einem Fehler alle ausgewählten
+Tests aus, damit keine Folgefehler erst in weiteren kompletten Läufen sichtbar
+werden. Ein Sammlungsbeleg allein wird weiterhin nicht als Testerfolg gewertet.
+Der ursprüngliche Zeitumstellungsfehler wurde mit ausschließlich im Testmodul
+fixierter Zeit exakt reproduziert:1Fehler in16,96Sekunden. Die drei neuen
+Kalenderfälle bestanden anschließend auf isoliertemSQLite:3/3 in46,39Sekunden.
+Deduplication am gleichen Tag, getrennte Aufgaben am Folgetag, Quellenherkunft
+und die bestehende409-Sperre nach Quellkorrektur werden weiterhin geprüft.
+Danach wurden ausschließlich zwei Importzeilen sortiert; sämtliche
+Testfunktions- und Nichtimport-ASTs blieben identisch. Der ausgeführte und der
+abschließende Dateihash sind deshalb ausdrücklich getrennt dokumentiert;
+die kommende vollständige CI prüft den abschließenden Stand. Produktcode und
+Migrationen bleiben bytegleich zum gebauten112-Fachstand.
+Die abschließenden drei echten Collect-only-Läufe enthalten3211Fälle in
+167Dateien, verteilt auf1066/1276/869; Auswahlmengen disjunkt und vollständig.
+Quelleninventar und Dateihashes blieben während aller drei Sammlungen gleich.
+Gemeinsamer Sammlungsdigest:
+`21a1006356e0c76c7ae7da4c34a126940fc67ed050c8e99c0f89e82dcd41a55c`.

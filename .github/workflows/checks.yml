@@ -27,7 +27,7 @@ jobs:
       - run: python -m pip install -r backend/requirements-dev.lock
       - run: ruff check backend deploy scripts
       - name: Run complete backend partition
-        run: python scripts/run_backend_shard.py --shard-index ${{ matrix.shard }} --shard-count 3 --receipt artifacts/backend-shard-${{ matrix.shard }}.json -- -q -x
+        run: python scripts/run_backend_shard.py --shard-index ${{ matrix.shard }} --shard-count 3 --receipt artifacts/backend-shard-${{ matrix.shard }}.json -- -q
       - name: Record collection and partition
         if: always()
         run: cat artifacts/backend-shard-${{ matrix.shard }}.json
