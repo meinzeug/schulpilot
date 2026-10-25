@@ -1701,3 +1701,32 @@ prüfen diese Hilfewunschgründe jeweils mit zwei vorhandenen Fehlversuchen,
 einer neuen künstlichen Antwort, normaler Rückmeldung und dem Wechsel zur
 zweiten Aufgabe. Es entsteht dabei kein Planauftrag; der gesonderte bewusste
 Planstart aus dem Hilfemenü bleibt separat geprüft.
+
+### Aufgabenprüfung und tatsächlich bedienbarer Grafikzoom (25.10.2026, 1.36.9+121)
+
+Die [Vorprüfung](QA_100_2026_10_25.md) trennt111 neue künstliche
+Regressionsfälle von40 lesenden Prüfpunkten am ausdrücklich freigegebenen
+Produktionsbestand.150 der151 unterschiedlichen Fälle bestanden; ein
+unabhängiges mathematisches Orakel bleibt wegen nicht erkannter
+Ganzfragenform offen. Die jeweils getrennten Schlüssel-, Gegenantwort- und
+Grafikreferenzprüfungen dieser Frage bestanden. Aus einem vorhandenen
+Lösungsschlüssel wird keine allgemeine fachliche Zertifizierung abgeleitet.
+
+Der frische gemeinsame Flutterlauf bestand mit81 Fällen:31 neue Grafikfälle,
+40 neue Bedienabläufe und zehn bestehende Zoomregressionen. Weitere40 neue
+Backendfälle bestanden in regulär isolierten Testdatenbanken, einschließlich
+vier tatsächlicher Antwort-/Idempotenzendpunktprüfungen. Der lesende
+Produktionshelfer verarbeitet private Quellen nur im RAM, liest keine
+Kinderantworttexte und ruft keinen Anbieter auf. Erst die später ausdrücklich
+erteilte Freigabe erlaubt einen getrennten Durchlauf mit echten gespeicherten
+Testversuchen; die bisherigen Tests werden nicht dafür umdeklariert.
+
+Drei tatsächliche Fehler wurden belegt und gezielt korrigiert: Der Zoom
+schließt nun auch bei einem Sitzungstokenwechsel; Originalvergleiche erhalten
+bei320Pixeln und200Prozent Schriftgröße eine responsive Breite. Die echte
+Browserprobe zeigte zusätzlich einen sofort wieder geschlossenen Dialog:
+Der Originalvergleich entfernte auf der vom eigenen Zoom verdeckten Route
+seinen Zoomknopf und zerstörte damit dessen Dialogzustand. Der Knopf bleibt
+montiert, während Fokus-, Zeiger-, Routen- und Sitzungsprüfungen erhalten
+bleiben. Ein zusätzlicher Regressionstest verwendet den tatsächlichen
+SubjectPresentation-Pfad einschließlich Fremdüberdeckung und Sitzungsentzug.

@@ -248,7 +248,9 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
         child: LearningGraphicFrame(
           key: const ValueKey('language-comparison'),
           title: title,
-          action: active ? widget.action : null,
+          // Its own zoom covers this route; keep the launcher state mounted.
+          // IgnorePointer/ExcludeFocus and owner/route guards still block it.
+          action: widget.action,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

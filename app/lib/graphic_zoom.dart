@@ -27,12 +27,14 @@ class GraphicZoom extends StatefulWidget {
 class _GraphicZoomState extends State<GraphicZoom> {
   late Json? owner = widget.state.user;
   late String? family = widget.state.familyId;
+  late String? token = widget.state.api.token;
   DialogRoute<void>? view;
   bool get current =>
       mounted &&
       owner != null &&
       identical(widget.state.user, owner) &&
-      widget.state.familyId == family;
+      widget.state.familyId == family &&
+      widget.state.api.token == token;
   void closeView() {
     final old = view;
     view = null;
@@ -66,6 +68,7 @@ class _GraphicZoomState extends State<GraphicZoom> {
       old.state.removeListener(changed);
       owner = widget.state.user;
       family = widget.state.familyId;
+      token = widget.state.api.token;
       widget.state.addListener(changed);
     }
   }
@@ -149,16 +152,19 @@ class _GraphicZoomState extends State<GraphicZoom> {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final responsive = {
-                      'lab',
-                      'scene',
-                      'process_graph',
-                      'process_cycle',
-                      'function_graph',
-                      'data_plot',
-                      'logic_table',
-                      'text_probe',
-                    }.contains(block['kind']);
+                    final responsive =
+                        {
+                          'lab',
+                          'scene',
+                          'process_graph',
+                          'process_cycle',
+                          'function_graph',
+                          'data_plot',
+                          'logic_table',
+                          'text_probe',
+                        }.contains(block['kind']) ||
+                        (block['kind'] == 'forms' &&
+                            block['variant'] == 'classification');
                     final width = responsive
                         ? constraints.maxWidth.clamp(0.0, 600.0)
                         : 600.0;
