@@ -324,6 +324,56 @@ void main() {
     },
   );
 
+  for (final reason in [
+    'child_requested_smaller_step',
+    'change_explanation',
+    'denominators_added',
+  ]) {
+    testWidgets(
+      'An optional $reason plan cannot replace checking an existing answer',
+      (tester) async {
+        final server = GuidedRound();
+        server.session['can_request_decision'] = true;
+        server.session['action'] = {
+          'kind': 'visual_example',
+          'reason_code': reason,
+          'title': 'Ein anderer Lernweg könnte helfen',
+          'resources': <Json>[],
+        };
+        final question = (server.value['questions'] as List).first as Json;
+        question['attempts'] = <Json>[
+          for (var index = 0; index < 2; index++)
+            {'answer': 'Hund', 'outcome': 'incorrect', 'assisted': false},
+        ];
+        final originalAttempts = List<Json>.from(question['attempts'] as List);
+        await room.openRound(tester, server);
+        final primary = find.byKey(const ValueKey('learning-primary-action'));
+        expect(find.text('Antwort prüfen'), findsOneWidget);
+        expect(tester.widget<FilledButton>(primary).onPressed, isNull);
+        expect(substantivePosts(server), isEmpty);
+        await room.tapText(tester, 'Katze');
+        expect(tester.widget<FilledButton>(primary).onPressed, isNotNull);
+        await room.tapText(tester, 'Antwort prüfen');
+        expect(server.answers, 1);
+        expect(server.planRequests, isEmpty);
+        expect(server.controllerActions, isEmpty);
+        expect((question['attempts'] as List).take(2), originalAttempts);
+        expect(substantivePosts(server).toList(), [
+          'POST /api/units/unit/questions/cat/answer',
+        ]);
+        expect((question['attempts'] as List), hasLength(3));
+        expect(find.text('Weiter'), findsOneWidget);
+        await room.tapText(tester, 'Weiter');
+        expect(find.text('Was bedeutet dog?'), findsOneWidget);
+        expect(find.text('Antwort prüfen'), findsOneWidget);
+        expect(tester.widget<FilledButton>(primary).onPressed, isNull);
+        expect(server.planRequests, isEmpty);
+        expect(server.answers, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'A model plan request requires one deliberate start and opens saved status',
     (tester) async {
@@ -335,10 +385,27 @@ void main() {
         'title': 'Ein anderer Lernweg könnte helfen',
         'resources': <Json>[],
       };
+      final question = (server.value['questions'] as List).first as Json;
+      question['shown_hints'] = [
+        {'text': 'Eine Katze miaut.', 'level': 1},
+      ];
+      question['hints_used'] = 1;
       await openWithPreparationRoute(tester, server);
-      expect(find.text('Passenden Lernweg finden'), findsOneWidget);
+      expect(find.text('Antwort prüfen'), findsOneWidget);
+      expect(find.text('Passenden Lernweg finden'), findsNothing);
       expect(substantivePosts(server), isEmpty);
-      await room.tapText(tester, 'Passenden Lernweg finden');
+      await tester.ensureVisible(find.text('Hilfe'));
+      await tester.tap(find.text('Hilfe'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Einen passenden Lernweg vorbereiten'), findsOneWidget);
+      expect(server.planRequests, isEmpty);
+      await tester.ensureVisible(
+        find.text('Einen passenden Lernweg vorbereiten'),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Einen passenden Lernweg vorbereiten'));
+      await tester.pumpAndSettle();
       expect(find.text('Gespeicherte Planvorbereitung'), findsOneWidget);
       expect(server.planRequests, hasLength(1));
       expect(server.planRequests.single['revision'], 7);

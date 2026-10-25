@@ -1248,6 +1248,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ? 'Weiter'
           : 'Noch einmal versuchen';
       action = acknowledgeFeedback;
+    } else if (nextAdaptive == 'model_plan' && question != null) {
+      // A suggested additional plan never blocks an existing prepared answer.
+      // Deliberately requesting that plan remains available under more help.
+      label = 'Antwort prüfen';
+      enabled = answerReady(question);
+      action = () => submitAnswer(u, question);
     } else if (nextAdaptive != null && u['status'] != 'completed') {
       label = switch (nextAdaptive) {
         'review_prerequisite' => 'Zwischenschritt prüfen',

@@ -1683,3 +1683,21 @@ KI-Plan, keine tatsächlich ausstehende Bewertung dieser Antworten. Achtzehn
 neue Fälle und zweiundzwanzig bestehende Lernplan-/Unsicherheitsfälle bestanden
 in isolierten Testdatenbanken. Die Produktionsprüfung übermittelte keine neue
 Antwort und führte keine Neubewertung oder weitere KI-Erzeugung aus.
+
+### Gespeicherte Aufgabe vor optionalem KI-Plan (25.10.2026, 1.36.8+120)
+
+Der anschließende Live-Nachtest zeigte eine zweite Hürde: Nach Wegfall der
+falschen Klärsperre war die vorhandene Auswahlaufgabe wieder sichtbar, aber
+eine allgemeine Hilfewunschempfehlung ersetzte „Antwort prüfen“ durch
+„Passenden Lernweg finden“. Der Server benötigte dafür keinen weiteren
+KI-Auftrag. Die gemeinsame Web-/Android-Oberfläche bietet bei einer bereits
+vorhandenen Frage nun die reguläre Antwortprüfung an; sie wird erst nach
+vollständiger eigener Eingabe freigegeben. Ein neuer Lernplan bleibt bewusst
+über die Hilfe erreichbar. Echte gespeicherte Pflichtschritte und das
+Quittieren der letzten Rückmeldung behalten ihren Vorrang.
+
+Der gezielte gemeinsame Widgetlauf bestand mit 28 Fällen. Drei Regressionen
+prüfen diese Hilfewunschgründe jeweils mit zwei vorhandenen Fehlversuchen,
+einer neuen künstlichen Antwort, normaler Rückmeldung und dem Wechsel zur
+zweiten Aufgabe. Es entsteht dabei kein Planauftrag; der gesonderte bewusste
+Planstart aus dem Hilfemenü bleibt separat geprüft.
