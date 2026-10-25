@@ -534,7 +534,7 @@ void main() {
       await settleUi(tester);
       await reload(tester);
       expect(server.submissions, 1);
-      await tapText(tester, 'Erneut vorbereiten');
+      await tapText(tester, 'Lesen fortsetzen');
       expect(server.submissions, 2);
       expect(server.keys.toSet(), hasLength(2));
       server.preparation = {
@@ -545,7 +545,7 @@ void main() {
       };
       await tester.pump(const Duration(seconds: 3));
       await settleUi(tester);
-      expect(find.text('Erneut vorbereiten'), findsNothing);
+      expect(find.text('Lesen fortsetzen'), findsNothing);
       await reload(tester);
       expect(server.submissions, 2);
       expect(server.starts, 0);

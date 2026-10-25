@@ -98,6 +98,9 @@ def _closure(rows, targets):
 def with_learning_entry(db, child, payload, sources, *, groups=None, enabled=False):
     if not enabled:
         return payload
+    from .notebook_practice import requested_count
+
+    notebook_count = requested_count(payload)
     if not sources and isinstance(payload.get("goal"), dict):
         return payload  # Existing explicit parent goal, no invented photo proof.
     if any(material.child_id != child.id for material in sources):
@@ -136,7 +139,7 @@ def with_learning_entry(db, child, payload, sources, *, groups=None, enabled=Fal
                     if value:
                         probes.append(value)
                         references[identifier] = competences.resolve_reference(identifier, competences.VERSION)
-                    if len(probes) >= (2 if group["id"] is not None else 3):
+                    if len(probes) >= (2 if group["id"] is not None else min(3, notebook_count - 1) if notebook_count else 3):
                         break
         for identifier in selected:
             allowed[identifier] = {"id": identifier, "subject": group["subject"]}
@@ -172,6 +175,9 @@ def bind_entry_schema(schema, payload):
     entry = payload.get("learning_entry")
     if not entry:
         return
+    from .notebook_practice import requested_count
+
+    notebook_count = requested_count(payload)
     plans = {item["group_id"]: item for item in entry["units"]}
     units = schema["properties"].get("units", {}).get("items", {}).get("anyOf", [schema])
     for definition in units:
@@ -181,7 +187,7 @@ def bind_entry_schema(schema, payload):
             continue
         definition["properties"]["subject"]["enum"] = [plan["subject"]]
         questions = definition["properties"]["questions"]
-        count = questions.get("maxItems", 4) if group is not None else min(5, max(4, len(plan["probes"]) + 2))
+        count = questions.get("maxItems", 4) if group is not None else notebook_count or min(5, max(4, len(plan["probes"]) + 2))
         questions.update(minItems=count, maxItems=count)
         formats = _branches(schema, questions["items"])
         branches = []
@@ -210,6 +216,9 @@ def validate_entry_output(payload, data):
     entry = payload.get("learning_entry")
     if not entry:
         return
+    from .notebook_practice import requested_count
+
+    notebook_count = requested_count(payload)
     plans = {item["group_id"]: item for item in entry["units"]}
     for unit in data.get("units") or [data]:
         plan = plans.get(unit.get("group_id"))
@@ -218,7 +227,7 @@ def validate_entry_output(payload, data):
         questions = unit["questions"]
         count = len(questions)
         if unit["subject"] != plan["subject"] or (unit.get("group_id") is None
-                and count != min(5, max(4, len(plan["probes"]) + 2))):
+                and count != (notebook_count or min(5, max(4, len(plan["probes"]) + 2)))):
             raise ValueError("Fach oder Umfang des Lernstarts wurde verändert.")
         expected = _specs(plan, count)
         if not 2 <= count <= 5 or {q["id"] for q in questions} != {q["id"] for q in expected}:

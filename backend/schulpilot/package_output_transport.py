@@ -57,6 +57,19 @@ def _same(a, b):
     return _json(a) == _json(b)
 
 
+def _enum_same(value, allowed):
+    # JSON Schema equates finite JSON numbers (1 and1.0), including inside
+    # numeric parameter arrays. Do not normalize data/constants or relax the
+    # separate strict integer/Choice type check; bool is never a number.
+    if isinstance(value, list) and isinstance(allowed, list):
+        def number(item):
+            return type(item) is int or type(item) is float and math.isfinite(item)
+
+        if all(number(item) for item in [*value, *allowed]):
+            return len(value) == len(allowed) and all(a == b for a, b in zip(value, allowed, strict=True))
+    return _same(value, allowed)
+
+
 @dataclass(frozen=True)
 class Binding:
     canonical_schema: dict
@@ -115,7 +128,7 @@ class Binding:
             raise ValueError("Ungültiger Pakettransport-Werttyp.")
         if "const" in node and not _same(value, node["const"]):
             raise ValueError("Pakettransport widerspricht einer Schemakonstante.")
-        if "enum" in node and not any(_same(value, item) for item in node["enum"]):
+        if "enum" in node and not any(_enum_same(value, item) for item in node["enum"]):
             raise ValueError("Pakettransport verwendet keinen erlaubten Schemawert.")
         if expected == "object" or "properties" in node:
             if not isinstance(value, dict):

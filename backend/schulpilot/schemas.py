@@ -350,10 +350,28 @@ class CoachingOutput(CoachingReviewOutput):
     learning_goals: list[LearningGoal] = Field(min_length=1, max_length=6)
 
 
+class NotebookPracticeSource(Strict):
+    id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    revision: int = Field(strict=True, ge=1)
+
+
 class UnitCreate(Strict):
     material_id: str | None = None
     assignment_id: str | None = None
     review_of: str | None = None
+    notebook_sources: list[NotebookPracticeSource] | None = Field(default=None, min_length=1, max_length=12)
+    question_count: int | None = Field(default=None, strict=True, ge=2, le=5)
+
+    @model_validator(mode="after")
+    def notebook_selection(self):
+        if self.notebook_sources is not None:
+            if not self.material_id or self.assignment_id or self.review_of:
+                raise ValueError("Die Heftauswahl gehört nur zu einer neuen Runde aus der geöffneten Seite.")
+            if self.question_count is None:
+                self.question_count = 2
+        elif self.question_count is not None:
+            raise ValueError("Bitte für den gewünschten Aufgabenumfang ausdrücklich Heftseiten auswählen.")
+        return self
 
 
 class AnswerRequest(Strict):

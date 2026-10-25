@@ -42,6 +42,55 @@ bool _sameExplanationValue(Object? left, Object? right) {
   return left == right;
 }
 
+// A display-only paragraph projection. Keep the saved text, quotes and spoken
+// text unchanged; this does not invent explanation steps or reading evidence.
+String? _numberedExplanationParagraphs(String text) {
+  if (text.contains('`') || text.contains('|') || text.contains('\t')) {
+    return null;
+  }
+  final formulas = formulaSegments(text);
+  final quotes = RegExp(r'"[^"\n]*"|„[^“]*“|“[^”]*”|«[^»]*»')
+      .allMatches(text)
+      .toList();
+  final markers =
+      RegExp(
+        r'(^|[ \t\r\n])([1-9][0-9]?)([.)])[ \t]+(?=[\p{L}])',
+        unicode: true,
+      ).allMatches(text).where((match) {
+        final start = match.start + match[1]!.length;
+        return !formulas.any(
+              (part) => start >= part.start && start < part.end,
+            ) &&
+            !quotes.any((part) => start >= part.start && start < part.end);
+      }).toList();
+  if (markers.length < 2 || markers.first[2] != '1') return null;
+  final firstStart = markers.first.start + markers.first[1]!.length;
+  final prefix = text.substring(0, firstStart).trim();
+  if (prefix.isNotEmpty && !prefix.endsWith(':') && !prefix.endsWith('?')) {
+    return null;
+  }
+  for (var index = 0; index < markers.length; index++) {
+    if (markers[index][2] != '${index + 1}' ||
+        markers[index][3] != markers.first[3]) {
+      return null;
+    }
+  }
+  final display = StringBuffer();
+  var offset = 0;
+  var changed = false;
+  for (final marker in markers.skip(prefix.isEmpty ? 1 : 0)) {
+    final start = marker.start + marker[1]!.length;
+    display.write(text.substring(offset, start));
+    if (!RegExp(r'\n[ \t\r]*\n[ \t\r]*$').hasMatch(text.substring(0, start))) {
+      display.write('\n\n');
+      changed = true;
+    }
+    offset = start;
+  }
+  display.write(text.substring(offset));
+  return changed ? display.toString() : null;
+}
+
 /// The same saved explanation, presented in readable steps, never new AI text.
 class LearningExplanation extends StatefulWidget {
   final String text;
@@ -330,7 +379,11 @@ class _LearningExplanationState extends State<LearningExplanation>
           prompt: widget.prompt,
           reader: LearningReader(
             widget.text,
-            visibleText: showAll ? widget.text : chunks[current],
+            visibleText:
+                _numberedExplanationParagraphs(
+                  showAll ? widget.text : chunks[current],
+                ) ??
+                (showAll ? widget.text : chunks[current]),
             state: widget.state,
             sourceKey: widget.sourceKey ?? (widget.text, widget.prompt),
             isCurrent: widget.isCurrent,
@@ -479,6 +532,7 @@ class _LearningExplanationState extends State<LearningExplanation>
           prompt: widget.prompt,
           reader: LearningReader(
             selected['text'],
+            visibleText: _numberedExplanationParagraphs(selected['text']),
             state: widget.state,
             sourceKey: (widget.sourceKey, selected['id']),
             isCurrent: widget.isCurrent,

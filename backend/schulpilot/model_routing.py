@@ -118,19 +118,43 @@ def enabled(config):
     return config.provider == "openrouter" and bool((config.routing_policy or {}).get("enabled"))
 
 
-def extraction_failed(db, child_id, material_id):
-    """Only an actual bounded-output failure on this exact source revision.
+_EXTRACTION_LENGTH_MESSAGE = (
+    "Die KI hat die begrenzte Ausgabelänge erreicht. Die unvollständige Antwort wurde verworfen; "
+    "kein automatischer Wiederholungsversuch."
+)
 
-    This selects the next explicit request; it never retries or calls a model.
+
+def extraction_failed(db, child_id, material_id, *, material_revision=None):
+    """Recorded need for the next request, never a retry or provider call.
+
+    Keep exact-page retries. Other notebook pages may share a length observation
+    only within the same child's actual photo day and while its failed source
+    still exists there at the recorded revision. A corrected/deleted/moved source
+    cannot supply that observation; unrelated pages need not remain unchanged.
     """
     material = db.get(Material, material_id) if material_id else None
-    if not material or material.child_id != child_id:
+    if (not material or material.child_id != child_id or (material_revision is not None
+            and (type(material_revision) is not int or material_revision != material.revision))):
         return False
-    return db.scalar(select(Job.id).where(
+    if db.scalar(select(Job.id).where(
         Job.child_id == child_id, Job.kind == "extract", Job.status == "failed",
         Job.payload["material_id"].as_string() == material.id,
         Job.payload["material_revision"].as_integer() == material.revision,
         Job.error.contains("begrenzte Ausgabelänge"),
+    ).limit(1)) is not None:
+        return True
+    if material.purpose != "notebook" or not material.school_day_id:
+        return False
+    return db.scalar(select(Job.id).join(Material,
+        Material.id == Job.payload["material_id"].as_string()).join(SchoolDay,
+        SchoolDay.id == Material.school_day_id).where(
+        Job.child_id == child_id, Job.kind == "extract", Job.status == "failed",
+        Job.error == _EXTRACTION_LENGTH_MESSAGE,
+        Job.payload["school_day_id"].as_string() == material.school_day_id,
+        Job.payload["material_revision"].as_integer() == Material.revision,
+        Material.child_id == child_id, Material.purpose == "notebook",
+        Material.school_day_id == material.school_day_id,
+        SchoolDay.child_id == child_id,
     ).limit(1)) is not None
 
 
@@ -175,7 +199,8 @@ def features_for(db, child_id, job_id):
         "errors": sum(a.outcome == "incorrect" for a in attempts),
         "uncertain": sum(a.outcome == "uncertain" for a in attempts),
         "poor_image": any(m.uncertainties or m.quality_warnings or m.legibility in ("partial", "unreadable") for m in sources),
-        "extraction_failed": extraction_failed(db, child_id, material.id) if material else False,
+        "extraction_failed": extraction_failed(db, child_id, material.id,
+            material_revision=data.get("material_revision")) if material else False,
         "sources_known": bool(ids) and len(sources) == len(ids),
         "source_count": len(sources),
         "source_chars": sum(len(m.content or "") for m in sources),

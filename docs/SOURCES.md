@@ -1730,3 +1730,107 @@ seinen Zoomknopf und zerstörte damit dessen Dialogzustand. Der Knopf bleibt
 montiert, während Fokus-, Zeiger-, Routen- und Sitzungsprüfungen erhalten
 bleiben. Ein zusätzlicher Regressionstest verwendet den tatsächlichen
 SubjectPresentation-Pfad einschließlich Fremdüberdeckung und Sitzungsentzug.
+
+### Allgemeine Heft-Runden: Grafikvertrag und Wiederholungen (25.10.2026, 1.36.10+122)
+
+Der ausdrücklich beauftragte Live-Durchlauf mit gespeicherten Testversuchen
+ist von der vorstehenden künstlichen und lesenden Vorprüfung getrennt.
+Eine vollständige Runde zählt erst nach allen gespeicherten Antworten und
+sichtbarem Ergebnis. Das freigegebene Testbudget beträgt 15 USD; bestehende
+Kontolimits werden dafür nicht verändert. Geschützte, nicht eingecheckte
+Belege halten Ausgangsbestand, tatsächliche Runden und Anbieterabrechnung
+fest. Fehlgeschlagene Vorbereitungen zählen nicht als absolvierte Runden.
+
+Nach der ersten vollständig abgeschlossenen Heft-Runde scheiterte deren
+bewusst angeforderte Anschlussübung an `fraction_bounds` im ersten
+Erklärgrafikblock. Der allgemeine Unit-/CoachPractice-Anfrageweg enthielt
+nicht die strukturellen Grafikbindungen des Paketwegs. Der gemeinsame
+Binder bindet jetzt auch dort zulässige Spezialfelder, Varianten und
+Parameterformen vor dem Anbieteraufruf. Teilflächen dürfen nur ganzzahlige
+Paare mit 0 ≤ n ≤ d ≤ 24 und d≥1 verwenden. Unechte Brüche bleiben als Aufgaben
+zulässig; sie werden nicht als unmögliche Teilfläche ausgegeben. Aufgaben,
+Lösungsschlüssel und nachgelagerte unabhängige Prüfungen bleiben erhalten.
+Der Pakettransport berücksichtigt ausschließlich bei numerischen Array-Enums
+die JSON-Schema-Gleichheit von 1 und 1.0; boolesche Werte und skalare
+Integer-Auswahlantworten bleiben streng getrennt.
+
+Eine zusätzliche isolierte Reproduktion zeigte, dass bewusst gestartete
+allgemeine Materialrunden alte Fragen mit neuen IDs erneut speichern konnten.
+Der Worker übergibt nun höchstens 80 vollständige frühere Fragen innerhalb
+von 12000 Zeichen als Ausschlusskontext. Vor Veröffentlichung prüft er unter
+der bestehenden Sperre die vollständige frische Historie des Kindes und der
+passenden Quellenrevisionen einschließlich anderer fachgleicher Tagesetappen.
+NFC-/Leerraumnormalisierung bewahrt Großschreibung; eng erkannte mathematische
+Bruchaufgaben erhalten zusätzlich ihren bestehenden Zahlensignaturvergleich.
+Die Prüfung verändert keine früheren Antworten und erzeugt keine Ersatzfrage,
+automatische Wiederholung oder zusätzliche Reservierung.
+
+Die gemeinsame Oberfläche unterscheidet bei gescheiterter Anschlussübung
+sichtbar zwischen abgeschlossener Runde und noch nicht verfügbarer neuer
+Übung. Antworten und Rückblick bleiben gespeichert; vorhandene Runden sind
+direkt erreichbar. Interne JSON-Prüfpfade verschwinden aus der Kinderansicht.
+Der separate Fortschrittslink heißt eindeutig „Lernstand aller Fächer“.
+
+Weitere Live-Beobachtungen ergänzen diese Arbeit: Eindeutige Fragen nach
+Zähler oder Nenner behandeln eine falsche numerische Antwort nicht länger
+pauschal als unbekannte freie Prosa. Die neue Methode `fraction_components_v1`
+erkennt ausschließlich vollständige begrenzte Frageformen zu einem sichtbaren
+Bruch und prüft den gespeicherten Schlüssel unabhängig vor dem Aliasabgleich.
+Ein widersprüchlicher Schlüssel bleibt unklar; historische Versuche werden
+nicht nachträglich bewertet oder umgeschrieben.
+
+`explanation-guidance-1` wird nach allen kompakten Prompt-Ersetzungen auf
+neu erzeugte Erklärungen angewendet. Entscheidend ist der tatsächlich
+sichtbare Schritttext: einfache Sprache zur konfigurierten Klassenstufe,
+erklärte Fachwörter, konkretes Beispiel, Bedeutung der Grafik und eine passende
+Merkhilfe. Einführung und geprüfte Aufgaben müssen dieselben Regeln behandeln.
+Fragen nach unsichtbaren alten Wahr-/Falsch-Markierungen werden ausdrücklich
+vermieden. Die Policy erhöht keine Schritte, Tokens oder Reservierungen und
+schreibt beim Öffnen keine gespeicherten Inhalte um. Vergleichskarten heißen
+„Beispiel“; eindeutig nummerierte Gedanken erhalten nur in der sichtbaren
+Leseprojektion Absatzgrenzen. Originaltext, Zitate und Vorlesen bleiben erhalten.
+Transporttests sind kein Beweis für didaktische Verständlichkeit; diese wird
+zusätzlich an tatsächlich erzeugten Inhalten im Browser geprüft.
+
+Der Heftblätterer bietet einen bewussten Einstieg in neue Übungen zur
+geöffneten Seite. Weitere bestätigte Heftseiten desselben stabilen Fachs lassen
+sich optional hinzufügen, die Aufgabenzahl wird individuell innerhalb einer
+kleinen Runde eingegeben. Der bestehende Unit-Auftrag erhält die genaue
+Seiten-/Revisionsauswahl; seine normale Reservierung, Idempotenz, Diagnose,
+Referenzsuche und Veröffentlichung bleiben in Gebrauch. Alte Tagesseiten
+werden nicht still zusätzlich ausgewählt. Die Auswahl ist auf zwölf Seiten
+und 60000 Zeichen begrenzt; Kinder-, Familien-, Fach-, Quellen- und
+Versuchsbindungen bleiben serverseitig. Die anschließende Statusseite
+beobachtet nur den einen ausdrücklich gestarteten Auftrag.
+
+Quellenabhängige Aufgaben benötigen erreichbare Originale. Der neue
+Lesedialog aus Hilfe und Rundenübersicht hält die Aufgabenansicht montiert.
+Revisionierte reine GETs prüfen Einheit, Kind, bestätigte Quelle und
+unveränderte Version auch vor der privaten Bildauslieferung. Veraltete oder
+fehlende Quellen werden kenntlich behandelt. Lesen erzeugt keine Antwort,
+Lernzeitbuchung, Quellenbestätigung oder KI-Anfrage.
+
+Bei der aktuellen Fotoabgabe scheiterten zwei Erkennungen an der
+Ausgabelänge. Die vorhandene Vorauswahl berücksichtigte den dokumentierten
+Fehler nur für dieselbe Seite und schickte die nächste Seite derselben Abgabe
+erneut über die kurze Route. Sie berücksichtigt nun einen exakt gebundenen
+Längenfehler einer weiterhin aktuellen Notebookquelle desselben Kindes und
+Schultags vor der nächsten Reservierung. Die bereits konfigurierte stärkere
+Route wird bewusst vor dem Aufruf ausgewählt; es entstehen kein automatischer
+Wiederholungsversuch, Anbieterfallback oder neues Limit. Quellenänderung,
+Entfernen, Umhängen und fremde Kinder beziehungsweise Tage invalidieren den
+Beleg. Teilweise Abschriften behalten ihre Unsicherheiten. Die Oberfläche
+unterscheidet unterbrochenes Lesen von gescheiterter Aufgabenerzeugung und
+zeigt bereits gespeicherte Abschriften weiter an.
+
+Abnahme der Oberfläche vor Release122: ein zusammenhängender Lauf mit 201
+Flutter-Widgetfällen bestand einschließlich Heftauswahl, unverändertem
+Idempotenzschlüssel beim bewussten Abgleich, Quellenlesedialog und
+Erkennungsstatus bei 320/390 Pixeln sowie großer Schrift. Dabei gefundener
+Pager-Überlauf wurde behoben. Die Analyse der geänderten Dart-Dateien und
+Ruff für Backend, Deployment und Skripte waren fehlerfrei. Diese künstlichen
+Regressionen zählen nicht als echte Kinder-Lernrunden. Die ausdrücklich
+beauftragte Live-Prüfung bleibt davon getrennt dokumentiert; bisher fünf
+vollständige allgemeine Heft-Lernrunden sind kein Abschluss der verlangten
+100 Runden. Nicht als lesbar erkannte Fotos zählen nur als verarbeitet,
+niemals automatisch als vollständig abgeschrieben oder bestätigt.

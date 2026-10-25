@@ -536,6 +536,10 @@ def enqueue(db, p, child, kind, payload, idempotency, *, commit=True):
     # Use the same lock order as the multi-page wizard and its worker.
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     payload = dict(payload)
+    if payload.get("notebook_practice"):
+        from .notebook_practice import guard
+
+        guard(db, child, payload)
     if payload.get("material_id"):
         payload["material_revision"] = db.get(Material, payload["material_id"]).revision
     if payload.get("assignment_id"):
@@ -606,10 +610,20 @@ def create_unit(
     p=Depends(authenticated),
     db=Depends(get_db),
     capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities"),
+    account: str = Header(default="", alias="X-Schulpilot-Account"),
 ):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
+    if data.notebook_sources is not None and account != p.user.id:
+        raise HTTPException(409, "Der angemeldete Zugang wurde geändert. Bitte neu laden.")
     material_id = data.material_id
     review_sources = []
+    notebook_selection = None
+    if data.notebook_sources is not None:
+        from .notebook_practice import selection
+
+        notebook_selection = selection(db, child, material_id,
+            [ref.model_dump() for ref in data.notebook_sources], data.question_count)
+        review_sources = notebook_selection["sources"]
     if data.assignment_id:
         assignment = db.get(Assignment, data.assignment_id)
         if not assignment or assignment.child_id != child.id:
@@ -700,6 +714,8 @@ def create_unit(
         payload["assignment_id"] = previous.assignment_id
     if review_sources:
         payload["sources"] = review_sources
+    if notebook_selection:
+        payload["notebook_practice"] = notebook_selection["notebook_practice"]
     return enqueue(db, p, child, "unit", payload, idempotency)
 
 

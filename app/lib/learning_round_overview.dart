@@ -14,6 +14,7 @@ class LearningRoundOverviewButton extends StatefulWidget {
   final List<Json> questions;
   final String? currentQuestionId;
   final bool Function(Json) completed;
+  final Future<void> Function(BuildContext)? onSources;
 
   const LearningRoundOverviewButton({
     super.key,
@@ -22,6 +23,7 @@ class LearningRoundOverviewButton extends StatefulWidget {
     required this.questions,
     required this.currentQuestionId,
     required this.completed,
+    this.onSources,
   });
 
   @override
@@ -144,6 +146,16 @@ class _LearningRoundOverviewButtonState
                         const Text(
                           'Die Übersicht zeigt deinen gespeicherten Stand. Sie schaltet keine weiteren Aufgaben frei.',
                         ),
+                        if (widget.onSources != null)
+                          TextButton.icon(
+                            onPressed: () async {
+                              if (current && route.isCurrent) {
+                                await widget.onSources?.call(context);
+                              }
+                            },
+                            icon: const Icon(Icons.menu_book_outlined),
+                            label: const Text('Heftquellen ansehen'),
+                          ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,

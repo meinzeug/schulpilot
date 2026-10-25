@@ -322,7 +322,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Original ${index + 1}',
+                        'Beispiel ${index + 1}',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 6),

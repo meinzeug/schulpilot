@@ -366,6 +366,7 @@ class _ChildCoachingPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentAction = _currentAction(context);
     final ready = coach?['status'] == 'ready';
     final pending = coach?['status'] == 'pending';
     final decision = coach?['decision'];
@@ -382,6 +383,10 @@ class _ChildCoachingPanel extends StatelessWidget {
       'queued',
       'running',
     ].contains(coach?['practice_status']);
+    final practiceFailed =
+        ready &&
+        coach?['practice_status'] == 'failed' &&
+        coach?['next_unit_id'] == null;
     final hasPractice =
         ready &&
         (decision == 'repair' || decision == 'check') &&
@@ -392,6 +397,8 @@ class _ChildCoachingPanel extends StatelessWidget {
     final localOnly = coach?['local_only'] == true;
     final headingText = localOnly
         ? 'Deine Gedanken sind festgehalten.'
+        : practiceFailed && unit['status'] == 'completed'
+        ? 'Deine Runde ist abgeschlossen.'
         : !ready
         ? 'Dein Rückblick'
         : switch (decision) {
@@ -534,7 +541,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                     label: 'Eltern live dazuholen',
                     icon: Icons.video_call_rounded,
                     onPressed: () async {
-                      final current = _currentAction(context);
+                      final current = currentAction;
                       if (!current()) return;
                       unawaited(
                         showFamilyHelp(
@@ -567,7 +574,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                           : 'Weiter üben',
                       icon: Icons.arrow_forward_rounded,
                       onPressed: () async {
-                        final current = _currentAction(context);
+                        final current = currentAction;
                         if (!current()) return;
                         final next = coach!['next_unit_id'];
                         await state.api.post('/units/$next/start');
@@ -582,6 +589,20 @@ class _ChildCoachingPanel extends StatelessWidget {
                     Text('Deine nächste Übung wird vorbereitet.'),
                     _later(context),
                   ] else ...[
+                    if (practiceFailed) ...[
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          'Die neue Übung konnte nicht vorbereitet werden.',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Deine Antworten und dein Rückblick bleiben gespeichert.',
+                      ),
+                      SizedBox(height: 14),
+                    ],
                     ActionButton(
                       label: coach?['practice_status'] == 'failed'
                           ? 'Übung erneut vorbereiten'
@@ -590,7 +611,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                           : 'Gezielt weiterüben',
                       icon: Icons.auto_fix_high_rounded,
                       onPressed: () async {
-                        final current = _currentAction(context);
+                        final current = currentAction;
                         if (!current()) return;
                         await state.api.post(
                           '/units/${unit['id']}/practice',
@@ -603,10 +624,16 @@ class _ChildCoachingPanel extends StatelessWidget {
                         if (current()) await refresh();
                       },
                     ),
-                    if (coach?['practice_error'] != null)
-                      ExpansionTile(
-                        title: Text('Was ist passiert?'),
-                        children: [MathText(coach!['practice_error'])],
+                    if (practiceFailed && childId is String)
+                      TextButton.icon(
+                        onPressed: () {
+                          final current = currentAction;
+                          if (current()) {
+                            openRoute(context, '/learn/$childId');
+                          }
+                        },
+                        icon: Icon(Icons.view_list_outlined),
+                        label: Text('Vorhandene Runden öffnen'),
                       ),
                   ],
                 if (coach?['next_review'] != null) ...[
@@ -791,7 +818,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                       secondary: true,
                       label: 'Antwort erneut prüfen',
                       onPressed: () async {
-                        final current = _currentAction(context);
+                        final current = currentAction;
                         await state.api.post(
                           '/units/${unit['id']}/questions/${question['id']}/recheck',
                         );
@@ -822,10 +849,13 @@ class _ChildCoachingPanel extends StatelessWidget {
           ),
         if (unit['child_id'] is String)
           TextButton.icon(
-            onPressed: () =>
-                openRoute(context, '/progress/${unit['child_id']}'),
+            onPressed: () {
+              if (currentAction()) {
+                openRoute(context, '/progress/${unit['child_id']}');
+              }
+            },
             icon: Icon(Icons.insights_rounded),
-            label: Text('Alle Fächer ansehen'),
+            label: Text('Lernstand aller Fächer'),
           ),
       ],
     );
@@ -840,13 +870,17 @@ class _ChildCoachingPanel extends StatelessWidget {
   );
 
   bool Function() _currentAction(BuildContext context) {
-    final owner = state.user?['id'];
+    final owner = state.user;
+    final family = state.familyId;
+    final token = state.api.token;
     final child = unit['child_id'] ?? state.user?['child_id'];
     final route = ModalRoute.of(context);
     return () =>
         context.mounted &&
         owner != null &&
-        state.user?['id'] == owner &&
+        identical(state.user, owner) &&
+        state.familyId == family &&
+        state.api.token == token &&
         state.isChild &&
         state.user?['child_id'] == child &&
         (route?.isCurrent ?? true);

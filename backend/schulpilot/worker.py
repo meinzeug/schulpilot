@@ -201,6 +201,10 @@ def process(job_id):
                     # The same already checked single source must reach visual,
                     # curriculum and entry validation before dispatch as well.
                     source_pages = [material]
+                if job.payload.get("notebook_practice"):
+                    from .notebook_practice import guard
+
+                    source_pages = guard(db, child, job.payload)
             config = job_config(db, job, job.kind)
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage and (
@@ -339,6 +343,15 @@ def process(job_id):
                     # Provider context only. The existing review job and its
                     # authority/revision checks are not turned into a new job.
                     payload.update(homework_practice=True, homework_original_prompts=[source_pages[0].content])
+            if job.kind == "unit" and job.payload.get("notebook_practice"):
+                from .notebook_practice import provider_context
+
+                payload.update(provider_context(db, child, job.payload))
+            from . import unit_novelty
+
+            if unit_novelty.applies(job, material):
+                payload["previous_prompts"] = unit_novelty.provider_context(
+                    unit_novelty.previous_prompts(db, child.id, source_pages))
             image_bytes = (
                 (settings.data_dir / "uploads" / material.path).read_bytes()
                 if job.kind == "extract" and material and material.path
@@ -425,6 +438,10 @@ def process(job_id):
                 raise ProviderError(
                     "Das Elternziel wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."
                 )
+            if job.kind == "unit" and job.payload.get("notebook_practice"):
+                from .notebook_practice import guard
+
+                source_pages = guard(db, db.get(Child, job.child_id), job.payload)
             if job.kind in ("unit", "package"):
                 from .learning_entry import guard_entry_context
 
@@ -490,6 +507,12 @@ def process(job_id):
                 source_pages = unit_sources(db, job)
                 if not source_pages and material:
                     source_pages = [material]
+                if job.payload.get("notebook_practice"):
+                    from .notebook_practice import validate_output
+
+                    validate_output(db, db.get(Child, job.child_id), job.payload, data)
+                if unit_novelty.applies(job, material):
+                    unit_novelty.validate_output(db, job.child_id, source_pages, data)
                 if job.payload.get("review_of"):
                     from .coaching import validate_new_round
 
@@ -526,6 +549,7 @@ def process(job_id):
                     not_before=job.payload.get("not_before"),
                     introduction_seen=bool(job.payload.get("review_of")),
                     subject=data["subject"],
+                    subject_id=(job.payload.get("notebook_practice") or {}).get("subject_id"),
                     topic=data["topic"],
                     explanation=data["explanation"],
                     questions=data["questions"],

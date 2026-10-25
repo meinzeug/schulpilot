@@ -947,6 +947,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             scene_fixture_request = fixture_id == SCENE_FIXTURE_ID and function == "unit"
         image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture, operator_probe=private_probe)
+    from .notebook_practice import requested_count
+
+    notebook_count = requested_count(payload)
+    if notebook_count is not None and (function != "unit" or any(payload.get(key) for key in (
+            "review", "study_block", "homework_practice", "exam_preparation", "exam_review_practice"))):
+        raise ProviderError("Die Heftauswahl gehört ausschließlich zu einer neuen normalen Lernrunde.")
     if function == "extract":
         from .extraction import request_payload
 
@@ -1372,7 +1378,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         task_count = (
             "Erstelle pro Einheit GENAU die in selected_groups.question_count vorgegebene Anzahl Aufgaben. "
             if function == "package" and payload.get("selected_groups")
-            else f"Erstelle in dieser kurzen Lerneinheit GENAU {block_count or 2} Aufgaben. "
+            else f"Erstelle in dieser kurzen Lerneinheit GENAU {block_count or notebook_count or 2} Aufgaben. "
         )
         variety = (
             "Verwende die vorgegebenen kurzen Eingabeaufgaben aus math_tasks. "
@@ -1395,7 +1401,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             if isinstance(node, dict):
                 properties = node.get("properties", {})
                 if "questions" in properties:
-                    properties["questions"].update(minItems=block_count or 2, maxItems=block_count or 2)
+                    properties["questions"].update(minItems=block_count or notebook_count or 2, maxItems=block_count or notebook_count or 2)
                 if "hints" in properties:
                     properties["hints"]["maxItems"] = 2
                 for item in node.values():
@@ -1405,6 +1411,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     compact(item)
 
         compact(schema)
+    if notebook_count:
+        schema["properties"]["questions"].update(minItems=notebook_count, maxItems=notebook_count)
+        schema["properties"]["subject"]["enum"] = [payload["required_subject"]]
+        instructions += (f"\nDiese bewusst gewählte Heft-Runde hat GENAU {notebook_count} Aufgaben. "
+            "Verwende ausschließlich den ausgewählten bestätigten Stoff in material.content, "
+            "übernimm required_subject exakt und leite das Unterrichtsthema aus diesen Seiten ab. "
+            "Erfinde keine weiteren Seiten oder Lernaufträge; alte Fragen aus previous_prompts nicht wiederholen.")
     if block_count:
         schema["properties"]["questions"].update(minItems=block_count, maxItems=block_count)
         for field in ("subject", "topic"):
@@ -1532,6 +1545,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Die fachliche Grundlage sind ausschließlich die ausgewählten bestätigten Heftseiten. "
             "Verwende neue Aufgaben, keine alte Schülerantwort als Musterlösung.")
     prune_schema(schema)
+    if function == "unit" and "Graphic" in schema.get("$defs", {}):
+        from .graphic_schema import RULES as GRAPHIC_SCHEMA_RULES
+        from .graphic_schema import bind_coherent_graphics
+
+        bind_coherent_graphics(schema)
+        instructions += GRAPHIC_SCHEMA_RULES
     if visual_functions and "Graphic" in schema.get("$defs", {}):
         from .presentation_capabilities import RULES as CAPABILITY_RULES
 
@@ -1612,6 +1631,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # private Unit, answer keys or invented confirmed-photo evidence.
         instructions = ASSET_RULES + subject_content.rules_for(subjects)
         outgoing_payload = {"public_spec": payload["public_spec"]}
+    from .explanation_guidance import rules as explanation_rules
+
+    instructions += explanation_rules(function, payload)
     user_text = json.dumps(outgoing_payload, ensure_ascii=False, separators=(",", ":"))
     schema_text = (json.dumps(wire_schema, ensure_ascii=False, separators=(",", ":"))
                    if function in ("package", "learning_asset") else json.dumps(wire_schema))
@@ -2009,6 +2031,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if review_only and data.get("next_unit") is not None:
             raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
         validation_phase = "counts"
+        if notebook_count and len(data["questions"]) != notebook_count:
+            raise ProviderError("Die KI hat den ausdrücklich gewählten Aufgabenumfang nicht vollständig erstellt.")
         if block_count:
             if len(data["questions"]) != block_count:
                 raise ProviderError("Die KI hat die Lernetappe nicht vollständig erstellt. Bitte erneut versuchen.")

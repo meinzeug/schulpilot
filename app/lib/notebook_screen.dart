@@ -12,6 +12,7 @@ import 'learning_tips.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
+import 'notebook_practice_dialog.dart';
 import 'ui.dart';
 import 'ideas100_local_views.dart';
 import 'parent_child_navigation.dart';
@@ -449,9 +450,40 @@ class _NotebookScreenState extends State<_NotebookContext>
     }
   }
 
+  bool canPractice(Json item) =>
+      current &&
+      !loading &&
+      (widget.state.isChild || canManage) &&
+      data?['supports_notebook_practice'] == true &&
+      item['confirmed'] == true &&
+      item['purpose'] == 'notebook' &&
+      item['synthetic'] != true &&
+      item['fixed_example'] != true &&
+      widget.subjectId != 'unassigned';
+
+  Future<void> practicePage(Json item) async {
+    if (!canPractice(item) || ModalRoute.of(context)?.isCurrent != true) return;
+    final jobId = await privateDialog<String>(
+      (_) => NotebookPracticeDialog(
+        state: widget.state,
+        childId: widget.childId,
+        subjectId: widget.subjectId,
+        page: Json.from(item),
+      ),
+    );
+    if (!mounted || !current || jobId == null) return;
+    openRoute(context, '/learning-preparation/${widget.childId}/$jobId');
+  }
+
   Widget pageActions(Json item) => Wrap(
     alignment: WrapAlignment.end,
     children: [
+      if (view != 'album' && canPractice(item))
+        IconButton(
+          tooltip: 'Übungen zu dieser Heftseite erstellen',
+          onPressed: () => practicePage(item),
+          icon: const Icon(Icons.auto_stories_outlined),
+        ),
       if (item['has_image'] == true)
         IconButton(
           tooltip: comparePages.containsKey(item['id'])
@@ -1187,6 +1219,8 @@ class _NotebookScreenState extends State<_NotebookContext>
                     header: true,
                     child: Text(
                       subject?['title'] ?? 'Dein Hefter',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -1194,6 +1228,15 @@ class _NotebookScreenState extends State<_NotebookContext>
                     ),
                   ),
                 ),
+                if (view == 'album' &&
+                    selected != null &&
+                    canPractice(selected!))
+                  IconButton(
+                    key: const ValueKey('notebook-prepare-practice'),
+                    tooltip: 'Übungen zu dieser Heftseite erstellen',
+                    onPressed: () => practicePage(selected!),
+                    icon: const Icon(Icons.auto_stories_outlined),
+                  ),
                 if (widget.state.isChild || canManage)
                   IconButton(
                     tooltip: 'Heftfoto hinzufügen',

@@ -98,6 +98,10 @@ void main() {
       await tester.pumpWidget(host(SubjectGraphic(data, state: state)));
       await tester.pumpAndSettle();
       expect(find.byType(LanguageComparisonWidget), findsOneWidget);
+      expect(find.text('Beispiel 1'), findsOneWidget);
+      expect(find.text('Beispiel 2'), findsOneWidget);
+      expect(find.text('Original 1'), findsNothing);
+      expect(find.text('Original 2'), findsNothing);
       expect(word(tester, 'books').style!.backgroundColor, isNotNull);
       expect(word(tester, 'I').style, isNull);
       await choose(tester, LanguageComparisonFocus.commonWords);
@@ -184,6 +188,7 @@ void main() {
             expect(rect.right, lessThanOrEqualTo(width));
           }
           for (var index = 0; index < 4; index++) {
+            expect(find.text('Beispiel ${index + 1}'), findsOneWidget);
             final finder = find.byKey(
               ValueKey('language-comparison-original-$index'),
             );

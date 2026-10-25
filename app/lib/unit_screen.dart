@@ -11,6 +11,7 @@ import 'coaching_panel.dart';
 import 'lesson_voice.dart';
 import 'learning_room.dart';
 import 'learning_round_overview.dart';
+import 'unit_sources_viewer.dart';
 import 'saved_visual_explanation.dart';
 import 'visual_preparation_card.dart';
 import 'learning_path_view.dart';
@@ -1126,6 +1127,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     questions: questions.map((q) => Json.from(q)).toList(),
                     currentQuestionId: currentQuestion?['id']?.toString(),
                     completed: done,
+                    onSources: (u['sources'] as List? ?? []).isEmpty
+                        ? null
+                        : (origin) => openSources(u, origin: origin),
                   ),
             learningPath:
                 u == null || u['learning_session']?['learning_path'] is! Map
@@ -3632,6 +3636,27 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> openSources(Json u, {BuildContext? origin}) async {
+    final id = u['id'] as String;
+    final account = ownerAccount;
+    final token = state.api.token, family = state.familyId;
+    final snapshot = jsonEncode(u['sources']);
+    bool current() =>
+        requestIsCurrent(id, account) &&
+        visible &&
+        state.api.token == token &&
+        state.familyId == family &&
+        identical(unit, u) &&
+        jsonEncode(unit?['sources']) == snapshot;
+    if (!current()) return;
+    await showUnitSources(
+      origin ?? context,
+      state,
+      unit: u,
+      isCurrent: current,
+    );
+  }
+
   Future<void> moreHelp(Json u) async {
     final requestedOwner = ownerAccount;
     final requestedSource = u['learning_session']?['source_signature'];
@@ -3655,6 +3680,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
               ),
               for (final option in [
+                if ((u['sources'] as List? ?? []).isNotEmpty)
+                  ('sources', 'Heftquellen ansehen', Icons.menu_book_outlined),
                 (
                   'explanation',
                   'Erklärung ansehen',
@@ -3725,6 +3752,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return;
     }
     switch (selected) {
+      case 'sources':
+        unawaited(openSources(u));
       case 'skip':
         if (awaitingContinue) await acknowledgeFeedback();
         if (!requestIsCurrent(u['id'], requestedOwner)) return;

@@ -270,6 +270,27 @@ def unit_source_texts(db, unit):
             and (safe := learning_source(db, material, revision=ref.revision))["content"].strip()]
 
 
+
+def unit_source_projection(db, unit):
+    """Only owned source metadata; never invent a legacy revision snapshot."""
+    refs = list(db.scalars(select(UnitSource).where(UnitSource.unit_id == unit.id)
+        .order_by(UnitSource.material_id)))
+    snapshots = [(ref.material_id, ref.revision) for ref in refs]
+    if not refs and unit.material_id:
+        snapshots = [(unit.material_id, None)]
+    result = []
+    for material_id, revision in snapshots:
+        material = db.get(Material, material_id)
+        if not material or material.child_id != unit.child_id:
+            continue
+        status = ("legacy" if revision is None else "changed" if material.revision != revision
+            else "unconfirmed" if not material.confirmed else "ready")
+        result.append({"material_id": material.id, "revision": revision,
+            "current_revision": material.revision, "status": status,
+            "title": material.title, "has_image": bool(material.path)})
+    return result
+
+
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from . import adaptive_plan, coaching
     from .learning_controller import projection as session_projection
@@ -369,6 +390,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "estimated_minutes": unit.estimated_minutes,
         "package_version": unit.package_version,
         "introduction_seen": unit.introduction_seen,
+        "sources": unit_source_projection(db, unit),
         "source_material_ids": list(db.scalars(select(UnitSource.material_id).where(UnitSource.unit_id == unit.id)))
         or ([unit.material_id] if unit.material_id else []),
         "assignment_id": unit.assignment_id,
@@ -1196,6 +1218,37 @@ def unit_view(unit_id: str, p=Depends(authenticated), db=Depends(get_db),
             can_prepare = False
     value["can_prepare_visual"] = can_prepare
     return value
+
+
+
+def readable_unit_source(db, p, unit_id, material_id, revision):
+    unit = get_unit(db, p, unit_id)
+    ref = db.get(UnitSource, (unit.id, material_id))
+    material = db.get(Material, material_id)
+    if not ref or not material or material.child_id != unit.child_id:
+        raise HTTPException(404, "Diese Heftquelle ist nicht verfügbar.")
+    if not material.confirmed or ref.revision != revision or material.revision != revision:
+        raise HTTPException(409, "Diese Heftquelle wurde geändert. Bitte lade den aktuellen Rundenstand.")
+    return unit, material
+
+
+@router.get("/units/{unit_id}/sources/{material_id}")
+def unit_source_view(unit_id: str, material_id: str, revision: int = Query(ge=1),
+                     p=Depends(authenticated), db=Depends(get_db)):
+    unit, material = readable_unit_source(db, p, unit_id, material_id, revision)
+    return {"unit_id": unit.id, "child_id": unit.child_id, "material_id": material.id,
+        "revision": material.revision, "confirmed": True, "title": material.title,
+        "content": material.content, "has_image": bool(material.path)}
+
+
+@router.get("/units/{unit_id}/sources/{material_id}/image")
+def unit_source_image(unit_id: str, material_id: str, revision: int = Query(ge=1),
+                      p=Depends(authenticated), db=Depends(get_db)):
+    from .materials import image
+
+    _, material = readable_unit_source(db, p, unit_id, material_id, revision)
+    # Reuse the existing authenticated private-photo response/no-store policy.
+    return image(material.id, p, db)
 
 
 @router.post("/units/{unit_id}/start")

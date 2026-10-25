@@ -1393,7 +1393,10 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     final message =
         preparation?['error'] as String? ?? day?['last_error'] as String?;
     final canRetry = preparation?['can_retry'] == true;
-    final parts = packageParts;
+    final isExtract = preparation?['phase'] == 'extract';
+    final parts = isExtract ? null : packageParts;
+    final completed = preparation?['completed_pages'] as int?;
+    final total = preparation?['total_pages'] as int?;
     final blocker = preparation?['retry_blocker'] as Map?;
     final code = blocker?['code'] ?? preparation?['error_code'];
     final explanation =
@@ -1401,7 +1404,10 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
         switch (code) {
           'quota_exhausted' => 'Neue KI-Inhalte können gerade nicht vorbereitet werden. Mit gespeicherten Aufgaben und Erklärungen kannst du weiterlernen.',
           'provider_timeout' => 'Die KI hat länger gebraucht als erlaubt. Deine Heftseiten sind da.',
-          'invalid_output' => 'Die KI hat unvollständige Aufgaben geliefert. Wir haben sie nicht übernommen.',
+          'invalid_output' =>
+            isExtract
+                ? 'Eine Heftseite konnte noch nicht vollständig gelesen werden. Deine Fotos und bisherigen Abschriften bleiben gespeichert.'
+                : 'Die KI hat unvollständige Aufgaben geliefert. Wir haben sie nicht übernommen.',
           'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',
           'unreadable_photo' => 'Ein Foto ist nicht gut lesbar. Nimm es bitte bei gutem Licht neu auf.',
           'cost_preflight' => 'Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.',
@@ -1414,15 +1420,23 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       children: [
         dayStatusCard(
           eyebrow: 'Deine Fotos sind gespeichert',
-          title: 'Das hat noch nicht geklappt',
+          title: isExtract
+              ? 'Lesen unterbrochen'
+              : 'Das hat noch nicht geklappt',
           subtitle: explanation,
 
           label: canRetry
-              ? parts != null
+              ? isExtract
+                    ? 'Lesen fortsetzen'
+                    : parts != null
                     ? 'Fehlenden Teil erneut vorbereiten'
                     : 'Erneut vorbereiten'
               : 'Zur Startseite',
-          status: parts == null
+          status: isExtract && completed != null && total != null
+              ? Text(
+                  '$completed von $total Fotos wurden bereits verarbeitet.',
+                )
+              : parts == null
               ? null
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

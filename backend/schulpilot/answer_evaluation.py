@@ -13,6 +13,7 @@ from math import gcd
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
 VERSION = "subject_rules_v5"
+FRACTION_COMPONENT_VERSION = "fraction_components_v1"
 
 
 def fraction_addition_hint(question, answer):
@@ -42,6 +43,60 @@ def normalized(value):
 def result(outcome, reason, *, content=None, form=None, method=VERSION):
     return {"version": 2, "outcome": outcome, "reason": reason, "method": method,
             "dimensions": {"content": content or outcome, "form": form or "not_requested"}}
+
+
+
+def fraction_component(question, answer):
+    """One complete explicit component question, never the whole fraction value.
+
+    NFC preserves superscript/mixed-number notation instead of silently turning
+    it into decimal digits. Unknown clauses, multiple fractions and operations
+    do not match. A stored key is independently checked before exact aliases.
+    """
+    if question["type"] not in ("short", "gap", "choice") or question.get("language"):
+        return None
+    prompt = " ".join(unicodedata.normalize("NFC", question["prompt"]).casefold().split())
+    plain = r"[0-9]{1,4}\s*/\s*[1-9][0-9]{0,3}"
+    tex = r"\\(?:frac|dfrac)\s*\{\s*[0-9]{1,4}\s*\}\s*\{\s*[1-9][0-9]{0,3}\s*\}"
+    bare = rf"(?:{plain}|{tex})"
+    visible = rf"(?P<fraction>{bare}|\\\(\s*{bare}\s*\\\)|\\\[\s*{bare}\s*\\\]|\$\s*{bare}\s*\$)"
+    part = r"(?P<component>zähler|nenner)"
+    prefix = r"(?:(?:übung|aufgabe|neue aufgabe|selbst erstellte übung):\s*)?"
+    relation = r"(?:des bruch(?:s|es)|von(?: dem bruch)?|im bruch)"
+    forms = (
+        rf"(?:beim|im) bruch\s+{visible}\s*:\s*welche zahl ist der {part}[?.!]",
+        rf"(?:wie lautet|wie heißt|was ist|welche zahl ist) der {part}\s+{relation}\s+{visible}[?.!]",
+        rf"welcher {part} steht im bruch\s+{visible}[?.!]",
+        rf"(?:nenne|bestimme) den {part}\s+{relation}\s+{visible}[.!]?",
+        rf"gib den {part}\s+{relation}\s+{visible}\s+an[.!]?",
+    )
+    match = next((m for form in forms if (m := re.fullmatch(prefix + form, prompt))), None)
+    if match is None:
+        return None
+    numerator, denominator = map(int, re.findall(r"[0-9]+", match["fraction"]))
+    expected = numerator if match["component"] == "zähler" else denominator
+
+    def numeric(value):
+        if not isinstance(value, str):
+            return None
+        value = unicodedata.normalize("NFC", value).strip()
+        # An explicit option label is not a guessed letter or index.
+        if question["type"] == "choice" and value in question.get("options", []):
+            value = re.sub(r"^(?:\([A-H]\)|[A-H][).:])\s*", "", value, flags=re.I)
+        if not re.fullmatch(r"[+−-]?[0-9]{1,9}(?:[.,][0-9]{1,6})?", value):
+            return None
+        return Fraction(value.replace(",", ".").replace("−", "-"))
+
+    key, supplied = numeric(question["answer"]), numeric(answer)
+    if key is None or key != expected:
+        return result("uncertain", "Die gespeicherte Musterlösung passt nicht zur gefragten Zahl im Bruch. Die Aufgabe muss geklärt werden.",
+                      method=FRACTION_COMPONENT_VERSION)
+    if supplied is None:
+        return None
+    return result("correct" if supplied == expected else "incorrect",
+                  "Du hast die gefragte Zahl im Bruch richtig benannt." if supplied == expected else
+                  "Der Zähler steht über dem Bruchstrich, der Nenner darunter. Schau noch einmal auf die gefragte Zahl.",
+                  method=FRACTION_COMPONENT_VERSION)
 
 
 def arithmetic(question, answer):
@@ -256,6 +311,8 @@ def evaluate(question, answer):
         from .language_evaluation import evaluate as language_evaluate
 
         return language_evaluate(question, answer)
+    if checked := fraction_component(question, answer):
+        return checked
     if hints := fraction_addition_hint(question, answer):
         return result("incorrect", hints[0])
     form = expanded_fraction(question["prompt"]) if question["type"] in ("choice", "gap", "short") else None

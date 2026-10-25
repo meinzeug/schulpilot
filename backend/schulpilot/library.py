@@ -50,6 +50,7 @@ def material_summary(material, school_date=None):
             "topic",
             "status",
             "confirmed",
+            "purpose",
             "synthetic",
             "created",
         )
@@ -76,6 +77,7 @@ MATERIAL_FIELDS = (
     Material.topic,
     Material.status,
     Material.confirmed,
+    Material.purpose,
     Material.synthetic,
     Material.created,
 )
@@ -171,7 +173,8 @@ def materials(
         .offset((pagination["page"] - 1) * page_size)
         .limit(page_size)
     )
-    return {**pagination, "subjects": subjects, "items": [material_summary(m, day) for m, day in rows]}
+    return {**pagination, "subjects": subjects, "items": [material_summary(m, day) for m, day in rows],
+        "supports_notebook_practice": True}
 
 
 def unit_summaries(db, ids):

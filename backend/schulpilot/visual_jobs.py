@@ -21,7 +21,7 @@ def context(db, unit, *, labs_enabled=False):
         raise HTTPException(409, "Für diese lange Runde bitte einen kleineren Erklärabschnitt wählen.")
     child = db.get(Child, unit.child_id)
     try:
-        payload = with_visual_context(db, child, {"material": {"subject": unit.subject, "topic": unit.topic,
+        payload = with_visual_context(db, child, {"grade": child.grade, "material": {"subject": unit.subject, "topic": unit.topic,
             "content": ""}, "required_subject": unit.subject, "required_topic": unit.topic, "labs_enabled": labs_enabled, "visual_only": True}, sources)
     except ValueError as error:
         raise HTTPException(409, str(error)) from error
