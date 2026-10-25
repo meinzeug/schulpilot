@@ -190,6 +190,11 @@ def process(job_id):
                 if defer_package(db, job, before_call=True):
                     db.commit()
                     return
+                if job.payload.get("package_partition") is not None:
+                    part_ids = {item["id"] for item in job.payload["package_partition_sources"]}
+                    source_pages = [source for source in source_pages if source.id in part_ids]
+                    if len(source_pages) != len(part_ids):
+                        raise ProviderError("Die Quellen des Lernpaketteils wurden geändert.")
             elif job.kind == "unit":
                 source_pages = unit_sources(db, job)
                 if not source_pages and material:
@@ -274,6 +279,9 @@ def process(job_id):
                 payload = request_payload()
             if job.kind == "package":
                 payload["material"] = None
+                if job.payload.get("package_partition") is not None:
+                    payload.update(package_partition=job.payload["package_partition"],
+                                   package_plan_digest=job.payload["package_plan_digest"])
                 payload["materials"] = [
                     {
                         "page_number": m.page_number,
@@ -427,7 +435,22 @@ def process(job_id):
                 from .school_day import save_package, validate_package_sources
 
                 validate_package_sources(db, job)
-                if not defer_package(db, job):
+                if job.payload.get("package_partition") is not None:
+                    from .package_partitions import store_validated_part
+                    from .school_preparation import _state, _write
+
+                    day = db.get(SchoolDay, job.payload["school_day_id"])
+                    state = _state(day)
+                    plan = state["package_plan"]
+                    state = store_validated_part(state, plan, job.payload["package_partition"], data,
+                        job_id=job.id, provider=config_values["provider"], model=config_values["model"],
+                        config_revision=config_values["revision"], context={
+                            **{key: payload[key] for key in ("visual_context", "learning_entry") if key in payload},
+                            **({"catalog_assignment": result.catalog_assignment} if result and result.catalog_assignment else {})})
+                    _write(day, state)
+                    job.result = {"school_day_id": day.id, "package_partition": job.payload["package_partition"],
+                                  "completed_parts": len(state["package_outputs"]), "total_parts": len(plan["parts"])}
+                elif not defer_package(db, job):
                     save_package(
                         db,
                         job,

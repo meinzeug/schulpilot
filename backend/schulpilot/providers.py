@@ -530,7 +530,7 @@ def decode_choice_indices(data):
     return data
 
 
-def prepare_package_schema(schema, payload, *, allow_matching=False):
+def prepare_package_schema(schema, payload, *, allow_matching=False, partition=False):
     """Spend the bounded exercise budget across confirmed topics and time."""
     groups = payload.get("selected_groups")
     if not isinstance(groups, list) or not groups:
@@ -556,7 +556,7 @@ def prepare_package_schema(schema, payload, *, allow_matching=False):
         # per unit and six overall bound the first package, not the learning path.
         desired[group["id"]] = min(5, max(2, len(distinct)), max(2, group["estimated_minutes"] - 3))
     targets = {group["id"]: 2 for group in groups}
-    while sum(targets.values()) < 6:
+    while not partition and sum(targets.values()) < 6:
         available = [key for key in targets if targets[key] < desired[key]]
         if not available:
             break
@@ -1454,7 +1454,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     props["accepted"].update(maxItems=0)
     package_targets = {}
     if (compact_openrouter or config.provider == "codex") and function == "package":
-        payload, package_targets = prepare_package_schema(schema, payload, allow_matching=compact_openrouter)
+        payload, package_targets = prepare_package_schema(schema, payload, allow_matching=compact_openrouter,
+            partition=payload.get("package_partition") is not None)
         if package_targets:
             instructions += (
                 "\nDie topics jeder selected_groups-Gruppe stammen aus ALLEN bestätigten Heftseiten. "
@@ -1566,9 +1567,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     wire_schema = schema
     package_output = None
     if function == "package":
+        from . import package_part_output
         from .package_transport import payload_projection, schema_projection
         from .package_transport import rules as package_rules
 
+        if package_part_output.enabled(payload):
+            package_part_output.bind_schema(schema)
         # Entry binding may remove entire answer formats after the earlier
         # capability pass. Describe only the final reachable formats.
         payload = {**payload, "content_context": subject_content.generation_context(
@@ -1581,6 +1585,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         package_output = bind_package_output(wire_schema)
         wire_schema = package_output.wire_schema
         instructions = package_rules(payload, indexed_choices=indexed_choices) + package_output.rules
+        if package_part_output.enabled(payload):
+            instructions += package_part_output.RULES
     else:
         outgoing_payload = transport_payload(function, payload)
         if outgoing_payload is not payload:
@@ -1888,6 +1894,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             data = response_type.model_validate(decoded).model_dump()
         else:
             data = response_type.model_validate_json(text).model_dump()
+        if function == "package" and payload.get("package_partition") is not None:
+            from .package_part_output import validate as validate_part_output
+
+            validate_part_output(data)
         # A new optional field must not mutate legacy stored questions by
         # serializing an absent presentation as `null`. Explicit presentations
         # remain in the model output and pass the same validation below.

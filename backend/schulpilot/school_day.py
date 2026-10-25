@@ -601,3 +601,76 @@ def save_package(db, job, data, *, synthetic, provider, model):
 
     ensure_plan(db, day)
     record(db, job.child_id, "school_day_ready", {"page_count": len(source_pages), "unit_count": len(ids)})
+
+
+def save_package_parts(db, job, ordered_outputs, partition_plan):
+    """Publish every validated part atomically as one versioned learning path.
+
+    Each bounded two-question unit keeps its exact source subset, graphics and
+    entry context. No prior round/answer is replaced and no learning is claimed.
+    The caller holds Child and removes private staging copies in this same TX.
+    """
+    from .catalog_ai import remember as remember_catalog
+    from .db import Usage
+    from .learning_entry import remember_generated
+    from .model_routing import job_config
+    from .package_part_output import validate as validate_part_output
+    from .package_partitions import check_plan, validated_parts
+    from .school_preparation import _state
+    from .visual_reference_models import UnitVisualSnapshot
+    from .visual_references import remember as remember_visuals
+    from .visual_references import validate_output as validate_visuals
+
+    day, source_pages = validate_package_sources(db, job)
+    child = db.get(Child, job.child_id)
+    if not check_plan(db, day, child, partition_plan):
+        raise ProviderError("Die Quellen oder Vorgaben des Lernpakets wurden geändert.")
+    expected = validated_parts(_state(day), partition_plan)
+    if ordered_outputs != expected or not expected:
+        raise ProviderError("Die geprüften Lernpaketteile sind noch nicht vollständig.")
+    ids = []
+    for index, receipt in enumerate(expected):
+        part_job = db.get(Job, receipt["job_id"])
+        usage = db.scalar(select(Usage).where(Usage.job_id == receipt["job_id"]))
+        if (not part_job or part_job.child_id != child.id or part_job.kind != "package"
+                or part_job.status != "completed" or part_job.payload.get("package_partition") != index
+                or part_job.payload.get("package_plan_digest") != partition_plan["digest"]
+                or not usage or usage.child_id != child.id or usage.config_revision != partition_plan["config_revision"]):
+            raise ProviderError("Ein Lernpaketteil gehört nicht zum aktuellen geprüften Auftrag.")
+        job_config(db, part_job)
+        validate_package_sources(db, part_job)
+        data, context, group = receipt["output"], receipt["context"], receipt["group"]
+        validate_part_output(data)
+        validate_visuals(db, data, context)
+        value = s.PackageOutput.model_validate(data).units[0]
+        unit = LearningUnit(child_id=child.id, school_day_id=day.id, material_id=group["material_ids"][0],
+            estimated_minutes=group["estimated_minutes"], synthetic=False,
+            provider=receipt["provider"], model=receipt["model"],
+            **value.model_dump(exclude={"group_id", "explanation_steps"}))
+        db.add(unit)
+        db.flush()
+        for material in source_pages:
+            if material.id in group["material_ids"]:
+                db.add(UnitSource(unit_id=unit.id, material_id=material.id, revision=material.revision))
+        db.flush()
+        remember_visuals(db, unit, data["units"][0], context)
+        db.flush()
+        visual = db.get(UnitVisualSnapshot, unit.id)
+        if context.get("visual_context", {}).get("required") and (not visual or visual.status != "ready"):
+            raise ProviderError("Die geprüfte Grafik eines Lernpaketteils fehlt noch.")
+        remember_generated(db, unit, context, group_id=value.group_id)
+        remember_catalog(db, "unit", unit, context.get("catalog_assignment"))
+        ids.append(unit.id)
+        record(db, child.id, "unit_created", {"subject": unit.subject, "topic": unit.topic,
+            "synthetic": False, "school_day_id": day.id, "package_partition": index}, unit.id)
+    day.stage = "ready"
+    day.package_version += 1
+    for unit_id in ids:
+        db.get(LearningUnit, unit_id).package_version = day.package_version
+    job.result = {**(job.result or {}), "school_day_id": day.id, "unit_ids": ids,
+                  "package_version": day.package_version}
+    from .study_path import ensure_plan
+
+    ensure_plan(db, day)
+    record(db, child.id, "school_day_ready", {"page_count": len(source_pages), "unit_count": len(ids),
+                                            "package_parts": len(expected)})

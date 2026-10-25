@@ -5,7 +5,7 @@ from sqlalchemy import select
 from .db import Job, Usage
 
 
-def counts(db, child_id, kind, sources, stored):
+def counts(db, child_id, kind, sources, stored, *, partition=None):
     """Keep all historical starts; only proven zero-cost non-dispatch is free.
 
     Unknown transports, billed invalid output and timeouts still consume a
@@ -22,6 +22,20 @@ def counts(db, child_id, kind, sources, stored):
         job.payload.get("material_id") == sources[0]["id"]
         and job.payload.get("material_revision") == sources[0]["revision"]
     )] if kind == "extract" else [job for job in jobs if job.payload.get("sources") == sources]
+    if kind == "package":
+        # A deliberate new finite contract does not erase legacy starts. Each
+        # source/config-bound part has its own normal two-attempt allowance.
+        if partition is None:
+            matching = [job for job in matching if job.payload.get("package_partition") is None]
+        else:
+            plan_digest, index = partition
+            if (not isinstance(plan_digest, str) or len(plan_digest) != 64
+                    or any(c not in "0123456789abcdef" for c in plan_digest)
+                    or type(index) is not int or index < 0):
+                raise ValueError("Ungültige Teilrundenbindung.")
+            matching = [job for job in matching if job.payload.get("package_plan_digest") == plan_digest
+                        and type(job.payload.get("package_partition")) is int
+                        and job.payload["package_partition"] == index]
     usages = {usage.job_id: usage for usage in db.scalars(select(Usage).where(
         Usage.job_id.in_([job.id for job in matching])))} if matching else {}
     exempt = 0

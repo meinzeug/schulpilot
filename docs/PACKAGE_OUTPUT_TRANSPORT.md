@@ -66,5 +66,42 @@ mit echten Frage-/Quellen-/Grafikprüfungen vor und nach dem Roundtrip. Wiederho
 künstliche Fragen dienen nur der Größen-/Formatprüfung, nicht als pädagogischer
 Qualitätsnachweis. Die verbliebene Last liegt weiter in Szeneobjekten/-phasen,
 wörtlichen Belegen, Prompts/Hinweisen und Erklärungstexten. Der konkrete reale
-Paketauftrag wurde mit diesem Codec noch nicht gesendet oder als erfolgreich
-belegt. Finale Gatezahlen stehen im separaten Integrationsbericht.
+Paketauftrag war zum Zeitpunkt dieser Größenprüfung mit diesem Codec noch nicht
+gesendet oder als erfolgreich belegt. Finale Gatezahlen stehen im separaten
+Integrationsbericht.
+
+## Spätere Betriebsprüfung vom 25.10.2026
+
+Ein neuer realer Paketversuch unter Release 112 erreichte erneut die
+Ausgabegrenze. Die geschlossene Auswertung der gespeicherten Fehlermeldung
+belegt `length`; sie belegt keinen Decoder-, Quellen- oder Grafikfehler.
+Es wurden keine Teilaufgaben übernommen. Die tatsächliche abgerechnete Gebühr
+dieses fehlgeschlagenen Versuchs beträgt 0,067296 USD.
+
+Die aktive Basiskonfiguration erlaubte bereits 8000 Ausgabetokens, während die
+ausgewählte Sol-Route weiterhin auf 4000 Tokens und 150000 µUSD Reservierung
+begrenzt war. `select_route` verwendet jeweils das Minimum der beiden Ebenen.
+Eine allgemeine Anhebung allein an der Basis hätte diesen Engpass daher nicht
+beseitigt. Der Betreiber hat anschließend ausdrücklich eine Anpassung des
+Budgets beauftragt. Die gezielte Betriebsänderung und ihr tatsächliches Ergebnis
+werden im Betriebsbeleg außerhalb von Git festgehalten; private Quellen,
+Auftragskennungen und Schlüssel gehören nicht in diesen Bericht.
+
+Die zusätzlichen künstlichen Regressionstests in
+`backend/tests/test_package_output_budget.py` prüfen beide Grenzebenen, den
+unveränderten Luna-Pfad, tatsächlich gesendete 8000 Tokens bei `medium`, sechs
+vollständige Aufgaben mit Grafikschritten sowie die weiter geltende Ablehnung
+und Abrechnung einer abgeschnittenen Antwort ohne automatischen zweiten Aufruf.
+Diese Tests ersetzen keinen erfolgreichen realen Paketauftrag.
+
+Die Ausgabegrenze umfasst auch nicht sichtbare Tokens. Sie ist keine Zusage
+über die verfügbare sichtbare JSON-Länge oder einen Rechnungsbetrag:
+[OpenAI: Counting tokens](https://developers.openai.com/api/docs/guides/token-counting),
+am 25.10.2026 gelesen.
+
+
+Auch der anschließend ausdrücklich genehmigte reale Versuch mit 8000 Tokens
+endete am 25.10.2026 mit `length` (bestätigte Generationgebühr: 0,107296 USD).
+Der höhere Rahmen allein reicht damit für diesen Paketvertrag nicht aus.
+Release 1.36.1+113 ergänzt deshalb persistente begrenzte Teilaufträge mit
+abschließender atomarer Veröffentlichung, siehe [PACKAGE_PARTS.md](PACKAGE_PARTS.md).

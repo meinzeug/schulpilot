@@ -1419,3 +1419,59 @@ Die abschließenden drei echten Collect-only-Läufe enthalten3211Fälle in
 Quelleninventar und Dateihashes blieben während aller drei Sammlungen gleich.
 Gemeinsamer Sammlungsdigest:
 `21a1006356e0c76c7ae7da4c34a126940fc67ed050c8e99c0f89e82dcd41a55c`.
+
+### Paketausgabe: tatsächliche Routengrenze am 25.10.2026
+
+Unter dem produktiven Release 112 (`01751d29`) wurde ein weiterer realer
+Paketfehler ausschließlich anhand fest gebundener, lesender Metadaten geprüft.
+Die geschlossene Fehlermeldungsklassifikation bestätigt erneut eine
+Ausgabetrunkierung (`length`), tatsächliche Gebühr 0,067296 USD, keine
+übernommenen Teilaufgaben. Die Basis erlaubte bereits 8000 Tokens, die
+ausgewählte Sol-Route dagegen weiterhin 4000. Die wirksame Grenze ist das
+Minimum von Basis und Route. Der Betreiber hat die Budgetanpassung ausdrücklich
+freigegeben; bestehende Modell-, Datenschutz- und Denkstufeneinstellungen werden
+dadurch nicht als neu evaluiert ausgegeben.
+
+[OpenAI: Counting tokens](https://developers.openai.com/api/docs/guides/token-counting),
+am 25.10.2026 gesucht und vollständig geöffnet: Ausgabelimits umfassen sichtbare
+und nicht sichtbare Tokens; zusätzlicher Spielraum kann daher notwendig sein.
+Die eigene Konfigurationsprojektion und die tatsächlichen Betreibermaßnahmen
+bleiben getrennte Belege, keine aus dieser Dokumentation abgeleiteten Messwerte.
+
+Neue künstliche Regressionen: 11 bestandene Fälle in 89,50 Sekunden prüfen
+beide Routengrenzen, den unveränderten Luna-Pfad, den echten Adapter mit
+8000 Tokens und `medium`, vollständige Grafikschritte und sechs Aufgaben,
+sowie die abgerechnete Ablehnung einer abgeschnittenen Antwort ohne Retry.
+Keine externen Aufrufe oder echten Kinderinhalte in diesen Tests. Sie erweitern
+die Tests, ändern aber keinen Produktcode und keine Migration. Weitere Angaben:
+[PACKAGE_OUTPUT_TRANSPORT.md](PACKAGE_OUTPUT_TRANSPORT.md).
+
+
+### Mehrteilige Lernpakete am 25.10.2026 (1.36.1+113)
+
+Ein zusätzlicher, separat freigegebener realer Paketversuch mit 8000 Tokens
+endete ebenfalls mit `length`; tatsächliche Generationgebühr 0,107296 USD.
+Es wurden keine unvollständigen Aufgaben übernommen und keine Kinderantworten
+zu Testzwecken eingetragen. Die zuvor ausdrücklich genehmigte gemeinsame
+Sol-Route verwendet jetzt 8000 Ausgabetokens und 0,25 USD Reservierung je Auftrag.
+Eine Reservierung ist keine gemessene Gebühr.
+
+Die bestehende Tagesvorbereitung teilt größere bestätigte Quellgruppen nun in
+begrenzte Aufträge auf: grundsätzlich drei ganze Seiten beziehungsweise
+6000 Quellzeichen, größere einzelne Seiten ungekürzt separat. Jeder Teil
+erzeugt genau zwei Aufgaben und validierte Erklärgrafiken. Geprüfte Teile
+bleiben privat gespeichert; erst alle zusammen veröffentlichen eine neue
+Paketversion mit unveränderten bisherigen Antworten. Mehrere Aufträge können
+insgesamt mehr kosten. Quellen-, Sitzungs-, Familien-, Planungs- und
+Konfigurationsrevisionen gelten weiterhin. Einzelheiten und Grenzen:
+[PACKAGE_PARTS.md](PACKAGE_PARTS.md). Keine neue SQL-Migration.
+
+Bereits ausgeführte künstliche Prüfungen: 28 Teilplan-/Belegfälle (6,42 s),
+2 durchgängige Workerfälle (4,96 s), 5 begrenzte Anbieterformatfälle (54,74 s),
+20 Koordinatorfälle (322,74 s), 11 Ausgaberahmenfälle (89,50 s) sowie
+21 Flutter-Widgetfälle; Flutter Analyze ohne Befund. Die Workerfälle prüfen
+sieben Seiten in drei getrennten Aufrufen, atomare Veröffentlichung,
+Fehlerstopp, expliziten Retry nur des fehlenden Teils und das Entfernen
+privater Zwischenkopien. Alle Anbieterantworten dieser Tests sind künstlich;
+diese Ergebnisse belegen keinen realen KI-Erfolg. Der zusätzliche gemeinsame
+Regressionstest des vorhandenen Paket-/Tagesablaufs läuft separat.

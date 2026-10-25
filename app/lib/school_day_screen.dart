@@ -107,6 +107,26 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   List<Json> get pages => (day?['pages'] as List? ?? []).cast<Json>();
   Json? get preparation =>
       day?['preparation'] is Map ? Json.from(day!['preparation'] as Map) : null;
+  ({int total, int completed, int? active})? get packageParts {
+    final value = preparation;
+    if (value?['phase'] != 'package') {
+      return null;
+    }
+    final total = value?['total_parts'];
+    final completed = value?['completed_parts'];
+    final active = value?['active_part'];
+    if (total is! int ||
+        total < 1 ||
+        total > 24 ||
+        completed is! int ||
+        completed < 0 ||
+        completed > total ||
+        (active != null && (active is! int || active < 0 || active >= total))) {
+      return null;
+    }
+    return (total: total, completed: completed, active: active as int?);
+  }
+
   bool get preparing =>
       ['processing', 'queued', 'running'].contains(preparation?['status']);
   bool get waiting => preparing || day?['active_job'] != null;
@@ -1323,6 +1343,10 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
         ['school_day_package', 'package'].contains(day?['active_job']?['kind']);
     final total = preparation?['total_pages'] as int? ?? pages.length;
     final completed = preparation?['completed_pages'] as int?;
+    final parts = preparation?['status'] == 'processing' ? packageParts : null;
+    final partNumber = parts == null
+        ? null
+        : ((parts.active ?? parts.completed) + 1).clamp(1, parts.total);
     return dayStatusCard(
       eyebrow: 'Fotos abgegeben',
       title: isPackage
@@ -1336,9 +1360,22 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       status: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (parts != null) ...[
+            Text(
+              'Teil $partNumber von ${parts.total}',
+              key: const ValueKey('school-day-part-status'),
+              semanticsLabel:
+                  'Teil $partNumber von ${parts.total}. '
+                  '${parts.completed} von ${parts.total} Teilen gespeichert.',
+            ),
+            SizedBox(height: 8),
+          ],
           ExcludeSemantics(
             child: LinearProgressIndicator(
-              value: !isPackage && completed != null && total > 0
+              key: const ValueKey('school-day-preparation-progress'),
+              value: parts != null
+                  ? parts.completed / parts.total
+                  : !isPackage && completed != null && total > 0
                   ? (completed / total).clamp(0, 1).toDouble()
                   : null,
             ),
@@ -1356,6 +1393,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     final message =
         preparation?['error'] as String? ?? day?['last_error'] as String?;
     final canRetry = preparation?['can_retry'] == true;
+    final parts = packageParts;
     final blocker = preparation?['retry_blocker'] as Map?;
     final code = blocker?['code'] ?? preparation?['error_code'];
     final explanation =
@@ -1379,7 +1417,29 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           title: 'Das hat noch nicht geklappt',
           subtitle: explanation,
 
-          label: canRetry ? 'Erneut vorbereiten' : 'Zur Startseite',
+          label: canRetry
+              ? parts != null
+                    ? 'Fehlenden Teil erneut vorbereiten'
+                    : 'Erneut vorbereiten'
+              : 'Zur Startseite',
+          status: parts == null
+              ? null
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      '${parts.completed} von ${parts.total} Teilen gespeichert',
+                      key: const ValueKey('school-day-part-status'),
+                    ),
+                    SizedBox(height: 8),
+                    ExcludeSemantics(
+                      child: LinearProgressIndicator(
+                        key: const ValueKey('school-day-preparation-progress'),
+                        value: parts.completed / parts.total,
+                      ),
+                    ),
+                  ],
+                ),
           icon: canRetry ? Icons.refresh_rounded : Icons.home_outlined,
           onPressed: canRetry
               ? () => run(prepareInBackground)

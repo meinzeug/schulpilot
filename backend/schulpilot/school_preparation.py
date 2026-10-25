@@ -106,6 +106,15 @@ def validate_job(db, job):
         raise ProviderError("Dieser Vorbereitungsauftrag ist nicht mehr aktuell.")
     child, family = authority(db, day, state)
     _check_sources(db, day, state)
+    index = job.payload.get("package_partition")
+    if index is not None:
+        part = _checked_part(db, day, child, state, index)
+        plan = state["package_plan"]
+        if (job.kind != "package" or job.payload.get("package_plan_digest") != plan["digest"]
+                or job.payload.get("package_partition_sources") != part["sources"]
+                or job.payload.get("groups") != [part["group"]]
+                or job.payload.get("sources") != state["sources"]):
+            raise ProviderError("Dieser Teilauftrag passt nicht mehr zu den bestätigten Quellen.")
     from .model_routing import job_config
 
     config = job_config(db, job)
@@ -196,6 +205,105 @@ def _transport_repair(db, day, state, job, sources, config):
     return None
 
 
+
+# Private state only. Never pass these objects to preparation_data/job.result.
+_PART_KEYS = ("package_plan", "package_config_revision", "package_outputs", "package_completed_parts")
+
+
+def _clear_parts(state):
+    for key in _PART_KEYS:
+        state.pop(key, None)
+
+
+def _parts_enabled(source_pages):
+    # The paid fixed synthetic fixture intentionally replaces the whole input.
+    # Keep its existing two-page probe contract; normal mocks use real flags.
+    return bool(source_pages) and all(m.confirmed and not m.synthetic for m in source_pages)
+
+
+def _part_key(plan, index):
+    return plan["digest"] + ":" + str(index)
+
+
+def _part_outputs(state, plan):
+    from .package_partitions import validated_parts
+
+    values = validated_parts(state, plan, require_complete=False)
+    return values, {int(key) for key in state.get("package_outputs", {})}
+
+
+def _current_plan(db, day, child, state):
+    from .package_partitions import check_plan
+
+    plan = state.get("package_plan")
+    try:
+        return bool(isinstance(plan, dict)
+            and state.get("package_config_revision") == plan.get("config_revision")
+            and check_plan(db, day, child, plan))
+    except (ValueError, KeyError, TypeError, IndexError):
+        return False
+
+
+def _checked_part(db, day, child, state, index):
+    plan = state.get("package_plan")
+    if (not _current_plan(db, day, child, state) or type(index) is not int
+            or not 0 <= index < len(plan["parts"])):
+        raise ProviderError("Die Quellen, Planung oder KI-Einstellungen der Teilrunden wurden geändert. Bitte erneut abgeben.")
+    return plan["parts"][index]
+
+
+def _legacy_part_migration(db, day, state):
+    """One conscious transition for an old billed length failure, never a retry reset."""
+    if "package_parts_version" in state or state.get("package_plan"):
+        return False
+    job = db.get(Job, state.get("job_id")) if state.get("job_id") else None
+    message = ("Die KI hat die begrenzte Ausgabelänge erreicht. Die unvollständige Antwort wurde verworfen; "
+               "kein automatischer Wiederholungsversuch.")
+    sources = _sources(db, day)
+    if (not job or job.kind != "package" or job.status != "failed" or job.error != message
+            or job.child_id != day.child_id or state.get("sources") != sources
+            or state.get("day_revision") != day.revision
+            or job.payload.get("school_day_id") != day.id or job.payload.get("day_revision") != day.revision
+            or job.payload.get("sources") != sources or job.payload.get("package_partition") is not None):
+        return False
+    usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+    return bool(usage and usage.child_id == day.child_id and usage.status == "failed_billed"
+        and usage.cost_micros is not None and usage.cost_micros > 0)
+
+
+def _prepare_parts(db, day, child, state, source_pages):
+    """Only conscious submit can bind a plan; small new packages remain legacy."""
+    from .package_partitions import build_plan
+    from .school_day import package_plan
+
+    if not _parts_enabled(source_pages):
+        return {}
+    if _current_plan(db, day, child, state):
+        _part_outputs(state, state["package_plan"])
+        return {key: copy.deepcopy(state[key]) for key in _PART_KEYS if key in state}
+    if not any(group["selected"] for group in package_plan(db, day, child)["groups"]):
+        return {}  # Already covered sources use the existing cost-free save path.
+    plan = build_plan(db, day, child)
+    if plan["status"] != "ready":
+        raise HTTPException(409, "Die Heftseiten sind für die Teilplanung noch nicht verwendbar. Bitte zuerst die markierten Quellen prüfen.")
+    if len(plan["parts"]) <= 1 and not state.get("package_plan") and not _legacy_part_migration(db, day, state):
+        return {}
+    return {"package_plan": plan, "package_config_revision": plan["config_revision"], "package_outputs": {}}
+
+
+def _part_progress(state, job):
+    plan = state.get("package_plan")
+    if not isinstance(plan, dict) or not isinstance(plan.get("parts"), list):
+        return {}
+    total = len(plan["parts"])
+    completed = min(total, len(state.get("package_outputs", {})))
+    if state.get("status") == "ready":
+        completed = min(total, state.get("package_completed_parts", 0))
+    index = (job.payload or {}).get("package_partition") if job else None
+    active = index if type(index) is int and 0 <= index < total else None
+    return {"total_parts": total, "completed_parts": completed, "active_part": active}
+
+
 def preparation_data(db, day, child=None):
     """Small read-only metadata; never expose actor/session IDs or private state."""
     state = _state(day)
@@ -223,8 +331,21 @@ def preparation_data(db, day, child=None):
                     previous.get("count", 0) if previous.get("revision") == waiting.revision else 0)[1] < MAX_ATTEMPTS
             )
         elif state.get("phase") == "package":
-            can_retry = _attempt_counts(db, day.child_id, "package", current,
-                state.get("package_attempts", {}).get(_fingerprint(current), 0))[1] < MAX_ATTEMPTS
+            child = child or db.get(Child, day.child_id)
+            try:
+                proposed = _prepare_parts(db, day, child, state, source_pages)
+                if proposed.get("package_plan"):
+                    plan = proposed["package_plan"]
+                    _, completed = _part_outputs(proposed, plan)
+                    index = next((i for i in range(len(plan["parts"])) if i not in completed), None)
+                    can_retry = index is None or _attempt_counts(db, day.child_id, "package", current,
+                        state.get("package_part_attempts", {}).get(_part_key(plan, index), 0),
+                        partition=(plan["digest"], index))[1] < MAX_ATTEMPTS
+                else:
+                    can_retry = _attempt_counts(db, day.child_id, "package", current,
+                        state.get("package_attempts", {}).get(_fingerprint(current), 0))[1] < MAX_ATTEMPTS
+            except (HTTPException, ValueError, KeyError, TypeError, IndexError):
+                can_retry = False
     from .job_failures import generation_availability, message_code
 
     waiting = next((m for m in source_pages if m.status == "uploaded" and not m.confirmed), None)
@@ -250,7 +371,12 @@ def preparation_data(db, day, child=None):
     error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
     if error_code == "unknown" and error:
         error_code = message_code(error)
-    if can_retry and not blocker and error_code == "cost_preflight" and job:
+    try:
+        new_part_contract = bool(_prepare_parts(db, day, child or db.get(Child, day.child_id), state, source_pages)) \
+            and not _current_plan(db, day, child or db.get(Child, day.child_id), state)
+    except (HTTPException, ValueError, KeyError, TypeError, IndexError):
+        new_part_contract = False
+    if can_retry and not blocker and error_code == "cost_preflight" and job and not new_part_contract:
         failed_usage = db.scalar(select(Usage).where(Usage.job_id == job.id).order_by(Usage.created.desc()).limit(1))
         config = db.get(ProviderConfig, 1)
         if (failed_usage and config and failed_usage.config_revision == config.revision
@@ -272,6 +398,7 @@ def preparation_data(db, day, child=None):
         "job": {"id": job.id, "kind": job.kind, "status": job.status} if job else None,
         "error": error,
         "can_retry": can_retry,
+        **_part_progress(state, job),
     }
 
 
@@ -294,19 +421,23 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
     if previous and previous["fingerprint"] != fingerprint:
         raise HTTPException(409, "Dieser Anfrageschlüssel gehört zu einem anderen Stand der Heftseiten.")
     same = state.get("sources") == snapshot and state.get("day_revision") == day.revision
-    completed_review = state.get("status") == "needs_review" and all(m.confirmed for m in source_pages)
+    old_job = db.get(Job, state.get("job_id")) if state.get("job_id") else None
+    status = "failed" if state.get("status") == "processing" and old_job and old_job.status == "failed" else state.get("status")
+    completed_review = status == "needs_review" and all(m.confirmed for m in source_pages)
     if previous or (
         same
         and not completed_review
-        and state.get("status") in ("processing", "needs_review", "needs_photo", "ready", "saved")
+        and status in ("processing", "needs_review", "needs_photo", "ready", "saved")
     ):
         return
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(ACTIVE))):
         raise HTTPException(409, "Für dich wird gerade noch etwas vorbereitet. Bitte kurz warten.")
     repair = None
-    if same and state.get("status") in ("failed", "blocked", "processing"):
+    part_state = _prepare_parts(db, day, child, state, source_pages) if _parts_enabled(source_pages) else {}
+    new_part_contract = bool(part_state) and not _current_plan(db, day, child, state)
+    if same and status in ("failed", "blocked", "processing"):
         blocker = preparation_data(db, day, child).get("retry_blocker")
-        if blocker and blocker.get("code") == "cost_preflight":
+        if blocker and blocker.get("code") == "cost_preflight" and not new_part_contract:
             raise HTTPException(409, blocker["message"])
         from .job_failures import message_code
 
@@ -323,6 +454,8 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
     if day.stage == "collecting":
         day.stage = "review"
         day.revision += 1
+        if part_state:
+            part_state = _prepare_parts(db, day, child, {"package_plan": part_state["package_plan"]}, source_pages)
     state = {
         "run_id": uid(),
         "status": "processing",
@@ -339,6 +472,9 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
         "requests": [*requests, {"key": key_hash, "fingerprint": fingerprint}][-128:],
         "extract_attempts": state.get("extract_attempts", {}),
         "package_attempts": state.get("package_attempts", {}),
+        "package_part_attempts": state.get("package_part_attempts", {}),
+        "package_parts_version": 1,
+        **part_state,
     }
     if all(m.confirmed for m in source_pages):
         state["phase"] = "package"
@@ -367,6 +503,8 @@ def postpone_preparation(db, day):
 def saved_by_user(db, day, p):
     """Keep legacy explicit save buttons consistent with the preparation inbox."""
     state = _state(day)
+    if state.get("sources") != _sources(db, day) or state.get("day_revision") != day.revision:
+        _clear_parts(state)
     state.update(
         run_id=state.get("run_id") or uid(),
         user_id=p.user.id,
@@ -387,6 +525,7 @@ def sources_removed(db, day):
     prior attempt counts and completed learning untouched; continuing is explicit.
     """
     state = _state(day)
+    _clear_parts(state)
     source_pages = _pages(db, day)
     from .study_path import source_backed_blocks
 
@@ -434,16 +573,27 @@ def _queue(db, day, child, family, state, kind, payload):
             raise ProviderError("Die Erkennung hat zweimal nicht geklappt. Bitte fotografiere die Seite neu.")
         counts[material.id] = {"revision": material.revision, "count": starts + 1}
     else:
-        counts, name = state.setdefault("package_attempts", {}), _fingerprint(state["sources"])
-        starts, attempts = _attempt_counts(db, child.id, "package", state["sources"], counts.get(name, 0))
+        index = payload.get("package_partition")
+        if index is None:
+            counts, name = state.setdefault("package_attempts", {}), _fingerprint(state["sources"])
+            starts, attempts = _attempt_counts(db, child.id, "package", state["sources"], counts.get(name, 0))
+        else:
+            _checked_part(db, day, child, state, index)
+            plan = state["package_plan"]
+            counts, name = state.setdefault("package_part_attempts", {}), _part_key(plan, index)
+            starts, attempts = _attempt_counts(db, child.id, "package", state["sources"], counts.get(name, 0),
+                partition=(plan["digest"], index))
         if attempts >= MAX_ATTEMPTS:
-            raise ProviderError("Das Paket konnte zweimal nicht erstellt werden. Deine Seiten bleiben gespeichert.")
+            raise ProviderError("Diese Teilrunde konnte zweimal nicht erstellt werden. Deine Seiten und fertigen Teilrunden bleiben gespeichert."
+                if index is not None else "Das Paket konnte zweimal nicht erstellt werden. Deine Seiten bleiben gespeichert.")
         counts[name] = starts + 1
     payload = {
         **payload,
         "school_day_id": day.id,
         "preparation_id": state["run_id"],
-        "learning_entry_enabled": kind == "package" and bool(state.get("learning_entry_enabled")),
+        "learning_entry_enabled": kind == "package" and bool(state.get("learning_entry_enabled"))
+            and (payload.get("package_partition") is None
+                 or state["package_plan"]["parts"][payload["package_partition"]]["learning_entry_enabled"]),
         **({"labs_enabled": True} if kind == "package" and state.get("labs_enabled") else {}),
         "material_revision": material.revision,
     }
@@ -452,7 +602,9 @@ def _queue(db, day, child, family, state, kind, payload):
         child_id=child.id,
         kind=kind,
         payload=payload,
-        idempotency="prepare:" + state["run_id"] + ":" + kind + ":" + material.id,
+        idempotency="prepare:" + state["run_id"] + ":" + kind + ":" + material.id
+            + (":part:" + str(payload["package_partition"]) + ":" + str(starts)
+               if payload.get("package_partition") is not None else ""),
     )
     db.add(job)
     db.flush()
@@ -467,18 +619,64 @@ def _queue(db, day, child, family, state, kind, payload):
     _write(day, state, job_id=job.id, phase=kind, error=None)
 
 
+
+def _advance_parts(db, day, child, family, state, job):
+    from .package_partitions import validated_parts
+
+    plan = state["package_plan"]
+    if not _current_plan(db, day, child, state):
+        raise ProviderError("Die Quellen, Planung oder KI-Einstellungen der Teilrunden wurden geändert. Bitte erneut abgeben.")
+    ordered, completed = _part_outputs(state, plan)
+    if job and job.payload.get("package_partition") is not None:
+        index = job.payload["package_partition"]
+        if (job.payload.get("package_plan_digest") != plan["digest"]
+                or type(index) is not int or index not in completed):
+            raise ProviderError("Ein fertiger Teilauftrag hat keinen gültigen gespeicherten Ergebnisbeleg. Bitte erneut prüfen.")
+    if len(completed) == len(plan["parts"]):
+        from .school_day import save_package_parts
+
+        ordered = validated_parts(state, plan)
+        final_job = job or db.get(Job, ordered[-1]["job_id"])
+        if final_job is None or final_job.status != "completed":
+            raise ProviderError("Der letzte Teilauftrag ist noch nicht abgeschlossen.")
+        save_package_parts(db, final_job, ordered, plan)
+        # The aggregate saver may change private state; never restore stale JSON.
+        state = _state(day)
+        state.pop("package_outputs", None)
+        _notify(db, day, state, "ready")
+        _write(day, state, status="ready", phase="complete", job_id=final_job.id,
+            day_revision=day.revision, package_completed_parts=len(plan["parts"]), error=None, error_code=None)
+        return
+    if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(ACTIVE))):
+        raise ProviderError("Für dieses Kind läuft bereits ein anderer Auftrag. Bitte später erneut versuchen.")
+    index = next(i for i in range(len(plan["parts"])) if i not in completed)
+    part = plan["parts"][index]
+    _queue(db, day, child, family, state, "package", {
+        "material_id": part["sources"][0]["id"], "day_revision": day.revision,
+        "sources": state["sources"], "groups": [part["group"]],
+        "planning_fingerprint": plan["planning_fingerprint"],
+        "package_partition": index, "package_plan_digest": plan["digest"],
+        "package_partition_sources": part["sources"],
+    })
+
+
 def _advance(db, day):
     state = _state(day)
     if state.get("status") != "processing":
         return
     child, family = authority(db, day, state)
     _check_sources(db, day, state)
+    if state.get("package_plan") and not _current_plan(db, day, child, state):
+        raise ProviderError("Die Quellen, Planung oder KI-Einstellungen der Teilrunden wurden geändert. Bitte erneut abgeben.")
     job = db.get(Job, state.get("job_id")) if state.get("job_id") else None
     if job:
         if job.status in ACTIVE:
             return
         if job.status == "failed":
             _write(day, state, status="failed", error=job.error)
+            return
+        if job.kind == "package" and job.status == "completed" and state.get("package_plan"):
+            _advance_parts(db, day, child, family, state, job)
             return
         if job.kind == "package" and job.status == "completed":
             status = "saved" if job.result and job.result.get("deferred") else "ready"
@@ -512,6 +710,9 @@ def _advance(db, day):
         if any(group.get("blocked_reason") for group in preview["groups"]):
             raise ProviderError("Die neuen Heftquellen sind noch ungeklärt. Bitte zuerst die markierten Stellen prüfen.")
         _saved(db, day, state)
+        return
+    if state.get("package_plan"):
+        _advance_parts(db, day, child, family, state, job)
         return
     _queue(
         db,
@@ -564,6 +765,8 @@ def advance(day_id):
             if state.get("run_id") == run_id and state.get("status") == "processing":
                 from .job_failures import failure_code
 
+                if state.get("package_plan") and not _current_plan(db, day, db.get(Child, day.child_id), state):
+                    _clear_parts(state)
                 _write(day, state, status="blocked", error=message[:500], error_code=failure_code(error))
 
 
