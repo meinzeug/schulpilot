@@ -9,7 +9,19 @@ from fastapi import HTTPException
 from pydantic import Field, model_validator
 from sqlalchemy import select
 
-from .db import Attempt, Job, LearningUnit, Material, ProviderConfig, SchoolDay, TutorTurn, UnitSource, Usage, now
+from .db import (
+    Attempt,
+    Child,
+    Job,
+    LearningUnit,
+    Material,
+    ProviderConfig,
+    SchoolDay,
+    TutorTurn,
+    UnitSource,
+    Usage,
+    now,
+)
 from .schemas import Strict
 
 ROUTING_VERSION = "school-2"
@@ -158,6 +170,81 @@ def extraction_failed(db, child_id, material_id, *, material_revision=None):
     ).limit(1)) is not None
 
 
+def extraction_recheck(db, child_id, job):
+    """Carry recorded reading difficulty into one explicit same-photo recheck.
+
+    The new upload intentionally has no inherited transcription. Its route may
+    use the guarded original's reading metadata without copying that text or
+    starting/retrying a job. Worker authority/source guards remain mandatory.
+    """
+    if not job or job.child_id != child_id or job.kind != "extract" or job.status != "queued":
+        return False
+    data = job.payload if isinstance(job.payload, dict) else {}
+    guard = data.get("reprocess_guard")
+    if not isinstance(guard, dict):
+        return False
+    source_id, clone_id = guard.get("source_id"), data.get("material_id")
+    if (not isinstance(source_id, str) or not source_id or not isinstance(clone_id, str)
+            or not clone_id or source_id == clone_id
+            or type(guard.get("source_revision")) is not int or guard["source_revision"] < 1
+            or type(data.get("material_revision")) is not int or data["material_revision"] < 1):
+        return False
+    with db.no_autoflush:
+        source = db.get(Material, source_id, populate_existing=True)
+        clone = db.get(Material, clone_id, populate_existing=True)
+    if (not source or not clone or source.child_id != child_id or clone.child_id != child_id
+            or source.revision != guard["source_revision"] or clone.revision != data["material_revision"]
+            or source.purpose != "notebook" or clone.purpose != "notebook"
+            or source.synthetic or clone.synthetic or source.fixture_id or clone.fixture_id
+            or not isinstance(source.image_digest, str) or not source.image_digest.strip()
+            or source.image_digest != clone.image_digest):
+        return False
+    return bool(source.uncertainties or source.legibility in ("partial", "unreadable"))
+
+
+def study_length_failed(db, child_id, job):
+    """Recorded output need for this exact unpublished stage's next request.
+
+    No retry, reservation or stored-plan change. Rebuild the current safe-source
+    fingerprint; matching opaque values in old job JSON alone are insufficient.
+    """
+    if not job or job.child_id != child_id or job.kind != "study_block" or job.status != "queued":
+        return False
+    data = job.payload or {}
+    if any(not isinstance(data.get(key), str) or not data[key] for key in ("day_id", "block_id", "source_hash", "planning")):
+        return False
+    previous = db.scalars(select(Job).where(
+        Job.child_id == child_id, Job.kind == "study_block", Job.status == "failed", Job.id != job.id,
+        Job.payload["day_id"].as_string() == data["day_id"],
+        Job.payload["block_id"].as_string() == data["block_id"],
+        Job.payload["source_hash"].as_string() == data["source_hash"],
+        Job.payload["planning"].as_string() == data["planning"],
+    ).order_by(Job.created.desc(), Job.id.desc()).limit(3))
+    if not any(isinstance(old.error, str) and " ".join(old.error.split()) == _EXTRACTION_LENGTH_MESSAGE for old in previous):
+        return False
+    day, child = db.get(SchoolDay, data["day_id"]), db.get(Child, child_id)
+    if not day or day.child_id != child_id or not child:
+        return False
+    plan = day.learning_plan or {}
+    block = next((row for row in plan.get("blocks", []) if row.get("id") == data["block_id"]), None)
+    if not block or block.get("unit_id") or plan.get("source_hash") != data["source_hash"]:
+        return False
+    from .providers import ProviderError
+    from .school_day import planning_fingerprint
+    from .study_path import fingerprint, sources
+
+    try:
+        current = sources(db, day)
+    except ProviderError:
+        return False
+    selected = block.get("material_ids") or []
+    return (all(material.child_id == child_id and material.school_day_id == day.id for material in current)
+        and bool(selected) and len(set(selected)) == len(selected)
+        and set(selected) <= {material.id for material in current}
+        and fingerprint(current, db) == data["source_hash"]
+        and planning_fingerprint(db, child) == data["planning"])
+
+
 def features_for(db, child_id, job_id):
     """Use bounded recorded facts, never client-selected difficulty or model IDs."""
     job = db.get(Job, job_id) if job_id is not None else None
@@ -201,6 +288,8 @@ def features_for(db, child_id, job_id):
         "poor_image": any(m.uncertainties or m.quality_warnings or m.legibility in ("partial", "unreadable") for m in sources),
         "extraction_failed": extraction_failed(db, child_id, material.id,
             material_revision=data.get("material_revision")) if material else False,
+        "transcription_review": extraction_recheck(db, child_id, job),
+        "study_length_failed": study_length_failed(db, child_id, job),
         "sources_known": bool(ids) and len(sources) == len(ids),
         "source_count": len(sources),
         "source_chars": sum(len(m.content or "") for m in sources),
@@ -213,6 +302,10 @@ def choose_tier(function, features, *, economy=False):
     # Start difficult material on the suitable route, without a trial cascade.
     if function == "extract" and features.get("extraction_failed"):
         return "sol", "recorded_transcription_failure"
+    if function == "extract" and features.get("transcription_review"):
+        return "sol", "recorded_transcription_review"
+    if function in ("unit", "study_block") and features.get("study_length_failed"):
+        return "sol", "recorded_study_output_length"
     if economy:
         if features.get("poor_image") or features.get("errors", 0) >= 2 or features.get("uncertain", 0):
             return "sol", "recorded_difficulty"

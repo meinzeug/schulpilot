@@ -319,6 +319,19 @@
       ],
       "interaction": "Originalbausteine bewusst auswählen und Unterschiede lokal betrachten; keine eigene Umordnung oder Bewertung.",
       "variant": null
+    },
+    {
+      "id": "general.original_evidence.focused_list",
+      "version": 1,
+      "subjects": [
+        "Deutsch",
+        "Geschichte"
+      ],
+      "kind": "scene",
+      "purpose": "Zwei bis vier vollständige aufeinanderfolgende Originaleinträge einer ausdrücklich nummerierten oder mit Aufzählungszeichen versehenen Liste lesen und vergleichen. Genau zwei bewusste Phasen heben verschiedene vollständige Originaleinträge hervor; keine Kausalität, Chronologie, Pfeile, Wortzerlegung oder Grammatikurteile erfinden. Frageoptionen bleiben dieselben Originaleinträge in Originalreihenfolge. Eine Bedeutungs- oder Verständnisfrage nennt ihre richtige vollständige Option nicht schon im Prompt; andere Originaloptionen sind nicht sprachlich falsch. Nur quellengerechte fachliche Abruffragen, keine Abfrage alter Markierungen oder bloßer Listennummern.",
+      "terms": [],
+      "interaction": "Zwei Originaleinträge bewusst fokussieren und vergleichen; die Hervorhebung zeigt einen Lesefokus, keinen zeitlichen oder kausalen Ablauf und keinen Lernbeleg.",
+      "variant": null
     }
   ]
 }

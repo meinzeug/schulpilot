@@ -250,7 +250,7 @@ def bind_schema(schema, payload):
     return bind_candidates(schema, Binding(tuple(candidates)))
 
 
-def bind_candidates(schema, binding, *, question_kinds=("fraction",), prompt_pattern=_fraction_prompt_pattern):
+def bind_candidates(schema, binding, *, question_kinds=("fraction",), prompt_pattern=_fraction_prompt_pattern, question_binding=None):
     """Reuse the strict ID/stage binder; ordinary maths retains its own policy."""
     candidates = binding.candidates
     definitions = schema["$defs"]
@@ -307,11 +307,22 @@ def bind_candidates(schema, binding, *, question_kinds=("fraction",), prompt_pat
     def questions(node):
         node = resolved(node)
         if "anyOf" in node:
-            node["anyOf"] = [questions(branch) for branch in node["anyOf"]]
+            choices = [questions(branch) for branch in node["anyOf"]]
+            if question_binding is not None:
+                choices = [branch for branch in choices if branch is not None]
+                if not choices:
+                    return None
+            node["anyOf"] = choices
             return node
         branches = []
         for stage_candidates in question_bases.values():
             candidate = stage_candidates[0]
+            if question_binding is not None:
+                branch = question_binding(copy.deepcopy(node), candidate)
+                if branch is not None:
+                    branch["properties"]["explanation_steps"] = steps(False, stage_candidates)
+                    branches.append(branch)
+                continue
             pattern = prompt_pattern(candidate)
             prompt = node["properties"]["prompt"]
             if "pattern" in prompt and prompt["pattern"] != pattern:
@@ -324,6 +335,8 @@ def bind_candidates(schema, binding, *, question_kinds=("fraction",), prompt_pat
             branch["properties"]["explanation_steps"] = steps(False, stage_candidates)
             branches.append(branch)
         if not branches:
+            if question_binding is not None:
+                return None
             raise ValueError("Die festgelegte Frage besitzt keine passende vorbereitete Grafik mit ausdrücklichem Bruchanker.")
         return {"anyOf": branches}
 
@@ -334,7 +347,10 @@ def bind_candidates(schema, binding, *, question_kinds=("fraction",), prompt_pat
         else:
             node["properties"]["explanation_steps"] = steps(True)
             field = node["properties"]["questions"]
-            field["items"] = questions(field["items"])
+            selected = questions(field["items"])
+            if selected is None:
+                raise ValueError("Die festgelegte Frage besitzt keine passende vorbereitete Grafik mit ausdrücklichem Bruchanker.")
+            field["items"] = selected
         return node
 
     schema["properties"]["units"]["items"] = units(schema["properties"]["units"]["items"])

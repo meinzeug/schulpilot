@@ -1,6 +1,7 @@
 """An original language comparison remains feasible without source arrows."""
 import copy
 
+import pytest
 from schulpilot.package_transport import rules
 from schulpilot.subject_content import generation_context
 from test_package_part_reference_binding import binding, request, schema_for
@@ -45,9 +46,15 @@ def test_literal_source_arrows_keep_the_original_directed_scene_available():
     assert generation_context(["Englisch"], schema=schema_for(payload))["graphic_kinds"] == ["forms", "scene"]
 
 
-def test_other_legacy_requests_keep_their_reference_contract():
-    _, payload = language_part(comparison=False)
+def test_only_scene_reference_with_literal_source_arrows_remains_available():
+    _, payload = language_part(comparison=False, arrow=True)
     assert generation_context(["Englisch"], schema=schema_for(payload))["graphic_kinds"] == ["scene"]
+
+
+def test_bound_part_without_literal_arrows_or_applicable_alternative_refuses_before_dispatch():
+    _, payload = language_part(comparison=False)
+    with pytest.raises(ValueError, match="keine passende Referenz/Grafik"):
+        schema_for(payload)
 
 
 def test_comparison_request_advertises_complete_parameter_family_and_bounds():

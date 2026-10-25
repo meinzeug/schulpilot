@@ -50,6 +50,10 @@ def word_part_bases(content):
 
 
 def reference_supported(reference, contents):
+    from .package_prepared_focus import REFERENCE, focus_bases
+
+    if reference.get("id") == REFERENCE:
+        return any(next(focus_bases(content), None) is not None for content in contents)
     if reference.get("id") == "general.source_relation.phases":
         return any(next(prepared._scene_bases(content), None) is not None for content in contents)
     if reference.get("id") == WORD_PARTS_REFERENCE:
@@ -160,7 +164,9 @@ class Binding(prepared.Binding):
 
 
 def bind_schema(schema, payload):
+    from .package_prepared_focus import bind_schema as bind_focus
+
     candidates = compile_candidates(payload)
-    if not candidates:
-        return None
-    return prepared.bind_candidates(schema, Binding(tuple(candidates)), question_kinds=("scene", "sentence"), prompt_pattern=prompt_pattern)
+    if candidates:
+        return prepared.bind_candidates(schema, Binding(tuple(candidates)), question_kinds=("scene", "sentence"), prompt_pattern=prompt_pattern)
+    return bind_focus(schema, payload)

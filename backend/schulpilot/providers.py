@@ -1592,7 +1592,23 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .package_transport import rules as package_rules
 
         if package_part_output.enabled(payload):
-            prepared_graphics = package_part_output.bind_schema(schema, payload)
+            try:
+                prepared_graphics = package_part_output.bind_schema(schema, payload)
+            except ValueError as error:
+                # This narrow local schema phase precedes every outbound call.
+                # A missing source recipe is neither a provider failure nor an
+                # uncertain provider charge. Unexpected schema bugs still fail
+                # visibly through the ordinary technical-error path.
+                if error.args not in (
+                    ("Der Teilauftrag hat keine passende Referenz/Grafik für seine Aufdeckstufe.",),
+                    ("Für diesen Teilauftrag ist keine passende Grafik freigegeben.",),
+                ):
+                    raise
+                raise ProviderError(
+                    "Die passende Erklärgrafik für diese Heftseiten ist noch nicht vorbereitet. "
+                    "Deine Fotos und bisherigen Runden bleiben gespeichert.",
+                    code="invalid_output", billing_result=Result({}, 0, 0, 0, cost_source="cancelled"),
+                ) from None
             if prepared_graphics is not None:
                 payload = {**payload, "prepared_graphics": prepared_graphics.context}
             from .package_part_catalog import bind_schema as bind_part_catalog_schema

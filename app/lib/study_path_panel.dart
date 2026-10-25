@@ -624,7 +624,10 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               if ((data?['block_reason'] as String? ?? '').isNotEmpty) ...[
                 SizedBox(height: 12),
                 Text(
-                  data!['block_reason'],
+                  _studyError(
+                    data!['block_reason'] as String,
+                    child: state.isChild,
+                  ),
                   style: TextStyle(color: context.palette.muted),
                 ),
               ],
@@ -758,7 +761,10 @@ String _studyError(Object error, {bool child = false}) {
   if (child &&
       message != null &&
       RegExp(
-        r'\bHTTP\s*[0-9]{3}\b|\binvalid_schema\b',
+        r'\bHTTP\s*[0-9]{3}\b|\binvalid_(?:schema|output)\b|'
+        r'begrenzte Ausgabelänge|\b(?:KI|Paket)-Ausgabe\b|'
+        r'KI hat (?:keine (?:abgeschlossene Antwort|Lernantwort)|eine Antwort ohne Inhalt)|'
+        r'Antwort des KI-Anbieters war nicht lesbar',
         caseSensitive: false,
       ).hasMatch(message)) {
     return 'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.';

@@ -145,6 +145,20 @@ void _pause(WidgetTester tester) {
 }
 
 void main() {
+  const technicalFailures = <(String, String)>[
+    (
+      'HTTP',
+      'KI-Anbieter meldet HTTP 400. Schlüssel, Modell, Freigabe oder Kontingent prüfen.',
+    ),
+    (
+      'length',
+      'Die KI hat die begrenzte Ausgabelänge erreicht. Die unvollständige Antwort wurde verworfen; kein automatischer Wiederholungsversuch.',
+    ),
+    (
+      'invalid output',
+      'Die KI-Ausgabe erfüllt die Aufgabenprüfung nicht. Es wurden keine Ersatzaufgaben erstellt. Prüfstellen: units.0.questions.0',
+    ),
+  ];
   testWidgets(
     'Planning and preparing are explicit; a completed job opens its real unit',
     (tester) async {
@@ -466,158 +480,242 @@ void main() {
     },
   );
 
+  for (final failure in technicalFailures) {
+    testWidgets(
+      'Persisted ${failure.$1} error is child-friendly and saved rounds remain reachable',
+      (tester) async {
+        _viewport(tester);
+        final technical = failure.$2;
+        const friendly =
+            'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.';
+        final requests = <http.Request>[];
+        final current = _path(
+          blocks: [
+            _block('finished', status: 'completed', unit: 'finished'),
+            _block('saved', status: 'ready', unit: 'saved'),
+            _block('failed', job: 'failed-job')..['error'] = technical,
+          ],
+        )..['next_block_id'] = 'failed';
+        final state = _state(
+          MockClient((r) async {
+            requests.add(r);
+            return _json(current);
+          }),
+        );
+        final router = await _open(tester, state);
+        expect(find.text(friendly), findsOneWidget);
+        expect(find.text(technical), findsNothing);
+        expect(find.text('4 von 12 Aufgaben bearbeitet'), findsOneWidget);
+        expect(
+          find.text('4 bereit · verteilt auf mehrere Lerntage'),
+          findsOneWidget,
+        );
+        await _tap(tester, 'Alle Etappen');
+        final details = find.widgetWithText(TextButton, 'Brüche failed');
+        await tester.ensureVisible(details);
+        await tester.tap(details);
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.text(friendly), findsNWidgets(2));
+        expect(find.text(technical), findsNothing);
+        await _tap(tester, 'Zurück zum Lernweg');
+        await tester.pump(const Duration(seconds: 9));
+        expect(requests.every((r) => r.method == 'GET'), isTrue);
+        await _tap(tester, 'Gespeicherte Runden ansehen');
+        expect(find.text('Gespeicherte Runden für child'), findsOneWidget);
+        expect(
+          GoRouterState.of(
+            tester.element(find.text('Gespeicherte Runden für child')),
+          ).uri.path,
+          '/learn/child',
+        );
+        expect(find.text('Gespeicherte Runden für child'), findsOneWidget);
+        expect(requests.every((r) => r.method == 'GET'), isTrue);
+        expect(tester.takeException(), isNull);
+        await _dispose(tester, router);
+      },
+    );
+  }
+
+  for (final failure in technicalFailures) {
+    testWidgets(
+      'Polled ${failure.$1} failure offers saved work and retries only after a conscious click',
+      (tester) async {
+        _viewport(tester);
+        final technical = failure.$2;
+        final posts = <http.Request>[];
+        var current = _path(
+          blocks: [
+            _block('saved', status: 'ready', unit: 'saved'),
+            _block('failed', status: 'generating', job: 'job'),
+          ],
+        )..['next_block_id'] = 'failed';
+        final state = _state(
+          MockClient((r) async {
+            if (r.method == 'POST') {
+              posts.add(r);
+              expect(r.url.path, '/api/school-days/day/blocks/failed');
+              current = _path(
+                blocks: [
+                  _block('failed', status: 'generating', job: 'new-job'),
+                ],
+              );
+              return _json({'id': 'new-job', 'status': 'queued'});
+            }
+            if (r.url.path == '/api/jobs/job') {
+              current = _path(
+                blocks: [
+                  _block('saved', status: 'ready', unit: 'saved'),
+                  _block('failed', job: 'job')..['error'] = technical,
+                ],
+              )..['next_block_id'] = 'failed';
+              return _json({
+                'id': 'job',
+                'status': 'failed',
+                'error': technical,
+              });
+            }
+            return _json(current);
+          }),
+        );
+        final router = await _open(tester, state);
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text(technical), findsNothing);
+        expect(
+          find.text(
+            'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Gespeicherte Runden ansehen'), findsOneWidget);
+        expect(find.text('Erneut vorbereiten'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 9));
+        expect(posts, isEmpty);
+        await _tap(tester, 'Stand prüfen');
+        expect(posts, isEmpty);
+        await _tap(tester, 'Erneut vorbereiten');
+        expect(posts, hasLength(1));
+        expect(posts.single.headers['Idempotency-Key'], isNotEmpty);
+        expect(
+          find.text('Deine nächste Etappe wird vorbereitet.'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        await _dispose(tester, router);
+      },
+    );
+  }
+
+  for (final failure in technicalFailures) {
+    testWidgets(
+      'Immediate ${failure.$1} API failure keeps the saved-round exit and never automatically posts again',
+      (tester) async {
+        _viewport(tester);
+        final methods = <String>[];
+        final state = _state(
+          MockClient((r) async {
+            methods.add(r.method);
+            if (r.method == 'POST') {
+              return http.Response(
+                jsonEncode({'detail': failure.$2}),
+                400,
+                headers: {'content-type': 'application/json'},
+              );
+            }
+            return _json(_path());
+          }),
+        );
+        final router = await _open(tester, state);
+        await _tap(tester, 'Erste Etappe starten');
+        expect(find.text(failure.$2), findsNothing);
+        expect(
+          find.text(
+            'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('invalid_schema'), findsNothing);
+        expect(find.text('Gespeicherte Runden ansehen'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 9));
+        expect(methods.where((m) => m == 'POST'), hasLength(1));
+        await _tap(tester, 'Stand prüfen');
+        expect(methods.where((m) => m == 'POST'), hasLength(1));
+        await _tap(tester, 'Gespeicherte Runden ansehen');
+        expect(find.text('Gespeicherte Runden für child'), findsOneWidget);
+        expect(
+          GoRouterState.of(
+            tester.element(find.text('Gespeicherte Runden für child')),
+          ).uri.path,
+          '/learn/child',
+        );
+        expect(methods.where((m) => m == 'POST'), hasLength(1));
+        expect(tester.takeException(), isNull);
+        await _dispose(tester, router);
+      },
+    );
+  }
   testWidgets(
-    'Persisted technical stage error is child-friendly and saved rounds remain reachable',
+    'Read API invalid-output failure remains neutral and opens saved work without another preparation',
     (tester) async {
       _viewport(tester);
-      const technical =
-          'KI-Anbieter meldet HTTP 400. Schlüssel, Modell, Freigabe oder Kontingent prüfen.';
-      const friendly =
-          'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.';
       final requests = <http.Request>[];
-      final current = _path(
-        blocks: [
-          _block('finished', status: 'completed', unit: 'finished'),
-          _block('saved', status: 'ready', unit: 'saved'),
-          _block('failed', job: 'failed-job')..['error'] = technical,
-        ],
-      )..['next_block_id'] = 'failed';
       final state = _state(
         MockClient((r) async {
           requests.add(r);
-          return _json(current);
+          return http.Response(
+            jsonEncode({'detail': 'invalid_output'}),
+            503,
+            headers: {'content-type': 'application/json'},
+          );
         }),
       );
       final router = await _open(tester, state);
-      expect(find.text(friendly), findsOneWidget);
-      expect(find.textContaining('HTTP 400'), findsNothing);
-      expect(find.text('4 von 12 Aufgaben bearbeitet'), findsOneWidget);
+      expect(find.text('invalid_output'), findsNothing);
       expect(
-        find.text('4 bereit · verteilt auf mehrere Lerntage'),
+        find.text(
+          'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.',
+        ),
         findsOneWidget,
       );
-      await _tap(tester, 'Alle Etappen');
-      final details = find.widgetWithText(TextButton, 'Brüche failed');
-      await tester.ensureVisible(details);
-      await tester.tap(details);
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.text(friendly), findsNWidgets(2));
-      expect(find.textContaining('HTTP 400'), findsNothing);
-      await _tap(tester, 'Zurück zum Lernweg');
       await tester.pump(const Duration(seconds: 9));
-      expect(requests.every((r) => r.method == 'GET'), isTrue);
+      expect(requests, hasLength(1));
+      expect(requests.single.method, 'GET');
       await _tap(tester, 'Gespeicherte Runden ansehen');
       expect(find.text('Gespeicherte Runden für child'), findsOneWidget);
-      expect(
-        GoRouterState.of(
-          tester.element(find.text('Gespeicherte Runden für child')),
-        ).uri.path,
-        '/learn/child',
-      );
-      expect(find.text('Gespeicherte Runden für child'), findsOneWidget);
-      expect(requests.every((r) => r.method == 'GET'), isTrue);
+      expect(requests, hasLength(1));
       expect(tester.takeException(), isNull);
       await _dispose(tester, router);
     },
   );
 
   testWidgets(
-    'Polled HTTP failure offers saved work and retries only after a conscious click',
+    'Parent technical details stay unchanged and never start a preparation',
     (tester) async {
       _viewport(tester);
-      const technical =
-          'KI-Anbieter meldet HTTP 400. Schlüssel, Modell, Freigabe oder Kontingent prüfen.';
-      final posts = <http.Request>[];
-      var current = _path(
-        blocks: [
-          _block('saved', status: 'ready', unit: 'saved'),
-          _block('failed', status: 'generating', job: 'job'),
-        ],
-      )..['next_block_id'] = 'failed';
+      final technical = technicalFailures[1].$2;
+      final requests = <http.Request>[];
       final state = _state(
         MockClient((r) async {
-          if (r.method == 'POST') {
-            posts.add(r);
-            expect(r.url.path, '/api/school-days/day/blocks/failed');
-            current = _path(
-              blocks: [_block('failed', status: 'generating', job: 'new-job')],
-            );
-            return _json({'id': 'new-job', 'status': 'queued'});
-          }
-          if (r.url.path == '/api/jobs/job') {
-            current = _path(
-              blocks: [
-                _block('saved', status: 'ready', unit: 'saved'),
-                _block('failed', job: 'job')..['error'] = technical,
-              ],
-            )..['next_block_id'] = 'failed';
-            return _json({'id': 'job', 'status': 'failed', 'error': technical});
-          }
-          return _json(current);
+          requests.add(r);
+          return _json(
+            _path(blocks: [_block('failed')..['error'] = technical]),
+          );
         }),
+        role: 'parent',
       );
       final router = await _open(tester, state);
-      await tester.pump(const Duration(seconds: 3));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(find.textContaining('HTTP 400'), findsNothing);
-      expect(find.text('Gespeicherte Runden ansehen'), findsOneWidget);
-      expect(find.text('Erneut vorbereiten'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 9));
-      expect(posts, isEmpty);
-      await _tap(tester, 'Stand prüfen');
-      expect(posts, isEmpty);
-      await _tap(tester, 'Erneut vorbereiten');
-      expect(posts, hasLength(1));
-      expect(posts.single.headers['Idempotency-Key'], isNotEmpty);
+      expect(find.text(technical), findsOneWidget);
       expect(
-        find.text('Deine nächste Etappe wird vorbereitet.'),
-        findsOneWidget,
+        find.text(
+          'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.',
+        ),
+        findsNothing,
       );
-      expect(tester.takeException(), isNull);
-      await _dispose(tester, router);
-    },
-  );
-
-  testWidgets(
-    'Immediate technical API failure keeps the saved-round exit and never automatically posts again',
-    (tester) async {
-      _viewport(tester);
-      final methods = <String>[];
-      final state = _state(
-        MockClient((r) async {
-          methods.add(r.method);
-          if (r.method == 'POST') {
-            return http.Response(
-              jsonEncode({
-                'detail': 'KI-Anbieter meldet HTTP 400: invalid_schema',
-              }),
-              400,
-              headers: {'content-type': 'application/json'},
-            );
-          }
-          return _json(_path());
-        }),
-      );
-      final router = await _open(tester, state);
-      await _tap(tester, 'Erste Etappe starten');
-      expect(find.textContaining('HTTP 400'), findsNothing);
-      expect(find.textContaining('invalid_schema'), findsNothing);
-      expect(find.text('Gespeicherte Runden ansehen'), findsOneWidget);
+      expect(find.text('Erste Etappe starten'), findsNothing);
       await tester.pump(const Duration(seconds: 9));
-      expect(methods.where((m) => m == 'POST'), hasLength(1));
-      await _tap(tester, 'Stand prüfen');
-      expect(methods.where((m) => m == 'POST'), hasLength(1));
-      await _tap(tester, 'Gespeicherte Runden ansehen');
-      expect(find.text('Gespeicherte Runden für child'), findsOneWidget);
-      expect(
-        GoRouterState.of(
-          tester.element(find.text('Gespeicherte Runden für child')),
-        ).uri.path,
-        '/learn/child',
-      );
-      expect(methods.where((m) => m == 'POST'), hasLength(1));
+      expect(requests.every((r) => r.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);
       await _dispose(tester, router);
     },

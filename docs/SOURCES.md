@@ -1887,3 +1887,58 @@ statt als ständig sichtbare Chip-Liste vor dem Foto. Auswahl und Abbruch sind
 reine Leseaktionen; Bestätigung und Vorbereitung bleiben ausdrücklich. Die
 Lernwegansicht zeigt im Kinderzugang verständliche Fehlertexte und einen
 direkten Weg zu gespeicherten Runden statt roher HTTP-/Schemahinweise.
+
+Der normale Produktionsversuch nach Release123 passierte den bisherigen
+Schemafehler, erreichte auf der kurzen Route aber die Ausgabelänge. Release124
+erkennt ausschließlich einen gespeicherten Längenfehler derselben noch
+unveröffentlichten Tagesetappe mit unverändertem Kind, Eigentum aller Quellen,
+Quellenfingerabdruck und Plan. Der nächste ausdrücklich gestartete Auftrag
+wählt vor der normalen Reservierung die bereits konfigurierte größere Route.
+Modelle, Anbieter, Tokens, Kostenkonfiguration, Fehlversuche und historische
+Verbrauchsbelege bleiben unverändert; es gibt keinen automatischen Retry.
+Der Kindertextfilter behandelt zusätzlich Längen- und Ausgabeprüfungsfehler
+über alle bestehenden Anzeige- und Fehlerpfade verständlich.
+
+Die vollständige CI von Release123 bestand für Flutter und zwei Backendteile.
+Ein synthetischer Test erwartete einen ausschließlich angebotenen Pfeilrenderer,
+obwohl sein Originalstoff keinen Pfeil enthielt. Der Positivfall verwendet nun
+einen tatsächlich wörtlich belegten Pfeil; ein eigener Negativfall verlangt die
+Verweigerung der unbelegbaren Auswahl vor dem Anbieteraufruf.
+Die erfolgreiche erste Produktionsetappe eines größeren Pakets ist noch kein
+Nachweis, dass alle folgenden Etappen erfolgreich vorbereitet sind.
+
+Die rein lesende Vorabprüfung aller sieben gespeicherten Paketteile zeigte vier
+verwendbare Quellen-/Grafikschemata und drei fehlende passende Darstellungen.
+Das prüft weder das spätere Modellergebnis noch die Vollständigkeit der OCR.
+Im direkten Browservergleich wurden außerdem einzelne Wortersetzungen und
+ausgelassene Bildbeschriftungen festgestellt, obwohl die Verarbeitung als
+abgeschlossen gespeichert war. Der grobe Umfangstest ist kein Worttreuenachweis.
+Die historische Bildanfrage verwendete hohe Bilddetailstufe und die gespeicherte
+Auflösung von rund2400×3200Pixeln; eine Auflösungs- oder Längengrenze ist damit
+nicht als Ursache dieser Wortabweichungen belegt.
+
+Ein bewusst erneut angefordertes Einlesen einer nachweislich unsicheren
+Heftseite berücksichtigt nun die Lesewarnungen der revisionsgebundenen
+Originalseite. Die bisher leere Kopie verlor diese Auswahlgrundlage. Nur bei
+passendem Kind, Originalrevision und identischem Bild wird die vorhandene
+größere Route vor der normalen Reservierung gewählt. Originaltext, Bestätigung,
+Antworten und Anbietergrenzen werden dafür nicht geändert.
+Eine bereits vor dem Versand festgestellte fehlende Grafikreferenz wird als
+lokaler Vorbereitungsfehler behandelt. Nur diese eng abgegrenzte Stelle erhält
+einen stornierten Nullkostenbeleg; nach tatsächlichem Versand bleiben fehlende
+Kostenbelege weiterhin unbekannt und reserviert.
+
+Die zusätzliche Referenz `general.original_evidence.focused_list` besitzt eine
+eigene unveränderliche Version und gilt zunächst ausschließlich für Deutsch
+und Geschichte. Sie zeigt zwei bis vier vollständige aufeinanderfolgende
+Originaleinträge mit zwei bewusst wechselbaren Lesefokussen. Hervorheben ist
+keine behauptete zeitliche oder kausale Beziehung; Pfeile werden nicht ergänzt.
+Vorhandene verwendbare Wortbaustein-/Pfeildarstellungen haben Vorrang. Nur dieser
+neue Vertrag bindet Auswahlfragen an eine vorgeprüfte Liste von Originaloptionen:
+ein endlicher Optionsslot wird vor dem bestehenden Indexdecoder verlustfrei
+wiederhergestellt. Der Antwortindex bleibt unverändert; die richtige vollständige
+Option darf nicht bereits im Prompt stehen. Die übrigen Originaloptionen werden
+nicht als grammatisch falsch ausgegeben. Ein Lesefokus ersetzt weder eine
+fachliche Animation noch einen Beleg vollständiger oder richtiger Fotoerkennung.
+Für ungeklärte beziehungsweise falsch eingeordnete Quellen anderer Fächer wird
+damit keine passende Grafik behauptet.

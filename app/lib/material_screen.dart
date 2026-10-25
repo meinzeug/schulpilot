@@ -2069,6 +2069,14 @@ class _MaterialReviewState extends State<MaterialReview>
       'spanisch',
     ].contains((d['subject'] ?? '').toString().trim().toLowerCase());
     final uncertainties = d['uncertainties'] as List? ?? [];
+    final readingUncertainties = <String>{
+      for (final value in uncertainties)
+        if (value is String && value.trim().isNotEmpty) value,
+      for (final block in (d['source_blocks'] as List? ?? []))
+        if (block is Map)
+          for (final value in (block['reading_uncertainties'] as List? ?? []))
+            if (value is String && value.trim().isNotEmpty) value,
+    };
     final canConfirm = !confirmed && d['status'] == 'review';
     final longText =
         content.text.length > 120 || content.text.split('\n').length > 5;
@@ -2280,6 +2288,16 @@ class _MaterialReviewState extends State<MaterialReview>
                     message: 'Du hast die Abschrift übernommen. Das bestätigt den Wortlaut, nicht die fachliche Richtigkeit jeder Aussage.',
                     child: Tag('Text übernommen'),
                   ),
+                  if (readingUncertainties.isNotEmpty)
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.warning_amber_rounded),
+                      title: const Text('Lesestellen noch prüfen'),
+                      children: [
+                        for (final uncertainty in readingUncertainties)
+                          Notice(uncertainty, warning: true),
+                      ],
+                    ),
                   if (d['source_learning'] is Map)
                     ExpansionTile(
                       tilePadding: EdgeInsets.zero,

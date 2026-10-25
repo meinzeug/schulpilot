@@ -224,6 +224,11 @@ def _meaningful(block, recipe, *, sources=None, question=None):
             prompt = " ".join(question.get("prompt", "").split())
             if not any(re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", prompt) for label in labels):
                 raise ValueError("Die Frage muss mindestens einen vollständigen Originalausdruck ihres Vergleichs nennen.")
+    if recipe.get("id") == "general.original_evidence.focused_list":
+        from .package_prepared_focus import validate_focus
+
+        validate_focus(block, sources=sources, question=question)
+        return  # Only this immutable recipe permits a noncausal reading focus.
     if block.kind == "scene":
         scene = block.scene
         if scene is None or len(scene.steps) < 2 or not any(step.edges for step in scene.steps):
