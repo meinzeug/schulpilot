@@ -62,7 +62,7 @@ class MathText extends Text {
         spokenFormula(segment.expression),
       );
     }
-    return value.replaceAllMapped(fraction, (m) {
+    return spokenNumberNotation(value).replaceAllMapped(fraction, (m) {
       final (numerator, denominator) = parts(m);
       return '$numerator durch $denominator';
     });
@@ -104,7 +104,9 @@ class MathText extends Text {
       end = segment.end;
     }
     _fractionSpans(value.substring(end), base, spans);
-    if (formulas.isEmpty && !fraction.hasMatch(value)) {
+    if (formulas.isEmpty &&
+        !fraction.hasMatch(value) &&
+        spoken(value) == value) {
       return super.build(context);
     }
     return Text.rich(

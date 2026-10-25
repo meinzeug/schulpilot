@@ -1167,6 +1167,11 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     }
   }
 
+  String childPreparationNotice(String value) =>
+      isTechnicalPreparationFailure(value)
+      ? 'Dieser KI-Schritt konnte gerade nicht abgeschlossen werden. Dein gespeicherter Stand bleibt erhalten.'
+      : value;
+
   Widget childFrame(BuildContext context) {
     if (!loading && day == null && ownerMatches) {
       return PageFrame(
@@ -1176,7 +1181,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (error != null) ...[
-              Notice(error!, warning: true),
+              Notice(childPreparationNotice(error!), warning: true),
               SizedBox(height: 14),
             ],
             ActionPanel(
@@ -1221,7 +1226,14 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
         ? 'collecting'
         : day?['stage'] ?? 'collecting';
     final failed = ['failed', 'blocked'].contains(preparation?['status']);
-    final failureHasHomeAction = failed && preparation?['can_retry'] != true;
+    final failureCode =
+        preparation?['retry_blocker']?['code'] ?? preparation?['error_code'];
+    final technicalFailure = isTechnicalPreparationFailure(
+      preparation?['error'] ?? day?['last_error'] ?? error,
+      code: failureCode is String ? failureCode : null,
+    );
+    final failureHasHomeAction =
+        failed && !technicalFailure && preparation?['can_retry'] != true;
     final step = stage == 'collecting'
         ? 0
         : stage == 'ready'
@@ -1329,7 +1341,8 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
             Notice('Dein Schultag konnte nicht geladen werden.', warning: true),
             ActionButton(label: 'Noch einmal versuchen', onPressed: load),
           ] else ...[
-            if (error != null) Notice(error!, warning: true),
+            if (error != null && !isTechnicalPreparationFailure(error))
+              Notice(error!, warning: true),
             importStatus(),
             if (day!['synthetic'] == true)
               Padding(
@@ -1370,7 +1383,8 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               )
             else if (preparation?['status'] == 'postponed' && !captureRequested)
               childPostponed(context)
-            else if (failed && !captureRequested)
+            else if ((failed || isTechnicalPreparationFailure(error)) &&
+                !captureRequested)
               childPreparationFailed(context)
             else if (stage == 'collecting')
               childCollecting(context)
@@ -1523,9 +1537,19 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   }
 
   Widget childPreparationFailed(BuildContext context) {
+    final version = generation, id = day?['id'] as String?;
+    final revision = day?['revision'], child = widget.childId;
+    final route = ModalRoute.of(context);
+    bool navigationCurrent() =>
+        active &&
+        sameDay(version, id) &&
+        day?['revision'] == revision &&
+        widget.childId == child &&
+        (route?.isCurrent ?? true);
     final message =
-        preparation?['error'] as String? ?? day?['last_error'] as String?;
-    final canRetry = preparation?['can_retry'] == true;
+        preparation?['error'] as String? ??
+        day?['last_error'] as String? ??
+        error;
     final isExtract = preparation?['phase'] == 'extract';
     final sourcesChanged = preparation?['sources_changed'] == true;
     final parts = isExtract ? null : packageParts;
@@ -1534,11 +1558,34 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     final blocker = preparation?['retry_blocker'] as Map?;
     final code = blocker?['code'] ?? preparation?['error_code'];
     final blockerMessage = blocker?['message'] as String?;
+    final accessBlocked = const {
+      'quota_exhausted',
+      'access_changed',
+      'not_configured',
+    }.contains(code);
+    final canRetry =
+        preparation?['can_retry'] == true && blocker == null && !accessBlocked;
+    final technicalFailure = isTechnicalPreparationFailure(
+      message,
+      code: code is String ? code : null,
+    );
+    const technicalMessage =
+        'Neue Aufgaben oder Grafiken konnten gerade nicht vorbereitet werden. Deine Fotos und gespeicherten Runden bleiben erhalten.';
+    final visibleBlocker = blockerMessage != null && technicalFailure
+        ? technicalMessage
+        : blockerMessage;
+    final retryLabel = sourcesChanged
+        ? 'Mit den aktuellen Seiten neu vorbereiten'
+        : isExtract
+        ? 'Lesen fortsetzen'
+        : parts != null
+        ? 'Fehlenden Teil erneut vorbereiten'
+        : 'Erneut vorbereiten';
     const staleMessage =
         'Die bisherige Vorbereitung gehört zur alten Fassung. Für die aktuellen Seiten müssen die Aufgaben neu vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.';
     final explanation = sourcesChanged
-        ? [staleMessage, ?blockerMessage].join('\n\n')
-        : blockerMessage ??
+        ? [staleMessage, ?visibleBlocker].join('\n\n')
+        : visibleBlocker ??
               switch (code) {
                 'quota_exhausted' => 'Neue KI-Inhalte können gerade nicht vorbereitet werden. Mit gespeicherten Aufgaben und Erklärungen kannst du weiterlernen.',
                 'provider_timeout' => 'Die KI hat länger gebraucht als erlaubt. Deine Heftseiten sind da.',
@@ -1548,10 +1595,14 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                       : 'Neue Aufgaben oder Grafiken konnten nicht sicher geprüft werden. Deine gespeicherten Seiten und Runden bleiben erhalten.',
                 'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',
                 'unreadable_photo' => 'Ein Foto ist nicht gut lesbar. Nimm es bitte bei gutem Licht neu auf.',
-                'cost_preflight' => 'Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.',
+                'cost_preflight' => technicalMessage,
                 'source_changed' => 'Eine Heftseite wurde geändert. Prüfe zuerst die aktuelle Seite.',
                 _ =>
-                  canRetry ? 'Du kannst die Vorbereitung noch einmal starten.' : 'Deine Seiten bleiben gespeichert. Vorhandene Runden findest du unter Lernen.',
+                  technicalFailure
+                      ? technicalMessage
+                      : canRetry
+                      ? 'Du kannst die Vorbereitung noch einmal starten.'
+                      : 'Deine Seiten bleiben gespeichert. Vorhandene Runden findest du unter Lernen.',
               };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1565,14 +1616,10 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               : 'Das hat noch nicht geklappt',
           subtitle: explanation,
 
-          label: canRetry
-              ? sourcesChanged
-                    ? 'Mit den aktuellen Seiten neu vorbereiten'
-                    : isExtract
-                    ? 'Lesen fortsetzen'
-                    : parts != null
-                    ? 'Fehlenden Teil erneut vorbereiten'
-                    : 'Erneut vorbereiten'
+          label: technicalFailure
+              ? 'Gespeicherte Runden ansehen'
+              : canRetry
+              ? retryLabel
               : 'Zur Startseite',
           status: isExtract && completed != null && total != null
               ? Text('$completed von $total Fotos wurden bereits verarbeitet.')
@@ -1594,11 +1641,36 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                     ),
                   ],
                 ),
-          icon: canRetry ? Icons.refresh_rounded : Icons.home_outlined,
-          onPressed: canRetry
+          icon: technicalFailure
+              ? Icons.view_list_outlined
+              : canRetry
+              ? Icons.refresh_rounded
+              : Icons.home_outlined,
+          onPressed: technicalFailure
+              ? () async {
+                  if (navigationCurrent()) openRoute(context, '/learn/$child');
+                }
+              : canRetry
               ? () => run(prepareInBackground)
               : () async => context.go('/app'),
         ),
+        if (technicalFailure) ...[
+          TextButton.icon(
+            onPressed: () {
+              if (navigationCurrent()) openRoute(context, '/library/$child');
+            },
+            icon: const Icon(Icons.menu_book_outlined),
+            label: const Text('Hefte öffnen'),
+          ),
+          if (canRetry)
+            OutlinedButton.icon(
+              onPressed: () {
+                if (navigationCurrent()) unawaited(run(prepareInBackground));
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(retryLabel),
+            ),
+        ],
         if (message != null && message.isNotEmpty)
           ExpansionTile(
             title: Text('Was ist passiert?'),

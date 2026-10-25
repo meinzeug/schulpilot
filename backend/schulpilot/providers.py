@@ -1021,6 +1021,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     tasks = practice_tasks(payload) if model_type is s.PracticeUnitOutput and payload.get("focus_goal_ids") else None
     if tasks:
         payload = {**payload, "practice_tasks": tasks}
+    from .notebook_fraction_expansions import ERROR as NOTEBOOK_EXPANSION_ERROR
+    from .notebook_fraction_expansions import EXHAUSTED as NOTEBOOK_EXPANSION_EXHAUSTED
+    from .notebook_fraction_expansions import prepare as prepare_notebook_expansion
+
+    try:
+        payload = prepare_notebook_expansion(payload) if function == "unit" else payload
+    except ValueError as error:
+        if error.args not in ((NOTEBOOK_EXPANSION_ERROR,), (NOTEBOOK_EXPANSION_EXHAUSTED,)):
+            raise
+        raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
+            telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
     math_examples = []
     homework_math_goals = {}
     if function == "unit" and (payload.get("study_block") or tasks or payload.get("homework_practice")):
@@ -1595,12 +1606,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .unit_fraction_compositions import bind_schema as bind_unit_composition
 
         try:
-            unit_composition = bind_unit_composition(schema, payload)
+            from .notebook_fraction_expansions import bind_schema as bind_notebook_expansion
+
+            unit_composition = bind_notebook_expansion(schema, payload)
+            if unit_composition is None:
+                unit_composition = bind_unit_composition(schema, payload)
         except ValueError as error:
             from .fraction_practice_plan import ERROR as PRACTICE_POOL_ERROR
             from .fraction_practice_plan import INVALID as PRACTICE_PLAN_ERROR
 
-            if error.args not in ((PRACTICE_POOL_ERROR,), (PRACTICE_PLAN_ERROR,)):
+            if error.args not in ((PRACTICE_POOL_ERROR,), (PRACTICE_PLAN_ERROR,), (NOTEBOOK_EXPANSION_ERROR,), (NOTEBOOK_EXPANSION_EXHAUSTED,)):
                 raise
             # The bounded private planner has not made a provider request.
             raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
@@ -1705,6 +1720,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .package_transport import schema_projection
 
         wire_schema = schema_projection(wire_schema)
+    if function == "unit":
+        from .notebook_fraction_expansions import HISTORY_KEY as NOTEBOOK_EXPANSION_HISTORY
+
+        if NOTEBOOK_EXPANSION_HISTORY in outgoing_payload:
+            outgoing_payload = {key: value for key, value in outgoing_payload.items() if key != NOTEBOOK_EXPANSION_HISTORY}
     from .explanation_guidance import rules as explanation_rules
 
     instructions += explanation_rules(function, payload)
@@ -2152,6 +2172,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             for review in data["question_reviews"]:
                 if review["question_id"] in assigned_goals:
                     review["learning_goal_id"] = assigned_goals[review["question_id"]]
+        if function == "unit":
+            from .notebook_fraction_expansions import validate_output as validate_notebook_expansion
+
+            validation_phase = "practice"
+            validate_notebook_expansion(payload, data)
         if payload.get("learning_entry"):
             from .learning_entry import validate_entry_output
 

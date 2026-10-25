@@ -554,7 +554,7 @@ void main() {
   );
 
   testWidgets(
-    'Photo preflight explains parent help without offering a wasted retry',
+    'Photo preflight offers saved rounds without parent detour or wasted retry',
     (tester) async {
       mobile(tester);
       final server = PreparationServer(
@@ -573,11 +573,19 @@ void main() {
       );
       await settleUi(tester);
       expect(
-        find.textContaining('Bitte deine Eltern um Hilfe.'),
+        find.widgetWithText(ActionPanel, 'Gespeicherte Runden ansehen'),
         findsOneWidget,
       );
+      expect(find.text('Hefte öffnen'), findsOneWidget);
+      expect(find.textContaining('Deine Fotos'), findsWidgets);
+      expect(find.textContaining('Bitte deine Eltern um Hilfe.'), findsNothing);
       expect(find.text('Erneut vorbereiten'), findsNothing);
+      expect(find.text('Lesen fortsetzen'), findsNothing);
       expect(find.textContaining('Private operator diagnostic'), findsNothing);
+      expect(
+        server.requests.every((request) => request.startsWith('GET ')),
+        isTrue,
+      );
       expect(server.submissions, 0);
       expect(server.starts, 0);
       expect(tester.takeException(), isNull);

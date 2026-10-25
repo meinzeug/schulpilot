@@ -142,7 +142,10 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
     value = add_reference(db, value)
     from .study_fraction_expansions import add_reference as add_expansion_reference
 
-    return add_expansion_reference(db, value)
+    value = add_expansion_reference(db, value)
+    from .notebook_fraction_expansions import add_reference as add_notebook_expansion
+
+    return add_notebook_expansion(db, value)
 
 
 

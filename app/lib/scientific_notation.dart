@@ -86,57 +86,138 @@ bool safeFormula(String expression) {
   return depth == 0;
 }
 
-String spokenFormula(String expression) => expression
-    .replaceAll(RegExp(r'\\(?:left|right)\s*(?=[()\[\]{}|.\\])'), '')
-    .replaceAll(RegExp(r'\\(?:qquad|quad|enspace)\b'), ' ')
-    .replaceAll(RegExp(r'\\[,;:]'), ' ')
-    .replaceAll(r'\!', '')
-    .replaceAllMapped(
-      RegExp(r'\\(sin|cos|tan|ln|log)\b'),
-      (m) => const {
-        'sin': 'Sinus',
-        'cos': 'Kosinus',
-        'tan': 'Tangens',
-        'ln': 'natürlicher Logarithmus',
-        'log': 'Logarithmus',
-      }[m[1]]!,
-    )
-    .replaceAllMapped(
-      RegExp(r'\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}'),
-      (m) => '${m[1]} durch ${m[2]}',
-    )
-    .replaceAllMapped(
-      RegExp(r'\\(?:d|t)?frac(?![A-Za-z])\s*([\dA-Za-z])\s*([\dA-Za-z])'),
-      (m) => '${m[1]} durch ${m[2]}',
-    )
-    .replaceAllMapped(RegExp(r'\\\|([^|]+?)\\\|'), (m) => 'Norm von ${m[1]}')
-    .replaceAllMapped(
-      RegExp(r'(?<!\\)\|([^|]+)\|'),
-      (m) => 'Betrag von ${m[1]}',
-    )
-    .replaceAllMapped(
-      RegExp(r'\\sqrt\{([^{}]+)\}'),
-      (m) => 'Wurzel aus ${m[1]}',
-    )
-    .replaceAllMapped(
-      RegExp(r'\\(?:mathrm|text|mathbf|mathit|operatorname)\{([^{}]+)\}'),
-      (m) => m[1]!,
-    )
-    .replaceAll(r'\int', ' Integral ')
-    .replaceAll(r'\sum', ' Summe ')
-    .replaceAll(r'\rightarrow', ' ergibt ')
-    .replaceAll(r'\rightleftharpoons', ' steht im Gleichgewicht mit ')
-    .replaceAll(r'\cdot', ' mal ')
-    .replaceAll(r'\times', ' mal ')
-    .replaceAll(r'\pi', ' Pi ')
-    .replaceAll(r'\alpha', ' Alpha ')
-    .replaceAll(r'\beta', ' Beta ')
-    .replaceAll(r'\lambda', ' Lambda ')
-    .replaceAll('^', ' hoch ')
-    .replaceAll('_', ' Index ')
-    .replaceAll(RegExp(r'[{}]'), '')
-    .replaceAll(RegExp(r'\s+'), ' ')
-    .trim();
+// Speech/semantics only: keep source strings, rendering and answer parsing exact.
+// Recognize explicit integer + proper-fraction notation. Never use compatibility
+// normalization: it would turn superscript powers into ordinary number digits.
+String spokenNumberNotation(String value) {
+  const vulgar = <String, (int, int)>{
+    '¼': (1, 4),
+    '½': (1, 2),
+    '¾': (3, 4),
+    '⅐': (1, 7),
+    '⅑': (1, 9),
+    '⅒': (1, 10),
+    '⅓': (1, 3),
+    '⅔': (2, 3),
+    '⅕': (1, 5),
+    '⅖': (2, 5),
+    '⅗': (3, 5),
+    '⅘': (4, 5),
+    '⅙': (1, 6),
+    '⅚': (5, 6),
+    '⅛': (1, 8),
+    '⅜': (3, 8),
+    '⅝': (5, 8),
+    '⅞': (7, 8),
+  };
+  final mixed = RegExp(
+    r'(?<![\w/⁄∕.,])((?:−|-)?\d{1,5})(?:'
+    r'\s*\\(?:d|t)?frac\s*\{\s*((?:−|-)?\d{1,5})\s*\}'
+    r'\s*\{\s*([1-9]\d{0,4})\s*\}'
+    r'|\s+((?:−|-)?\d{1,5})\s*[/⁄∕]\s*([1-9]\d{0,4})'
+    r'|\s*([¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]))'
+    r'(?![\w/⁄∕⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]|[.,]\d)',
+    unicode: true,
+  );
+  value = value.replaceAllMapped(mixed, (match) {
+    final symbol = vulgar[match[6]];
+    final numerator = match[2] ?? match[4] ?? symbol!.$1.toString();
+    final denominator = match[3] ?? match[5] ?? symbol!.$2.toString();
+    final n = int.parse(numerator.replaceAll('−', '-'));
+    final d = int.parse(denominator);
+    if (n > 0 && n < d) {
+      return '${match[1]} und $numerator durch $denominator';
+    }
+    // An improper/signed fraction beside an integer is not interpreted as a
+    // mixed number. Still keep adjacent TeX digits separate in speech.
+    return '${match[1]} ${match[0]!.substring(match[1]!.length).trimLeft()}';
+  });
+  const superscripts = <String, String>{
+    '⁰': '0',
+    '¹': '1',
+    '²': '2',
+    '³': '3',
+    '⁴': '4',
+    '⁵': '5',
+    '⁶': '6',
+    '⁷': '7',
+    '⁸': '8',
+    '⁹': '9',
+    '⁻': '-',
+    '⁺': '+',
+  };
+  return value.replaceAllMapped(
+    RegExp(
+      r'(?<![\w/⁄∕.,])((?:−|-)?\d{1,5})([⁻⁺]?[⁰¹²³⁴⁵⁶⁷⁸⁹]{1,5})'
+      r'(?:\s*[/⁄∕]\s*([1-9]\d{0,4}))?'
+      r'(?![\w/⁄∕⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]|[.,]\d)',
+      unicode: true,
+    ),
+    (match) {
+      final exponent = match[2]!.split('').map((c) => superscripts[c]!).join();
+      final denominator = match[3];
+      return '${match[1]} hoch $exponent${denominator == null ? '' : ' durch $denominator'}';
+    },
+  );
+}
+
+String spokenFormula(String expression) =>
+    spokenNumberNotation(
+          expression
+              .replaceAll(RegExp(r'\\(?:left|right)\s*(?=[()\[\]{}|.\\])'), '')
+              .replaceAll(RegExp(r'\\(?:qquad|quad|enspace)\b'), ' ')
+              .replaceAll(RegExp(r'\\[,;:]'), ' ')
+              .replaceAll(r'\!', ''),
+        )
+        .replaceAllMapped(
+          RegExp(r'\\(sin|cos|tan|ln|log)\b'),
+          (m) => const {
+            'sin': 'Sinus',
+            'cos': 'Kosinus',
+            'tan': 'Tangens',
+            'ln': 'natürlicher Logarithmus',
+            'log': 'Logarithmus',
+          }[m[1]]!,
+        )
+        .replaceAllMapped(
+          RegExp(r'\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}'),
+          (m) => '${m[1]} durch ${m[2]}',
+        )
+        .replaceAllMapped(
+          RegExp(r'\\(?:d|t)?frac(?![A-Za-z])\s*([\dA-Za-z])\s*([\dA-Za-z])'),
+          (m) => '${m[1]} durch ${m[2]}',
+        )
+        .replaceAllMapped(
+          RegExp(r'\\\|([^|]+?)\\\|'),
+          (m) => 'Norm von ${m[1]}',
+        )
+        .replaceAllMapped(
+          RegExp(r'(?<!\\)\|([^|]+)\|'),
+          (m) => 'Betrag von ${m[1]}',
+        )
+        .replaceAllMapped(
+          RegExp(r'\\sqrt\{([^{}]+)\}'),
+          (m) => 'Wurzel aus ${m[1]}',
+        )
+        .replaceAllMapped(
+          RegExp(r'\\(?:mathrm|text|mathbf|mathit|operatorname)\{([^{}]+)\}'),
+          (m) => m[1]!,
+        )
+        .replaceAll(r'\int', ' Integral ')
+        .replaceAll(r'\sum', ' Summe ')
+        .replaceAll(r'\rightarrow', ' ergibt ')
+        .replaceAll(r'\rightleftharpoons', ' steht im Gleichgewicht mit ')
+        .replaceAll(r'\cdot', ' mal ')
+        .replaceAll(r'\times', ' mal ')
+        .replaceAll(r'\pi', ' Pi ')
+        .replaceAll(r'\alpha', ' Alpha ')
+        .replaceAll(r'\beta', ' Beta ')
+        .replaceAll(r'\lambda', ' Lambda ')
+        .replaceAll('^', ' hoch ')
+        .replaceAll('_', ' Index ')
+        .replaceAll(RegExp(r'[{}]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
 
 class FormulaNotation extends StatelessWidget {
   final String expression;

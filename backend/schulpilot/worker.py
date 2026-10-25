@@ -349,9 +349,10 @@ def process(job_id):
                 payload.update(provider_context(db, child, job.payload))
             from . import unit_novelty
 
+            novelty_prompts = []
             if unit_novelty.applies(job, material):
-                payload["previous_prompts"] = unit_novelty.provider_context(
-                    unit_novelty.previous_prompts(db, child.id, source_pages))
+                novelty_prompts = unit_novelty.previous_prompts(db, child.id, source_pages)
+                payload["previous_prompts"] = unit_novelty.provider_context(novelty_prompts)
             image_bytes = (
                 (settings.data_dir / "uploads" / material.path).read_bytes()
                 if job.kind == "extract" and material and material.path
@@ -377,6 +378,10 @@ def process(job_id):
                 payload = with_learning_entry(db, child, payload, source_pages, groups=job.payload.get("groups"),
                     enabled=bool(job.payload.get("learning_entry_enabled")) and not synthetic)
                 payload = with_foundation_context(db, payload)
+                if job.kind == "unit" and job.payload.get("notebook_practice"):
+                    from .notebook_fraction_expansions import with_history
+
+                    payload = with_history(payload, novelty_prompts)
             payload = with_catalog_context(db, child, payload)
             if not synthetic or fixture:
                 from .commerce import usage_terms

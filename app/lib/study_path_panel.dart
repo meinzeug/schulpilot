@@ -436,6 +436,53 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     }
   }
 
+  bool Function() capturedPreparationNavigation() {
+    final version = generation;
+    final child = widget.childId, day = widget.dayId;
+    final owner = state.user, token = state.api.token;
+    final familyId = state.familyId;
+    final route = ModalRoute.of(context);
+    return () =>
+        active &&
+        version == generation &&
+        widget.childId == child &&
+        widget.dayId == day &&
+        identical(state.user, owner) &&
+        state.api.token == token &&
+        state.familyId == familyId &&
+        (route?.isCurrent ?? true);
+  }
+
+  Widget continueAction(
+    Json block, {
+    required int completed,
+    required bool secondary,
+  }) {
+    final current = capturedPreparationNavigation();
+    final label = block['unit_id'] != null
+        ? 'Etappe öffnen'
+        : actionError != null
+        ? 'Erneut vorbereiten'
+        : completed > 0
+        ? 'Nächste Etappe'
+        : 'Erste Etappe starten';
+    return secondary
+        ? OutlinedButton.icon(
+            onPressed: () async {
+              if (current()) await continueBlock(block);
+            },
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(label),
+          )
+        : FilledButton.icon(
+            onPressed: () async {
+              if (current()) await continueBlock(block);
+            },
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: Text(label),
+          );
+  }
+
   List<Json> get visibleBlocks {
     final query = blockSearch.text.trim().toLowerCase();
     return blocks
@@ -453,6 +500,8 @@ class _StudyPathPanelState extends State<StudyPathPanel>
   @override
   Widget build(BuildContext context) {
     final data = path;
+    final navigationCurrent = capturedPreparationNavigation();
+    final child = widget.childId;
     final total = (data?['total_questions'] as num? ?? 0).toInt();
     final completed = (data?['completed_questions'] as num? ?? 0).toInt();
     final ready = (data?['ready_questions'] as num? ?? 0).toInt();
@@ -462,6 +511,19 @@ class _StudyPathPanelState extends State<StudyPathPanel>
         (exhaustedBlocks.containsKey(current['id']) ||
             data?['technical_review_required'] == true);
     final editable = ownerMatches && state.isChild;
+    final blockReason = data?['block_reason'] as String?;
+    final hasBlocker = blockReason != null && blockReason.isNotEmpty;
+    final technicalFailure =
+        state.isChild &&
+        !waiting &&
+        !posting &&
+        (!hasBlocker || isTechnicalPreparationFailure(blockReason)) &&
+        [
+          readError,
+          actionError,
+          current?['error'],
+          blockReason,
+        ].any((value) => isTechnicalPreparationFailure(value));
     final hasFailure =
         data?['technical_review_required'] == true ||
         readError != null ||
@@ -505,7 +567,26 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               Notice(actionError!, warning: true),
               TextButton(onPressed: load, child: Text('Stand prüfen')),
             ],
-            if (state.isChild && hasFailure)
+            if (technicalFailure) ...[
+              const Text('Deine Fotos sind gespeichert.'),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () {
+                  if (navigationCurrent()) openRoute(context, '/learn/$child');
+                },
+                icon: const Icon(Icons.view_list_outlined),
+                label: const Text('Gespeicherte Runden ansehen'),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  if (navigationCurrent()) {
+                    openRoute(context, '/library/$child');
+                  }
+                },
+                icon: const Icon(Icons.menu_book_outlined),
+                label: const Text('Hefte öffnen'),
+              ),
+            ] else if (state.isChild && hasFailure)
               TextButton.icon(
                 onPressed: () {
                   if (active) openRoute(context, '/learn/${widget.childId}');
@@ -626,20 +707,13 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                   ),
                 ] else if (editable &&
                     !retryExhausted &&
+                    !hasBlocker &&
                     data?['can_continue'] == true &&
                     current['unit_id'] == null)
-                  FilledButton.icon(
-                    onPressed: () => continueBlock(current),
-                    icon: Icon(Icons.play_arrow_rounded),
-                    label: Text(
-                      current['unit_id'] != null
-                          ? 'Etappe öffnen'
-                          : actionError != null
-                          ? 'Erneut vorbereiten'
-                          : completed > 0
-                          ? 'Nächste Etappe'
-                          : 'Erste Etappe starten',
-                    ),
+                  continueAction(
+                    current,
+                    completed: completed,
+                    secondary: technicalFailure,
                   ),
                 if (!waiting &&
                     !posting &&
@@ -805,6 +879,51 @@ const _studyPreparationLimits = {
   'Die Vorbereitung dieser Etappe muss technisch geprüft werden. Weitere Versuche sind vorerst gesperrt. Deine gespeicherten Runden bleiben verfügbar.',
 };
 
+/// Only preparation diagnostics from the existing server contract. Access,
+/// consent and quota refusals retain their own message and disabled actions.
+bool isTechnicalPreparationFailure(Object? value, {String? code}) {
+  if (code != null && code != 'unknown') {
+    return const {
+      'invalid_output',
+      'provider_timeout',
+      'provider_unavailable',
+      'cost_preflight',
+    }.contains(code);
+  }
+  if (value is ApiError && const [401, 403, 429].contains(value.status)) {
+    return false;
+  }
+  final message = value is ApiError
+      ? value.message
+      : value is String
+      ? value
+      : null;
+  if (message == null) return false;
+  if (_studyPreparationLimits.contains(message) ||
+      const {
+        'invalid_schema',
+        'invalid_output',
+        'cost_preflight',
+        'Diese Etappe braucht eine technische Prüfung. Deine gespeicherten Runden kannst du weiter nutzen.',
+        'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.',
+        'Material überschreitet die konfigurierte konservative Kostenreservierung. Material kürzen oder Preisobergrenze prüfen.',
+        'Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.',
+        'Der KI-Anbieter hat die Antwort abgebrochen. Bitte später erneut versuchen.',
+        'KI-Anbieter ist nicht erreichbar. Kein automatischer Wiederholungsversuch; mögliche Kosten bleiben reserviert.',
+        'Die Antwort des KI-Anbieters war nicht lesbar. Bitte später erneut versuchen.',
+      }.contains(message)) {
+    return true;
+  }
+  return RegExp(
+        r'^KI-Anbieter meldet HTTP [1-5][0-9]{2}\. Schlüssel, Modell, Freigabe oder Kontingent prüfen\.$',
+      ).hasMatch(message) ||
+      RegExp(r'^(?:Die )?(?:KI|Paket)-Ausgabe\b').hasMatch(message) ||
+      message.startsWith('Die KI hat die begrenzte Ausgabelänge erreicht.') ||
+      RegExp(
+        r'^Die KI hat (?:keine (?:abgeschlossene Antwort|Lernantwort)|eine Antwort ohne Inhalt)\b',
+      ).hasMatch(message);
+}
+
 String _studyError(Object error, {bool child = false}) {
   final message = error is ApiError
       ? error.message
@@ -814,15 +933,7 @@ String _studyError(Object error, {bool child = false}) {
   if (child && _studyPreparationLimits.contains(message)) {
     return 'Diese Etappe braucht eine technische Prüfung. Deine gespeicherten Runden kannst du weiter nutzen.';
   }
-  if (child &&
-      message != null &&
-      RegExp(
-        r'\bHTTP\s*[0-9]{3}\b|\binvalid_(?:schema|output)\b|'
-        r'begrenzte Ausgabelänge|\b(?:KI|Paket)-Ausgabe\b|'
-        r'KI hat (?:keine (?:abgeschlossene Antwort|Lernantwort)|eine Antwort ohne Inhalt)|'
-        r'Antwort des KI-Anbieters war nicht lesbar',
-        caseSensitive: false,
-      ).hasMatch(message)) {
+  if (child && isTechnicalPreparationFailure(error)) {
     return 'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.';
   }
   return message ??

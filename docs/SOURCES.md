@@ -2131,3 +2131,51 @@ für diese Kompatibilität, die neuen Proofs und die beiden Adapter bestanden
 anschließend ohne Fehler. Die ursprünglich signierten Artefakte werden als
 fehlgeschlagener CI-Versuch aufbewahrt und nicht aktiviert; der korrigierte
 Quellstand benötigt einen neuen gebundenen Build und eine neue CI-Prüfung.
+
+
+## 2026-10-25 · Heft-Runden, vollständige Aufgabenhistorie und Darstellungsgrenzen (129)
+
+Der reguläre, ausdrücklich gestartete Heftaufgabenpfad verwendet für reine,
+bestätigte Erweiterungsseiten dieselben geprüften Bruchmodelle wie der
+Lernweg. Die vorhandenen vorgeschalteten Lernstandsfragen bleiben unverändert;
+nur die übrigen Übungsplätze werden vor dem Anbieteraufruf aus belegten Regeln
+rechnerisch festgelegt und an Grafik, Quelle und Referenzversion gebunden.
+Mehrverfahrensseiten mit zusätzlichen Addier- oder Kürzregeln behalten ihren
+bisherigen Vertrag. Keine künstlichen Study-Flags, keine automatisch gestartete
+Runde und keine zusätzliche Anbieteranfrage durch Öffnen oder Abgleichen.
+
+Vor der bestehenden Kürzung des Modellkontexts auf 80 frühere Fragen beziehungsweise
+12.000 Zeichen wird die vollständige berechtigte Aufgabenhistorie in endliche,
+private Erweiterungssignaturen verdichtet. Diese sperren bereits verwendete
+Zahlen vor dem kostenpflichtigen Aufruf; die vollständige Datenbankprüfung vor
+dem Speichern bleibt bestehen. Die Signaturliste wird nicht zusätzlich an den
+Anbieter gesendet. Ein erschöpfter Zahlenvorrat endet ohne HTTP-Aufruf und ohne
+neue Lernrunde. Quelle, Ausschlussmenge und feste Aufgabenkerne bleiben gebunden.
+
+Technische Vorbereitungsfehler bieten Kindern gespeicherte Runden und Hefte an;
+ein weiterer Versuch bleibt eine bewusste, serverseitig erlaubte Aktion.
+Einwilligungs-, Zugangs- und Kontingentsperren bleiben eigenständig wirksam,
+Eltern behalten die genaue Diagnose. TeX- und Unicode-Mischzahlen erhalten für
+Vorlesen und Bildschirmleser einen getrennten Ganzteil; echte Hochzahlen werden
+nicht als Mischzahl umgedeutet. Quelltext und Antwortparser bleiben unverändert.
+
+Ein echter Desktop-Browsertest der gespeicherten Aufgabengrafik zeigte Kreise,
+die über ihre nur in der Höhe begrenzte Zeichenfläche hinaus zeichneten. Der
+Kompositionsrenderer erhält deshalb quadratische, zentrierte und beschnittene
+Zeichenflächen. Bruchwerte, gespeicherte v1/v2-Belege, Aufdecken, Zoom und
+Bewertung bleiben unverändert. Die Regression prüft tatsächliche RenderBox- und
+Zeichenpfadgrenzen gegenüber Überschrift, Beschriftung und Bedienelementen.
+
+186 gezielte Backendfälle bestanden sowohl mit isoliertem SQLite als auch mit
+einem frischen PostgreSQL-16-Cluster, jeweils ohne Fehler oder Skip. Der
+PostgreSQL-Cluster und sein temporäres Datenverzeichnis wurden entfernt;
+Python-Netzwerkzugriffe waren dort auf Unix-Sockets begrenzt. Die tatsächlichen
+Oberflächen-, Build-, CI- und Livebelege werden separat revisionsgebunden
+geführt. Vorbereitete oder abgebrochene Läufe zählen nicht als bestandene Tests.
+Keine Migration, kein neuer Dienst und keine Änderung von Modell, Tokenlimit
+oder Kontobudget. Der Rückweg bleibt die vorherige geprüfte Releasefassung;
+private Quellenkorrekturen und gespeicherte Antworten werden dabei erhalten.
+
+296 gezielte Flutterfälle einschließlich echter Render-/Zeichenbegrenzungen,
+320/390-Pixel-Ansichten und großer Schrift bestanden; Flutter Analyze meldete
+keine Probleme. Frühere Teilmengen überschneiden sich mit diesem Lauf.

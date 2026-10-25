@@ -115,13 +115,13 @@ def _candidate(context, question, phase):
     return row
 
 
-def _introductions(context, tasks):
+def _introductions(context, tasks, *, excluded_pairs=()):
     reference = next((r for r in context.get("references", []) if r.get("id") == "math.fraction.part_whole"
         and r.get("version") == 1 and r.get("subject") == "Mathematik" and r.get("digest")), None)
     if reference is None:
         return []
     result = []
-    answers = {tuple(candidate["proof"]["output"]) for candidate in tasks}
+    answers = {tuple(candidate["proof"]["output"]) for candidate in tasks} | {tuple(pair) for pair in excluded_pairs}
     for source in _sources(context):
         for base, text in _fraction_bases(source["content"]):
             if tuple(base["numbers"]) in answers:

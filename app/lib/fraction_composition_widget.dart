@@ -285,14 +285,24 @@ class _CompositionViewState extends State<_CompositionView> {
                     child: ExcludeSemantics(
                       child: SizedBox(
                         height: math.min(148.0, cellWidth),
-                        child: CustomPaint(
-                          painter: FractionModelPainter(
-                            entry.$2,
-                            d,
-                            'whole',
-                            false,
-                            1,
-                            context.palette,
+                        child: Center(
+                          child: SizedBox.square(
+                            dimension: math.min(148.0, cellWidth),
+                            child: ClipRect(
+                              child: CustomPaint(
+                                key: ValueKey(
+                                  'fraction-composition-canvas-${entry.$1}',
+                                ),
+                                painter: FractionModelPainter(
+                                  entry.$2,
+                                  d,
+                                  'whole',
+                                  false,
+                                  1,
+                                  context.palette,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
