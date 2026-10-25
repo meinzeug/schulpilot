@@ -2179,3 +2179,84 @@ private Quellenkorrekturen und gespeicherte Antworten werden dabei erhalten.
 296 gezielte Flutterfälle einschließlich echter Render-/Zeichenbegrenzungen,
 320/390-Pixel-Ansichten und großer Schrift bestanden; Flutter Analyze meldete
 keine Probleme. Frühere Teilmengen überschneiden sich mit diesem Lauf.
+
+
+## 2026-10-25 · Gespeicherte Erklärungen im Tutor und verbindliche Einstiegsformate (130)
+
+Ein produktiver Heftauftrag wurde nachweisbar in der Validierungsphase entry
+mit entry_format abgewiesen. Das private Schema ließ in kopierten gemischten
+Formatzweigen für source_probe auch andere Typen zu, obwohl der unveränderte
+Nachprüfer für prior_check ausschließlich choice/short akzeptiert. Beide
+Verträge stimmen nun überein: nur die kopierten Vorfragenzweige werden
+eingeschränkt. Selbstständige Übungsplätze behalten Zuordnungsformate; feste
+Voraussetzungsfragen behalten ihre exakten Kernfelder. Die ursprüngliche rohe
+Modellantwort wurde nicht gespeichert; daraus wird kein genauerer Inhalt
+rekonstruiert oder als belegt behauptet. Sechs synthetische Vorfixfälle
+reproduzierten die Schema-Lücke, danach bestanden die erweiterten Adapterfälle.
+
+Schulbuddy erhält für ausdrücklich geöffnete, gespeicherte Aufgabenerklärungen
+einen serverseitig abgeleiteten Archivkontext. Voraussetzung bleiben eine
+abgeschlossene Runde, ein vorhandener Antwortversuch, ein gültiger gespeicherter
+Frageschritt und unveränderte berechtigte Quellen. Ungelesene aktuelle
+Antwort-Rückmeldungen behalten ihren bisherigen Ablauf. Der Tutor darf den
+bereits sichtbaren Erklärungsschritt direkt erklären; offene Aufgaben bleiben
+geschützt. Der vollständige Schrittdigest und der historische Versuch werden
+an den Kontext gebunden. Ein solcher Chat schreibt keine Hilfe in andere
+laufende Runden und ändert keine gespeicherten Antworten oder Lernnachweise.
+Die Abschluss-Transaktion sperrt ausschließlich die betroffene Archiv-Unit vor
+dem Kind und prüft danach die bestehende Sitzung, Quellen und Konfiguration
+erneut. Quellen-, Schritt- und Statuswechsel während eines Modellaufrufs
+verhindern eine Veröffentlichung.
+
+Ein weiterer produktiver Heftauftrag scheiterte in visual_parameters. Seine
+vollständige Modellantwort ist ebenfalls nicht erhalten. Separat nachgewiesen
+wurde, dass die vorhandene Erweiterungsregel wegen einzelner Zeilenumbrüche und
+der getrennten Schreibweise „der selben Zahl“ keinen Verfahrensbeleg lieferte;
+dadurch wurde die vorhandene strenge Aufgaben-/Grafikbindung nicht ausgewählt.
+Die Referenzdatenbank enthielt die passende geprüfte Erweiterungsvorlage.
+
+Nur der Erweiterungsweg erkennt nun solche Umbrüche innerhalb desselben
+Absatzes. Eine zusammenhängende Aussage muss Zähler und Nenner direkt mit der
+Multiplikation und demselben Faktor verbinden. Überschriften mit unabhängigen
+Gleichungsbeispielen, Unicode-Leerabsätze, Negationen und eingeschränkte Faktoren
+auch über Zeilenumbrüche bleiben ausgeschlossen. Originaltext und wörtlicher
+Beleg werden nicht umgeschrieben. Ein privater, SQL-freier RAM-Replay des
+konkret freigegebenen Materials aktiviert damit Katalog, Plan und Schemabindung;
+er beweist weder die damalige verworfene Modellantwort noch eine neue gelungene
+Live-Erzeugung. Synthetische Tests prüfen zusätzlich die wirkliche native
+HTTP-Schemabindung vor dem Aufruf und fertige gespeicherte Grafiksnapshots.
+
+Die Flutter-CI verteilt sämtliche Testdateien deterministisch auf drei Gruppen;
+Analyse und Webbuild bleiben vollständig in einem eigenen Job. Ein abschließender
+Gate prüft gleiche Quellfassung, vollständige Vereinigung und überschneidungsfreie
+Dateimengen sowie die tatsächlichen Reportergebnisse. Vorhandene Plattform-Skips
+und interne Lade-/Setupereignisse zählen separat. Fehlende, abgebrochene,
+veränderte oder widersprüchliche Belege scheitern geschlossen. Die bestehenden
+Action-/SDK-Pins und 25-Minuten-Grenzen bleiben unverändert. Mehr Jobs benötigen
+mehr SDK-Setups; gleiche Dateimengen garantieren keine gleiche Laufzeit.
+
+262 gezielte Backendfälle bestanden mit isoliertem SQLite; eine gezielte
+Teilmenge von187 Fällen bestand mit frischem PostgreSQL ohne Skip und mit
+anschließender Entfernung des eigenen Clusters.24 stdlib-Tests mit künstlichen
+Flutterprozessen bestanden. Der neue Verteiler wurde außerdem tatsächlich mit
+dem fixierten Flutter-SDK gegen den unveränderten vorigen Commit3ae1614 geprüft:
+97 vollständige Testdateien,1254 bestandene Tests und12 separat ausgewiesene
+Plattform-Skips, unveränderte Quellen vor/nach dem Lauf. Dieser Lauf prüft das
+echte Reporterprotokoll, nicht bereits alle drei Gruppen oder den späteren
+GitHub-Joboutputtransport. Die erste vollständige neue CI muss diese zusätzlich
+bestätigen; eine gemessene Beschleunigung wird erst danach angegeben.
+
+Schema bleibt0042. Keine Anbieter-, Token-, Kontobudget- oder Datenfreigabeänderung;
+Rückweg über die vorherige geprüfte Version mit erhaltenen privaten Quellen,
+Antworten, ursprünglichen Fehlversuchen und Verbrauchsdaten.
+
+Die abschließende Erweiterung der Wortlautprüfung bestand119 gezielte Fälle
+sowohl mit SQLite als auch mit frischem PostgreSQL16, jeweils ohne Fehler oder
+Skip und mit unveränderten Backendquellen vor/nach dem Lauf. Diese Testmengen
+überschneiden sich mit den zuvor genannten Teilmengen und werden nicht addiert.
+Die eigene PostgreSQL-Instanz und die isolierten RAM-Testdaten wurden entfernt.
+Ein lokaler Sandboxlauf blieb hängen und wurde abgebrochen; er ist kein
+bestandener Test. Der identische abschließende SQLite-Lauf außerhalb dieser
+Sandbox bestand mit weiterhin gesperrten Python-Netzwerkverbindungen und ohne
+geerbte Anbieterzugänge. Die Versionsfelder wurden vor diesen letzten Läufen
+auf1.36.18+130 gesetzt; sonstige spätere Änderungen betreffen nur Dokumentation.

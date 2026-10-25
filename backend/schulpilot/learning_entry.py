@@ -201,6 +201,8 @@ def bind_entry_schema(schema, payload):
                     continue
                 branch = copy.deepcopy(original)
                 props = branch["properties"]
+                if spec["role"] == "prior_check":
+                    props["type"]["enum"] = [kind for kind in types if kind in ("choice", "short")]
                 props["id"]["enum"] = [spec["id"]]
                 if spec.get("type"):
                     for key in ("type", "prompt", "answer"):

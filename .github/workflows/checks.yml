@@ -31,7 +31,37 @@ jobs:
       - name: Record collection and partition
         if: always()
         run: cat artifacts/backend-shard-${{ matrix.shard }}.json
-  flutter:
+  flutter_tests:
+    name: flutter-test-${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    outputs:
+      receipt_0: ${{ steps.partition.outputs.receipt_0 }}
+      receipt_1: ${{ steps.partition.outputs.receipt_1 }}
+      receipt_2: ${{ steps.partition.outputs.receipt_2 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.3'
+      - name: Install pinned official Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.47.7 https://github.com/flutter/flutter.git "$RUNNER_TEMP/schulpilot-flutter"
+          test "$(git -C "$RUNNER_TEMP/schulpilot-flutter" rev-parse HEAD)" = abaf9c523780a608bd46686fd5e53740a07077f8
+          echo "$RUNNER_TEMP/schulpilot-flutter/bin" >> "$GITHUB_PATH"
+      - working-directory: app
+        run: flutter pub get --enforce-lockfile
+      - name: Run complete Flutter file partition
+        id: partition
+        run: python scripts/run_flutter_shard.py run --shard-index ${{ matrix.shard }} --shard-count 3 --receipt artifacts/flutter-shard-${{ matrix.shard }}.json
+  flutter_static:
+    name: flutter-analyze-build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -48,6 +78,27 @@ jobs:
       - working-directory: app
         run: flutter analyze --no-pub
       - working-directory: app
-        run: flutter test --no-pub
-      - working-directory: app
         run: flutter build web --release --no-pub --no-web-resources-cdn --csp
+  flutter:
+    name: flutter
+    needs: [flutter_tests, flutter_static]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.3'
+      - name: Check runner contracts without Flutter or app imports
+        run: python -m unittest discover -s scripts/tests -p test_flutter_ci_sharding.py
+      - name: Require all source-bound partitions and static checks
+        env:
+          FLUTTER_RECEIPT_0: ${{ needs.flutter_tests.outputs.receipt_0 }}
+          FLUTTER_RECEIPT_1: ${{ needs.flutter_tests.outputs.receipt_1 }}
+          FLUTTER_RECEIPT_2: ${{ needs.flutter_tests.outputs.receipt_2 }}
+          FLUTTER_TEST_JOB_RESULT: ${{ needs.flutter_tests.result }}
+          FLUTTER_STATIC_JOB_RESULT: ${{ needs.flutter_static.result }}
+        run: python scripts/run_flutter_shard.py verify --from-env --require-job-results --receipt artifacts/flutter-union.json

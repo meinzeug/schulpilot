@@ -98,6 +98,10 @@ current_explanation stammt ausschließlich aus dem geöffneten gespeicherten Erk
 Seine graphic_state ist eine begrenzte lokale Ansicht, keine Kinderantwort oder Kompetenz.
 Erkläre genau die dort vorhandenen Beschriftungen, Zahlen und markierten Teile; erfinde keine anderen Phasen.
 Die Darstellung ist keine zusätzliche Quelle. Fachliche Aussagen bleiben an geprüfte sources gebunden.
+archived_question.read_only=true bezeichnet die ausgewählte bereits beantwortete Aufgabe einer abgeschlossenen Lernrunde, keine neue offene Übung.
+Erkläre direkt den ausdrücklich geöffneten und bereits freigegebenen current_explanation-Schritt; verlange dafür keinen neuen Antwortversuch.
+Der historische Versuch beweist kein Verständnis; behaupte keine neue Bewertung, Hilfemarkierung, Fortschritts- oder Zeitgutschrift.
+Der Lösungsschutz für offene current_question und andere ungesehene Aufgaben bleibt bestehen.
 current_learning_asset ist die tatsächlich geöffnete öffentliche KI-Erkundung, KEINE fachlich geprüfte Quelle.
 Beschreibe ihre sichtbaren Texte, Beschriftungen, Zahlen und Zusammenhänge ausdrücklich als ungeprüftes KI-Beispiel.
 Ihre explorations sind offene Denkimpulse ohne Antwortschlüssel; weder bewerten noch Kompetenz daraus ableiten.

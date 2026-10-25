@@ -73,7 +73,7 @@ def _phase(block, phase):
 def bind(db, p, scope, unit, payload):
     """No new disclosure, progress, answer, fetch or model request."""
     from . import coaching
-    from .visual_references import question_projection
+    from .visual_references import digest, question_projection
 
     if not scope.explanation_step_id:
         return None
@@ -85,7 +85,7 @@ def bind(db, p, scope, unit, payload):
 
         steps = unit_data(db, unit, include_answers=p.user.role == "parent")["explanation_steps"] if allowed else []
     else:
-        question_id = (payload.get("current_question") or {}).get("id")
+        question_id = (payload.get("archived_question") or payload.get("current_question") or {}).get("id")
         question = next((row for row in unit.questions if row["id"] == question_id), None)
         if question is None or question_id != scope.question_id:
             _unavailable()
@@ -122,6 +122,8 @@ def bind(db, p, scope, unit, payload):
             if key in ("id", "version", "parameter_digest", "digest")
         },
     }
+    if payload.get("archived_question"):
+        resolved["saved_step_digest"] = digest(step)
     if scope.graphic_index is not None:
         blocks = (step.get("presentation") or {}).get("blocks", [])
         if not 0 <= scope.graphic_index < len(blocks):

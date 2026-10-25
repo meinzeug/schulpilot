@@ -38,6 +38,20 @@ def unlike_quote(sources):
     return None
 
 
+def _connected_expansion_clause(quote):
+    """Finite grammar joins both fraction parts to the same multiplication."""
+    names = r"\bzähler\s+und\s+(?:(?:den|der)\s+)?nenner(?:\s+(?:eines|des)\s+bruch(?:e)?s)?"
+    verb = r"(?:multiplizieren|multipliziert|multipliziere|multiplizierst)"
+    common = (r"mit\s+(?:(?:derselben|der\s+selben|der\s+gleichen|einer\s+gemeinsamen)\s+(?:ganzen\s+)?zahl"
+              r"|(?:demselben|dem\s+gleichen)\s+faktor)\b")
+    subject, phase = r"(?:(?:du|man|wir)\s+)?", r"(?:beim\s+erweitern\s+)?"
+    return any(re.search(pattern, quote, re.I) for pattern in (
+        verb + r"\s+" + subject + phase + names + r"\s+" + common,
+        names + r"\s+" + verb + r"\s+" + subject + phase + common,
+        names + r"\s+(?:(?:werden|wird)\s+)?" + common + r"\s+(?:zu\s+)?" + verb + r"\b",
+    ))
+
+
 def _procedure_quote(sources, label):
     """Require a general rule in one clause, not nearby vocabulary/examples."""
     operation = {
@@ -58,7 +72,9 @@ def _procedure_quote(sources, label):
             r"|\bandere\s+(?:faktoren|teiler)\b[^.!?\n]{0,60}\bnicht\b"
             r"|\berst\s+(?:nächste\w*|später|kommende\w*)\b"
         )
-        if re.search(restricted, content, re.I):
+        restriction_texts = ([re.sub(r"\r?\n", " ", part) for part in re.split(r"\r?\n[^\S\r\n]*\r?\n", content)]
+                             if label == "Brüche erweitern" else [content])
+        if any(re.search(restricted, text, re.I) for text in restriction_texts):
             return None
     if label == "Brüche erweitern":
         # A short workbook imperative states the same general operation as
@@ -66,25 +82,33 @@ def _procedure_quote(sources, label):
         # does not authorize addition or a rule that merely mentions expansion.
         for material in sources:
             match = re.search(
-                r"\bErweitere\s+Zähler\s+und\s+Nenner\s+mit\s+(?:derselben|der\s+gleichen)\s+(?:ganzen\s+)?Zahl\b(?:[.!]|(?=\s*(?:\n\s*\n|$)))",
+                r"\bErweitere\s+Zähler\s+und\s+Nenner\s+mit\s+(?:derselben|der\s+selben|der\s+gleichen)\s+(?:ganzen\s+)?Zahl\b(?:[.!]|(?=\s*(?:\n\s*\n|$)))",
                 material["content"], re.I,
             )
-            if match and len(match[0]) <= 350:
+            if match and len(match[0]) <= 350 and not re.search(r"\r?\n[^\S\r\n]*\r?\n", match[0]):
                 start = max(0, material["content"].rfind(".", 0, match.start()) + 1,
                             material["content"].rfind("!", 0, match.start()) + 1,
                             material["content"].rfind("?", 0, match.start()) + 1)
                 prefix = material["content"][start:match.start()]
-                if not re.search(r"\b(?:nicht|niemals|keinesfalls|falsch\w*|morgen|später)\b", prefix, re.I):
+                if not re.search(r"\b(?:nicht|niemals|keinesfalls|falsch\w*|gegenbeispiel|fehlerhaft\w*|morgen|später)\b", prefix, re.I):
                     return match[0]
     for material in sources:
-        for match in re.finditer(r"[^.!?;\r\n]+(?:[.!?;\r\n]+|$)", material["content"]):
+        # A wrapped expansion rule remains one literal clause. Never join
+        # separate paragraphs or infer the rule from a heading and examples.
+        parts = re.split(r"\r?\n[^\S\r\n]*\r?\n", material["content"]) if label == "Brüche erweitern" else [material["content"]]
+        pattern = r"[^.!?;]+(?:[.!?;]+|$)" if label == "Brüche erweitern" else r"[^.!?;\r\n]+(?:[.!?;\r\n]+|$)"
+        for match in (match for part in parts for match in re.finditer(pattern, part)):
             quote = match.group().strip()
             lower = quote.casefold()
             if (
                 len(quote) > 350
                 or not re.search(operation, lower)
                 or re.search(r"\b(?:nicht|niemals|keinesfalls)\b", lower)
+                or (label == "Brüche erweitern" and re.search(r"\b(?:falsch\w*|gegenbeispiel|fehlerhaft\w*)\b", lower))
             ):
+                continue
+            if (label == "Brüche erweitern" and ("\n" in quote or "\r" in quote or re.search(r"\bder\s+selben\b", lower))
+                    and not _connected_expansion_clause(quote)):
                 continue
             if label == "Brüche addieren":
                 same = re.search(r"\bgleich(?:em|en|e|er)?\s+nenner(?:n)?\b", lower)
@@ -111,7 +135,7 @@ def _procedure_quote(sources, label):
             else:
                 verb = re.search(r"\b(?:multiplizieren|multipliziert|multipliziere|multiplizierst)\b", lower)
                 general = re.search(
-                    r"\bmit\s+(?:(?:derselben|der\s+gleichen|einer\s+gemeinsamen)\s+(?:ganzen\s+)?zahl"
+                    r"\bmit\s+(?:(?:derselben|der\s+selben|der\s+gleichen|einer\s+gemeinsamen)\s+(?:ganzen\s+)?zahl"
                     r"|(?:demselben|dem\s+gleichen)\s+faktor)\b",
                     lower,
                 )

@@ -175,20 +175,31 @@ def scope_context(db, p, scope):
             pending = pending_feedback(unit, attempts, events)
             if pending:
                 focused = next((q for q in unit.questions if q["id"] == pending["question_id"]), None)
-            elif scope.question_id or (unit.status in ("active", "paused") and not unit.completed):
+            elif unit.status != "completed" and (scope.question_id or (unit.status in ("active", "paused") and not unit.completed)):
                 focused = facts(db, unit)["question"]
         question_id = scope.question_id or (focused["id"] if focused else None)
         if question_id:
             question = next((q for q in unit.questions if q["id"] == question_id), None)
-            if not question or not focused or focused["id"] != question_id:
+            answered = [attempt for attempt in attempts if attempt.question_id == question_id]
+            focused_matches = bool(focused and focused["id"] == question_id)
+            archived = (unit.status == "completed" and unit.completed is not None and bool(answered)
+                        and not focused_matches and scope.explanation_kind == "question"
+                        and scope.explanation_step_id is not None)
+            if not question or (not archived and not focused_matches):
                 raise HTTPException(409, "Diese Aufgabe ist nicht mehr der aktuelle Lernschritt. Bitte den Lernraum neu öffnen.")
             normalized["question_id"] = question_id
-            payload["current_question"] = {k: question[k] for k in ("id", "type", "prompt", "options") if k in question}
-            payload["current_question"]["own_work_attempted"] = any(a.question_id == question_id for a in attempts)
-            payload["current_question"]["feedback_pending"] = pending is not None
-            if pending:
-                payload["current_question"]["observed_outcome"] = pending["outcome"]
-            current_guard.append(["visible_question", question_id, pending["attempt_id"] if pending else None])
+            if archived:
+                payload["archived_question"] = {k: question[k] for k in ("id", "type", "prompt", "options") if k in question}
+                payload["archived_question"].update(own_work_attempted=True, read_only=True)
+                current_guard.append(["archived_question", question_id, unit.completed,
+                    [[attempt.id, attempt.created, attempt.outcome, attempt.assisted] for attempt in answered]])
+            else:
+                payload["current_question"] = {k: question[k] for k in ("id", "type", "prompt", "options") if k in question}
+                payload["current_question"]["own_work_attempted"] = bool(answered)
+                payload["current_question"]["feedback_pending"] = pending is not None
+                if pending:
+                    payload["current_question"]["observed_outcome"] = pending["outcome"]
+                current_guard.append(["visible_question", question_id, pending["attempt_id"] if pending else None])
     elif material := by_kind.get("material_id"):
         payload["material_page"] = True
         payload["source_view"] = {"original_photo_visible_to_user": True, "provider_has_photo": False}
@@ -543,7 +554,7 @@ def checked_reply(value, payload, refs):
     return reply
 
 
-def record_help(db, turn, units, refs, reply, *, feedback_only=False):
+def record_help(db, turn, units, refs, reply, *, feedback_only=False, archived_explanation=False):
     """Record source-backed child assistance; never rewrite an old Attempt.
 
     Caller already holds every active/paused Unit in stable order, then Child.
@@ -552,7 +563,7 @@ def record_help(db, turn, units, refs, reply, *, feedback_only=False):
     """
     # Discussing an already saved answer is not help for the unseen next
     # exercise and must never rewrite the competence of the saved attempt.
-    if not units or feedback_only or turn.scope.get("learning_asset_instance_id"):
+    if archived_explanation or not units or feedback_only or turn.scope.get("learning_asset_instance_id"):
         return
     revisions = {source["id"]: source["revision"] for source in refs}
     by_unit = {}
@@ -605,17 +616,23 @@ def process(job_id):
             job = db.get(Job, job_id)
             if not job or job.status != "running":
                 return
+            turn = db.get(SchulbuddyTurn, job.payload["turn_id"])
+            if not turn:
+                raise ProviderError("Die Schulbuddy-Frage wurde gelöscht.")
             # Completion/answers also lock Unit before Child. Acquire the full
             # affected set in stable order, as the notebook tutor does.
+            if payload.get("archived_question"):
+                archived_unit = db.scalar(select(LearningUnit).where(
+                    LearningUnit.id == turn.scope["unit_id"], LearningUnit.child_id == job.child_id)
+                    .with_for_update().execution_options(populate_existing=True))
+                if archived_unit is None:
+                    raise ProviderError("Die gespeicherte Erklärung wurde gelöscht.")
             ongoing_units = list(db.scalars(select(LearningUnit).where(
                 LearningUnit.child_id == job.child_id, LearningUnit.status.in_(("active", "paused")),
                 LearningUnit.completed.is_(None), LearningUnit.synthetic.is_(False))
                 .order_by(LearningUnit.id).with_for_update().execution_options(populate_existing=True))) \
-                if payload["role"] == "child" and not payload.get("current_learning_asset") else []
+                if payload["role"] == "child" and not payload.get("current_learning_asset") and not payload.get("archived_question") else []
             db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
-            turn = db.get(SchulbuddyTurn, job.payload["turn_id"])
-            if not turn:
-                raise ProviderError("Die Schulbuddy-Frage wurde gelöscht.")
             p, child = authority(db, turn)
             config = configured(db, verify_catalog=True)
             if (scope_context(db, p, BuddyScope(**turn.scope))[6] != job.payload["signature"]
@@ -629,7 +646,8 @@ def process(job_id):
                 settle(db, usage, result)
             if p.user.role == "child":
                 record_help(db, turn, ongoing_units, refs, reply,
-                            feedback_only=payload.get("current_question", {}).get("feedback_pending", False))
+                            feedback_only=payload.get("current_question", {}).get("feedback_pending", False),
+                            archived_explanation=bool(payload.get("archived_question")))
             audit(db, p.user.id, "schulbuddy.answer", turn.id)
     except Exception as error:
         reason = str(error.detail) if isinstance(error, HTTPException) else str(error) if isinstance(error, ProviderError) else "Schulbuddy konnte diese Frage nicht sicher beantworten. Kein automatischer weiterer Versuch."
