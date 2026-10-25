@@ -168,3 +168,34 @@ bei fehlenden Quellpfeilen nicht mehr im Anfrageschema an. Seine ursprüngliche
 Pfeilprüfung bleibt erhalten. Gespeicherte Referenzen, Antworten und fertige
 Teile werden nicht umgeschrieben; die zusätzliche Referenz wird über den
 vorhandenen idempotenten Seed eingespielt, ohne SQL-Migration.
+
+## Frage und Grafik gemeinsam anfordern (1.36.5+117)
+
+Der echte Versuch unter 116 wurde in der Phase `prepared_graphics` abgewiesen;
+OpenRouter meldete 0,036372 USD. Der bisherige gemeinsame Bindungsfehler sagt
+nicht, welche einzelne Bedingung verletzt war. Es gibt keine gespeicherte
+Rohantwort, aus der sich das nachträglich beweisen ließe.
+
+Ein künstliches Gegenbeispiel belegt jedoch eine Vertragslücke: Das Schema
+band die Grafikparameter, ließ den Frageprompt aber frei. Eine fremde
+Bruchfrage war damit noch schemaerlaubt und wurde erst nach dem Aufruf vom
+Frageanker abgewiesen. Der neue Vertrag bindet die ganze Frage und ihren
+Grafikschritt im selben vollständigen Schemazweig. Das Stringmuster fordert
+das genaue, ungekürzte `n/d`-Paar dieser Grafik ausdrücklich im neuen Prompt.
+Die übrige Aufgabenstellung, Hinweise und Antworten erstellt weiterhin die KI;
+der Server fügt keinen Frageanker nachträglich hinzu und schreibt keine
+Antwort um. Der nachgelagerte Parameteranker bleibt verpflichtend.
+
+Vorbereitete Pfeilszenen bleiben für geeignete Einführungen möglich. Für
+vorbereitete Mathematikfragen verwendet dieser begrenzte Vertrag die exakt
+gekoppelten Bruchmodelle. Bestehende andere Erzeugungswege und gespeicherte
+kanonische Darstellungen werden nicht geändert. Sechs feste Fehlerklassen
+unterscheiden künftig Struktur, Offenlegung, Kennung, Fachgruppe, Metadaten und
+Frageanker, ohne Inhalte zu speichern. Der historische Sammelcode bleibt in
+der Diagnoseauswertung lesbar.
+
+Gleiche Grafikbasen teilen sich dabei einen Fragezweig für ihre vier erlaubten
+Hinweis-/Lösungsstufen. Quelle, Referenz und Parameter bleiben gekoppelt;
+verschiedene Quellen oder wertgleiche andere Bruchdarstellungen werden nicht
+zusammengelegt. Das vermeidet vierfach wiederholte Fragefelder, ohne eine
+Darstellung oder Hilfestufe zu entfernen.

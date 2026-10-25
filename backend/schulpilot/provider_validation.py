@@ -32,6 +32,12 @@ subject practice counts factual coaching entry asset visual billing
 """.split())
 _VALUE_REASONS = {
     "Ungültige vorbereitete Grafikzuordnung.": "prepared_graphic_binding",
+    "Ungültige Struktur der vorbereiteten Grafikzuordnung.": "prepared_graphic_structure",
+    "Unbekannte vorbereitete Grafik-ID.": "prepared_graphic_id",
+    "Vorbereitete Grafik gehört nicht zum Fach oder zur Paketgruppe.": "prepared_graphic_scope",
+    "Vorbereitete Grafikmetadaten stimmen nicht mit der Auswahl überein.": "prepared_graphic_metadata",
+    "Vorbereitete Grafik gehört nicht zur erlaubten Aufdeckstufe.": "prepared_graphic_disclosure",
+    "Vorbereitete Grafik passt nicht zu den ausdrücklichen Frageparametern.": "prepared_graphic_question_anchor",
     "Ein Lernpaketteil benötigt genau ein Fach.": "part_structure",
     "Der Lernpaketteil überschreitet den begrenzten Umfang.": "part_bounds",
     "Die Aufgabe überschreitet den begrenzten Ausgabeumfang.": "part_bounds",

@@ -1591,3 +1591,38 @@ Aktivierung, Nachweise und Grenzen: [PACKAGE_PARTS.md](PACKAGE_PARTS.md).
   für gute Grafiken. Normale Reservierungen, tatsächliche Gebühren und
   bestehende Kontoeinstellungen bleiben maßgeblich; kein zusätzlicher
   Providerwechsel und keine automatische Wiederholung fehlgeschlagener Jobs.
+
+### Gekoppelter Frage-/Grafikvertrag (25.10.2026, 1.36.5+117)
+
+Der reale 116-Versuch meldete 0,036372 USD und wurde mit
+`prepared_graphics/prepared_graphic_binding` abgewiesen. Die genaue verletzte
+Bedingung ist mangels gespeicherter Rohantwort nicht rückwirkend belegt.
+Künstliche Gegenbeispiele zeigen unabhängig davon, dass ein frei formulierter
+Prompt bis dahin trotz fest gebundener Grafik einen anderen Bruch nennen
+konnte. Neue Fragezweige koppeln deshalb Promptmuster und gewählte Darstellung
+bereits im tatsächlichen privaten Anfrageschema. Alle kanonischen Quellen-,
+Antwort- und Parameterprüfungen bleiben erhalten; keine Ausgabe wird repariert.
+
+Die am 25.10.2026 erneut gelesene
+[OpenAI-Dokumentation zu Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+führt String-`pattern` und verschachtelte `anyOf`-Zweige als unterstützte
+Mittel auf; `allOf` sowie `if`/`then`/`else` werden hier nicht verwendet.
+Dies ersetzt keine tatsächliche Prüfung des ausgehenden OpenRouter-Vertrags.
+
+Für den begrenzten weiteren Reparaturlauf gilt eine konservative lokale
+Arbeitsgrenze von 2 USD einschließlich einer bereits belegten Vorbelastung
+von 0,349586 USD außerhalb des persistierten Teilplans. Dieser feste
+Arbeitsbeleg ist keine frische Gesamtkontobilanz. Die sechs historischen
+Teiljobs und ihre 0,271166 USD werden separat aus den eigenen gespeicherten
+Abrechnungsbelegen geprüft. Fünf noch fehlende Teile mit je höchstens 0,25 USD
+Reservierung ergeben damit höchstens 1,870752 USD für diesen abgegrenzten
+Arbeitsstand. Globale Providergrenzen und Kinderbudgets werden nicht verändert.
+
+Der künstliche Maximalfall mit acht Grafikbasen und 6000 Quellzeichen wurde am
+tatsächlichen ausgehenden HTTP-Mock geprüft: 39063 Bytes Schema, 67186 Bytes
+Text und 222564 µUSD konservative Kostenprüfung bei 250000 µUSD Reservierung.
+Dies sind Anfrage-/Vorprüfungsmesswerte, keine reale Modellabrechnung.
+Unabhängiges JSON-Schema-Validieren prüft den wirklichen Wirevertrag und
+weist einen falschen Fragebruch trotz ansonsten gültiger Grafikkennung ab.
+100 Compilerfälle und 13 Adapterfälle bestanden; dies ist kein Ergebnis der
+gesamten Testsuite oder Nachweis eines erfolgreichen erneuten Liveauftrags.

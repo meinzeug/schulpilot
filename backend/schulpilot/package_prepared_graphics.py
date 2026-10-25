@@ -14,11 +14,11 @@ from .subject_content import PROFILES, Graphic, validate_question
 from .visual_reference_schemas import ExplanationStep
 from .visual_references import _meaningful
 
-REVISION = "package-prepared-graphics-1"
+REVISION = "package-prepared-graphics-2"
 MAX_BASE_CANDIDATES = 8
 STAGES = ("given", "hint1", "hint2", "hint3", "solution")
 RULES = """
-package-prepared-graphics-1: DIESER Auftrag verwendet ausschließlich servergeprüfte Grafiken.
+package-prepared-graphics-2: DIESER Auftrag verwendet ausschließlich servergeprüfte Grafiken.
 prepared_graphics.candidates enthält endliche IDs mit genau gebundener Quelle, Referenz,
 Stufe und Schritttext. Wähle eine zum tatsächlichen Lernziel passende ID. Im angeforderten
 Wireformat ist presentation.blocks=[dieseID], NICHT ein neu abgeschriebener Graphic-Block.
@@ -26,11 +26,15 @@ Text/Referenz/source_refs/disclosure gehören unverändert zur selben ID und zum
 Der Server stellt genau diese gespeicherte Grafik vor allen bisherigen Prüfungen wieder her.
 Keine neuen Beschriftungen, Zitate, Zahlen, Grafikparameter oder Ersatzgrafiken erfinden.
 Aufgaben, Antworten, Hinweise und Quellen werden weiterhin vollständig unabhängig geprüft.
-FRAGEBEZUG: Eine Bruchgrafik darf nur gewählt werden, wenn derselbe Zähler UND Nenner
-im Frageprompt ausdrücklich als n/d oder LaTeX-frac/dfrac stehen. Wertgleiche andere
-Brüche ersetzen diese Darstellung nicht. Für eine Szene müssen mindestens zwei
-verschiedene vollständige Objektbezeichnungen im Frageprompt wortgetreu vorkommen;
-Teilwörter und andere Themen genügen nicht. Einführungen sind davon ausgenommen.
+FRAGEBEZUG: Jeder Fragezweig ist an genau EINE Bruchdarstellung mit ihren vier erlaubten
+Aufdeckstufen-IDs gebunden. Wähle genau eine dieser IDs. Der Frageprompt
+muss genau deren Zähler/Nenner ausdrücklich in ASCII als n/d enthalten, ohne Leerzeichen
+am Bruchstrich. Dieser Bruchanker darf auch innerhalb einer LaTeX-Umgebung stehen,
+aber nicht als \\frac{n}{d}/\\dfrac{n}{d}; keine andere wertgleiche Darstellung. Alle
+übrigen Formeln dürfen wie bisher LaTeX verwenden. Die Originalquelle bleibt unverändert. Frage-Step-ID,
+Text, Quelle und Aufdeckstufe gehören zum selben gewählten Zweig. Szenen sind in diesem
+vorbereiteten Mathevertrag nur für die Einführung verfügbar, nicht als Fragegrafik.
+
 """
 
 
@@ -161,6 +165,17 @@ def _question_anchor(candidate, question):
     return False
 
 
+def _offered(candidate):
+    return candidate["kind"] == "fraction" or candidate["disclosure"] == "given"
+
+
+def _fraction_prompt_pattern(candidate):
+    n, d = map(int, candidate["block"]["numbers"])
+    # No lookaround/conditional schema or numeric-equivalence guessing. A dot
+    # or comma may end a sentence, but must not introduce a decimal suffix.
+    return rf"(^|[^\w/.,+−-]){n}/{d}($|[^\w/.,]|\.(?:$|[^0-9])|,(?:$|[^0-9]))"
+
+
 @dataclass(frozen=True)
 class Binding:
     candidates: tuple
@@ -172,33 +187,42 @@ class Binding:
     @property
     def context(self):
         return {"version": 1, "revision": REVISION,
-                "candidates": [{key: copy.deepcopy(value) for key, value in row.items() if key != "block"} for row in self.candidates]}
+                "candidates": [{key: copy.deepcopy(value) for key, value in row.items() if key != "block"}
+                               for row in self.candidates if _offered(row)]}
 
     def hydrate(self, data):
         """Restore only the exact requested ID; reject every scope/field mix."""
         result = copy.deepcopy(data)
-        choices = {row["id"]: row for row in self.candidates}
+        choices = {row["id"]: row for row in self.candidates if _offered(row)}
         units = result.get("units") if isinstance(result, dict) else None
         if not isinstance(units, list) or len(units) != 1:
-            raise ValueError("Ungültige vorbereitete Grafikzuordnung.")
+            raise ValueError("Ungültige Struktur der vorbereiteten Grafikzuordnung.")
         for unit in units:
-            for item in [unit, *unit.get("questions", [])]:
-                steps = item.get("explanation_steps")
-                if not isinstance(steps, list) or len(steps) != 1:
-                    raise ValueError("Ungültige vorbereitete Grafikzuordnung.")
+            if not isinstance(unit, dict) or not isinstance(unit.get("questions"), list):
+                raise ValueError("Ungültige Struktur der vorbereiteten Grafikzuordnung.")
+            for item in [unit, *unit["questions"]]:
+                steps = item.get("explanation_steps") if isinstance(item, dict) else None
+                if not isinstance(steps, list) or len(steps) != 1 or not isinstance(steps[0], dict):
+                    raise ValueError("Ungültige Struktur der vorbereiteten Grafikzuordnung.")
                 for step in steps:
                     presentation = step.get("presentation")
                     if (not isinstance(presentation, dict) or set(presentation) != {"version", "evidence_kind", "blocks"}
                             or type(presentation["version"]) is not int or presentation["version"] != 1
                             or presentation["evidence_kind"] != "knowledge" or not isinstance(presentation["blocks"], list)
                             or len(presentation["blocks"]) != 1 or not isinstance(presentation["blocks"][0], str)):
-                        raise ValueError("Ungültige vorbereitete Grafikzuordnung.")
+                        raise ValueError("Ungültige Struktur der vorbereiteten Grafikzuordnung.")
                     selected = choices.get(presentation["blocks"][0])
-                    if (selected is None or selected["subject"] != unit.get("subject") or selected["group_id"] != unit.get("group_id")
-                            or any(_digest(step.get(key)) != _digest(selected[key]) for key in ("reference", "disclosure", "source_refs", "text"))
-                            or (step["disclosure"] == "given") != (item is unit)
-                            or (item is not unit and not _question_anchor(selected, item))):
-                        raise ValueError("Ungültige vorbereitete Grafikzuordnung.")
+                    if selected is None:
+                        raise ValueError("Unbekannte vorbereitete Grafik-ID.")
+                    if selected["subject"] != unit.get("subject") or selected["group_id"] != unit.get("group_id"):
+                        raise ValueError("Vorbereitete Grafik gehört nicht zum Fach oder zur Paketgruppe.")
+                    if step.get("disclosure") != selected["disclosure"] or (selected["disclosure"] == "given") != (item is unit):
+                        raise ValueError("Vorbereitete Grafik gehört nicht zur erlaubten Aufdeckstufe.")
+                    if any(_digest(step.get(key)) != _digest(selected[key]) for key in ("reference", "source_refs", "text")):
+                        raise ValueError("Vorbereitete Grafikmetadaten stimmen nicht mit der Auswahl überein.")
+                    if item is not unit and (selected["kind"] != "fraction" or not _question_anchor(selected, item)
+                            or not re.search(_fraction_prompt_pattern(selected), item.get("prompt", ""))):
+                        raise ValueError("Vorbereitete Grafik passt nicht zu den ausdrücklichen Frageparametern.")
                     presentation["blocks"] = [copy.deepcopy(selected["block"])]
         return result
 
@@ -219,42 +243,69 @@ def bind_schema(schema, payload):
     def resolved(node):
         return copy.deepcopy(definitions[node["$ref"].rsplit("/", 1)[-1]] if "$ref" in node else node)
 
-    def steps(introduction):
-        branches = []
-        for candidate in candidates:
-            if (candidate["disclosure"] == "given") != introduction:
-                continue
-            step = copy.deepcopy(step_template)
-            props = step["properties"]
-            for key in ("text", "disclosure"):
-                props[key] = {"type": "string", "enum": [candidate[key]]}
-            choice = resolved(props["reference"])
-            for key in ("id", "version"):
-                choice["properties"][key]["enum"] = [candidate["reference"][key]]
-            props["reference"] = choice
-            props["source_refs"].update(minItems=1, maxItems=1)
-            props["source_refs"]["items"]["enum"] = candidate["source_refs"]
-            presentation = copy.deepcopy(presentation_template)
-            presentation["properties"]["version"] = {"type": "integer", "enum": [1]}
-            presentation["properties"]["evidence_kind"] = {"type": "string", "enum": ["knowledge"]}
-            presentation["properties"]["blocks"] = {"type": "array", "minItems": 1, "maxItems": 1,
-                "items": {"type": "string", "enum": [candidate["id"]]}}
-            props["presentation"] = presentation
-            key = _digest(step)
-            if key not in registered:
-                name = "PreparedStep" + str(len(registered) + 1)
-                definitions[name] = step
-                registered[key] = {"$ref": "#/$defs/" + name}
-            branches.append(registered[key])
+    def step_ref(candidate):
+        step = copy.deepcopy(step_template)
+        props = step["properties"]
+        for key in ("text", "disclosure"):
+            props[key] = {"type": "string", "enum": [candidate[key]]}
+        choice = resolved(props["reference"])
+        for key in ("id", "version"):
+            choice["properties"][key]["enum"] = [candidate["reference"][key]]
+        props["reference"] = choice
+        props["source_refs"].update(minItems=1, maxItems=1)
+        props["source_refs"]["items"]["enum"] = candidate["source_refs"]
+        presentation = copy.deepcopy(presentation_template)
+        presentation["properties"]["version"] = {"type": "integer", "enum": [1]}
+        presentation["properties"]["evidence_kind"] = {"type": "string", "enum": ["knowledge"]}
+        presentation["properties"]["blocks"] = {"type": "array", "minItems": 1, "maxItems": 1,
+            "items": {"type": "string", "enum": [candidate["id"]]}}
+        props["presentation"] = presentation
+        key = _digest(step)
+        if key not in registered:
+            name = "PreparedStep" + str(len(registered) + 1)
+            definitions[name] = step
+            registered[key] = {"$ref": "#/$defs/" + name}
+        return registered[key]
+
+    def steps(introduction, choices=None):
+        choices = choices if choices is not None else [row for row in candidates if row["disclosure"] == "given"]
+        branches = [step_ref(row) for row in choices]
         return {"type": "array", "minItems": 1, "maxItems": 1, "items": {"anyOf": branches}}
+
+    # Share only the Question template. Every stage retains its own complete
+    # strict step and immutable ID, with identical source/ref/parameter scope.
+    question_bases = {}
+    for candidate in candidates:
+        if candidate["kind"] != "fraction" or candidate["disclosure"] == "given":
+            continue
+        base = copy.deepcopy(candidate)
+        base.pop("id")
+        base.pop("disclosure")
+        base["block"].pop("disclosure")
+        question_bases.setdefault(_digest(base), []).append(candidate)
 
     def questions(node):
         node = resolved(node)
         if "anyOf" in node:
             node["anyOf"] = [questions(branch) for branch in node["anyOf"]]
-        else:
-            node["properties"]["explanation_steps"] = steps(False)
-        return node
+            return node
+        branches = []
+        for stage_candidates in question_bases.values():
+            candidate = stage_candidates[0]
+            pattern = _fraction_prompt_pattern(candidate)
+            prompt = node["properties"]["prompt"]
+            if "pattern" in prompt and prompt["pattern"] != pattern:
+                raise ValueError("Der feste Fragevertrag lässt sich nicht verlustfrei an die Grafik binden.")
+            fixed = prompt.get("enum", [prompt["const"]] if "const" in prompt else [])
+            if fixed and not any(isinstance(value, str) and re.search(pattern, value) for value in fixed):
+                continue
+            branch = copy.deepcopy(node)
+            branch["properties"]["prompt"]["pattern"] = pattern
+            branch["properties"]["explanation_steps"] = steps(False, stage_candidates)
+            branches.append(branch)
+        if not branches:
+            raise ValueError("Die festgelegte Frage besitzt keine passende vorbereitete Grafik mit ausdrücklichem Bruchanker.")
+        return {"anyOf": branches}
 
     def units(node):
         node = resolved(node)

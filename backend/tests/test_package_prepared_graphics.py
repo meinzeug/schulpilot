@@ -1,6 +1,7 @@
 """Actual canonical validators over public artificial prepared graphics only."""
 import copy
 import json
+import re
 from collections import Counter
 
 import pytest
@@ -45,15 +46,14 @@ def prepared(*, scene=False):
     payload = payload_for()
     _, binding = bind(payload)
     assert binding is not None
-    intro = next(row for row in binding.candidates if row["kind"] == "fraction" and row["disclosure"] == "given")
-    selected = [row for row in binding.candidates if row["kind"] == ("scene" if scene else "fraction") and row["disclosure"] == "solution"]
+    intro = next(row for row in binding.candidates if row["kind"] == ("scene" if scene else "fraction") and row["disclosure"] == "given")
+    selected = [row for row in binding.candidates if row["kind"] == "fraction" and row["disclosure"] == "solution"]
     questions = []
     for index in range(2):
         candidate = selected[index % len(selected)]
-        n, d = (1, 2) if scene else map(int, candidate["block"]["numbers"])
-        prompt = ("Welche Richtung hat die belegte Folge zwischen Wasser und Dampf?" if scene
-                  else f"Was beschreibt der Bruch {n}/{d} mit {n} von {d} gleich großen Teilen?")
-        answer = "Wasser → Dampf" if scene else f"{n}/{d}"
+        n, d = map(int, candidate["block"]["numbers"])
+        prompt = f"Was beschreibt der Bruch {n}/{d} mit {n} von {d} gleich großen Teilen?"
+        answer = f"{n}/{d}"
         questions.append({"id": f"q{index + 1}", "type": "short", "prompt": prompt,
             "options": [], "answer": answer, "accepted": [], "hints": ["Lies den belegten Zusammenhang."],
             "explanation": SOURCE, "presentation": None, "field_group": None, "explanation_steps": [wire_step(candidate)]})
@@ -141,8 +141,16 @@ def test_hydration_refuses_field_mixes_without_fixing_answers_or_partial_graphic
     else:
         step["presentation"]["version"] = True
     before = copy.deepcopy(wire)
-    with pytest.raises(ValueError, match="Grafikzuordnung"):
+    errors = {"unknown_id": "Unbekannte vorbereitete Grafik-ID.",
+        "foreign_subject": "Vorbereitete Grafik gehört nicht zum Fach oder zur Paketgruppe.",
+        "foreign_group": "Vorbereitete Grafik gehört nicht zum Fach oder zur Paketgruppe.",
+        "wrong_stage": "Vorbereitete Grafik gehört nicht zur erlaubten Aufdeckstufe."}
+    expected = errors.get(fault, "Ungültige Struktur der vorbereiteten Grafikzuordnung." if fault in
+        ("two_ids", "full_graphic", "old_shape", "bool_version") else
+        "Vorbereitete Grafikmetadaten stimmen nicht mit der Auswahl überein.")
+    with pytest.raises(ValueError) as caught:
         binding.hydrate(wire)
+    assert str(caught.value) == expected
     assert wire == before
 
 
@@ -214,43 +222,36 @@ def test_exact_latex_fraction_pairs_keep_the_complete_original_quote_and_canonic
     assert bind(payload)[1] is not None
 
 
-def anchored_wire(*, scene=False):
-    wire, payload, binding = prepared(scene=scene)
-    for question in wire["units"][0]["questions"]:
-        selected = next(row for row in binding.candidates
-            if row["id"] == question["explanation_steps"][0]["presentation"]["blocks"][0])
-        if scene:
-            question["prompt"] = "Welche Richtung hat die belegte Folge zwischen Wasser und Dampf?"
-            question["answer"] = "Wasser → Dampf"
-        else:
-            n, d = map(int, selected["block"]["numbers"])
-            question["prompt"] = f"Was beschreibt der Bruch {n}/{d}?"
-    return wire, payload, binding
+def anchored_wire():
+    return prepared()
 
 
 def test_question_anchor_rejects_unrelated_fraction_without_rewriting_the_question():
     wire, _, binding = anchored_wire()
     wire["units"][0]["questions"][0]["prompt"] = "Welchen Nenner hat der Bruch 5/4?"
     original = copy.deepcopy(wire)
-    with pytest.raises(ValueError, match="Grafikzuordnung"):
+    with pytest.raises(ValueError, match="Frageparametern"):
         binding.hydrate(wire)
     assert wire == original
 
 
-def test_question_anchor_rejects_fraction_question_with_water_scene():
-    wire, _, binding = anchored_wire(scene=True)
-    wire["units"][0]["questions"][0]["prompt"] = "Was beschreibt der Bruch 1/2?"
+def test_scene_question_is_not_offered_even_when_its_source_labels_match_the_question():
+    wire, _, binding = prepared(scene=True)
+    selected = next(row for row in binding.candidates if row["kind"] == "scene" and row["disclosure"] == "solution")
+    wire["units"][0]["questions"][0].update(prompt="Beschreibe Wasser und Dampf.", explanation_steps=[wire_step(selected)])
     original = copy.deepcopy(wire)
-    with pytest.raises(ValueError, match="Grafikzuordnung"):
+    assert selected["id"] not in {row["id"] for row in binding.context["candidates"]}
+    with pytest.raises(ValueError, match="Grafik-ID"):
         binding.hydrate(wire)
     assert wire == original
 
 
 @pytest.mark.parametrize("prompt,accepted", [
     ("Was beschreibt 2/3?", True),
-    (r"Was beschreibt \frac{2}{3}?", True),
-    (r"Was beschreibt \dfrac { 2 } { 3 }?", True),
-    ("Was beschreibt 2 / 3?", True),
+    (r"Was beschreibt \frac{2}{3}?", False),
+    (r"Was beschreibt \dfrac { 2 } { 3 }?", False),
+    ("Was beschreibt 2 / 3?", False),
+    (r"Was beschreibt \(2/3\)?", True),
     ("Was beschreibt 4/6?", False),
     ("Was beschreibt 5/4?", False),
     ("Was beschreibt 12/3?", False),
@@ -268,7 +269,7 @@ def test_question_anchor_uses_exact_numerator_denominator_not_numeric_equivalenc
     if accepted:
         assert binding.hydrate(wire)["units"][0]["questions"][0]["answer"] == "2/3"
     else:
-        with pytest.raises(ValueError, match="Grafikzuordnung"):
+        with pytest.raises(ValueError, match="Frageparametern"):
             binding.hydrate(wire)
     assert wire == original
 
@@ -283,15 +284,11 @@ def test_question_anchor_uses_exact_numerator_denominator_not_numeric_equivalenc
     ("Beschreibe den Bruch 1/2.", False),
 ])
 def test_question_anchor_needs_two_distinct_complete_scene_object_expressions(prompt, accepted):
-    wire, _, binding = anchored_wire(scene=True)
-    wire["units"][0]["questions"][0]["prompt"] = prompt
-    original = copy.deepcopy(wire)
-    if accepted:
-        binding.hydrate(wire)
-    else:
-        with pytest.raises(ValueError, match="Grafikzuordnung"):
-            binding.hydrate(wire)
-    assert wire == original
+    payload = payload_for()
+    candidate = next(row for row in prepared_graphics.compile_candidates(payload)
+        if row["kind"] == "scene" and row["disclosure"] == "solution")
+    # A semantic helper regression only: new maths requests do not offer scene questions.
+    assert prepared_graphics._question_anchor(candidate, {"prompt": prompt}) is accepted
 
 
 def test_intro_does_not_require_a_question_anchor():
@@ -308,18 +305,144 @@ def test_intro_does_not_require_a_question_anchor():
     ("CO → CO2.", "Beschreibe Co und CO2.", False),
 ])
 def test_question_anchor_preserves_whole_multiword_labels_and_scientific_case(labels, prompt, accepted):
-    wire, _, _ = anchored_wire(scene=True)
     payload = payload_for("Ein Bruch 1/2 beschreibt 1 von 2 Teilen.\n" + labels)
-    _, binding = bind(payload)
-    intro = next(row for row in binding.candidates if row["kind"] == "fraction" and row["disclosure"] == "given")
-    scene = next(row for row in binding.candidates if row["kind"] == "scene" and row["disclosure"] == "solution")
+    candidate = next(row for row in prepared_graphics.compile_candidates(payload)
+        if row["kind"] == "scene" and row["disclosure"] == "solution")
+    assert prepared_graphics._question_anchor(candidate, {"prompt": prompt}) is accepted
+
+
+def _resolved(schema, node):
+    return schema["$defs"][node["$ref"].rsplit("/", 1)[-1]] if "$ref" in node else node
+
+
+def _question_branches(schema):
+    units = schema["properties"]["units"]["items"]["anyOf"]
+    for unit in units:
+        unit = _resolved(schema, unit)
+        question = _resolved(schema, unit["properties"]["questions"]["items"])
+        for branch in question["anyOf"]:
+            yield _resolved(schema, branch)
+
+
+def test_each_request_question_branch_couples_its_prompt_pattern_to_one_base_with_four_exact_stage_ids():
+    _, payload, binding = prepared()
+    schema, _ = bind(payload)
+    choices = {row["id"]: row for row in binding.candidates}
+    branches = list(_question_branches(schema))
+    assert branches
+    for branch in branches:
+        steps = branch["properties"]["explanation_steps"]["items"]["anyOf"]
+        assert len(steps) == 4
+        all_choices = []
+        for selected_step in steps:
+            selected_step = _resolved(schema, selected_step)
+            ids = selected_step["properties"]["presentation"]["properties"]["blocks"]["items"]["enum"]
+            assert len(ids) == 1
+            all_choices.append(choices[ids[0]])
+        assert {row["disclosure"] for row in all_choices} == {"hint1", "hint2", "hint3", "solution"}
+        bases = []
+        for row in all_choices:
+            base = copy.deepcopy(row)
+            base.pop("id")
+            base.pop("disclosure")
+            base["block"].pop("disclosure")
+            bases.append(base)
+        assert all(base == bases[0] for base in bases)
+        step = _resolved(schema, steps[0])
+        graphic_id = step["properties"]["presentation"]["properties"]["blocks"]["items"]["enum"]
+        assert len(graphic_id) == 1
+        candidate = choices[graphic_id[0]]
+        assert candidate["kind"] == "fraction" and candidate["disclosure"] != "given"
+        pattern = branch["properties"]["prompt"]["pattern"]
+        assert pattern == prepared_graphics._fraction_prompt_pattern(candidate)
+        n, d = map(int, candidate["block"]["numbers"])
+        assert re.search(pattern, f"Was beschreibt {n}/{d}?")
+        assert not re.search(pattern, f"Was beschreibt {n + d}/{d}?")
+        assert not re.search(pattern, f"Was beschreibt {n}/{d}0?")
+        assert not re.search(pattern, rf"Was beschreibt \frac{{{n}}}{{{d}}}?")
+    projected = package_transport.schema_projection(schema)
+    codec = package_output_transport.bind(projected)
+    text = json.dumps(codec.wire_schema)
+    assert all(json.dumps(branch["properties"]["prompt"]["pattern"])[1:-1] in text for branch in branches)
+
+
+@pytest.mark.parametrize("text,valid", [("Was beschreibt 2/3?", True), ("Was beschreibt 2/3.", True),
+    ("Vergleiche (2/3).", True), (r"Vergleiche \(2/3\).", True), ("Was beschreibt 2/30?", False), ("Was beschreibt 12/3?", False),
+    ("Was beschreibt 2/3.5?", False), ("Was beschreibt 2/3,5?", False), ("x2/3", False),
+    ("2/3x", False), ("2/3/4", False)])
+def test_fraction_prompt_pattern_has_literal_character_boundaries_without_lookarounds(text, valid):
+    candidate = next(row for row in prepared_graphics.compile_candidates(payload_for())
+        if row["kind"] == "fraction" and row["block"]["numbers"] == [2, 3])
+    pattern = prepared_graphics._fraction_prompt_pattern(candidate)
+    assert "(?=" not in pattern and "(?<" not in pattern and "(?!" not in pattern
+    assert bool(re.search(pattern, text)) is valid
+
+
+@pytest.mark.parametrize("compatible", [True, False])
+def test_fixed_entry_prompt_and_answer_are_never_rewritten_to_fit_a_graphic(compatible):
+    payload = payload_for()
+    schema = providers.strict_schema(PackageOutput, preserve_limits=True)
+    providers.prepare_package_schema(schema, payload, partition=True)
+    bind_graphic_schema(schema, ["Mathematik"])
+    visual_references.bind_schema(schema, payload)
+    prompt = "Was beschreibt 1/2?" if compatible else "Benenne den unteren Teil eines Bruchs."
+    original = schema["$defs"]["Question"]["properties"]
+    original["prompt"]["enum"] = [prompt]
+    original["answer"]["enum"] = ["1/2"]
+    answer = copy.deepcopy(original["answer"])
+    if not compatible:
+        with pytest.raises(ValueError, match="festgelegte Frage"):
+            package_part_output.bind_schema(schema, payload)
+        return
+    package_part_output.bind_schema(schema, payload)
+    for branch in _question_branches(schema):
+        assert branch["properties"]["prompt"]["enum"] == [prompt]
+        assert branch["properties"]["answer"] == answer
+
+
+def test_max_eight_bases_use_eight_question_templates_without_dropping_any_stage():
+    payload = payload_for("Bruch " + " ".join(f"{n}/24" for n in range(8)))
+    schema, binding = bind(payload)
+    branches = list(_question_branches(schema))
+    assert len(branches) == 8
+    ids = []
+    for branch in branches:
+        steps = branch["properties"]["explanation_steps"]["items"]["anyOf"]
+        assert len(steps) == 4
+        for step in steps:
+            selected = _resolved(schema, step)
+            ids.extend(selected["properties"]["presentation"]["properties"]["blocks"]["items"]["enum"])
+    assert len(ids) == len(set(ids)) == 32
+    assert len(binding.context["candidates"]) == 40
+
+
+@pytest.mark.parametrize("stage", ["hint1", "hint2", "hint3", "solution"])
+def test_every_stage_roundtrips_for_the_same_exact_fraction_base(stage):
+    wire, payload, binding = prepared()
+    row = next(row for row in binding.candidates if row["kind"] == "fraction"
+        and row["block"]["numbers"] == [1, 2] and row["disclosure"] == stage)
+    wire["units"][0]["questions"][0]["explanation_steps"] = [wire_step(row)]
+    schema, _ = bind(payload)
+    codec = package_output_transport.bind(package_transport.schema_projection(schema))
+    restored = binding.hydrate(codec.decode(codec.encode(wire)))
+    assert restored["units"][0]["questions"][0]["explanation_steps"][0]["disclosure"] == stage
+    assert restored["units"][0]["questions"][0]["answer"] == "1/2"
+    with DB() as db:
+        visual_references.validate_output(db, restored, payload)
+
+
+def test_equivalent_fractions_and_different_original_pages_are_not_merged_into_one_base():
+    payload = payload_for("Brüche 1/2 und 2/4.")
+    original = payload["visual_context"]["sources"][0]
+    payload["visual_context"]["sources"].append({**copy.deepcopy(original), "ref": "p2", "material_id": "d" * 32})
+    schema, binding = bind(payload)
+    assert len(list(_question_branches(schema))) == 4
+    assert len(binding.context["candidates"]) == 20
+    candidate = next(row for row in binding.candidates if row["kind"] == "fraction"
+        and row["block"]["numbers"] == [2, 4] and row["disclosure"] == "solution")
+    wire, _, _ = prepared()
+    intro = next(row for row in binding.candidates if row["disclosure"] == "given")
     wire["units"][0]["explanation_steps"] = [wire_step(intro)]
-    for question in wire["units"][0]["questions"]:
-        question.update(prompt=prompt, explanation_steps=[wire_step(scene)])
-    original = copy.deepcopy(wire)
-    if accepted:
+    wire["units"][0]["questions"][0].update(prompt="Was beschreibt 1/2?", explanation_steps=[wire_step(candidate)])
+    with pytest.raises(ValueError, match="Frageparametern"):
         binding.hydrate(wire)
-    else:
-        with pytest.raises(ValueError, match="Grafikzuordnung"):
-            binding.hydrate(wire)
-    assert wire == original

@@ -9,7 +9,7 @@ import json
 import re
 
 REVISION = "package-part-output-1"
-GRAPHIC_SCHEMA_REVISION = "package-part-graphics-3"
+GRAPHIC_SCHEMA_REVISION = "package-part-graphics-4"
 
 
 def enabled(payload):
@@ -393,7 +393,7 @@ Dies ist weder der gesamte Lernstoff noch ein Nachweis für bereits beherrschte 
 
 
 RULES += """
-package-part-graphics-3: reference.id/version gehört zu genau DEM gebundenen Grafiktyp,
+package-part-graphics-4: reference.id/version gehört zu genau DEM gebundenen Grafiktyp,
 seiner freigegebenen Variante und gegebenenfalls seinem Laborrezept. Quellen nur aus demselben
 Fach und derselben Gruppe. Einführung given, Fragen Hinweis/Lösung; Text und Grafik dieselbe Stufe.
 kind bestimmt die PARAMETERFAMILIE; die Feldnamen können im Wire Aliase haben.

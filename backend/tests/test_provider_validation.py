@@ -307,3 +307,26 @@ def test_actual_original_comparison_failures_are_closed_and_preserve_billing(fau
     annotate(value, ValueError(caught.value.args[0] + " PRIVATE_SOURCE_SUFFIX"), phase="visual")
     assert value.telemetry["validation"]["errors"] == [{"location": "field", "reason": "schema_validation"}]
     assert "PRIVATE" not in json.dumps(value.telemetry)
+
+
+@pytest.mark.parametrize("message,reason", [
+    ("Ungültige Struktur der vorbereiteten Grafikzuordnung.", "prepared_graphic_structure"),
+    ("Unbekannte vorbereitete Grafik-ID.", "prepared_graphic_id"),
+    ("Vorbereitete Grafik gehört nicht zum Fach oder zur Paketgruppe.", "prepared_graphic_scope"),
+    ("Vorbereitete Grafikmetadaten stimmen nicht mit der Auswahl überein.", "prepared_graphic_metadata"),
+    ("Vorbereitete Grafik gehört nicht zur erlaubten Aufdeckstufe.", "prepared_graphic_disclosure"),
+    ("Vorbereitete Grafik passt nicht zu den ausdrücklichen Frageparametern.", "prepared_graphic_question_anchor"),
+    ("Ungültige vorbereitete Grafikzuordnung.", "prepared_graphic_binding"),
+])
+def test_prepared_graphic_guard_metadata_is_closed_and_does_not_change_billing(message, reason):
+    value = result()
+    before = copy.deepcopy(value.__dict__)
+    annotate(value, ValueError(message), phase="prepared_graphics")
+    assert value.telemetry["validation"] == {"version": 1, "phase": "prepared_graphics",
+        "errors": [{"location": "field", "reason": reason}]}
+    assert {key: item for key, item in value.__dict__.items() if key != "telemetry"} == {
+        key: item for key, item in before.items() if key != "telemetry"}
+    assert value.telemetry["cost_preflight"] == before["telemetry"]["cost_preflight"]
+    annotate(value, ValueError(message + " PRIVATE_SOURCE_SUFFIX"), phase="prepared_graphics")
+    assert value.telemetry["validation"]["errors"] == [{"location": "field", "reason": "schema_validation"}]
+    assert "PRIVATE" not in json.dumps(value.telemetry)
