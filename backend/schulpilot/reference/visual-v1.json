@@ -332,6 +332,22 @@
       "terms": [],
       "interaction": "Zwei Originaleinträge bewusst fokussieren und vergleichen; die Hervorhebung zeigt einen Lesefokus, keinen zeitlichen oder kausalen Ablauf und keinen Lernbeleg.",
       "variant": null
+    },
+    {
+      "id": "math.fraction.wholes_remainder",
+      "version": 1,
+      "subjects": [
+        "Mathematik"
+      ],
+      "kind": "fraction",
+      "purpose": "Vorab rechnerisch geprüfte Zerlegung eines unechten Bruchs in volle Ganze und Rest; ausschließlich gebundene Komposition.",
+      "terms": [
+        "unechte",
+        "gemischte"
+      ],
+      "interaction": "fraction_parts",
+      "variant": null,
+      "scope": "unit_composition_only"
     }
   ]
 }

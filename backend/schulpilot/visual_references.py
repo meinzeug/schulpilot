@@ -53,6 +53,8 @@ def candidates(db, subject, text=""):
     result = []
     for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only")).order_by(VisualReference.id, VisualReference.version)):
         recipe = row.recipe
+        if row.id == "math.fraction.wholes_remainder":
+            continue  # Only the dedicated Unit proof binder may offer this recipe.
         # AI exploration templates are NEVER a vetted source-bound recipe.
         if recipe.get("scope") == "exploration_only":
             continue
@@ -135,7 +137,9 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
     value["visual_context"] = {"version": 1, "required": reason is None, "reason": reason,
                                "references": references, "sources": [*bindings, *lab_sources],
                                **({"curriculum_binding": {key: curriculum[key] for key in ("revision", "state_code", "school_form_id", "grade", "profile_signature")}} if curriculum is not None else {})}
-    return value
+    from .unit_fraction_compositions import add_reference
+
+    return add_reference(db, value)
 
 
 
@@ -272,6 +276,15 @@ def validate_steps(db, steps, subject, context, *, question=None, group_id=None,
         texts = [refs[ref]["content"] for ref in step.source_refs]
         # The generated prose never serves as new source evidence for its graphic.
         fake = question or {"prompt": "", "type": "short", "answer": "", "accepted": []}
+        if stored.id == "math.fraction.wholes_remainder":
+            from .unit_fraction_compositions import compile_candidates, validate_step
+
+            if not any(r.get("id") == stored.id and r.get("version") == stored.version
+                    and r.get("digest") == stored.digest == digest(stored.recipe) for r in context.get("references", [])):
+                raise ValueError("Ungültige vorabgeprüfte Ganzes-Rest-Komposition.")
+            validate_step(step, compile_candidates(context), introduction=introduction, question=question)
+            checked.append(step.model_dump())
+            continue
         validate_question(step.presentation.model_dump(), fake, texts, PROFILES.get(subject, ()), structured=True, subject=subject)
         for block in step.presentation.blocks:
             _meaningful(block, stored.recipe, sources=texts, question=question)

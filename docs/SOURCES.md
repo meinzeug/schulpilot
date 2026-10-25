@@ -1980,3 +1980,30 @@ Ausgabelimit scheiterte. Auswahlreihenfolge, Quellenrevisionen, sichere Inhalte,
 Fach und Aufgabenanzahl müssen weiterhin übereinstimmen. Ohne diesen Nachweis
 bleibt die Modellwahl unverändert. Es gibt weder einen automatischen zweiten
 Aufruf noch höhere globale Token-, Wiederholungs- oder Kontogrenzen.
+
+## 25.10.2026 – Ganze und Bruchreste gemeinsam darstellen (1.36.14)
+
+Die bisherige Grafikprüfung verlangte für jeden im Erklärungstext genannten
+Bruch einen einzelnen identischen Grafikblock. Jeder solche Block stellt aber
+absichtlich höchstens ein Ganzes dar. Damit konnte eine richtige Zerlegung
+eines unechten Bruchs trotz mehrerer korrekter Teilgrafiken abgewiesen werden.
+Die geschlossene Produktionsdiagnose belegt einen Grafikparameterfehler; der
+damalige Modelltext wurde nicht gespeichert und ist nicht rekonstruierbar.
+
+Die neue unveränderliche Referenz `math.fraction.wholes_remainder` bindet
+positive, wörtlich belegte Eingangsbrüche an eine vor dem Anbieteraufruf
+berechnete Ganzes-/Restzerlegung. Quellenrevision, sicherer Quelleninhalt,
+Rezeptversion, Aufdeckstufe, Text und sämtliche Grafikblöcke gehören zur selben
+geprüften Kennung. Die vorhandenen Bruchrenderer zeigen bis zu drei Ganze und
+einen Rest bei Nennern bis24. Die Einführung zeigt ausschließlich ein allgemeines
+Ganzes; erst die Lösung zeigt die vollständige Zerlegung. Andere Darstellungen
+und freie Modelltexte behalten ihre bisherigen Prüfungen.
+
+Der vorhandene Unit-Auftrag und seine feste Einstiegsprobe bleiben erhalten.
+Es entstehen weder zusätzliche Anbieteraufrufe noch geänderte Antworten,
+automatische Wiederholungen oder höhere Token-/Kostenlimits. Die Referenz ist
+kein frei auswählbarer Baustein für öffentliche Erkundungsgrafiken. Synthetische
+HTTP-Tests verbinden ausdrücklich gewählte zwei beziehungsweise fünf Aufgaben,
+Einstiegsprobe und Pflichtgrafiken und prüfen auch falsche Quellen, Reste,
+Aufdeckstufen und fremde Kennungen. Sie ersetzen keine Live-Abnahme oder
+vollständige Erkennungsprüfung der fotografierten Seiten.

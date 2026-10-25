@@ -1579,6 +1579,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         bind_entry_schema(schema, payload)
         instructions += ENTRY_RULES
+    unit_composition = None
+    if function == "unit":
+        from .unit_fraction_compositions import bind_schema as bind_unit_composition
+
+        unit_composition = bind_unit_composition(schema, payload)
+        if unit_composition is not None:
+            payload = {**payload, "prepared_graphics": unit_composition.context}
+            instructions += unit_composition.rules
+            prune_schema(schema)
     if exam_analysis:
         from .exam_review_transport import rules as exam_transport_rules
 
@@ -1655,6 +1664,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if unit_graphics is not None:
             wire_schema = unit_graphics.wire_schema
             instructions += unit_graphics.rules
+    if unit_composition is not None:
+        from .package_transport import schema_projection
+
+        wire_schema = schema_projection(wire_schema)
     from .explanation_guidance import rules as explanation_rules
 
     instructions += explanation_rules(function, payload)
@@ -1940,6 +1953,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             if unit_graphics is not None:
                 validation_phase = "transport"
                 decoded = unit_graphics.decode(decoded)
+            if unit_composition is not None:
+                validation_phase = "prepared_graphics"
+                decoded = unit_composition.hydrate(decoded)
             if homework_quotes is not None:
                 from .homework import decode_sources
 
