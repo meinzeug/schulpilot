@@ -1655,3 +1655,31 @@ Aktualisierung und andere Ladeansichten behalten ihren bisherigen Ablauf.
 Die neue Widgetregression verwendet verzögerte künstliche GET-Antworten und
 prüft den erhaltenen Elementzustand und Scrollversatz, Statuswechsel,
 Lesefehler und Sitzungswechsel; sie benötigt keine neuen KI-Aufrufe.
+
+### Belegte statt erfundene Bewertungsunsicherheit (25.10.2026, 1.36.7+119)
+
+Eine ausdrücklich beauftragte Produktionsprüfung zeigte einen irreführenden
+Klärschritt: Die gespeicherten Antwortversuche waren `incorrect`, keiner
+war `uncertain`. Trotzdem durfte der KI-Kurzplan `clarify_assessment` wählen.
+Die gemeinsame Oberfläche zeigte dadurch „Antwortprüfung offen“ und öffnete
+mit ihrer Hauptaktion nur das allgemeine Hilfemenü. Elternkontakt ist keine
+Bewertungskorrektur und konnte diese Plansperre deshalb nicht lösen.
+
+Das private Anfrageschema und die unabhängige serverseitige Planprüfung
+erlauben einen solchen Schritt nun ausschließlich für eine tatsächlich
+ungeklärte letzte Antwort der angegebenen Aufgabe. Der einzelne zugehörige
+Antwortbeleg ist verpflichtend. Die lesende Projektion prüft auch alte
+gespeicherte Klärschritte erneut: Unbelegte, überholte oder fremde Belege
+werden nicht als Handlungsblockade ausgegeben. Der gespeicherte Plan und
+seine Historie werden beim Lesen nicht umgeschrieben; der vorhandene
+faktenbasierte Lerncontroller übernimmt. Antworten, Bewertungen, Hilfen und
+Lernzeit bleiben unangetastet. Echte Bewertungsunsicherheit bleibt sichtbar.
+
+Die gesonderte, rein lesende rationale Prüfung der betroffenen Auswahlaufgabe
+bestätigte den gespeicherten Lösungsschlüssel und genau eine passende Option
+in der verlangten gemischten Darstellung. Beide gespeicherten Auswahlen
+wichen rechnerisch davon ab. Ursache der Meldung war damit der unbelegte
+KI-Plan, keine tatsächlich ausstehende Bewertung dieser Antworten. Achtzehn
+neue Fälle und zweiundzwanzig bestehende Lernplan-/Unsicherheitsfälle bestanden
+in isolierten Testdatenbanken. Die Produktionsprüfung übermittelte keine neue
+Antwort und führte keine Neubewertung oder weitere KI-Erzeugung aus.
