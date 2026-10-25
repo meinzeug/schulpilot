@@ -528,7 +528,7 @@ def summary(db, child, days, *, learning_paths=None):
 def plan(db, child, *, learning_paths=None, include_language=True):
     from .coaching import paths
     from .grades import priorities, subject_key
-    from .study_path import source_backed_blocks
+    from .study_path import plan_sources_current, source_backed_blocks
 
     prefs = s.Preferences(**child.preferences)
     today = local_day(child)
@@ -709,12 +709,20 @@ def plan(db, child, *, learning_paths=None, include_language=True):
                     "estimated_minutes": min(8, prefs.session_minutes, prefs.daily_minutes),
                 }
             )
+    blocked_study_paths = []
     for school_day in days:
+        unpublished = any(not block.get("unit_id") for block in (school_day.learning_plan or {}).get("blocks", []))
+        sources_current = not unpublished or plan_sources_current(db, school_day)
+        if not sources_current:
+            blocked_study_paths.append({"day_id": school_day.id, "date": school_day.school_date,
+                                        "reason_code": "source_changed"})
         for index, block in enumerate(day_blocks[school_day.id]):
             saved_unit = units_by_id.get(block.get("unit_id"))
             if saved_unit and saved_unit.status == "completed":
                 continue
             if not saved_unit and school_day.id not in synthetic_days and not synthetic_family:
+                if not sources_current:
+                    continue
                 candidates.append(
                     {
                         "kind": "study_path",
@@ -867,6 +875,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
         "weekly_used_minutes_approx": round(weekly_seconds / 60, 1),
         "weekly_remaining_minutes": (weekly_remaining + 59) // 60,
         "voluntary": optional,
+        "blocked_study_paths": blocked_study_paths[-3:],
         "subject_focus": [{"subject": name, "priority": priority, "reason": "Schwerpunkt aus den eingetragenen Schulleistungen"}
                           for name, priority in sorted({item["subject"]: item["_grade_priority"] for item in candidates if item["_grade_priority"]}.items())],
         "can_continue_voluntarily": bool(optional),

@@ -2286,3 +2286,53 @@ ohne Fehler oder Skip, mit unveränderten Backendquellen und entfernten eigenen
 Testdaten. Er überschneidet sich mit den zuvor genannten Tests; die Zahlen
 werden nicht addiert. Die erneute vollständige CI sowie Build-/Signatur-/Live-
 Belege werden für den korrigierten Quellcommit separat gebunden geführt.
+
+## 2026-10-25 · Veraltete Tagesetappen und Tutor über Erklärdialogen (131)
+
+Die Liveprüfung auf Version130 bestätigte zwei weitere Übergangsfehler.
+„Freiwillig weiterlernen“ öffnete eine unveröffentlichte Tagesetappe, deren
+vollständige Quellenbindung nach einer Quellenkorrektur nicht mehr aktuell war.
+Die Etappenansicht sperrte die Erstellung korrekt; der Tagesplan hatte zuvor
+jedoch nur die Quellen-IDs des einzelnen Blocks geprüft. Beide Lesewege nutzen
+jetzt dieselbe vorhandene vollständige Quellen-/Fingerprintprüfung. Eine
+veraltete unveröffentlichte Etappe wird nicht mehr als startbereit angeboten.
+Gespeicherte Einheiten, Antworten, Elternaufträge, Abruftermine und Zeitfakten
+behalten ihre bisherige Behandlung. Der neue begrenzte Prüfhinweis ist vom
+Haupteinstieg getrennt; ohne andere vorrangige Arbeit führt die Hauptaktion zu
+den vorhandenen Heften. Die GETs erzeugen weder Pläne noch KI-Aufträge.
+
+Beim Öffnen des Schulbuddys aus einer gespeicherten Aufgabengrafik gingen trotz
+des serverseitigen Archivkontexts aus130 die Erklärart und Schritt-ID verloren.
+Ein pageless Flutter-Erklärdialog besitzt keinen eigenen GoRouterState; nach
+dem Überdecken durch den Chat wurde deshalb sein Kontext verworfen. Solche
+Dialoge erhalten jetzt einmalig die Hostposition, einen opaken Sitzungssnapshot
+und ihre konkrete Route. Echter Routen-, Konto-, Familien- oder Tokenwechsel
+entwertet diese Bindung. Eine Rückkehr zur gleichen URL reaktiviert kein altes
+Modal. Die Backend-Autorisierung und Aufgaben-/Hilfenbewertung bleiben gleich.
+
+Sieben neue verschachtelte Widgetfälle reproduzieren den echten Dialogweg.
+Gegen den bisherigen Code scheiterten sechs davon; mit dem Fix bestanden sie
+und ihre Nachbarfälle. Die gemeinsame Flutter-Analyse meldete keine Befunde;
+126 gezielte Widgettests bestanden, darunter kleine Bildschirme mit großer
+Schrift, Quellenprüfung, Elternpflichtaufträge und gespeicherte Rückmeldungen.
+63 Backendfälle bestanden auf SQLite und einer frischen PostgreSQL16-Instanz,
+jeweils ohne Skip. Der private Unix-Cluster und seine Testdaten wurden danach
+entfernt, die gebundenen Backendquellen blieben unverändert. Das ältere
+Planungsfixture erhielt ausschließlich den tatsächlich benötigten source_hash;
+seine Mengen-, Reihenfolge- und GET-Nebenwirkungsprüfungen blieben erhalten.
+
+Die fortgesetzte Liveprüfung bestätigte außerdem eine vollständig erzeugte und
+beendete neue allgemeine Bruchrunde auf130. Die gespeicherte Rückmeldung
+unterscheidet selbstständige Erstlösung und erfolgreichen weiteren Versuch;
+ein gleichwertiger, aber nicht verlangter Erweiterungsbruch wird abgewiesen.
+Die neue Grafik zeigt die passenden neun Teile, davon sieben markiert, und
+passt in390px Breite. Eine neue allgemeine Simple-Past-Runde wurde erfolgreich
+erzeugt; dies allein ist noch kein vollständiger Rundendurchlauf. Reale
+Antwortversuche erfolgen ausschließlich im ausdrücklich freigegebenen Haushalt.
+Der private Rundennachweis zählt zu diesem Zeitpunkt acht vollständige
+Heft-Lernrunden, keine Wortschatzrunden; fehlgeschlagene Erzeugungen werden nicht
+als Runden gezählt. Der Auftrag über100 Durchläufe ist damit noch nicht erfüllt.
+
+Version1.36.19+131 behält Schema0042, Anbieterwahl, Reservierungen, Token- und
+Kontogrenzen. Build-, Signatur-, CI- und Produktionsbelege werden erst für den
+festgeschriebenen Quellcommit erzeugt; vorbereitete Helfer sind keine Abnahme.

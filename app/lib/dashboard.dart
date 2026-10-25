@@ -962,6 +962,18 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
     }
 
     final plan = data['plan'] as Json;
+    final blockedStudyPaths = <Json>[];
+    final blockedDays = <String>{};
+    for (final raw in plan['blocked_study_paths'] as List? ?? []) {
+      if (raw is Map &&
+          raw['reason_code'] == 'source_changed' &&
+          raw['day_id'] is String &&
+          RegExp(r'^[a-f0-9]{32}$').hasMatch(raw['day_id'] as String) &&
+          blockedDays.add(raw['day_id'] as String) &&
+          blockedStudyPaths.length < 3) {
+        blockedStudyPaths.add(Json.from(raw));
+      }
+    }
     final capture = data['daily_capture'] as Json? ?? {};
     final needsCapture = (capture['status'] ?? 'empty') == 'empty';
     final pending = _pendingMaterials(data);
@@ -1035,11 +1047,6 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
         .firstOrNull;
     final learningJob = data['learning_preparation'] as Json?;
     final firstPreparation = preparations.firstOrNull;
-    final photoPrimary =
-        !canLearn &&
-        learningJob == null &&
-        pendingReview == null &&
-        firstPreparation == null;
     final homeworkPhotoWaiting =
         state.recoveredPhoto != null &&
         state.recoveredPhotoPurpose == 'homework';
@@ -1073,6 +1080,21 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
     final pageCount =
         data['material_count'] as num? ??
         (data['materials'] as List? ?? []).length;
+    final libraryPrimary =
+        !canLearn &&
+        learningJob == null &&
+        pendingReview == null &&
+        firstPreparation == null &&
+        !photosWaiting &&
+        !homeworkPhotoWaiting &&
+        blockedStudyPaths.isNotEmpty &&
+        pageCount > 0;
+    final photoPrimary =
+        !canLearn &&
+        learningJob == null &&
+        pendingReview == null &&
+        firstPreparation == null &&
+        !libraryPrimary;
     final otherTopics =
         canLearn ||
         learningJob != null ||
@@ -1206,6 +1228,18 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
           ),
         ),
       );
+    } else if (libraryPrimary) {
+      hero = ChildTodayHero(
+        eyebrow: 'Dein nächster Lernschritt',
+        title: 'Mit deinen Heften weiterlernen',
+        subtitle: 'Wähle bestätigte Heftseiten für deine nächste Runde.',
+        learning: false,
+        action: ActionButton(
+          label: 'Hefte öffnen',
+          icon: Icons.menu_book_outlined,
+          onPressed: () async => openSaved('/library/${child['id']}'),
+        ),
+      );
     } else {
       hero = ChildTodayHero(
         eyebrow: 'Dein Stoff. Dein nächster Schritt.',
@@ -1277,6 +1311,19 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
           ),
         ),
         hero,
+        for (final blocked in blockedStudyPaths) ...[
+          const SizedBox(height: 12),
+          ChildTodayTile(
+            key: ValueKey('today-blocked-study-${blocked['day_id']}'),
+            title: 'Ein Lernweg braucht Prüfung',
+            subtitle: 'Die Heftseiten haben sich geändert. Deine Antworten bleiben gespeichert.',
+            icon: Icons.fact_check_outlined,
+            accent: context.palette.cyanInk,
+            onTap: () => openSaved(
+              '/after-school/${child['id']}?day=${blocked['day_id']}',
+            ),
+          ),
+        ],
         if (examSessions.isNotEmpty) ...[
           const SizedBox(height: 12),
           ChildTodayTile(

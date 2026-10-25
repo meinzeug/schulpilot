@@ -243,6 +243,8 @@ def test_check_in_is_private_idempotent_and_resets_each_local_day(api, household
 
 
 def test_old_notebooks_are_scheduled_without_get_creating_jobs_or_changing_sources(api, household):
+    from schulpilot.study_path import fingerprint
+
     _, kid = household
     with DB.begin() as db:
         child = db.get(Child, kid["id"])
@@ -258,6 +260,7 @@ def test_old_notebooks_are_scheduled_without_get_creating_jobs_or_changing_sourc
             db.add(material)
             db.flush()
             day.learning_plan = {
+                "source_hash": fingerprint([material], db),
                 "blocks": [
                     {"id": f"b{i}", "title": "Künstlicher Heftstoff", "subject": "Mathematik", "question_count": 4,
                      "material_ids": [material.id]}

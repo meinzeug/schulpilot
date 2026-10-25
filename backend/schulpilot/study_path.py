@@ -257,6 +257,17 @@ def source_backed_blocks(db, day, *, material_ids=None, unit_ids=None):
                 bool(block.get("material_ids")) and set(block["material_ids"]) <= material_ids)]
 
 
+def plan_sources_current(db, day):
+    """Shared read-only gate; never rebuild a plan or publish an exercise."""
+    value = day.learning_plan or {}
+    if not value:
+        return False
+    try:
+        return value.get("source_hash") == fingerprint(sources(db, day), db)
+    except ProviderError:
+        return False
+
+
 def path_data(db, day, child):
     value = day.learning_plan or {}
     result = {
@@ -275,10 +286,7 @@ def path_data(db, day, child):
     }
     if not value:
         return result
-    try:
-        result["stale"] = value.get("source_hash") != fingerprint(sources(db, day), db)
-    except ProviderError:
-        result["stale"] = True
+    result["stale"] = not plan_sources_current(db, day)
     for saved in source_backed_blocks(db, day):
         unit = db.get(LearningUnit, saved.get("unit_id")) if saved.get("unit_id") else None
         job = db.get(Job, saved.get("job_id")) if saved.get("job_id") else None

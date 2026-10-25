@@ -140,24 +140,55 @@ class _BuddyPageEntry {
   final SchulbuddyContext value;
   final String? location;
   final bool wasCurrent;
-  _BuddyPageEntry(this.route, this.value, this.location)
-    : wasCurrent = route?.isCurrent == true;
+  final Object? hostSnapshot;
+  final bool sameHostRoute;
+  _BuddyPageEntry(
+    this.route,
+    this.value,
+    this.location, {
+    this.hostSnapshot,
+    this.sameHostRoute = true,
+  }) : wasCurrent = route?.isCurrent == true;
   bool get current => route?.isCurrent == true;
 }
 
 class _SchulbuddyPageContextState extends State<SchulbuddyPageContext> {
   _SchulbuddyHostState? host;
   ModalRoute<dynamic>? route;
+  ({Object snapshot, String location, ModalRoute<dynamic>? route})?
+  modalLocation;
   void register() {
     String? location;
+    Object? hostSnapshot;
+    var sameHostRoute = true;
     try {
       location = GoRouterState.of(context).uri.toString();
     } catch (_) {
-      /* Standalone widget: current route remains the gate. */
+      /* A pageless explanation/zoom route has no GoRouterState. */
+    }
+    final currentHost = host;
+    if (location == null && currentHost != null) {
+      // Bind this modal once to its actual host/session/navigation snapshot.
+      // Covering it with Buddy keeps its IDs; navigation or account changes
+      // cannot make an old modal current again, even after returning.
+      modalLocation ??= (
+        snapshot: currentHost.pageSnapshot,
+        location: currentHost.widget.location,
+        route: route,
+      );
+      location = modalLocation!.location;
+      hostSnapshot = modalLocation!.snapshot;
+      sameHostRoute = identical(route, modalLocation!.route);
     }
     host?.registerPage(
       this,
-      _BuddyPageEntry(route, widget.contextValue, location),
+      _BuddyPageEntry(
+        route,
+        widget.contextValue,
+        location,
+        hostSnapshot: hostSnapshot,
+        sameHostRoute: sameHostRoute,
+      ),
     );
   }
 
@@ -393,6 +424,7 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
   final entries = <Object, _BuddyDockEntry>{};
   final pageEntries = <Object, _BuddyPageEntry>{};
   String? pageLocation;
+  Object pageSnapshot = Object();
   DialogRoute<void>? dialog;
   DialogRoute<String>? placementMenu;
   SchulbuddyContext? conversation;
@@ -438,10 +470,13 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
     final registered = pageEntries.values
         .where(
           (entry) =>
-              entry.current ||
-              (dialog?.isCurrent == true &&
-                  entry.route?.isActive == true &&
-                  entry.location == widget.location),
+              entry.sameHostRoute &&
+              (entry.hostSnapshot == null ||
+                  identical(entry.hostSnapshot, pageSnapshot)) &&
+              (entry.current ||
+                  (dialog?.isCurrent == true &&
+                      entry.route?.isActive == true &&
+                      entry.location == widget.location)),
         )
         .lastOrNull;
     final unit = entries.values
@@ -480,7 +515,9 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
         old.route != entry.route ||
         old.value.key != entry.value.key ||
         old.wasCurrent != entry.wasCurrent ||
-        old.location != entry.location) {
+        old.location != entry.location ||
+        old.hostSnapshot != entry.hostSnapshot ||
+        old.sameHostRoute != entry.sameHostRoute) {
       refreshLater();
     }
   }
@@ -534,6 +571,7 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
       family = widget.state.familyId;
       token = widget.state.api.token;
       epoch++;
+      pageSnapshot = Object();
       floating = false;
       dragging = false;
       position = null;
@@ -560,6 +598,7 @@ class _SchulbuddyHostState extends State<SchulbuddyHost>
     }
     if (oldWidget.location != widget.location) {
       epoch++;
+      pageSnapshot = Object();
       dragging = false;
       final menu = placementMenu;
       placementMenu = null;
