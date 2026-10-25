@@ -140,6 +140,14 @@ def _procedure_quote(sources, label):
                     lower,
                 )
             if verb and general:
+                if label == "Brüche erweitern":
+                    # Validate the full clause and all source restrictions
+                    # first. A complete unpunctuated rule need not quote an
+                    # unrelated following note; actual rule wraps stay literal.
+                    for line_end in re.finditer(r"\r?\n", quote):
+                        prefix = quote[:line_end.start()].strip()
+                        if re.search(operation, prefix, re.I) and _connected_expansion_clause(prefix):
+                            return prefix
                 return quote
     return None
 

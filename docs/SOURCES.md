@@ -2260,3 +2260,29 @@ bestandener Test. Der identische abschließende SQLite-Lauf außerhalb dieser
 Sandbox bestand mit weiterhin gesperrten Python-Netzwerkverbindungen und ohne
 geerbte Anbieterzugänge. Die Versionsfelder wurden vor diesen letzten Läufen
 auf1.36.18+130 gesetzt; sonstige spätere Änderungen betreffen nur Dokumentation.
+
+Der erste Commitkandidat für Version130 wurde nicht aktiviert: Seine
+vollständige CI bestand sieben Jobs, ein Backendjob meldete genau eine
+Regression im unveränderten test_math_tasks.py. Bei einer handschriftlichen
+Regel ohne Satzpunkt wurde eine unabhängige folgende Notiz in source_excerpt
+mit aufgenommen. Die Rechnung blieb korrekt, der wörtliche Quellenvertrag war
+jedoch verletzt. Der vorhandene Test wurde vor dem Nachfix isoliert rot
+reproduziert; seine Assertion und alle bisherigen Testdateien bleiben erhalten.
+
+Der eng begrenzte Nachfix prüft weiterhin zuerst die gesamte Klausel auf
+Negation/Gegenbeispiele und alle Quellen auf Verfahrenseinschränkungen. Erst
+danach endet das Zitat am frühesten Zeilenende mit vollständig verbundener
+Erweiterungsregel. Notwendige Originalumbrüche bleiben erhalten. Acht zusätzliche
+Fälle schützen neutrale Folgennotizen, LF/CRLF, späte Negation, feste Faktoren
+und ein hinter einem Leerabsatz fehlendes Verb. Das konkret geprüfte private
+Regelzitat bleibt gegenüber dem ersten Kandidaten bytegleich. Der Nachlauf
+umfasst zusätzlich die gesamte vorhandene Mathematik-Aufgabenplaner-Testdatei;
+die erste fehlgeschlagene CI und ihre gebauten Artefakte bleiben separat
+aufbewahrt. Version130 war weiterhin unveröffentlicht, daher erhält der
+korrigierte Quellcommit dieselbe neue Versionsnummer; kein Force-Push.
+
+Dieser abschließende185er-Nachlauf bestand auf SQLite und PostgreSQL16 jeweils
+ohne Fehler oder Skip, mit unveränderten Backendquellen und entfernten eigenen
+Testdaten. Er überschneidet sich mit den zuvor genannten Tests; die Zahlen
+werden nicht addiert. Die erneute vollständige CI sowie Build-/Signatur-/Live-
+Belege werden für den korrigierten Quellcommit separat gebunden geführt.
