@@ -6,9 +6,10 @@ answers, saved units and provider limits retain their existing contracts.
 
 import copy
 import json
+import re
 
 REVISION = "package-part-output-1"
-GRAPHIC_SCHEMA_REVISION = "package-part-graphics-2"
+GRAPHIC_SCHEMA_REVISION = "package-part-graphics-3"
 
 
 def enabled(payload):
@@ -61,6 +62,10 @@ def bind_schema(schema, payload=None):
     _bind_graphic_branches(schema)
     if payload is not None:
         _bind_references(schema, payload)
+        from .package_prepared_graphics import bind_schema as bind_prepared_graphics
+
+        return bind_prepared_graphics(schema, payload)
+    return None
 
 
 def _nonnull(field):
@@ -236,6 +241,13 @@ def _bind_references(schema, payload):
             if variant in ("roots", "pollination") and stage != "solution":
                 return None
             fields["variant"] = {"type": "string", "enum": [variant]}
+        if reference.get("id") == "language.forms.original_comparison":
+            # The original-language comparison has one finite parameter
+            # family. Do not invite irrelevant marks, numbers or relations.
+            fields["labels"].update(minItems=2, maxItems=4)
+            for name in ("numbers", "connections", "marks"):
+                fields[name].update(minItems=0, maxItems=0)
+            fields["unit"] = {"type": "string", "enum": [""]}
         if kind == "lab":
             recipe = reference.get("lab_recipe_id")
             if not recipe:
@@ -260,8 +272,18 @@ def _bind_references(schema, payload):
             raise ValueError("Der Teilauftrag hat keine passende Fach-/Gruppenquelle für Erklärschritte.")
         competences = [row["id"] for row in context.get("competences", []) if row.get("subject") == subject]
         branches = []
+        group_sources = [row.get("content", "") for row in context.get("sources", [])
+                         if row.get("subject") == subject and row.get("group_id") == group]
+        original_comparison = any(row.get("subject") == subject
+            and row.get("id") == "language.forms.original_comparison" for row in context.get("references", []))
         for reference in context.get("references", []):
             if reference.get("subject") != subject:
+                continue
+            if (original_comparison and reference.get("id") == "general.source_relation.phases"
+                    and not any(re.search(r"→|->", source) for source in group_sources)):
+                # This old recipe requires a literal directed source edge.
+                # Offer the applicable comparison instead of an impossible
+                # arrow recipe; canonical relation validation stays intact.
                 continue
             for stage in (("given",) if introduction else ("hint1", "hint2", "hint3", "solution")):
                 graphic = graphic_for(reference, stage)
@@ -371,7 +393,7 @@ Dies ist weder der gesamte Lernstoff noch ein Nachweis für bereits beherrschte 
 
 
 RULES += """
-package-part-graphics-2: reference.id/version gehört zu genau DEM gebundenen Grafiktyp,
+package-part-graphics-3: reference.id/version gehört zu genau DEM gebundenen Grafiktyp,
 seiner freigegebenen Variante und gegebenenfalls seinem Laborrezept. Quellen nur aus demselben
 Fach und derselben Gruppe. Einführung given, Fragen Hinweis/Lösung; Text und Grafik dieselbe Stufe.
 kind bestimmt die PARAMETERFAMILIE; die Feldnamen können im Wire Aliase haben.

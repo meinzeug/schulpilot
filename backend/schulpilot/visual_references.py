@@ -199,11 +199,25 @@ def bind_schema(schema, payload):
         step["competence_id"] = {"anyOf": [{"type": "string", "enum": allowed_competences}, {"type": "null"}]} if allowed_competences else {"type": "null"}
 
 
-def _meaningful(block, recipe):
+def _meaningful(block, recipe, *, sources=None, question=None):
     if block.kind != recipe["kind"] or (recipe.get("variant") and block.variant != recipe["variant"]):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
     if block.kind == "lab" and block.lab.recipe_id != recipe.get("lab_recipe_id"):
         raise ValueError("Laborparameter passen nicht zur gewählten Referenz.")
+    if recipe.get("id") == "language.forms.original_comparison":
+        labels = [" ".join(label.split()) for label in block.labels]
+        quote = " ".join(block.source_excerpt.split())
+        if (not 2 <= len(labels) <= 4 or len(set(labels)) != len(labels)
+                or any(len(label) > 160 for label in labels) or block.numbers or block.connections or block.marks or block.unit):
+            raise ValueError("Der Originalvergleich benötigt zwei bis vier unterschiedliche kurze Originalausdrücke ohne Zusatzparameter.")
+        if any(not re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", quote) for label in labels):
+            raise ValueError("Jeder Vergleichsausdruck muss vollständig und wortgetreu im Originalbeleg stehen.")
+        if sources is not None and not any(quote in " ".join(source.split()) for source in sources):
+            raise ValueError("Der Originalvergleich benötigt einen bestätigten Originalbeleg statt eines erzeugten Aufgabenbeispiels.")
+        if question is not None:
+            prompt = " ".join(question.get("prompt", "").split())
+            if not any(re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", prompt) for label in labels):
+                raise ValueError("Die Frage muss mindestens einen vollständigen Originalausdruck ihres Vergleichs nennen.")
     if block.kind == "scene":
         scene = block.scene
         if scene is None or len(scene.steps) < 2 or not any(step.edges for step in scene.steps):
@@ -249,7 +263,7 @@ def validate_steps(db, steps, subject, context, *, question=None, group_id=None,
         fake = question or {"prompt": "", "type": "short", "answer": "", "accepted": []}
         validate_question(step.presentation.model_dump(), fake, texts, PROFILES.get(subject, ()), structured=True, subject=subject)
         for block in step.presentation.blocks:
-            _meaningful(block, stored.recipe)
+            _meaningful(block, stored.recipe, sources=texts, question=question)
             # All explicitly repeated graphic values must agree with the same
             # step's literal source-bound parameter data. Prose may explain it.
             if block.kind == "reflection":

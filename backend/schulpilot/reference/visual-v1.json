@@ -284,6 +284,22 @@
       "terms": [],
       "interaction": "scene_phases",
       "variant": null
+    },
+    {
+      "id": "language.forms.original_comparison",
+      "version": 1,
+      "subjects": [
+        "Englisch",
+        "Französisch",
+        "Spanisch",
+        "Latein",
+        "Deutsch als Zweitsprache"
+      ],
+      "kind": "forms",
+      "purpose": "Zwei bis vier kurze unterschiedliche Originalausdrücke oder vollständige Originalbeispielsätze nebeneinander vergleichen. Alle Beschriftungen müssen wörtlich in demselben bestätigten Originalbeleg stehen; keine erfundenen Umstellungen, ergänzten Wörter oder Grammatikurteile. Wortgleichheit und Wortunterschiede sind ein formaler Textvergleich, keine Richtig-/Falschbewertung. Zahlen, Verbindungen, Markierungen und Einheit bleiben leer. Bei einer Frage muss mindestens ein vollständiger verglichener Originalausdruck ausdrücklich im Frageprompt stehen; nur derselbe Quellenkontext genügt nicht. Die Einführung bleibt ein eigener Originalvergleich.",
+      "terms": [],
+      "interaction": "Originalbeispiele bewusst auswählen und wortgleiche oder unterschiedliche Stellen lokal fokussieren; keine Umstellung, Bewertung oder automatische Animation.",
+      "variant": "classification"
     }
   ]
 }

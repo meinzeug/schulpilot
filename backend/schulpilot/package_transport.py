@@ -377,7 +377,7 @@ def rules(payload, *, indexed_choices):
     # Independent facts remain selected by the actual accepted graphic profile.
     for needed, text in [
         (
-            {"plant", "forms"},
+            {"plant"},
             "Pflanzenaufbau nur belegt; Wurzelaufnahme/Halt variant roots, Bestäubung/Befruchtung getrennt forms/pollination nur solution mit wörtlichen labels.",
         ),
         (

@@ -1557,3 +1557,37 @@ Test-Fixture verweigert ihren Lösch-/Initialisierungsschritt bei abweichender
 Engine-URL oder zwischengespeicherten Entwicklungseinstellungen. URL und
 Zugangsdaten erscheinen nicht im Fehler. Die Testumgebung muss vor dem ersten
 Appimport feststehen; diese Prüfung ist kein Wiederherstellungsmechanismus.
+
+### Vorvalidierte individuelle Grafikparameter (25.10.2026, 1.36.4+116)
+
+Der reale Reparaturversuch unter 115 wurde für 0,050074 USD abgerechnet und
+in der visuellen Quellenprüfung abgewiesen (`visual/subject_source`). Zitat,
+Zahl und Beschriftung verwendeten dabei noch denselben geschlossenen Code;
+die exakte fehlerhafte Ausgabe ist nicht gespeichert. Die neuen getrennten
+Codes enthalten weiterhin keine Anbietertexte oder privaten Eingaben.
+
+Der neue private Grafik-Compiler parametrisiert vorhandene eigene Referenzen
+direkt aus unveränderten bestätigten Quellliteralen und prüft die Kandidaten
+vor der Erzeugung. Die Modellausgabe wählt eine vorher gebundene Darstellung
+per Kennung; vor sämtlichen kanonischen Prüfungen wird genau diese Darstellung
+wiederhergestellt. Antworten und Quellen werden dabei nicht ersetzt.
+Aktivierung, Nachweise und Grenzen: [PACKAGE_PARTS.md](PACKAGE_PARTS.md).
+
+### 25.10.2026 – passende Sprachgrafiken im mehrteiligen Paket (1.36.4+116)
+
+- Rein lesende Produktionsprüfung mit dem geprüften öffentlichen Compiler,
+  ohne neue Anbieteranfrage: sechs persistierte Teile, davon zwei Mathematik
+  und vier Englisch. Zwei Englischteile besaßen nur ein gerichtetes
+  Szenenrezept, aber keine wörtlichen Quellpfeile. Keine privaten Inhalte
+  oder verworfenen Anbieterantworten werden hier gespeichert.
+- Eigene zusätzliche Referenz `language.forms.original_comparison` Version1:
+  zwei bis vier wortgetreue Originalausdrücke, bestätigter gemeinsamer Beleg,
+  vollständiger Frageanker. Die vorhandene gemeinsame Flutter-Oberfläche
+  ergänzt lokale Wortfokussierung mit Tastatur- und Kontoschutz.
+- Vorbereitete Bruchgrafiken benötigen das genaue Zähler-/Nennerpaar der
+  jeweiligen Frage. Ein expliziter Grafikparameterbezug ist keine allgemeine
+  Prüfung sämtlicher sprachlicher oder fachlicher Aussagen durch Regex.
+- Die Betreiberentscheidung erlaubt ausdrücklich kostenpflichtige Lernpakete
+  für gute Grafiken. Normale Reservierungen, tatsächliche Gebühren und
+  bestehende Kontoeinstellungen bleiben maßgeblich; kein zusätzlicher
+  Providerwechsel und keine automatische Wiederholung fehlgeschlagener Jobs.

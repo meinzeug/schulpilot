@@ -11,6 +11,7 @@ import 'learning_scene_player.dart';
 import 'science_graphic.dart';
 import 'learning_lab.dart';
 import 'text_probe_player.dart';
+import 'language_comparison_widget.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
 import 'learning_graphic_scope.dart';
@@ -232,6 +233,9 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
+    if (kind == 'forms' && block['variant'] == 'classification') {
+      return LanguageComparisonWidget(block, state: state, action: action);
+    }
     if (kind == 'lab') {
       return LearningLab(block, state: state, action: action);
     }

@@ -128,7 +128,7 @@ def test_unexpected_existing_telemetry_is_not_replaced():
     ("part_bounds", ValueError("Ein Lernpaketteil benötigt genau ein Fach."), "part_structure"),
     ("catalog", ValueError("Unknown catalog subject identity"), "catalog_assignment"),
     ("entry", ValueError("Eine geprüfte Voraussetzung wurde verändert."), "entry_probe_changed"),
-    ("subject", ValueError("Grafik ohne wörtlichen Quellenbeleg."), "subject_source"),
+    ("subject", ValueError("Grafik ohne wörtlichen Quellenbeleg."), "source_excerpt"),
     ("visual", ValueError("Unveränderte Wortkästen sind keine fachliche Phasenvisualisierung."), "visual_scene_phases"),
     ("json", ValueError("PRIVATE_RESPONSE"), "schema_validation"),
     ("visual", KeyError("PRIVATE_KEY"), "missing_field"),
@@ -232,4 +232,78 @@ def test_pydantic_phase_keeps_existing_bounded_three_error_contract():
     annotate(value, error, phase="schema")
     assert value.telemetry["validation"] == {"version": 1, "phase": "schema", "errors": [
         {"location": f"units.0.questions.{index}.field", "reason": "schema_validation"} for index in range(3)]}
+    assert "PRIVATE" not in json.dumps(value.telemetry)
+
+
+
+@pytest.mark.parametrize("message,reason", [
+    ("Grafik ohne wörtlichen Quellenbeleg.", "source_excerpt"),
+    ("Grafikzahl fehlt im Beleg oder in der Aufgabe.", "number_evidence"),
+    ("Grafikbeschriftung fehlt im wörtlichen Beleg.", "label_evidence"),
+    ("Szenenbeschriftung fehlt im wörtlichen Beleg.", "scene_label_evidence"),
+    ("Szenenschritt ohne wörtlichen Quellenbeleg.", "scene_source_excerpt"),
+    ("Die Szenenbeschreibung muss im Schrittbeleg stehen.", "scene_caption_evidence"),
+    ("Szenenpfeil hat keine belegte Richtung zwischen seinen Beschriftungen.", "scene_arrow_evidence"),
+    ("Pfeilbeschriftung fehlt im Schrittbeleg.", "scene_edge_label_evidence"),
+])
+def test_literal_evidence_failures_remain_distinct_closed_codes(message, reason):
+    value = result()
+    annotate(value, ValueError(message), phase="visual")
+    assert value.telemetry["validation"]["errors"] == [{"location": "field", "reason": reason}]
+    annotate(value, ValueError(message + " PRIVATE_SOURCE"), phase="visual")
+    assert value.telemetry["validation"]["errors"] == [{"location": "field", "reason": "schema_validation"}]
+    assert "PRIVATE" not in json.dumps(value.telemetry)
+
+
+def test_actual_scene_shape_error_has_its_own_tag_without_retaining_scene_text():
+    block = copy.deepcopy(BLOCK)
+    block["scene"]["objects"][1]["id"] = block["scene"]["objects"][0]["id"]
+    with pytest.raises(ValidationError) as caught:
+        Graphic.model_validate(block)
+    value = result()
+    annotate(value, caught.value, phase="schema")
+    assert value.telemetry["validation"]["errors"][0]["reason"] == "scene_object_ids"
+    assert block["source_excerpt"] not in json.dumps(value.telemetry)
+    assert value.cost_micros == 789 and value.cost_source == "reported"
+
+
+@pytest.mark.parametrize("fault,reason", [
+    ("shape", "original_comparison_shape"),
+    ("label", "original_comparison_label"),
+    ("source", "original_comparison_source"),
+    ("question", "original_comparison_question"),
+])
+def test_actual_original_comparison_failures_are_closed_and_preserve_billing(fault, reason):
+    from schulpilot.visual_references import _meaningful
+
+    quote = "I play football. She plays football."
+    block = {"kind": "forms", "title": "Öffentliche künstliche Beispiele", "disclosure": "solution",
+        "source_excerpt": quote, "labels": ["I play football.", "She plays football."],
+        "numbers": [], "connections": [], "marks": [], "unit": "", "variant": "classification",
+        "scene": None, "text_probe": None, "lab": None}
+    sources = [quote]
+    question = {"prompt": "Which verb appears in She plays football.?"}
+    if fault == "shape":
+        block["labels"] = block["labels"][:1]
+    elif fault == "label":
+        block["labels"][1] = "We swim."
+    elif fault == "source":
+        sources = ["Unrelated public artificial source."]
+    else:
+        question["prompt"] = "An unrelated artificial question."
+    graphic = Graphic.model_validate(block)
+    with pytest.raises(ValueError) as caught:
+        _meaningful(graphic, {"id": "language.forms.original_comparison", "kind": "forms",
+            "variant": "classification"}, sources=sources, question=question)
+    value = result()
+    before = copy.deepcopy(value.__dict__)
+    annotate(value, caught.value, phase="visual")
+    assert value.telemetry["validation"] == {"version": 1, "phase": "visual",
+        "errors": [{"location": "field", "reason": reason}]}
+    assert {key: item for key, item in value.__dict__.items() if key != "telemetry"} == {
+        key: item for key, item in before.items() if key != "telemetry"}
+    assert value.telemetry["cost_preflight"] == before["telemetry"]["cost_preflight"]
+    assert quote not in json.dumps(value.telemetry)
+    annotate(value, ValueError(caught.value.args[0] + " PRIVATE_SOURCE_SUFFIX"), phase="visual")
+    assert value.telemetry["validation"]["errors"] == [{"location": "field", "reason": "schema_validation"}]
     assert "PRIVATE" not in json.dumps(value.telemetry)

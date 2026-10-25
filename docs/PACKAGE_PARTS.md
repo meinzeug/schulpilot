@@ -118,3 +118,53 @@ die lokale Prüfphase und bekannte Fehlerklassen. Anbietertexte, Eingaben,
 Quellzitate, unbekannte Schlüssel und Tracebacks werden dabei nicht gespeichert.
 Die Abrechnung behält ihre originalen Werte. Keine automatische Wiederholung,
 keine neue Migration und keine Änderung an Modell, Denkstufe oder Kostengrenzen.
+
+## Vorbereitete quellgebundene Grafiken (1.36.4+116)
+
+Der nächste reale Versuch wurde unter 115 mit `visual/subject_source`
+abgewiesen, gemeldete Gebühr 0,050074 USD. Damit ist die fachliche
+Quellenprüfung der Grafik eingegrenzt; der bisherige gemeinsame Fehlercode
+unterscheidet noch nicht zwischen Zitat, Zahl und Beschriftung. Die konkrete
+verworfene Rohantwort bleibt unbekannt. Diese drei Fehlerklassen sind nun
+getrennte geschlossene Tags.
+
+Neue geeignete Mathematikteile erhalten vor dem Anbieteraufruf eine begrenzte
+Auswahl individuell aus ihren bestätigten Quellen aufgebauter Bruchmodelle
+und gegebenenfalls belegter Pfeilfolgen. Originalzitat, Zahlen, Beschriftungen,
+Referenzversion, Fachgruppe und Aufdeckstufe werden gemeinsam mit den
+bestehenden kanonischen Prüfungen validiert. Ungültige, negative oder nicht
+darstellbare Brüche werden nicht gerundet, gekürzt oder passend gemacht.
+
+Die KI wählt im privaten Anfrageschema eine dieser unveränderlichen Kennungen
+und erstellt weiterhin die eigentlichen Aufgaben, Hinweise und Antworten.
+Der Codec stellt die gewählte Darstellung vor Pydantic und den bisherigen
+Fach-/Quellen-/Antwortprüfungen verlustfrei wieder her. Dies ist das vorher
+angeforderte Transportformat, keine nachträgliche Reparatur einer verworfenen
+Grafik. Fremde Kennungen oder gemischte Quellen/Stufen werden abgewiesen.
+Ohne geeignete Kandidaten bleibt der bestehende streng geprüfte Erzeugungsweg
+erhalten; es gibt keine erfundene Ersatzdarstellung. Bestehende fertige Teile
+und Lernnachweise bleiben unverändert, ebenso Reservierungen und Providerroute.
+
+Die Grafik muss außerdem einen ausdrücklichen Bezug zur einzelnen Frage haben:
+ein Bruchmodell verwendet dasselbe Zähler-/Nennerpaar im Frageprompt, eine
+vorbereitete Pfeilszene mindestens zwei dort vollständig genannte Objekte.
+Wertgleiche andere Bruchdarstellungen und ähnliche Teilwörter ersetzen diesen
+Bezug nicht. Einführungen behalten ihren eigenen, quellgebundenen Erklärzweck.
+Diese begrenzte Parameterprüfung ist kein allgemeiner semantischer Fachbeweis.
+
+Die rein lesende Prüfung aller sechs tatsächlichen Teile zeigte außerdem eine
+unabhängige Vorlagenlücke: Zwei Englischteile hatten nur das Pfeilszenenrezept,
+obwohl ihre bestätigten Quellen keine Pfeile enthielten. Die neue unveränderliche
+Referenz `language.forms.original_comparison` Version1 verwendet stattdessen
+zwei bis vier wortgetreue Originalausdrücke aus demselben bestätigten Beleg.
+Mindestens ein vollständiger Ausdruck muss in der zugehörigen Frage stehen.
+Die gemeinsame Flutter-Darstellung fokussiert auf Wunsch gleiche Wörter oder
+Unterschiede; sie erfindet keine Beispielsätze oder Grammatikurteile und erzeugt
+keine Lernbelege. Sie ist für die ausdrücklich genannten Sprachprofile gedacht,
+nicht als allgemeiner Ersatz für eine fachliche Grafik.
+
+Neue Sprachteile mit diesem Vergleichsrezept bieten das alte Pfeilszenenrezept
+bei fehlenden Quellpfeilen nicht mehr im Anfrageschema an. Seine ursprüngliche
+Pfeilprüfung bleibt erhalten. Gespeicherte Referenzen, Antworten und fertige
+Teile werden nicht umgeschrieben; die zusätzliche Referenz wird über den
+vorhandenen idempotenten Seed eingespielt, ohne SQL-Migration.

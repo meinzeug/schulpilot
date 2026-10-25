@@ -27,10 +27,11 @@ _REASONS = {
 
 
 _PHASES = frozenset("""
-json envelope transport source choice schema part_bounds normalization controller catalog extract exam_bounds
+json envelope transport prepared_graphics source choice schema part_bounds normalization controller catalog extract exam_bounds
 subject practice counts factual coaching entry asset visual billing
 """.split())
 _VALUE_REASONS = {
+    "Ungültige vorbereitete Grafikzuordnung.": "prepared_graphic_binding",
     "Ein Lernpaketteil benötigt genau ein Fach.": "part_structure",
     "Der Lernpaketteil überschreitet den begrenzten Umfang.": "part_bounds",
     "Die Aufgabe überschreitet den begrenzten Ausgabeumfang.": "part_bounds",
@@ -56,9 +57,13 @@ _VALUE_REASONS = {
     "Erklärtext und Dreieckgrafik verwenden verschiedene Grundseiten oder Höhen.": "visual_parameters",
     "Erklärtext und Bruchgrafik verwenden verschiedene Brüche.": "visual_parameters",
     "Grafik gehört nicht zum ausgewählten Fachprofil.": "subject_profile",
-    "Grafik ohne wörtlichen Quellenbeleg.": "subject_source",
-    "Grafikzahl fehlt im Beleg oder in der Aufgabe.": "subject_source",
-    "Grafikbeschriftung fehlt im wörtlichen Beleg.": "subject_source",
+    "Grafik ohne wörtlichen Quellenbeleg.": "source_excerpt",
+    "Grafikzahl fehlt im Beleg oder in der Aufgabe.": "number_evidence",
+    "Grafikbeschriftung fehlt im wörtlichen Beleg.": "label_evidence",
+    "Der Originalvergleich benötigt zwei bis vier unterschiedliche kurze Originalausdrücke ohne Zusatzparameter.": "original_comparison_shape",
+    "Jeder Vergleichsausdruck muss vollständig und wortgetreu im Originalbeleg stehen.": "original_comparison_label",
+    "Der Originalvergleich benötigt einen bestätigten Originalbeleg statt eines erzeugten Aufgabenbeispiels.": "original_comparison_source",
+    "Die Frage muss mindestens einen vollständigen Originalausdruck ihres Vergleichs nennen.": "original_comparison_question",
     "Gegebene Grafik verrät die Antwort.": "subject_disclosure",
     "Gegebene Grafik darf kein richtiges Zuordnungspaar vorwegnehmen.": "subject_disclosure",
     "Fach oder Umfang des Lernstarts wurde verändert.": "entry_contract",
@@ -71,6 +76,29 @@ _VALUE_REASONS = {
     "Unknown unmatched context reference": "catalog_assignment",
     "Output subject is not a selected existing subject": "catalog_assignment",
 }
+
+
+_SCENE_REASONS = {
+    "Lernszenen enthalten nur Beschriftungen, keine Links, Markup oder ausführbaren Code.": "scene_text",
+    "Szenenpfeile verbinden verschiedene Objekte.": "scene_edges",
+    "Szenenobjekte und Plätze dürfen pro Schritt nicht doppelt vorkommen.": "scene_placements",
+    "Doppelte Hervorhebung in der Lernszene.": "scene_highlights",
+    "Doppelte Pfeile in der Lernszene.": "scene_edges",
+    "Szenenversion muss die ganze Zahl1 sein.": "scene_version",
+    "Szenenobjekte benötigen eindeutige IDs.": "scene_object_ids",
+    "Jeder Szenenschritt platziert alle Objekte genau einmal.": "scene_placements",
+    "Szenenschritt verweist auf ein unbekanntes Objekt.": "scene_object_reference",
+    "Szenenbeschriftung fehlt im wörtlichen Beleg.": "scene_label_evidence",
+    "Szenenschritt ohne wörtlichen Quellenbeleg.": "scene_source_excerpt",
+    "Die Szenenbeschreibung muss im Schrittbeleg stehen.": "scene_caption_evidence",
+    "Szenenpfeile brauchen bestätigten Quellenstoff.": "scene_source_evidence",
+    "Szenenpfeil hat keine belegte Richtung zwischen seinen Beschriftungen.": "scene_arrow_evidence",
+    "Pfeilbeschriftung fehlt im Schrittbeleg.": "scene_edge_label_evidence",
+    "Eine gegebene Lernszene darf kein richtiges Zuordnungspaar räumlich vorwegnehmen.": "scene_answer_disclosure",
+    "Gegebene Lernszene verrät die Antwort in einem ihrer Schritte.": "scene_answer_disclosure",
+}
+_VALUE_REASONS.update(_SCENE_REASONS)
+_REASONS.update({"Value error, " + message: reason for message, reason in _SCENE_REASONS.items()})
 
 
 def _location(value):

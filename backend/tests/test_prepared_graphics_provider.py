@@ -1,0 +1,157 @@
+"""Real provider adapter with request-bound IDs and synthetic HTTP responses."""
+import copy
+import json
+
+import httpx
+import pytest
+from package_output_helpers import PackageOutputCapture
+from schulpilot import package_prepared_graphics, providers
+from schulpilot.visual_reference_schemas import ExplanationStep
+from test_package_part_output import part
+from test_package_prepared_graphics import prepared
+from test_package_transport import config
+
+
+@pytest.mark.parametrize("fault", [None, "scene", "foreign_id", "cross_source", "version", "stage", "source_ref", "text", "missing_id", "unrelated_fraction", "unrelated_scene"])
+def test_requested_ids_hydrate_before_canonical_validation_and_keep_one_reported_bill(monkeypatch, fault):
+    model_data, payload, binding = prepared(scene=fault in ("scene", "unrelated_scene"))
+    model_data = copy.deepcopy(model_data)
+    original = copy.deepcopy(model_data)
+    expected = binding.hydrate(model_data)
+    step = model_data["units"][0]["questions"][0]["explanation_steps"][0]
+    if fault == "foreign_id":
+        step["presentation"]["blocks"] = ["pg_PRIVATE_FOREIGN"]
+    elif fault == "cross_source":
+        changed = copy.deepcopy(payload)
+        changed["visual_context"]["sources"][0]["revision"] += 1
+        foreign = next(row for row in package_prepared_graphics.compile_candidates(changed)
+            if row["kind"] == "fraction" and row["disclosure"] == "solution")
+        step["presentation"]["blocks"] = [foreign["id"]]
+    elif fault == "version":
+        step["reference"]["version"] += 1
+    elif fault == "stage":
+        step["disclosure"] = "given"
+    elif fault == "source_ref":
+        step["source_refs"] = ["PRIVATE_FOREIGN_SOURCE"]
+    elif fault == "text":
+        step["text"] += " PRIVATE_MODEL_TEXT"
+    elif fault == "missing_id":
+        step["presentation"]["blocks"] = []
+    elif fault == "unrelated_fraction":
+        model_data["units"][0]["questions"][0]["prompt"] = "Welchen Nenner hat der Bruch 5/4?"
+    elif fault == "unrelated_scene":
+        model_data["units"][0]["questions"][0]["prompt"] = "Was beschreibt der Bruch 1/2?"
+    output, real_client, calls = PackageOutputCapture(monkeypatch), httpx.Client, []
+
+    def handler(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        actual_payload = json.loads(body["messages"][1]["content"][0]["text"])
+        candidates = actual_payload["prepared_graphics"]["candidates"]
+        assert candidates == binding.context["candidates"]
+        assert "source_excerpt" not in json.dumps(candidates) and all("block" not in row for row in candidates)
+        assert package_prepared_graphics.REVISION in body["messages"][0]["content"]
+        assert body["max_tokens"] == 8000 and body["reasoning"]["effort"] == "medium"
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps(output.wire(model_data), ensure_ascii=False)}}],
+            "usage": {"prompt_tokens": 111, "completion_tokens": 2223, "cost": 0.0321}})
+
+    monkeypatch.setattr(providers.httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(providers, "external_allowed", lambda *a, **kw: None)
+    monkeypatch.setattr(providers, "decrypt", lambda _: "synthetic-no-network-key")
+    monkeypatch.setattr("schulpilot.model_routing.selection", lambda _: {
+        "route": {"upstreams": ["azure"]}, "region": "standard"})
+    value = config()
+    value.max_output_tokens, value.reserve_micros = 8000, 250000
+    if fault not in (None, "scene"):
+        with pytest.raises(providers.ProviderError) as caught:
+            providers.request_provider(value, "package", payload)
+        billed = caught.value.billing_result
+        assert billed.telemetry["validation"]["phase"] in ("transport", "prepared_graphics")
+        assert "PRIVATE" not in json.dumps(billed.telemetry)
+        assert "PRIVATE" not in str(caught.value)
+    else:
+        billed = providers.request_provider(value, "package", payload)
+        actual = billed.data["units"][0]
+        wanted = expected["units"][0]
+        for actual_item, expected_item in zip([actual, *actual["questions"]], [wanted, *wanted["questions"]], strict=True):
+            assert [ExplanationStep.model_validate(step).model_dump() for step in actual_item["explanation_steps"]] == [
+                ExplanationStep.model_validate(step).model_dump() for step in expected_item["explanation_steps"]]
+            block = actual_item["explanation_steps"][0]["presentation"]["blocks"][0]
+            assert isinstance(block, dict)
+            assert block["source_excerpt"] in payload["visual_context"]["sources"][0]["content"]
+        assert [q["answer"] for q in actual["questions"]] == [q["answer"] for q in original["units"][0]["questions"]]
+        if fault == "scene":
+            scene = actual["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0]["scene"]
+            assert [row["label"] for row in scene["objects"]] == ["Wasser", "Dampf"]
+            assert scene["steps"][0]["source_excerpt"] == "Wasser → Dampf."
+        else:
+            numbers = actual["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0]["numbers"]
+            assert numbers == wanted["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0]["numbers"]
+    assert len(calls) == 1
+    assert billed.cost_micros == 32100 and billed.cost_source == "reported"
+    assert billed.input_tokens == 111 and billed.output_tokens == 2223
+
+
+def test_nonmath_part_keeps_canonical_graphic_request_and_answer_contract(monkeypatch):
+    data, payload = part()
+    output, real_client, calls = PackageOutputCapture(monkeypatch), httpx.Client, []
+
+    def handler(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        assert "prepared_graphics" not in json.loads(body["messages"][1]["content"][0]["text"])
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps(output.wire(data), ensure_ascii=False)}}],
+            "usage": {"prompt_tokens": 111, "completion_tokens": 2223, "cost": 0.0321}})
+
+    monkeypatch.setattr(providers.httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(providers, "external_allowed", lambda *a, **kw: None)
+    monkeypatch.setattr(providers, "decrypt", lambda _: "synthetic-no-network-key")
+    monkeypatch.setattr("schulpilot.model_routing.selection", lambda _: {
+        "route": {"upstreams": ["azure"]}, "region": "standard"})
+    value = config()
+    value.max_output_tokens, value.reserve_micros = 8000, 250000
+    result = providers.request_provider(value, "package", payload)
+    assert len(calls) == 1 and result.cost_micros == 32100
+    assert [q["answer"] for q in result.data["units"][0]["questions"]] == [q["answer"] for q in data["units"][0]["questions"]]
+    assert all(isinstance(step["presentation"]["blocks"][0], dict) for unit in result.data["units"]
+        for item in [unit, *unit["questions"]] for step in item["explanation_steps"])
+
+
+
+def test_eight_prepared_bases_keep_actual_outbound_request_within_existing_reservation(monkeypatch, record_property):
+    import test_package_transport
+    from schulpilot import provider_cost_preflight
+    from test_package_prepared_graphics import payload_for
+
+    source = "\n".join(f"Ein Bruch {n}/{n + 1} beschreibt {n} von {n + 1} gleich großen Teilen." for n in range(1, 9))
+    source = (source + "\nEigener künstlicher Quellenkontext. " * 300)[:6000]
+    payload = payload_for(source)
+    original_projection, measured = provider_cost_preflight.projection, []
+
+    def project(*args):
+        value = original_projection(*args)
+        measured.append(value)
+        return value
+
+    def configured(provider="openrouter"):
+        value = config(provider)
+        value.max_output_tokens, value.reserve_micros = 8000, 250000
+        return value
+
+    monkeypatch.setattr(provider_cost_preflight, "projection", project)
+    monkeypatch.setattr(test_package_transport, "config", configured)
+    captured = test_package_transport.wire(monkeypatch, payload)
+    candidates = captured["payload"]["prepared_graphics"]["candidates"]
+    assert len(candidates) == 40  # Eight literal fractions, five existing disclosure stages.
+    assert len(source) == 6000 and len(measured) == 1
+    assert measured[0]["projected_micros"] <= measured[0]["reserved_micros"] == 250000
+    assert captured["body"]["max_tokens"] == 8000
+    record_property("artificial_source_chars", len(source))
+    record_property("base_candidates", 8)
+    record_property("wire_candidates", len(candidates))
+    record_property("text_bytes", measured[0]["text_bytes"])
+    record_property("projected_micros", measured[0]["projected_micros"])
+    record_property("schema_bytes", len(json.dumps(captured["schema"], ensure_ascii=False, separators=(",", ":")).encode()))
+    record_property("http_body_bytes", len(captured["raw"]))

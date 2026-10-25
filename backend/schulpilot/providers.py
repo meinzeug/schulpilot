@@ -1566,13 +1566,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         instructions += exam_transport_rules(config.max_output_tokens)
     wire_schema = schema
     package_output = None
+    prepared_graphics = None
     if function == "package":
         from . import package_part_output
         from .package_transport import payload_projection, schema_projection
         from .package_transport import rules as package_rules
 
         if package_part_output.enabled(payload):
-            package_part_output.bind_schema(schema, payload)
+            prepared_graphics = package_part_output.bind_schema(schema, payload)
+            if prepared_graphics is not None:
+                payload = {**payload, "prepared_graphics": prepared_graphics.context}
             from .package_part_catalog import bind_schema as bind_part_catalog_schema
 
             bind_part_catalog_schema(schema, payload)
@@ -1590,6 +1593,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         instructions = package_rules(payload, indexed_choices=indexed_choices) + package_output.rules
         if package_part_output.enabled(payload):
             instructions += package_part_output.RULES
+        if prepared_graphics is not None:
+            instructions += prepared_graphics.rules
     else:
         outgoing_payload = transport_payload(function, payload)
         if outgoing_payload is not payload:
@@ -1883,6 +1888,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     raise ProviderError(
                         "Die Paket-Ausgabe entspricht nicht dem angeforderten Ausgabeformat. Es wurden keine Ersatzaufgaben erstellt."
                     ) from None
+            if prepared_graphics is not None:
+                validation_phase = "prepared_graphics"
+                decoded = prepared_graphics.hydrate(decoded)
             if homework_quotes is not None:
                 from .homework import decode_sources
 
