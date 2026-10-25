@@ -1,4 +1,4 @@
-# Persistente Lernpaketteile (1.36.1+113)
+# Persistente Lernpaketteile (ab 1.36.1+113)
 
 Ein bestätigter Schultag kann mehr Stoff enthalten, als in eine vollständige
 KI-Antwort passt. Der höhere Sol-Ausgaberahmen allein löste den konkreten Fehler
@@ -72,3 +72,23 @@ Worker-Reihenfolge, unterbrochene Verarbeitung, expliziten Retry, atomare
 Veröffentlichung, ursprüngliche Lernbelege und die mobile Zähleranzeige.
 Diese Mockprüfungen sind kein Beleg für eine erfolgreiche reale KI-Verarbeitung;
 Live-Ausgang, Gebühren und Screenshots werden separat nachgewiesen.
+
+## Grafikvertrag (1.36.2+114)
+
+Der reale Mehrteillauf unter 113 speicherte seinen ersten geprüften Teil. Der
+zweite Teil endete mit 3391 Ausgabetokens an drei Grafik-Modellprüfstellen,
+ausdrücklich nicht am Ausgabelimit. Beide gemeldeten Gebühren sind erhalten:
+0,039938 USD beziehungsweise 0,049182 USD. Die ursprünglichen vier Runden
+und fünf Antwortversuche blieben erhalten; der erste Teil wurde nicht erneut
+erzeugt. Die konkrete verworfene Parameterkombination ist ohne gespeicherte
+Rohantwort nicht rückwirkend belegbar.
+
+Eine öffentliche synthetische Prüfung reproduziert dieselben drei Pfade mit
+mehreren bisher schemaerlaubten, fachlich ungültigen Kombinationen, etwa einer
+Lernszene mit Zahlen-/Einheitenparametern oder fehlenden Szenendaten. Neue
+Teilaufträge binden Grafiktypen und ihre Parameter daher bereits im
+Anfrageschema über begrenzte vollständige `anyOf`-Zweige. Die kanonischen
+Fach-, Quellen- und Darstellungsvalidatoren bleiben unverändert. Fertige gültige
+Teilbelege werden weiterverwendet; Konfiguration und Versuchszähler bleiben
+erhalten. Geschlossene Diagnosecodes nennen künftig ausschließlich die
+Prüfstelle und Fehlerklasse, niemals Anbietertexte, Eingaben oder Antworten.

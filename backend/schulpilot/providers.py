@@ -2076,6 +2076,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         error.billing_result = billing_result
         raise
     except ValidationError as error:
+        from .provider_validation import annotate
+
+        annotate(billing_result, error)
         # Only known schema field names and numeric positions, never input,
         # unknown extra keys, validator context or echoed provider content.
         fields = {

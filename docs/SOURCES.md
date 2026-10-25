@@ -1485,3 +1485,44 @@ bestehende Queryassertion und alle 20 neuen Koordinatorfälle bestanden danach
 gemeinsam: 21/21 in 17,32 Sekunden auf isolierter RAM-SQLite. Der vollständige
 233-Fälle-Nachlauf prüft die abschließende Quelle separat; kein Test wurde zur
 Annahme zusätzlicher Abfragen gelockert.
+
+
+### Mehrteillauf und Grafikvertragsprüfung (25.10.2026)
+
+Release113 `4c966fc` wurde mit 232 bestandenen und einem vorgesehenen
+übersprungenen Fall der gezielten Backendprüfung aktiviert; Web, signierte
+Direct-APK/Play-AAB, Signaturen und vollständige öffentlich ausgelieferte
+APK-/JavaScriptbytes wurden separat geprüft. Der normale einmalige
+Browserauftrag teilte den bestätigten Stoff in sechs Teile auf. Ein Teil wurde
+validiert gespeichert, der zweite an drei Grafik-Modellprüfstellen abgewiesen;
+kein Ausgabelimitfehler. Tatsächliche gemeldete Gebühren zusammen 0,089120 USD.
+Die genaue verworfene Parameterkombination bleibt unbekannt. Öffentliche
+synthetische Fälle belegen aber, dass das bisherige Schema mehrere solcher
+fachlich ungültigen Kombinationen zuließ. Die nächste Korrektur bindet bereits
+die Erzeugung an die bestehenden Grafikparameterregeln, ohne deren Prüfung
+zu lockern oder einen fertigen Teil neu zu erzeugen. Siehe
+[PACKAGE_PARTS.md](PACKAGE_PARTS.md).
+
+[OpenAI: Structured model outputs](https://developers.openai.com/api/docs/guides/structured-outputs),
+am 25.10.2026 gezielt gesucht und geöffnet: verschachtelte `anyOf`-Zweige
+werden unterstützt; jedes Objekt braucht vollständige Pflichtfelder und
+`additionalProperties:false`. `allOf`, `not` und `if/then/else` gehören nicht
+zum unterstützten Teilumfang. Das belegt den Dokumentationsvertrag, keinen
+ungeprüften Anbieter- oder Modellerfolg.
+
+Der vollständige [Checks-Lauf für Release113](https://github.com/meinzeug/schulpilot/actions/runs/40167046044)
+zu `4c966fc` bestand zusätzlich alle drei Backendgruppen und Flutter. Das ist
+ein Beleg für diesen Quellenstand, kein vorweggenommenes Ergebnis des
+nachfolgenden Grafikvertragsfixes.
+
+Die unabhängige synthetische Prüfung mit dem bereits lokal vorhandenen
+JSON-Schema-Validator 4.10.3/Draft2020-12 bestätigt 24 kanonische Fachschemas
+und 24 tatsächlich am gemockten HTTP-Eingang abgefangene Anfrageschemas.
+82 gültige öffentliche Grafikinstanzen und elf ungültige Parameterkombinationen
+wurden korrekt unterschieden. Der größte geprüfte Auftrag mit drei künstlichen
+2000-Zeichen-Seiten umfasste 35.605 Textbytes, davon 15.083 Schemabytes.
+Die bestehende konservative Kostenprojektion blieb mit 159.402 µUSD unter der
+unveränderten 250.000-µUSD-Reservierung bei 8000 Ausgabetokens. Das sind
+Bytemessungen und Vorabrechnungen, keine echten Token-, Preis- oder
+Modellqualitätsmessungen. Null Anbieteraufrufe. Keine neue Laufzeitabhängigkeit,
+keine Schema-/Choice-Decoderlockerung, keine Quellen- oder Antwortreparatur.

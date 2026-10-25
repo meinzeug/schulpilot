@@ -136,7 +136,9 @@ def context(subjects, profiles, *, schema=None, compact_matching=False, symbol_w
         "version": 1,
         "graphic_kinds": sorted(allowed),
         "scene_version": 1,
-        "scene_limits": {"objects": 12, "steps": 8, "transition_ms": 800},
+        "scene_limits": {name: definitions.get("SceneV1", {}).get("properties", {}).get(field, {}).get(bound, default)
+            for name, field, bound, default in (("objects", "objects", "maxItems", 12),
+                ("steps", "steps", "maxItems", 8), ("transition_ms", "transition_ms", "maximum", 800))},
         "subject_profiles": [
             {"subject": subject, "graphic_kinds": sorted(set(profiles.get(subject, ())) & allowed),
              "question_types": sorted(by_subject[subject])}

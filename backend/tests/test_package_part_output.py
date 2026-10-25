@@ -29,7 +29,7 @@ def part():
     return data, payload
 
 
-@pytest.mark.parametrize("fault", [None, "three_questions", "two_steps", "long_prompt", "three_phases"])
+@pytest.mark.parametrize("fault", [None, "three_questions", "two_steps", "long_prompt", "three_phases", "mixed_scene_numbers"])
 def test_actual_part_adapter_uses_two_questions_one_graphic_step_and_rejects_oversize(monkeypatch, fault):
     data, payload = part()
     if fault == "three_questions":
@@ -42,6 +42,9 @@ def test_actual_part_adapter_uses_two_questions_one_graphic_step_and_rejects_ove
     elif fault == "three_phases":
         scene = data["units"][0]["explanation_steps"][0]["presentation"]["blocks"][0]["scene"]
         scene["steps"].append(copy.deepcopy(scene["steps"][0]))
+    elif fault == "mixed_scene_numbers":
+        for item in [data["units"][0], *data["units"][0]["questions"]]:
+            item["explanation_steps"][0]["presentation"]["blocks"][0]["numbers"] = [1]
     output, real_client, calls = PackageOutputCapture(monkeypatch), httpx.Client, []
 
     def handler(request):
@@ -59,8 +62,15 @@ def test_actual_part_adapter_uses_two_questions_one_graphic_step_and_rejects_ove
     value = config()
     value.max_output_tokens, value.reserve_micros = 8000, 250000
     if fault:
-        with pytest.raises(providers.ProviderError):
+        with pytest.raises(providers.ProviderError) as caught:
             providers.request_provider(value, "package", payload)
+        if fault == "mixed_scene_numbers":
+            billed = caught.value.billing_result
+            assert billed.cost_micros == 20200 and billed.cost_source == "reported"
+            errors = billed.telemetry["validation"]["errors"]
+            assert len(errors) == 3 and {item["reason"] for item in errors} == {"scene_parameters"}
+            assert all(item["location"].endswith("presentation.blocks.0") for item in errors)
+            assert "synthetic-no-network-key" not in json.dumps(billed.telemetry)
     else:
         result = providers.request_provider(value, "package", payload)
         assert len(result.data["units"]) == 1 and len(result.data["units"][0]["questions"]) == 2
