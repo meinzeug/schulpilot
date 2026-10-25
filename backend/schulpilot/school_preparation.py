@@ -207,7 +207,8 @@ def _transport_repair(db, day, state, job, sources, config):
 
 
 # Private state only. Never pass these objects to preparation_data/job.result.
-_PART_KEYS = ("package_plan", "package_config_revision", "package_outputs", "package_completed_parts")
+_PART_KEYS = ("package_plan", "package_config_revision", "package_outputs", "package_completed_parts",
+              "package_publications", "package_publication_version")
 
 
 def _clear_parts(state):
@@ -229,7 +230,9 @@ def _part_outputs(state, plan):
     from .package_partitions import validated_parts
 
     values = validated_parts(state, plan, require_complete=False)
-    return values, {int(key) for key in state.get("package_outputs", {})}
+    from .package_publication import publication_records
+
+    return values, {int(key) for key in [*state.get("package_outputs", {}), *publication_records(state, plan)]}
 
 
 def _current_plan(db, day, child, state):
@@ -296,7 +299,7 @@ def _part_progress(state, job):
     if not isinstance(plan, dict) or not isinstance(plan.get("parts"), list):
         return {}
     total = len(plan["parts"])
-    completed = min(total, len(state.get("package_outputs", {})))
+    completed = min(total, len(set(state.get("package_outputs", {})) | set(state.get("package_publications", {}))))
     if state.get("status") == "ready":
         completed = min(total, state.get("package_completed_parts", 0))
     index = (job.payload or {}).get("package_partition") if job else None
@@ -386,7 +389,10 @@ def preparation_data(db, day, child=None):
             }
     if blocker:
         can_retry = False
+    from .package_publication import publication_data
+
     return {
+        **publication_data(db, day, child=child),
         "status": status,
         "error_code": error_code if error else None,
         "retry_blocker": blocker,
@@ -473,6 +479,7 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
         "package_attempts": state.get("package_attempts", {}),
         "package_part_attempts": state.get("package_part_attempts", {}),
         "package_parts_version": 1,
+        "package_publish_requests": state.get("package_publish_requests", []),
         **part_state,
     }
     if all(m.confirmed for m in source_pages):
@@ -635,7 +642,8 @@ def _advance_parts(db, day, child, family, state, job):
         from .school_day import save_package_parts
 
         ordered = validated_parts(state, plan)
-        final_job = job or db.get(Job, ordered[-1]["job_id"])
+        published = state.get("package_publications", {})
+        final_job = job or db.get(Job, ordered[-1]["job_id"] if ordered else published[str(len(plan["parts"]) - 1)]["job_id"])
         if final_job is None or final_job.status != "completed":
             raise ProviderError("Der letzte Teilauftrag ist noch nicht abgeschlossen.")
         save_package_parts(db, final_job, ordered, plan)

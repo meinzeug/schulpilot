@@ -38,6 +38,7 @@ from .security import authenticated, child_user, rate_limit
 
 router = APIRouter(tags=["Lernreise"])
 log = logging.getLogger("schulpilot.study_path")
+TECHNICAL_REVIEW_MESSAGE = "Die Vorbereitung dieser Etappe muss technisch geprüft werden. Weitere Versuche sind vorerst gesperrt. Deine gespeicherten Runden bleiben verfügbar."
 PHASES = (("understand", "Verstehen"), ("detective", "Fehlerdetektiv"), ("apply", "Anwenden"), ("recall", "Erinnern"))
 STAGE_ACTIONS = {
     "understand": (
@@ -268,6 +269,7 @@ def path_data(db, day, child):
         "blocks": [],
         "next_block_id": None,
         "can_continue": False,
+        "technical_review_required": False,
         "block_reason": None,
         "stale": False,
     }
@@ -340,6 +342,17 @@ def path_data(db, day, child):
         result["block_reason"] = (
             "Die Heftseiten wurden geändert. Bitte die Lernreise neu planen. Deine Antworten bleiben erhalten."
         )
+    if next_block and not unit:
+        current_job = db.get(Job, saved.get("job_id")) if saved.get("job_id") else None
+        if not current_job or current_job.status not in ("queued", "running"):
+            condition = (Job.child_id == child.id, Job.kind == "study_block",
+                         Job.payload["day_id"].as_string() == day.id,
+                         Job.payload["block_id"].as_string() == saved["id"])
+            count = db.scalar(select(func.count()).select_from(Job).where(*condition))
+            latest = db.scalar(select(Job).where(*condition).order_by(Job.created.desc(), Job.id.desc()).limit(1))
+            if count >= 3 and latest and latest.status == "failed":
+                result["technical_review_required"] = True
+                result["block_reason"] = TECHNICAL_REVIEW_MESSAGE
     result["can_continue"] = bool(result["next_block_id"] and not result["block_reason"])
     return result
 
@@ -409,7 +422,10 @@ def generate(
         .where(Job.child_id == child.id, Job.kind == "study_block", Job.payload["block_id"].as_string() == block_id)
     )
     if attempts >= 3:
-        raise HTTPException(409, "Die Vorbereitung hat mehrfach nicht geklappt. Bitte deine Eltern um Hilfe bitten.")
+        raise HTTPException(409, TECHNICAL_REVIEW_MESSAGE)
+    from .study_authority import bind as bind_authority
+
+    authority = bind_authority(db, p, child)
     rate_limit(db, "study:" + p.user.id, 12, 600, commit=False)
     job = Job(
         id=uid(),
@@ -421,6 +437,7 @@ def generate(
             "block_id": block_id,
             "source_hash": value["source_hash"],
             "planning": planning_fingerprint(db, child),
+            "study_authority": authority,
         },
     )
     db.add(job)
@@ -443,6 +460,9 @@ def job_context(db, job):
     child = db.get(Child, job.child_id)
     if not day or day.child_id != job.child_id or not child:
         raise ProviderError("Der Schultag ist nicht mehr verfügbar.")
+    from .study_authority import validate as validate_authority
+
+    validate_authority(db, child, job.payload.get("study_authority"))
     family = db.get(Family, child.family_id)
     if not family or (family.expires and family.expires < now()):
         raise ProviderError("Dieser Zugang ist abgelaufen. Die Antworten bleiben gespeichert.")

@@ -88,6 +88,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   String? error, reviewId;
   String progress = '';
   bool loading = true, working = false, fetching = false, discarding = false;
+  bool publishingParts = false;
   List<Json> pendingPhotos = [], importReceipts = [];
   final packageSearch = TextEditingController();
   String packageKind = 'all';
@@ -131,7 +132,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   bool get preparing =>
       ['processing', 'queued', 'running'].contains(preparation?['status']);
   bool get waiting => preparing || day?['active_job'] != null;
-  bool get locked => working || waiting;
+  bool get locked => working || publishingParts || waiting;
   bool get readOnly => day?['read_only'] == true;
   bool get allowUploads => day?['allow_uploads'] != false && !readOnly;
   bool get ownerMatches =>
@@ -167,7 +168,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       pendingPhotos = [];
       importReceipts = [];
       loading = true;
-      fetching = working = false;
+      fetching = working = publishingParts = false;
       preparationKeys.clear();
       actor = state.user?['id'];
       actorAccount = state.user;
@@ -354,8 +355,8 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
 
   Future<void> load({bool force = false}) async {
     if (!ownerMatches) return;
-    if (working || fetching) {
-      if (force || working) {
+    if (working || publishingParts || fetching) {
+      if (force || working || publishingParts) {
         readVersion++;
         queuedRead = true;
       }
@@ -426,7 +427,11 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     } finally {
       if (requestGeneration == generation) {
         fetching = false;
-        if (queuedRead && mounted && ownerMatches && !working) {
+        if (queuedRead &&
+            mounted &&
+            ownerMatches &&
+            !working &&
+            !publishingParts) {
           queuedRead = false;
           unawaited(load());
         }
@@ -940,6 +945,125 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     }
   }
 
+  bool get canPublishParts {
+    final digest = preparation?['publication_plan_digest'];
+    final count = preparation?['ready_prefix_parts'];
+    final parts = packageParts;
+    return state.isChild &&
+        parts != null &&
+        preparation?['can_publish_parts'] == true &&
+        count is int &&
+        count > 0 &&
+        count <= parts.completed &&
+        digest is String &&
+        RegExp(r'^[a-f0-9]{64}$').hasMatch(digest);
+  }
+
+  Future<void> publishReadyParts() async {
+    if (!active ||
+        working ||
+        publishingParts ||
+        !canPublishParts ||
+        day == null) {
+      return;
+    }
+    final version = generation, id = day!['id'] as String;
+    final digest = preparation!['publication_plan_digest'] as String;
+    final signature = 'publish:$id:$digest';
+    final key = preparationKeys.putIfAbsent(signature, () {
+      final random = Random.secure();
+      return 'publish-${List.generate(16, (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
+    });
+    readVersion++;
+    setState(() {
+      publishingParts = true;
+      error = null;
+    });
+    String? failure;
+    try {
+      final response = await state.api.post(
+        '/school-days/$id/publish-ready-parts',
+        {'plan_digest': digest},
+        {'Idempotency-Key': key, 'X-Schulpilot-Account': actor!},
+      );
+      if (!sameDay(version, id)) return;
+      preparationKeys.remove(signature);
+      if (response['preparation'] is Map) {
+        setState(
+          () => day = {
+            ...day!,
+            'preparation': Json.from(response['preparation'] as Map),
+          },
+        );
+      }
+      state.refreshState();
+    } on ApiError catch (e) {
+      if (e.status >= 400 && e.status < 500) preparationKeys.remove(signature);
+      failure = e.message;
+    } catch (_) {
+      failure = 'Die fertigen Runden konnten gerade nicht freigegeben werden. Dein gespeicherter Stand bleibt erhalten.';
+    } finally {
+      if (sameDay(version, id)) {
+        setState(() => publishingParts = false);
+        if (active) await load(force: true);
+        if (sameDay(version, id) && failure != null) {
+          setState(() => error = failure);
+        }
+      }
+    }
+  }
+
+  Widget readyParts() {
+    if (!state.isChild) return const SizedBox.shrink();
+    final rawIds = preparation?['published_unit_ids'];
+    final ids = rawIds is List
+        ? rawIds
+              .whereType<String>()
+              .where((id) => RegExp(r'^[a-f0-9]{32}$').hasMatch(id))
+              .toSet()
+              .toList()
+        : <String>[];
+    if (!canPublishParts && ids.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Panel(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Fertige Runden',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            if (canPublishParts) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Du kannst die fertigen Teile schon nutzen. Die übrigen Teile bleiben offen.',
+              ),
+              const SizedBox(height: 12),
+              ActionButton(
+                label: publishingParts
+                    ? 'Runden werden freigegeben …'
+                    : 'Fertige Runden nutzen',
+                icon: Icons.play_circle_outline_rounded,
+                enabled: !working && !publishingParts,
+                onPressed: publishReadyParts,
+              ),
+            ],
+            for (var index = 0; index < ids.length; index++)
+              TextButton.icon(
+                onPressed: () {
+                  if (active) openRoute(context, '/unit/${ids[index]}');
+                },
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: Text('Runde ${index + 1} öffnen'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> ensureCollecting() async {
     if (day?['stage'] == 'collecting') return;
     final updated = day?['stage'] == 'ready'
@@ -1254,6 +1378,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               childChecking(context)
             else
               childPackage(context),
+            readyParts(),
             if ((stage != 'collecting' || failed) &&
                 !waiting &&
                 !failureHasHomeAction) ...[

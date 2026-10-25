@@ -1942,3 +1942,41 @@ nicht als grammatisch falsch ausgegeben. Ein Lesefokus ersetzt weder eine
 fachliche Animation noch einen Beleg vollständiger oder richtiger Fotoerkennung.
 Für ungeklärte beziehungsweise falsch eingeordnete Quellen anderer Fächer wird
 damit keine passende Grafik behauptet.
+
+## 25.10.2026 – bereits geprüfte Paketteile nutzen (1.36.13)
+
+Die bisherige Veröffentlichung wartete auf sämtliche Teilaufträge. Dadurch
+blieben auch dauerhaft gespeicherte, geprüfte Runden unerreichbar, sobald ein
+späterer Teil nicht sicher erzeugt werden konnte. Eine ausdrückliche Aktion
+veröffentlicht nun den zusammenhängenden fertigen Anfang kostenfrei. Quellen,
+Anbieterrevision, Aufgaben, Einstieg und Grafiken werden dabei erneut geprüft.
+Eine versionierte Zuordnung verbindet jeden Teil mit seiner ursprünglichen
+Erzeugung und genau einer Runde. Wiederholtes Absenden erzeugt keine Duplikate;
+spätere Teile ersetzen weder begonnene Runden noch Antworten. Der Gesamtstatus
+bleibt offen, bis tatsächlich alle Teile vorliegen. Gelöschte Teilrunden bleiben
+als Löschvermerk erhalten und werden nicht neu angelegt.
+
+Neue Lernwegaufträge binden die tatsächlich anmeldende Sitzung serverseitig
+und prüfen deren Gültigkeit und Familienberechtigung vor und nach dem
+Anbieteraufruf. Alte Aufträge ohne belegte Identität werden nicht nachträglich
+mit einer erfundenen Sitzung ausgeführt. Nach der bestehenden Grenze erfolgloser
+Starts zeigt bereits die lesende Lernwegantwort den technischen Prüfbedarf.
+Gespeicherte Runden bleiben zugänglich; ein ausstehender, ausdrücklich
+auditierter Reparaturauftrag wird als laufend angezeigt. Die normale Grenze
+wurde nicht erhöht.
+
+Die gemeinsame Flutter-Oberfläche bietet die Teilfreigabe auch während eines
+weiteren Paketauftrags an. Alte Fehlermeldungen verdecken keinen laufenden
+Ersatzauftrag. Der Heftdialog bezeichnet die ausgewählte Seite mit Thema statt
+einer abweichenden Uploadnummer. Lokale synthetische Tests prüfen Idempotenz,
+Quellenwechsel, getrennte Kinder, Sitzungsentzug und parallele Freigaben; diese
+Tests sind keine Lernnachweise und keine Prüfung vollständiger Fotoerkennung.
+
+Auch eine einzelne Heftseite kann einen strukturierten Grafik-/Aufgabenauftrag
+benötigen, der die kleine Ausgaberoute erschöpft. Eine bewusst erneut angefragte
+identische Heftauswahl verwendet nun die bereits freigegebene größere Route,
+wenn ein eigener gespeicherter Auftrag nachweislich an genau diesem
+Ausgabelimit scheiterte. Auswahlreihenfolge, Quellenrevisionen, sichere Inhalte,
+Fach und Aufgabenanzahl müssen weiterhin übereinstimmen. Ohne diesen Nachweis
+bleibt die Modellwahl unverändert. Es gibt weder einen automatischen zweiten
+Aufruf noch höhere globale Token-, Wiederholungs- oder Kontogrenzen.

@@ -147,6 +147,9 @@ def remove(db, child, ids, *, journal=True):
     topics = {(u.subject, u.topic) for u in rows}
     reviews = set(db.scalars(select(VocabularyReviewEvent.review_id).join(Attempt).where(Attempt.unit_id.in_(ids))))
     for day in db.scalars(select(SchoolDay).where(SchoolDay.child_id == child.id)):
+        from .package_publication import mark_deleted
+
+        mark_deleted(db, day, ids)
         plan = day.learning_plan or {}
         blocks = [b for b in plan.get("blocks", []) if b.get("unit_id") not in ids]
         if blocks != plan.get("blocks", []):

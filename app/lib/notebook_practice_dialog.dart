@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'notebook_photo.dart';
 
 /// A conscious, source-revision-bound request. Viewing/selecting is GET-only.
 class NotebookPracticeDialog extends StatefulWidget {
@@ -194,9 +195,12 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
     }
   }
 
-  String title(Json row) => row['title']?.toString().trim().isNotEmpty == true
-      ? row['title'] as String
-      : row['topic']?.toString() ?? 'Heftseite';
+  String title(Json row) =>
+      [row['topic'], row['title']]
+          .whereType<String>()
+          .where((text) => text.trim().isNotEmpty)
+          .firstOrNull ??
+      'Bestätigte Heftseite';
 
   @override
   Widget build(BuildContext context) {
@@ -212,10 +216,12 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                title(widget.page),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              const Text(
+                'Diese Heftseite',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
+              const SizedBox(height: 4),
+              Text(title(widget.page)),
               const SizedBox(height: 6),
               Text(
                 '${pages.length} ${pages.length == 1 ? 'Heftseite ausgewählt' : 'Heftseiten ausgewählt'}',
@@ -278,7 +284,18 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(title(row)),
-                      subtitle: Text('Heftseite ${row['page_number'] ?? '–'}'),
+                      secondary: row['has_image'] == true
+                          ? SizedBox(
+                              width: 48,
+                              height: 64,
+                              child: NotebookPhoto(
+                                widget.state,
+                                materialId: row['id'] as String,
+                                revision: row['revision'] as int,
+                                thumbnail: true,
+                              ),
+                            )
+                          : null,
                       value: pages.containsKey(row['id']),
                       onChanged: locked || row['id'] == widget.page['id']
                           ? null

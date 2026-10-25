@@ -97,7 +97,7 @@ def _partition(*, school_day_id, child_id, day_revision, groups, sources, planni
     return {**result, "digest": _digest(result)}
 
 
-def build_plan(db, day, child, selected_groups=None, *, config_revision=None):
+def build_plan(db, day, child, selected_groups=None, *, config_revision=None, ignore_unit_ids=()):
     """Read-only server plan; capability still gates each part's entry flag."""
     from .db import ProviderConfig
     from .school_day import package_plan, pages, planning_fingerprint
@@ -105,7 +105,7 @@ def build_plan(db, day, child, selected_groups=None, *, config_revision=None):
 
     _require(day.child_id == child.id, "Dieser Schultag gehört zu einem anderen Kind.")
     if selected_groups is None:
-        selected_groups = [group for group in package_plan(db, day, child)["groups"] if group["selected"]]
+        selected_groups = [group for group in package_plan(db, day, child, ignore_unit_ids=ignore_unit_ids)["groups"] if group["selected"]]
     if config_revision is None:
         config_revision = db.get(ProviderConfig, 1).revision
     sources = []
@@ -126,7 +126,11 @@ def build_plan(db, day, child, selected_groups=None, *, config_revision=None):
 
 def check_plan(db, day, child, plan):
     """Reject changed sources, safe-text decisions, planning or provider settings."""
-    return build_plan(db, day, child) == plan
+    from .package_publication import verified_publications
+
+    publications = verified_publications(db, day, plan)
+    return build_plan(db, day, child, ignore_unit_ids=[row["unit_id"] for row in publications.values()
+        if not row.get("deleted")]) == plan
 
 
 def _checked_plan(plan):
@@ -192,8 +196,12 @@ def validated_parts(state, plan, config_revision=None, *, require_complete=True)
     _require(state.get("package_plan") == plan and revision == plan["config_revision"]
              and state.get("package_config_revision") == revision, "Der Vorbereitungsstand wurde geändert.")
     outputs = state.get("package_outputs", {})
+    from .package_publication import publication_records
+
+    published = publication_records(state, plan)
     indices = {str(part["index"]) for part in plan["parts"]}
-    _require(set(outputs) <= indices and (not require_complete or set(outputs) == indices),
+    _require(set(outputs) <= indices and not (set(outputs) & set(published))
+             and (not require_complete or set(outputs) | set(published) == indices),
              "Noch nicht alle Teilrunden sind fertig.")
     result = []
     for part in plan["parts"]:

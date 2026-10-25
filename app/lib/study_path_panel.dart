@@ -36,6 +36,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
   bool reading = false, posting = false, polling = false;
   bool foreground = true, routeVisible = true;
   final failedJobs = <String>{};
+  final exhaustedBlocks = <String, String?>{};
   final renewedFailedKeys = <String>{};
   final keys = <String, String>{};
   int generation = 0;
@@ -102,6 +103,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       activeJob = openingJob = readError = actionError = null;
       reading = posting = polling = false;
       failedJobs.clear();
+      exhaustedBlocks.clear();
       renewedFailedKeys.clear();
       keys.clear();
       actor = state.user;
@@ -170,6 +172,27 @@ class _StudyPathPanelState extends State<StudyPathPanel>
         setState(() {
           path = data;
           readError = null;
+          final replacementPending = blocks.any(
+            (block) =>
+                block['id'] == actionErrorBlock &&
+                block['status'] == 'generating' &&
+                block['job_id'] != null &&
+                exhaustedBlocks.containsKey(block['id']) &&
+                block['job_id'] != exhaustedBlocks[block['id']],
+          );
+          exhaustedBlocks.removeWhere(
+            (id, failedJob) => blocks.any(
+              (block) =>
+                  block['id'] == id &&
+                  block['job_id'] != null &&
+                  block['job_id'] != failedJob &&
+                  [
+                    'generating',
+                    'ready',
+                    'completed',
+                  ].contains(block['status']),
+            ),
+          );
           final confirmed = blocks.any(
             (block) =>
                 block['id'] == actionErrorBlock &&
@@ -177,6 +200,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                 ['ready', 'completed'].contains(block['status']),
           );
           if (confirmed ||
+              replacementPending ||
               actionErrorBlock == null && data['available'] == true) {
             actionError = null;
             actionErrorBlock = null;
@@ -233,7 +257,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       openRoute(context, '/unit/${block['unit_id']}');
       return;
     }
-    if (waiting) return;
+    if (waiting || exhaustedBlocks.containsKey(block['id'])) return;
     final version = generation;
     final id = block['id'].toString();
     final priorJob = block['job_id'] as String?;
@@ -269,6 +293,12 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     } catch (error) {
       if (mounted && version == generation && ownerMatches) {
         setState(() {
+          if (state.isChild &&
+              error is ApiError &&
+              error.status == 409 &&
+              _studyPreparationLimits.contains(error.message)) {
+            exhaustedBlocks[id] = priorJob;
+          }
           actionError = _studyError(error, child: state.isChild);
           actionErrorBlock = id;
         });
@@ -427,8 +457,13 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     final completed = (data?['completed_questions'] as num? ?? 0).toInt();
     final ready = (data?['ready_questions'] as num? ?? 0).toInt();
     final current = next;
+    final retryExhausted =
+        current != null &&
+        (exhaustedBlocks.containsKey(current['id']) ||
+            data?['technical_review_required'] == true);
     final editable = ownerMatches && state.isChild;
     final hasFailure =
+        data?['technical_review_required'] == true ||
         readError != null ||
         actionError != null ||
         blocks.any((block) => (block['error'] as String? ?? '').isNotEmpty);
@@ -508,11 +543,13 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                 '$ready bereit · verteilt auf mehrere Lerntage',
                 style: TextStyle(color: context.palette.muted, fontSize: 12),
               ),
-              SizedBox(height: 8),
-              Text(
-                'Insgesamt geplant: $total · offen und vorbereitet: $ready · bearbeitet: $completed. Noch geplante Aufgaben sind keine fertigen Übungen.',
-                style: TextStyle(color: context.palette.muted),
-              ),
+              if (!state.isChild) ...[
+                SizedBox(height: 8),
+                Text(
+                  'Insgesamt geplant: $total · offen und vorbereitet: $ready · bearbeitet: $completed. Noch geplante Aufgaben sind keine fertigen Übungen.',
+                  style: TextStyle(color: context.palette.muted),
+                ),
+              ],
               SizedBox(height: 20),
               if (current != null) ...[
                 if (current['unit_id'] != null &&
@@ -563,7 +600,8 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                   SizedBox(height: 16),
                 ],
                 if ((current['error'] ?? '').toString().isNotEmpty &&
-                    actionError == null)
+                    actionError == null &&
+                    !(state.isChild && (waiting || posting)))
                   Padding(
                     padding: EdgeInsets.only(bottom: 12),
                     child: Notice(
@@ -587,6 +625,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                     ),
                   ),
                 ] else if (editable &&
+                    !retryExhausted &&
                     data?['can_continue'] == true &&
                     current['unit_id'] == null)
                   FilledButton.icon(
@@ -604,6 +643,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                   ),
                 if (!waiting &&
                     !posting &&
+                    !retryExhausted &&
                     editable &&
                     data?['can_continue'] == true &&
                     completed > 0) ...[
@@ -645,6 +685,14 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               ExpansionTile(
                 title: Text('Alle Etappen'),
                 children: [
+                  if (state.isChild)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Insgesamt geplant: $total · offen und vorbereitet: $ready · bearbeitet: $completed. Noch geplante Aufgaben sind keine fertigen Übungen.',
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                    ),
                   TextField(
                     controller: blockSearch,
                     textInputAction: TextInputAction.search,
@@ -752,12 +800,20 @@ class _StudyPathPanelState extends State<StudyPathPanel>
   }
 }
 
+const _studyPreparationLimits = {
+  'Die Vorbereitung hat mehrfach nicht geklappt. Bitte deine Eltern um Hilfe bitten.',
+  'Die Vorbereitung dieser Etappe muss technisch geprüft werden. Weitere Versuche sind vorerst gesperrt. Deine gespeicherten Runden bleiben verfügbar.',
+};
+
 String _studyError(Object error, {bool child = false}) {
   final message = error is ApiError
       ? error.message
       : error is String
       ? error
       : null;
+  if (child && _studyPreparationLimits.contains(message)) {
+    return 'Diese Etappe braucht eine technische Prüfung. Deine gespeicherten Runden kannst du weiter nutzen.';
+  }
   if (child &&
       message != null &&
       RegExp(

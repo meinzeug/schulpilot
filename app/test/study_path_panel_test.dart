@@ -720,4 +720,245 @@ void main() {
       await _dispose(tester, router);
     },
   );
+
+  testWidgets(
+    '125 a bound new job hides only the old stage error until a fresh failure',
+    (tester) async {
+      _viewport(tester);
+      const technical = 'Die KI hat die begrenzte Ausgabelänge erreicht.';
+      const limit = 'Dein persönlicher Kostenrahmen bleibt erhalten.';
+      var current = _path(blocks: [_block('first')..['error'] = technical]);
+      var posts = 0;
+      final state = _state(
+        MockClient((request) async {
+          if (request.method == 'POST') {
+            posts++;
+            current = _path(
+              blocks: [
+                _block('first', status: 'generating', job: 'new-job')
+                  ..['error'] = technical,
+              ],
+            )..['block_reason'] = limit;
+            return _json({'id': 'new-job', 'status': 'queued'});
+          }
+          if (request.url.path == '/api/jobs/new-job') {
+            current = _path(
+              blocks: [_block('first', job: 'new-job')..['error'] = technical],
+            );
+            return _json({
+              'id': 'new-job',
+              'status': 'failed',
+              'error': technical,
+            });
+          }
+          return _json(current);
+        }),
+      );
+      final router = await _open(tester, state);
+      expect(
+        find.textContaining(
+          'Diese Etappe konnte gerade nicht vorbereitet werden.',
+        ),
+        findsOneWidget,
+      );
+      await _tap(tester, 'Erste Etappe starten');
+      expect(
+        find.text('Deine nächste Etappe wird vorbereitet.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'Diese Etappe konnte gerade nicht vorbereitet werden.',
+        ),
+        findsNothing,
+      );
+      expect(find.text(limit), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Deine nächste Etappe wird vorbereitet.'), findsNothing);
+      expect(
+        find.textContaining(
+          'Diese Etappe konnte gerade nicht vorbereitet werden.',
+        ),
+        findsOneWidget,
+      );
+      expect(posts, 1);
+      await _dispose(tester, router);
+    },
+  );
+
+  for (final capMessage in [
+    'Die Vorbereitung hat mehrfach nicht geklappt. Bitte deine Eltern um Hilfe bitten.',
+    'Die Vorbereitung dieser Etappe muss technisch geprüft werden. Weitere Versuche sind vorerst gesperrt. Deine gespeicherten Runden bleiben verfügbar.',
+  ]) {
+    testWidgets(
+      '125 exact technical retry cap $capMessage leads to saved rounds without another retry or parental blame',
+      (tester) async {
+        _viewport(tester);
+        var posts = 0;
+        final state = _state(
+          MockClient((request) async {
+            if (request.method == 'POST') {
+              posts++;
+              return http.Response(
+                jsonEncode({'detail': capMessage}),
+                409,
+                headers: {'content-type': 'application/json'},
+              );
+            }
+            return _json(_path());
+          }),
+        );
+        final router = await _open(tester, state);
+        await _tap(tester, 'Erste Etappe starten');
+        expect(
+          find.text(
+            'Diese Etappe braucht eine technische Prüfung. Deine gespeicherten Runden kannst du weiter nutzen.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Eltern um Hilfe'), findsNothing);
+        expect(find.text('Erneut vorbereiten'), findsNothing);
+        expect(find.text('Erste Etappe starten'), findsNothing);
+        expect(
+          find.text('Deine nächste Etappe wird vorbereitet.'),
+          findsNothing,
+        );
+        await _tap(tester, 'Stand prüfen');
+        expect(find.text('Erste Etappe starten'), findsNothing);
+        expect(posts, 1);
+        await _tap(tester, 'Gespeicherte Runden ansehen');
+        expect(
+          GoRouterState.of(
+            tester.element(find.text('Gespeicherte Runden für child')),
+          ).uri.path,
+          '/learn/child',
+        );
+        expect(posts, 1);
+        await _dispose(tester, router);
+      },
+    );
+  }
+  testWidgets(
+    '125 a fresh bound saved unit remains openable after a prior retry cap',
+    (tester) async {
+      var posts = 0;
+      var current = _path();
+      final state = _state(
+        MockClient((request) async {
+          if (request.method == 'POST') {
+            posts++;
+            return http.Response(
+              jsonEncode({
+                'detail': 'Die Vorbereitung hat mehrfach nicht geklappt. Bitte deine Eltern um Hilfe bitten.',
+              }),
+              409,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          if (request.url.path == '/api/jobs/new-allowed-job') {
+            current = _path(
+              blocks: [
+                _block(
+                  'first',
+                  status: 'ready',
+                  unit: 'existing',
+                  job: 'new-allowed-job',
+                ),
+              ],
+            );
+            return _json({
+              'id': 'new-allowed-job',
+              'status': 'completed',
+              'result': {'unit_id': 'existing'},
+            });
+          }
+          return _json(current);
+        }),
+      );
+      final router = await _open(tester, state);
+      await _tap(tester, 'Erste Etappe starten');
+      current = _path(
+        blocks: [_block('first', status: 'generating', job: 'new-allowed-job')],
+      );
+      await _tap(tester, 'Stand prüfen');
+      expect(
+        find.text('Deine nächste Etappe wird vorbereitet.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Diese Etappe braucht eine technische Prüfung.'),
+        findsNothing,
+      );
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Etappe öffnen'), findsOneWidget);
+      await _tap(tester, 'Etappe öffnen');
+      expect(
+        GoRouterState.of(tester.element(find.text('Einheit existing')))
+            .uri
+            .path,
+        '/unit/existing',
+      );
+      expect(posts, 1);
+      await _dispose(tester, router);
+    },
+  );
+
+  testWidgets(
+    '125 reload-persistent technical review status opens saved rounds without a wasted retry',
+    (tester) async {
+      final methods = <String>[];
+      final state = _state(
+        MockClient((request) async {
+          methods.add(request.method);
+          return _json(
+            _path()
+              ..['technical_review_required'] = true
+              ..['can_continue'] = false
+              ..['block_reason'] = 'Die Vorbereitung dieser Etappe muss technisch geprüft werden. Weitere Versuche sind vorerst gesperrt. Deine gespeicherten Runden bleiben verfügbar.',
+          );
+        }),
+      );
+      final router = await _open(tester, state);
+      expect(find.text('Erste Etappe starten'), findsNothing);
+      expect(find.text('Erneut vorbereiten'), findsNothing);
+      expect(find.text('Gespeicherte Runden ansehen'), findsOneWidget);
+      expect(find.textContaining('Eltern um Hilfe'), findsNothing);
+      expect(methods.every((method) => method == 'GET'), isTrue);
+      await _tap(tester, 'Gespeicherte Runden ansehen');
+      expect(find.text('Gespeicherte Runden für child'), findsOneWidget);
+      expect(methods.every((method) => method == 'GET'), isTrue);
+      await _dispose(tester, router);
+    },
+  );
+
+  testWidgets(
+    '125 parent pending view retains its full technical detail and existing quantities',
+    (tester) async {
+      const technical = 'Die KI hat die begrenzte Ausgabelänge erreicht.';
+      final requests = <String>[];
+      final state = _state(
+        MockClient((request) async {
+          requests.add(request.method);
+          return _json(
+            _path(
+              blocks: [
+                _block('first', status: 'generating', job: 'job')
+                  ..['error'] = technical,
+              ],
+            ),
+          );
+        }),
+        role: 'parent',
+      );
+      final router = await _open(tester, state);
+      expect(find.text(technical), findsOneWidget);
+      expect(find.textContaining('Insgesamt geplant:'), findsOneWidget);
+      expect(requests.every((method) => method == 'GET'), isTrue);
+      await _dispose(tester, router);
+    },
+  );
 }

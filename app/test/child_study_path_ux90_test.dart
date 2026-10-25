@@ -149,6 +149,13 @@ void main() {
         ),
       );
       await open(tester, state);
+      expect(find.text('4 von 12 Aufgaben bearbeitet'), findsOneWidget);
+      expect(
+        find.text('4 bereit · verteilt auf mehrere Lerntage'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Insgesamt geplant:'), findsNothing);
+      await f.tap(tester, find.text('Alle Etappen'));
       expect(
         find.text(
           'Insgesamt geplant: 12 · offen und vorbereitet: 4 · bearbeitet: 4. Noch geplante Aufgaben sind keine fertigen Übungen.',

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:image/image.dart' as image;
+import 'package:schulpilot/notebook_photo.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/notebook_practice_dialog.dart';
 import 'package:schulpilot/ui.dart';
@@ -18,7 +20,7 @@ Json page(String id, {int revision = 1}) => {
   'child_id': 'child',
   'subject_id': subject,
   'title': 'Heft $id',
-  'topic': 'Brüche',
+  'topic': 'Brüche $id',
   'page_number': revision,
   'confirmed': true,
   'purpose': 'notebook',
@@ -35,6 +37,7 @@ Future<(AppState, List<http.Request>)> openDialog(
   Future<http.Response> Function(http.Request)? respond,
   double width = 390,
   double scale = 1,
+  Json? primaryPage,
 }) async {
   tester.view.physicalSize = Size(width, 900);
   tester.view.devicePixelRatio = 1;
@@ -74,7 +77,7 @@ Future<(AppState, List<http.Request>)> openDialog(
                 state: state,
                 childId: 'child',
                 subjectId: subject,
-                page: page('base'),
+                page: primaryPage ?? page('base'),
               ),
             ),
             child: const Text('Öffnen'),
@@ -95,6 +98,53 @@ Future<void> tapText(WidgetTester tester, String text) async {
 }
 
 void main() {
+  testWidgets(
+    '125 notebook practice names the actual page and topic rather than its upload-day ordinal',
+    (tester) async {
+      final primary = page('base')
+        ..['title'] = 'Heftseite 9'
+        ..['page_number'] = 9
+        ..['topic'] = 'Gemischte Zahlen';
+      final extra = page('extra', revision: 2)
+        ..['topic'] = 'Brüche bündeln'
+        ..['has_image'] = true;
+      final (_, requests) = await openDialog(
+        tester,
+        width: 320,
+        scale: 2,
+        primaryPage: primary,
+        respond: (request) async {
+          if (request.url.path.endsWith('/image')) {
+            return http.Response.bytes(
+              image.encodePng(image.Image(width: 2, height: 2)),
+              200,
+            );
+          }
+          return reply({
+            'items': [primary, extra],
+            'total': 2,
+          });
+        },
+      );
+      expect(find.text('Diese Heftseite'), findsOneWidget);
+      expect(find.text('Gemischte Zahlen'), findsOneWidget);
+      expect(find.text('Heftseite 9'), findsNothing);
+      expect(requests, isEmpty);
+      await tapText(tester, 'Weitere Heftseiten hinzufügen');
+      expect(find.text('Brüche bündeln'), findsOneWidget);
+      expect(find.text('Heftseite 9'), findsNothing);
+      final preview = tester.widget<NotebookPhoto>(find.byType(NotebookPhoto));
+      expect(preview.materialId, 'extra');
+      expect(preview.revision, 2);
+      expect(requests.every((request) => request.method == 'GET'), isTrue);
+      expect(
+        requests.where((request) => request.url.path.endsWith('/image')),
+        hasLength(1),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'Opening and optional source selection are GET-only; the conscious POST binds exact revisions and count',
     (tester) async {
@@ -119,7 +169,7 @@ void main() {
         requests.single.url.queryParameters,
         containsPair('status', 'confirmed'),
       );
-      await tapText(tester, 'Heft extra');
+      await tapText(tester, 'Brüche extra');
       await tester.enterText(find.byType(TextFormField), '3');
       await tester.ensureVisible(find.text('Runde vorbereiten'));
       await tester.tap(find.text('Runde vorbereiten'));
@@ -237,7 +287,7 @@ void main() {
         }),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Heft extra'), findsNothing);
+      expect(find.text('Brüche extra'), findsNothing);
       expect(find.text('Runde vorbereiten'), findsNothing);
       expect(requests.where((r) => r.method == 'POST'), isEmpty);
     },
@@ -260,7 +310,7 @@ void main() {
         find.text('Die Heftseiten konnten nicht sicher zugeordnet werden.'),
         findsOneWidget,
       );
-      expect(find.text('Heft other'), findsNothing);
+      expect(find.text('Brüche other'), findsNothing);
       expect(requests.where((r) => r.method == 'POST'), isEmpty);
     },
   );
@@ -270,7 +320,7 @@ void main() {
     (tester) async {
       final (_, requests) = await openDialog(tester, width: 320, scale: 2);
       await tapText(tester, 'Weitere Heftseiten hinzufügen');
-      await tapText(tester, 'Heft extra');
+      await tapText(tester, 'Brüche extra');
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(find.text('Zurück'));
       await tester.tap(find.text('Zurück'));

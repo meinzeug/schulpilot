@@ -282,6 +282,8 @@ def features_for(db, child_id, job_id):
     ids.update(ref.get("id") or ref.get("material_id") for ref in refs if isinstance(ref, dict))
     ids.discard(None)
     sources = list(db.scalars(select(Material).where(Material.child_id == child_id, Material.id.in_(ids)))) if ids else []
+    from .notebook_routing import length_failed as notebook_length_failed
+
     return {
         "errors": sum(a.outcome == "incorrect" for a in attempts),
         "uncertain": sum(a.outcome == "uncertain" for a in attempts),
@@ -290,6 +292,7 @@ def features_for(db, child_id, job_id):
             material_revision=data.get("material_revision")) if material else False,
         "transcription_review": extraction_recheck(db, child_id, job),
         "study_length_failed": study_length_failed(db, child_id, job),
+        "notebook_length_failed": notebook_length_failed(db, child_id, job),
         "sources_known": bool(ids) and len(sources) == len(ids),
         "source_count": len(sources),
         "source_chars": sum(len(m.content or "") for m in sources),
@@ -306,6 +309,8 @@ def choose_tier(function, features, *, economy=False):
         return "sol", "recorded_transcription_review"
     if function in ("unit", "study_block") and features.get("study_length_failed"):
         return "sol", "recorded_study_output_length"
+    if function == "unit" and features.get("notebook_length_failed"):
+        return "sol", "recorded_notebook_output_length"
     if economy:
         if features.get("poor_image") or features.get("errors", 0) >= 2 or features.get("uncertain", 0):
             return "sol", "recorded_difficulty"
