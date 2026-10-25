@@ -2007,3 +2007,55 @@ HTTP-Tests verbinden ausdrücklich gewählte zwei beziehungsweise fünf Aufgaben
 Einstiegsprobe und Pflichtgrafiken und prüfen auch falsche Quellen, Reste,
 Aufdeckstufen und fremde Kennungen. Sie ersetzen keine Live-Abnahme oder
 vollständige Erkennungsprüfung der fotografierten Seiten.
+
+## 25.10.2026 – Anschlussübungen und aktuelle Quellenstände (1.36.15)
+
+Die Live-Prüfung einer abgeschlossenen Heft-Lernrunde zeigte zwei getrennte
+Probleme: Die allgemeine Begründung verwies auf eine Grafik, die erst über das
+Hilfemenü erreichbar war; die getrennte Anschlussübung wurde bei der Prüfung
+einer Grafikbeschriftung verworfen. Der historische Modellwortlaut liegt nicht
+vor. Ein weiterer anschließend gestarteter Lernweg-Auftrag wurde angenommen
+und abgerechnet, erreichte aber die Ausgabelänge. Der bewusst ausgelöste nächste
+Versuch verwendete nachweisbar die bereits vorhandene größere Route; dieser
+scheiterte getrennt bei der Grafikparameterprüfung.
+Ein solcher Fehler ist kein belegter erneuter HTTP-400-Fehler und wird getrennt
+untersucht. Fehlgeschlagene Aufträge zählen nicht als abgeschlossene Lernrunden.
+
+Die Ganzes-Rest-Referenz erhält eine neue unveränderliche Version mit korrekten
+Einzahl-/Mehrzahlformulierungen. Die bisherige Version, ihre Kennungen und
+gespeicherte Darstellungen bleiben gültig. Gezielte Anschlussübungen dürfen
+diese Komposition verwenden, wenn ihre vorhandenen, wörtlich belegten Lernziele
+vollständig die Umwandlung unechter Brüche in gemischte Zahlen beschreiben.
+Vorhandene konkrete Rechenpläne, andere Ziele und andere Erzeugungswege werden
+dadurch nicht überschrieben. Aufgabenanzahl, Zielzuordnung, neue Fragen,
+Quellenrevisionen und Antwortprüfungen bleiben verbindlich.
+
+Die Rückmeldung verlinkt die bereits beantwortete Frage unmittelbar mit ihrer
+gespeicherten Erklärung. Der Zugriff erhält Konto-, Quellen-, Routen- und
+Aufdeckungsprüfungen. Eine passende Ganzes-Rest-Komposition erscheint gemeinsam
+mit einer aus denselben Zahlen gebildeten Gleichung. Der bewusste Wechsel
+zwischen gebündelten Ganzen und einzelnen gleich großen Teilen verändert weder
+Bruchwert noch Antwort oder Lernstand. Reduzierte Bewegung schaltet sofort um;
+ansonsten bleibt der einmalige Übergang auf180ms begrenzt. Andere Referenzen
+und Einführungen verwenden weiterhin ihre vorhandenen Renderer.
+
+Nach einer Quellenkorrektur meldet der lesende Tagesstatus ausdrücklich, dass
+die vorbereiteten Teile zu einer älteren Fassung gehören. Der Client zeigt
+hier keinen vermeintlich aktuellen Teilfortschritt und bietet die bewusste
+Neuvorbereitung mit den aktuellen Seiten an. Ein GET startet keinen Auftrag;
+die bisherige Teilveröffentlichung bleibt bei veränderten Quellen gesperrt.
+Ein neuer ausdrücklicher Auftrag baut den aktuellen Plan von Anfang an auf.
+Historische Aufträge und Verbrauch bleiben erhalten, vorhandene Lernrunden
+werden nicht ersetzt. Es gibt keine neue Datenbankmigration, automatische
+Anbieterwiederholung oder Erhöhung der Anbieter- beziehungsweise Kontolimits.
+
+Lokale Abnahme dieses Stands:510SQLite-Fälle bestanden; der eine dort
+ausgelassene Fall verlangt PostgreSQL. Der separate frische PostgreSQL-Lauf
+bestand79Fälle ohne Auslassung, einschließlich paralleler Veröffentlichung
+und gemeinsamer Bausteinreservierung. Flutter bestand50Tagesseitenfälle und
+87Grafik-/Lernablauffälle;26geänderte Fälle wurden nach den abschließenden
+Analyzerkorrekturen nochmals erfolgreich geprüft. Diese Umfänge überschneiden
+sich und sind keine entsprechend vielen echten Lernrunden. Die Analyse der
+gesamten Flutter-App meldete keine Hinweise. Anfangs scheiterten vier neue
+Widgettests am Ahem-Schriftersatz beziehungsweise Testaufbau; die endgültigen
+Layoutprüfungen verwenden die tatsächlichen mitgelieferten App-Schriften.

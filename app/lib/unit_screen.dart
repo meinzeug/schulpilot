@@ -3482,6 +3482,28 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         alignment: Alignment.centerLeft,
                         child: feedbackAudio(q, explanation!),
                       ),
+                      if (u['supports_question_explanation'] == true)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            key: const ValueKey(
+                              'feedback-question-explanation',
+                            ),
+                            onPressed: actionBusy
+                                ? null
+                                : () => perform(
+                                    () => showExplanation(
+                                      context,
+                                      u,
+                                      feedbackQuestion: q,
+                                    ),
+                                  ),
+                            icon: const Icon(Icons.auto_stories_outlined),
+                            label: const Text(
+                              'Lösung Schritt für Schritt ansehen',
+                            ),
+                          ),
+                        ),
                     ],
                   )
                 else ...[
@@ -3949,16 +3971,40 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     onPressed: () => pauseUnit(u),
   );
 
-  Future<void> showExplanation(BuildContext context, Json u) async {
+  Future<void> showExplanation(
+    BuildContext context,
+    Json u, {
+    Json? feedbackQuestion,
+  }) async {
     final requestedOwner = ownerAccount;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
-    final introduction = u['introduction_seen'] == false;
+    final fromFeedback = feedbackQuestion != null;
+    bool feedbackIsCurrent() =>
+        awaitingContinue &&
+        answerOutcome == 'correct' &&
+        answeredQuestion != null &&
+        answeredQuestion!['id'] == feedbackQuestion?['id'] &&
+        done(answeredQuestion) &&
+        inputSignature(answeredQuestion!) == inputSignature(feedbackQuestion!);
+    if (fromFeedback &&
+        (u['supports_question_explanation'] != true ||
+            !routeVisible ||
+            ModalRoute.of(context)?.isCurrent == false ||
+            !feedbackIsCurrent())) {
+      return;
+    }
+    final introduction = !fromFeedback && u['introduction_seen'] == false;
     final entryFollowup =
+        !fromFeedback &&
         u['learning_session']?['action']?['reason_code'] ==
-        'entry_probe_followup';
+            'entry_probe_followup';
     // A new application keeps its own solution hidden: after the prerequisite
     // probe we explain the saved topic, not the next question's answer.
-    final q = introduction || entryFollowup ? null : currentQuestion;
+    final q = fromFeedback
+        ? feedbackQuestion
+        : introduction || entryFollowup
+        ? null
+        : currentQuestion;
     final token = state.api.token, family = state.familyId;
     final foregroundRevision = explanationScopeRevision;
     final source = unit?['learning_session']?['source_signature'];
@@ -3970,16 +4016,24 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         state.api.token == token &&
         state.familyId == family &&
         unit?['learning_session']?['source_signature'] == source &&
+        (!fromFeedback || feedbackIsCurrent()) &&
         (q == null ||
-            currentQuestion != null &&
-                inputSignature(currentQuestion!) == questionSignature);
+            (fromFeedback ? answeredQuestion : currentQuestion) != null &&
+                inputSignature(
+                      (fromFeedback ? answeredQuestion : currentQuestion)!,
+                    ) ==
+                    questionSignature);
     final data = await state.api.post(
       '/units/${u['id']}/explanation',
       u['supports_question_explanation'] == true && q != null
           ? {'question_id': q['id']}
           : null,
     );
-    if (!context.mounted || !currentExplanation()) return;
+    if (!context.mounted ||
+        !currentExplanation() ||
+        (fromFeedback && data['question_id'] != q?['id'])) {
+      return;
+    }
     final positionKey = (
       jsonEncode([source, q?['id']?.toString() ?? 'introduction']),
       data['explanation'].toString(),

@@ -111,7 +111,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       day?['preparation'] is Map ? Json.from(day!['preparation'] as Map) : null;
   ({int total, int completed, int? active})? get packageParts {
     final value = preparation;
-    if (value?['phase'] != 'package') {
+    if (value?['phase'] != 'package' || value?['sources_changed'] == true) {
       return null;
     }
     final total = value?['total_parts'];
@@ -1527,39 +1527,48 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
         preparation?['error'] as String? ?? day?['last_error'] as String?;
     final canRetry = preparation?['can_retry'] == true;
     final isExtract = preparation?['phase'] == 'extract';
+    final sourcesChanged = preparation?['sources_changed'] == true;
     final parts = isExtract ? null : packageParts;
     final completed = preparation?['completed_pages'] as int?;
     final total = preparation?['total_pages'] as int?;
     final blocker = preparation?['retry_blocker'] as Map?;
     final code = blocker?['code'] ?? preparation?['error_code'];
-    final explanation =
-        blocker?['message'] as String? ??
-        switch (code) {
-          'quota_exhausted' => 'Neue KI-Inhalte können gerade nicht vorbereitet werden. Mit gespeicherten Aufgaben und Erklärungen kannst du weiterlernen.',
-          'provider_timeout' => 'Die KI hat länger gebraucht als erlaubt. Deine Heftseiten sind da.',
-          'invalid_output' =>
-            isExtract
-                ? 'Eine Heftseite konnte noch nicht vollständig gelesen werden. Deine Fotos und bisherigen Abschriften bleiben gespeichert.'
-                : 'Neue Aufgaben oder Grafiken konnten nicht sicher geprüft werden. Deine gespeicherten Seiten und Runden bleiben erhalten.',
-          'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',
-          'unreadable_photo' => 'Ein Foto ist nicht gut lesbar. Nimm es bitte bei gutem Licht neu auf.',
-          'cost_preflight' => 'Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.',
-          'source_changed' =>
-            'Eine Heftseite wurde geändert. Prüfe zuerst die aktuelle Seite.',
-          _ => canRetry ? 'Du kannst die Vorbereitung noch einmal starten.' : 'Deine Seiten bleiben gespeichert. Vorhandene Runden findest du unter Lernen.',
-        };
+    final blockerMessage = blocker?['message'] as String?;
+    const staleMessage =
+        'Die bisherige Vorbereitung gehört zur alten Fassung. Für die aktuellen Seiten müssen die Aufgaben neu vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.';
+    final explanation = sourcesChanged
+        ? [staleMessage, ?blockerMessage].join('\n\n')
+        : blockerMessage ??
+              switch (code) {
+                'quota_exhausted' => 'Neue KI-Inhalte können gerade nicht vorbereitet werden. Mit gespeicherten Aufgaben und Erklärungen kannst du weiterlernen.',
+                'provider_timeout' => 'Die KI hat länger gebraucht als erlaubt. Deine Heftseiten sind da.',
+                'invalid_output' =>
+                  isExtract
+                      ? 'Eine Heftseite konnte noch nicht vollständig gelesen werden. Deine Fotos und bisherigen Abschriften bleiben gespeichert.'
+                      : 'Neue Aufgaben oder Grafiken konnten nicht sicher geprüft werden. Deine gespeicherten Seiten und Runden bleiben erhalten.',
+                'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',
+                'unreadable_photo' => 'Ein Foto ist nicht gut lesbar. Nimm es bitte bei gutem Licht neu auf.',
+                'cost_preflight' => 'Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.',
+                'source_changed' => 'Eine Heftseite wurde geändert. Prüfe zuerst die aktuelle Seite.',
+                _ =>
+                  canRetry ? 'Du kannst die Vorbereitung noch einmal starten.' : 'Deine Seiten bleiben gespeichert. Vorhandene Runden findest du unter Lernen.',
+              };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         dayStatusCard(
           eyebrow: 'Deine Fotos sind gespeichert',
-          title: isExtract
+          title: sourcesChanged
+              ? 'Eine Heftseite wurde geändert'
+              : isExtract
               ? 'Lesen unterbrochen'
               : 'Das hat noch nicht geklappt',
           subtitle: explanation,
 
           label: canRetry
-              ? isExtract
+              ? sourcesChanged
+                    ? 'Mit den aktuellen Seiten neu vorbereiten'
+                    : isExtract
                     ? 'Lesen fortsetzen'
                     : parts != null
                     ? 'Fehlenden Teil erneut vorbereiten'

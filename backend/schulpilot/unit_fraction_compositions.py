@@ -22,6 +22,8 @@ REVISION = "unit-fraction-composition-1"
 ERROR = "Ungültige vorabgeprüfte Ganzes-Rest-Komposition."
 METHOD = re.compile(r"unecht\w*\s+br(?:ü|ue)ch\w*.{0,100}gemischt|br(?:ü|ue)ch\w*.{0,60}als\s+gemischt", re.I)
 LITERAL = re.compile(r"(?<![\w/.,+−-])([0-9]{1,2})\s*/\s*([0-9]{1,2})(?![\w/]|[.,][0-9])|\\(?:d?frac)\{([0-9]{1,2})\}\{([0-9]{1,2})\}")
+MIXED_GOAL = re.compile(r"(?:einen\s+)?unecht(?:e|en|er)\s+(?:bruch|brüche|brueche)\s+(?:als|in)\s+"
+    r"(?:eine\s+)?gemischt(?:e|en)\s+zahl(?:en)?\s+(?:darstellen|umwandeln|schreiben)", re.I)
 
 
 def eligible(source):
@@ -29,28 +31,65 @@ def eligible(source):
         and bool(METHOD.search(" ".join((source.get("topic", "") + "\n" + source.get("content", "")).split()))))
 
 
+def _focused_practice(payload):
+    """Only the existing goal-bound, explicitly requested mixed-number follow-up."""
+    if (payload.get("review") is not True or payload.get("practice_kind") not in ("repair", "check")
+            or payload.get("required_subject") != "Mathematik"
+            or payload.get("math_tasks")
+            or not isinstance(payload.get("required_topic"), str) or not payload["required_topic"].strip()):
+        return False
+    focus, goals = payload.get("focus_goal_ids"), payload.get("learning_goals")
+    if (not isinstance(focus, list) or not 1 <= len(focus) <= 2 or any(not isinstance(value, str) for value in focus)
+            or len(set(focus)) != len(focus) or not isinstance(goals, list)
+            or any(not isinstance(goal, dict) or goal.get("id") not in ("g1", "g2", "g3", "g4") for goal in goals)
+            or len({goal["id"] for goal in goals}) != len(goals)):
+        return False
+    by_id = {goal["id"]: goal for goal in goals}
+    if not set(focus) <= by_id.keys():
+        return False
+    from .learning_sources import exact_quote
+
+    sources = [source["content"] for source in (payload.get("visual_context") or {}).get("sources", [])
+        if eligible(source)]
+    return bool(sources) and all(isinstance(by_id[key].get("label"), str)
+        and MIXED_GOAL.fullmatch(" ".join(by_id[key]["label"].split()).rstrip(".!?"))
+        and isinstance(by_id[key].get("source_excerpt"), str)
+        and exact_quote(by_id[key]["source_excerpt"], sources) for key in focus)
+
+
 def add_reference(db, payload):
     from .visual_reference_models import VisualReference
 
     context = payload.get("visual_context") or {}
-    if (payload.get("selected_groups") or any(payload.get(k) for k in (
-            "review", "study_block", "homework_practice", "exam_preparation", "exam_review_practice"))
+    if (payload.get("selected_groups") or (payload.get("review") and not _focused_practice(payload))
+            or any(payload.get(k) for k in ("study_block", "homework_practice", "exam_preparation", "exam_review_practice"))
             or not any(eligible(source) for source in context.get("sources", []))):
         return payload
-    row = db.get(VisualReference, (RECIPE, 1))
+    row = db.get(VisualReference, (RECIPE, 2)) or db.get(VisualReference, (RECIPE, 1))
     if row and _digest(row.recipe) == row.digest:
-        context = {**context, "references": [*context["references"], {"id": row.id, "version": 1,
+        context = {**context, "references": [*context["references"], {"id": row.id, "version": row.version,
             "digest": row.digest, "kind": "fraction", "subject": "Mathematik"}]}
         return {**payload, "visual_context": context}
     return payload
+
+
+def _v2_text(n, d, q, r, stage):
+    if stage == "given":
+        return "Ein Ganzes besteht aus einem Teil." if d == 1 else f"Ein Ganzes besteht aus {d} gleich großen Teilen."
+    bundle = "einen Teil" if d == 1 else f"{d} Teile"
+    wholes = "So entsteht ein Ganzes." if q == 1 else f"So entstehen {q} Ganze."
+    remainder = (f"Es bleibt ein Teil: 1/{d}." if r == 1 else
+        f"Es bleiben {r} Teile: {r}/{d}." if r else "Es bleibt kein Bruchteil übrig.")
+    return f"Bei {n}/{d} bündeln wir jeweils {bundle} zu einem Ganzen. {wholes} {remainder}"
 
 
 def compile_candidates(context):
     if not context.get("required"):
         return []
     refs = context.get("references", [])
-    special = next((r for r in refs if r.get("id") == RECIPE and type(r.get("version")) is int
-        and r["version"] == 1 and r.get("digest") and r.get("subject") == "Mathematik"), None)
+    special = max((r for r in refs if r.get("id") == RECIPE and type(r.get("version")) is int
+        and r["version"] in (1, 2) and r.get("digest") and r.get("subject") == "Mathematik"),
+        key=lambda r: r["version"], default=None)
     if not special:
         return []
     rows = []
@@ -74,11 +113,13 @@ def compile_candidates(context):
                     "disclosure": stage, "source_excerpt": match.group(), "labels": [], "numbers": [a, b],
                     "connections": [], "marks": [], "unit": "", "variant": ""}).model_dump(mode="json") for a, b in pairs]
                 row = {"subject": "Mathematik", "group_id": None, "kind": "fraction",
-                    "reference": {"id": RECIPE, "version": 1}, "source_refs": [source["ref"]],
+                    "reference": {"id": RECIPE, "version": special["version"]}, "source_refs": [source["ref"]],
                     "disclosure": stage, "text": (f"Ein Ganzes besteht aus {d} gleich großen Teilen." if stage == "given" else
                         f"Bei {n}/{d} bündeln wir jeweils {d} Teile zu einem Ganzen. So entstehen {q} Ganze. "
                         + (f"Es bleiben {r} Teile: {r}/{d}." if r else "Es bleibt kein Bruchteil übrig.")),
                     "block": blocks[0], "proof": proof}
+                if special["version"] == 2:
+                    row["text"] = _v2_text(n, d, q, r, stage)
                 row["id"] = "uc_" + _digest({"revision": REVISION, "candidate": row})[:24]
                 if all(old["id"] != row["id"] for old in rows):
                     rows.append(row)
@@ -176,7 +217,8 @@ def validate_step(raw, candidates, *, introduction=False, question=None):
 
 
 def bind_schema(schema, payload):
-    if any(payload.get(k) for k in ("review", "study_block", "homework_practice", "exam_preparation", "exam_review_practice")):
+    if ((payload.get("review") and not _focused_practice(payload))
+            or any(payload.get(k) for k in ("study_block", "homework_practice", "exam_preparation", "exam_review_practice"))):
         return None
     context = payload.get("visual_context") or {}
     candidates = compile_candidates(context)

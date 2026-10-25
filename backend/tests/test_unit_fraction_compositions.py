@@ -118,7 +118,7 @@ def test_changed_or_unproven_compositions_fail_closed(household, mutation):
     elif mutation == "source_digest":
         context["sources"][0]["content"] += " geänderte Quelle"
     elif mutation == "version":
-        step["reference"]["version"] = 2
+        step["reference"]["version"] = 3
     elif mutation == "bool_version":
         step["reference"]["version"] = True
     elif mutation == "unrelated_fraction":
@@ -190,7 +190,7 @@ def test_bad_mock_response_is_rejected_once_and_keeps_reported_billing(household
     payload, _, wire = prepared(household)
     step = wire["questions"][-1]["explanation_steps"][0]
     if changed == "version":
-        step["reference"]["version"] = 2
+        step["reference"]["version"] = 3
     elif changed == "foreign_id":
         step["presentation"]["blocks"] = ["uc_unrelated"]
     else:

@@ -348,6 +348,22 @@
       "interaction": "fraction_parts",
       "variant": null,
       "scope": "unit_composition_only"
+    },
+    {
+      "id": "math.fraction.wholes_remainder",
+      "version": 2,
+      "subjects": [
+        "Mathematik"
+      ],
+      "kind": "fraction",
+      "purpose": "Vorab rechnerisch geprüfte Zerlegung eines unechten Bruchs in volle Ganze und Rest; ausschließlich gebundene Komposition.",
+      "terms": [
+        "unechte",
+        "gemischte"
+      ],
+      "interaction": "fraction_parts",
+      "variant": null,
+      "scope": "unit_composition_only"
     }
   ]
 }

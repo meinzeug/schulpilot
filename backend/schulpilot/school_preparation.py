@@ -394,6 +394,7 @@ def preparation_data(db, day, child=None):
     return {
         **publication_data(db, day, child=child),
         "status": status,
+        "sources_changed": bool(state.get("package_plan") and state.get("sources") and current != state["sources"]),
         "error_code": error_code if error else None,
         "retry_blocker": blocker,
         "retry_kind": retry_kind,
