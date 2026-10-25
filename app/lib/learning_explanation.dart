@@ -14,6 +14,7 @@ import 'schulbuddy.dart';
 import 'learning_graphic_scope.dart';
 import 'lab_view.dart';
 import 'fraction_composition_widget.dart';
+import 'fraction_expansion_widget.dart';
 
 // JSON lists/maps can be rebuilt while a local dialog covers the reader.
 // Their identity does not mean that the source or saved position changed.
@@ -522,7 +523,13 @@ class _LearningExplanationState extends State<LearningExplanation>
               publishPosition();
             }
           },
-          child: FractionCompositionWidget.supports(selected)
+          child: FractionExpansionWidget.supports(selected)
+              ? FractionExpansionWidget(
+                  step: selected,
+                  state: widget.state,
+                  key: ValueKey((widget.sourceKey, selected['id'])),
+                )
+              : FractionCompositionWidget.supports(selected)
               ? FractionCompositionWidget(
                   step: selected,
                   state: widget.state,

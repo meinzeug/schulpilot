@@ -148,11 +148,13 @@ class CoachingPanel extends StatelessWidget {
   final AppState state;
   final Json unit;
   final Future<void> Function() refresh;
+  final Future<void> Function(Json)? onQuestionExplanation;
   const CoachingPanel({
     super.key,
     required this.state,
     required this.unit,
     required this.refresh,
+    this.onQuestionExplanation,
   });
 
   @override
@@ -169,6 +171,7 @@ class CoachingPanel extends StatelessWidget {
         report: report,
         progress: progress,
         refresh: refresh,
+        onQuestionExplanation: onQuestionExplanation,
       );
     }
     return Column(
@@ -355,6 +358,7 @@ class _ChildCoachingPanel extends StatelessWidget {
   final Json? coach, progress;
   final Json report;
   final Future<void> Function() refresh;
+  final Future<void> Function(Json)? onQuestionExplanation;
   const _ChildCoachingPanel({
     required this.state,
     required this.unit,
@@ -362,6 +366,7 @@ class _ChildCoachingPanel extends StatelessWidget {
     required this.report,
     required this.progress,
     required this.refresh,
+    this.onQuestionExplanation,
   });
 
   @override
@@ -805,6 +810,42 @@ class _ChildCoachingPanel extends StatelessWidget {
                               attempt['assessment_history'] as List? ?? [],
                             ),
                           ],
+                        ),
+                      );
+                    },
+                  ),
+                if (unit['status'] == 'completed' &&
+                    unit['supports_question_explanation'] == true &&
+                    onQuestionExplanation != null &&
+                    (question['attempts'] as List? ?? []).isNotEmpty &&
+                    ((question['attempts'] as List).length >= 3 ||
+                        (question['attempts'] as List).any(
+                          (attempt) =>
+                              attempt is Map &&
+                              [
+                                'correct',
+                                'uncertain',
+                              ].contains(attempt['outcome']),
+                        )))
+                  Builder(
+                    builder: (context) {
+                      // Capture what was shown, never a later mutation of the
+                      // shared unit/attempt maps behind this saved callback.
+                      final saved = Json.from(
+                        jsonDecode(jsonEncode(question)) as Map,
+                      );
+                      return TextButton.icon(
+                        key: ValueKey(
+                          'completed-question-explanation-${saved['id']}',
+                        ),
+                        onPressed: () async {
+                          if (currentAction()) {
+                            await onQuestionExplanation?.call(saved);
+                          }
+                        },
+                        icon: const Icon(Icons.auto_stories_outlined),
+                        label: Text(
+                          'Erklärung zu Aufgabe ${questions.indexOf(question) + 1}',
                         ),
                       );
                     },

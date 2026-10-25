@@ -1347,6 +1347,15 @@ def request_practice(
     return enqueue(db, p, db.get(Child, unit.child_id), "coach_practice", payload, idempotency)
 
 
+def _practice_history_prompts(db, unit):
+    if unit.school_day_id:
+        units = db.scalars(select(LearningUnit).where(LearningUnit.child_id == unit.child_id,
+            LearningUnit.school_day_id == unit.school_day_id).order_by(LearningUnit.created, LearningUnit.id))
+    else:
+        _, units = root_and_units(db, unit)
+    return [question["prompt"] for previous in units for question in previous.questions]
+
+
 def process_practice(job_id):
     """An unavailable generator must never discard an already saved review."""
     from .learning_sources import failure_billing
@@ -1400,21 +1409,11 @@ def process_practice(job_id):
                 # round; it cannot change goals, canonical answers or the budget.
                 payload["controller_next_step"] = {k: proposal[k] for k in
                     ("kind", "learning_goal_id", "expected_result", "on_success", "on_error")}
+            complete_history = _practice_history_prompts(db, unit)
             if unit.school_day_id:
-                # A day can contain several independent stage chains. New
-                # practice must also avoid questions from those other stages.
-                payload["previous_prompts"] = [
-                    question["prompt"]
-                    for previous in db.scalars(
-                        select(LearningUnit)
-                        .where(
-                            LearningUnit.child_id == unit.child_id,
-                            LearningUnit.school_day_id == unit.school_day_id,
-                        )
-                        .order_by(LearningUnit.created, LearningUnit.id)
-                    )
-                    for question in previous.questions
-                ][-120:]
+                # Existing bounded model context stays bounded; the new compiler
+                # receives only compact candidate-pair exclusions from ALL rows.
+                payload["previous_prompts"] = complete_history[-120:]
             # Review observations belong in the report, not the new exercise request.
             payload.pop("completed_questions", None)
             from .catalog_ai import with_catalog_context
@@ -1423,6 +1422,9 @@ def process_practice(job_id):
             from .visual_references import with_visual_context
 
             payload = with_visual_context(db, child, payload, [db.get(Material, source["id"]) for source in sources])
+            from .unit_fraction_compositions import with_practice_history
+
+            payload = with_practice_history(payload, complete_history)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.rollback()
         provider_requested = True
@@ -1451,6 +1453,15 @@ def process_practice(job_id):
                 review.pop("assessment_kind", None)
             data["next_unit"] = result.data
             verify_current_provider(db, unit, values, "unit", job)
+            from .fraction_practice_plan import CURRENT_ERROR as PRACTICE_HISTORY_CHANGED
+            from .unit_fraction_compositions import validate_practice_history
+
+            try:
+                validate_practice_history(payload, result.data, _practice_history_prompts(db, unit))
+            except ValueError as error:
+                if error.args != (PRACTICE_HISTORY_CHANGED,):
+                    raise
+                raise ProviderError(PRACTICE_HISTORY_CHANGED) from None
             save_report(
                 db,
                 unit,

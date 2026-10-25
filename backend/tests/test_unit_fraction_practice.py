@@ -49,6 +49,7 @@ def setup_practice(household, *, two_focus=False, action="repair"):
         payload.pop("completed_questions", None)
         payload = visual_references.with_visual_context(db, child, payload,
             [db.get(Material, source["id"]) for source in sources])
+        payload = compositions.with_practice_history(payload, [q["prompt"] for q in unit.questions])
         unit_id = unit.id
     schema = providers.strict_schema(schemas.PracticeUnitOutput, preserve_limits=True)
     providers.indexed_choice_schema(schema, bounded_matches=True)
@@ -64,12 +65,11 @@ def setup_practice(household, *, two_focus=False, action="repair"):
             "presentation": {"version": 1, "evidence_kind": "knowledge", "blocks": [candidate["id"]]}}
 
     new_questions = []
-    for task, (literal, answer) in zip(providers.practice_tasks(payload), [("9/4", "2¼"), ("7/3", "2⅓")], strict=True):
-        question = schemas.PracticeQuestion.model_validate({"id": task["id"], "learning_goal_id": task["learning_goal_id"],
-            "type": "short", "prompt": "Schreibe " + literal + " als gemischte Zahl.", "answer": answer,
-            "options": [], "accepted": [], "hints": ["Bündele vollständige Ganze."],
+    for task in providers.practice_tasks(payload):
+        candidate = next(c for c in binding.candidates if c.get("question_core", {}).get("id") == task["id"])
+        question = schemas.PracticeQuestion.model_validate({**copy.deepcopy(candidate["question_core"]),
+            "hints": ["Bündele vollständige Ganze."],
             "explanation": "Bestimme die vollständigen Ganzen und den Rest."}).model_dump(mode="json")
-        candidate = next(c for c in binding.candidates if c["disclosure"] == "solution" and binding.question_bound(c, question))
         question["explanation_steps"] = [step(candidate)]
         new_questions.append(question)
     intro = next(c for c in binding.candidates if c["disclosure"] == "given")

@@ -251,7 +251,7 @@ def _task(operation, numbers, phase):
     return prompt + prefix + ": " + help_text + ending, answer
 
 
-def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, seed, *, required_labels=None, excluded_prompts=()):
+def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, seed, *, required_labels=None, excluded_prompts=(), expansion_denominator_limit=None):
     """Return exact source-backed task specifications, or [] for unknown skills.
 
     Callers supply already authorized, confirmed source snapshots. Explicitly
@@ -261,6 +261,9 @@ def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, se
     from .providers import ProviderError
 
     if type(count) is not int or not 1 <= count <= 5 or phase not in PHASE_TEXT:
+        raise ProviderError("Die Vorgaben für die mathematische Lernetappe sind ungültig.")
+    if expansion_denominator_limit is not None and (
+            type(expansion_denominator_limit) is not int or not 1 <= expansion_denominator_limit <= 24):
         raise ProviderError("Die Vorgaben für die mathematische Lernetappe sind ungültig.")
     catalog = _catalog(materials, subject, topic)
     if not catalog:
@@ -303,7 +306,9 @@ def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, se
         operation = min(available, key=lambda kind: component_counts.get(kind, 0))
         if operation in component_counts:
             component_counts[operation] += 1
-        candidates = list(_numbers(operation))[:MAX_CANDIDATES]
+        candidates = [numbers for numbers in _numbers(operation)
+            if operation != "expand" or expansion_denominator_limit is None
+            or numbers[1] * numbers[2] <= expansion_denominator_limit][:MAX_CANDIDATES]
         candidates.sort(key=lambda numbers: hashlib.sha256(f"{seed}|{phase}|{operation}|{numbers}".encode()).digest())
         for numbers in candidates:
             prompt, answer = _task(operation, numbers, phase)

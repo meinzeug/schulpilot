@@ -53,7 +53,7 @@ def candidates(db, subject, text=""):
     result = []
     for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only")).order_by(VisualReference.id, VisualReference.version)):
         recipe = row.recipe
-        if row.id == "math.fraction.wholes_remainder":
+        if row.id in ("math.fraction.wholes_remainder", "math.fraction.expansion"):
             continue  # Only the dedicated Unit proof binder may offer this recipe.
         # AI exploration templates are NEVER a vetted source-bound recipe.
         if recipe.get("scope") == "exploration_only":
@@ -139,7 +139,10 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
                                **({"curriculum_binding": {key: curriculum[key] for key in ("revision", "state_code", "school_form_id", "grade", "profile_signature")}} if curriculum is not None else {})}
     from .unit_fraction_compositions import add_reference
 
-    return add_reference(db, value)
+    value = add_reference(db, value)
+    from .study_fraction_expansions import add_reference as add_expansion_reference
+
+    return add_expansion_reference(db, value)
 
 
 
@@ -276,6 +279,15 @@ def validate_steps(db, steps, subject, context, *, question=None, group_id=None,
         texts = [refs[ref]["content"] for ref in step.source_refs]
         # The generated prose never serves as new source evidence for its graphic.
         fake = question or {"prompt": "", "type": "short", "answer": "", "accepted": []}
+        if stored.id == "math.fraction.expansion":
+            from .study_fraction_expansions import validate_question_step
+
+            if introduction or not any(r.get("id") == stored.id and r.get("version") == stored.version
+                    and r.get("digest") == stored.digest == digest(stored.recipe) for r in context.get("references", [])):
+                raise ValueError("Ungültiger vorabgeprüfter Erweiterungsbeweis.")
+            validate_question_step(step, context, question)
+            checked.append(step.model_dump())
+            continue
         if stored.id == "math.fraction.wholes_remainder":
             from .unit_fraction_compositions import compile_candidates, validate_step
 

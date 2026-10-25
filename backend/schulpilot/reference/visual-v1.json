@@ -364,6 +364,19 @@
       "interaction": "fraction_parts",
       "variant": null,
       "scope": "unit_composition_only"
+    },
+    {
+      "id": "math.fraction.expansion",
+      "version": 1,
+      "subjects": [
+        "Mathematik"
+      ],
+      "kind": "fraction",
+      "purpose": "Ein vorab rechnerisch geprüfter Erweiterungsschritt zeigt Ausgangsbruch und Ergebnisbruch als gleich große Teilmodelle. Ausschließlich an die unveränderte servergeplante Aufgabe und eine wörtlich belegte allgemeine Erweiterungsregel gebunden.",
+      "terms": [],
+      "interaction": "fraction_expansion",
+      "variant": null,
+      "scope": "unit_composition_only"
     }
   ]
 }

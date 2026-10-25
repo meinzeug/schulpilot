@@ -2059,3 +2059,66 @@ sich und sind keine entsprechend vielen echten Lernrunden. Die Analyse der
 gesamten Flutter-App meldete keine Hinweise. Anfangs scheiterten vier neue
 Widgettests am Ahem-Schriftersatz beziehungsweise Testaufbau; die endgültigen
 Layoutprüfungen verwenden die tatsächlichen mitgelieferten App-Schriften.
+
+### Quellengebundene Erweiterungsbilder und Aufgabenerklärungen128 (25.10.2026, 1.36.16+128)
+
+Die vorangegangene Liveprüfung zeigte nach dem bereits korrigierten nativen
+Ausgabeschema weitere getrennte Fehler: eine begrenzte Ausgabe, ein unvollständig
+belegtes Erweiterungsbild und eine Anschlussfrage ohne den exakt benötigten
+Grafikanker. Die historischen fehlerhaften Modelltexte wurden nicht gespeichert;
+die geschlossenen Validierungsgründe erlauben keine Behauptung ihres Wortlauts.
+Private Fotoprüfung, Korrekturpläne, Sicherungen und Auftragsbelege bleiben außerhalb
+von Git. Eine korrigierte Abschrift ist weiterhin keine fachliche Freigabe.
+
+`study_fraction_expansions.py` ergänzt den vorhandenen mathematischen Planer um
+`math.fraction.expansion`v1. Bei belegter Erweiterungsregel und einer passenden
+apply-/detective-Etappe werden unveränderte Aufgabenkerne vor dem Aufruf an zwei
+geordnete Bruchmodelle, den gemeinsamen Faktor, Quelle und Referenzversion gebunden.
+Nur diese vorab ausgewählte Darstellung beschränkt ihren endlichen Zahlenpool auf
+höchstens24 sichtbare Teile. Historische Aufgaben und andere Planungswege behalten
+ihre bisherigen Vorgaben. Gemischte, nicht vollständig darstellbare Pläne werden
+vor dem Versand abgewiesen; es gibt keine nachträglich erfundene Ersatzaufgabe.
+Die private Referenz bleibt aus dem gemeinsamen öffentlichen Bausteinkatalog
+ausgeschlossen (`unit_composition_only`). Der vorhandene OpenAI-Adapter dekodiert nun
+auch diesen ID-Vertrag vor der kanonischen Prüfung; die Produktionsroute ändert
+sich dadurch nicht.
+
+`fraction_practice_plan.py` bindet die zwei gezielten Umwandlungsfragen ebenfalls
+vor dem Anbieteraufruf an vorhandene Originalbrüche und bestehende Lernziele.
+Vollständige eigene Ketten-/Tageshistorie wird lokal auf bereits verwendete
+Quellenwerte reduziert; diese kompakte Ausschlussmenge wird vor dem Speichern
+unter der bestehenden Sperre erneut geprüft. Zu wenige neue Werte oder eine
+nicht eindeutig zuordenbare alte Umwandlung führen zu einem lokalen Abbruch mit
+null Anbietergebühr und dem Hinweis, eine andere bestätigte Seite zu wählen.
+Alte v1-/v2-Grafik-Snapshots, Rückblicke und Antworten bleiben erhalten.
+
+Flutter zeigt beim Erweitern zwei gleich große Flächen und Zähler-/Nennerrechnung.
+Die ausdrückliche Unterteilung verändert nur die sichtbaren Teilgrenzen. Zoom,
+Kontowechsel-/Routenprüfung, große Schrift und reduzierte Bewegung verwenden die
+bestehenden gemeinsamen Bausteine. In der ausdrücklich aufgeklappten Liste
+„Deine Antworten“ abgeschlossener Runden lässt sich eine gespeicherte
+Aufgabenerklärung erneut öffnen. Kinder verwenden den vorhandenen expliziten
+Erklärungsendpunkt samt normaler Explanation-Activity; Eltern den vorhandenen
+berechtigten GET-Pfad. Der neue abgeschlossene Modus schließt ausschließlich den
+Dialog und erzeugt weder neue Antwort noch Wiederaufnahme oder Modellaufruf.
+
+Synthetische Prüfung:96 Flutterfälle für abgeschlossene Erklärungen, beide
+Bruchrenderer und angrenzende Kinderführung bestanden; Flutter Analyze ohne
+Hinweise.69 Backendfälle für Erweiterungsbindung, Providerdekodierung und
+benachbarte Anschlussaufgaben bestanden vor der finalen Compilerintegration.
+76 Fälle derselben Erweiterungs-/Quell-/Reservierungsverträge bestanden unter
+frischem PostgreSQL ohne Skip; der lokale Cluster wurde anschließend entfernt.
+Nach der Compilerintegration bestanden107 gezielte Backendfälle und65 Fälle
+in einer weiteren isolierten PostgreSQL-Instanz, jeweils ohne Fehler; beide
+PostgreSQL-Cluster wurden entfernt. Die tatsächlichen Integrations-/Releasebelege
+werden revisionsgebunden geführt. Diese
+Umfänge überschneiden sich und sind nicht zu einer Gesamtzahl zu addieren.
+Widgetdaten und HTTP-Mocks belegen weder vollständige Handschrifterkennung noch
+100 echte Lernrunden oder eine Prüfung auf einem physischen Androidgerät.
+
+Schema bleibt0042; keine Migration und kein neuer Dienst. Vor Deployment gelten
+die bestehenden Konfigurationssicherungs-, Signierer-, Quellen- und CI-Prüfungen.
+Rückweg über die vorige geprüfte Releasefassung mit unveränderten privaten Daten
+und unveränderter Providerkonfiguration; private Quellkorrekturen behalten ihre
+Versionsgeschichte und dürfen nicht durch ein Release-Rollback zurückgeschrieben
+werden.

@@ -1037,17 +1037,28 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
             previous = practice_math_history(material_items, previous)
             excluded = practice_math_exclusions(material_items)
-        math_examples = fraction_tasks(
-            material_items,
-            payload.get("required_subject", ""),
-            payload.get("required_topic", ""),
-            previous,
-            phase,
-            payload.get("study_block", {}).get("question_count") or len(tasks or []) or (2 if payload.get("homework_practice") else 0),
-            json.dumps([phase, payload.get("required_topic"), previous], ensure_ascii=False),
-            required_labels=[task["label"] for task in tasks] if tasks else None,
-            excluded_prompts=excluded,
-        )
+        from .study_fraction_expansions import planning_limit as expansion_planning_limit
+
+        expansion_limit = expansion_planning_limit(payload)
+        try:
+            math_examples = fraction_tasks(
+                material_items,
+                payload.get("required_subject", ""),
+                payload.get("required_topic", ""),
+                previous,
+                phase,
+                payload.get("study_block", {}).get("question_count") or len(tasks or []) or (2 if payload.get("homework_practice") else 0),
+                json.dumps([phase, payload.get("required_topic"), previous], ensure_ascii=False),
+                required_labels=[task["label"] for task in tasks] if tasks else None,
+                excluded_prompts=excluded,
+                expansion_denominator_limit=expansion_limit,
+            )
+        except ProviderError as error:
+            if expansion_limit is not None:
+                # This exact local planner has not dispatched any provider call.
+                error.billing_result = Result({}, 0, 0, 0,
+                    telemetry={"pre_dispatch": True}, cost_source="cancelled")
+            raise
         if math_examples:
             payload = {**payload, "math_tasks": math_examples}
             if payload.get("homework_practice"):
@@ -1583,7 +1594,33 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     if function == "unit":
         from .unit_fraction_compositions import bind_schema as bind_unit_composition
 
-        unit_composition = bind_unit_composition(schema, payload)
+        try:
+            unit_composition = bind_unit_composition(schema, payload)
+        except ValueError as error:
+            from .fraction_practice_plan import ERROR as PRACTICE_POOL_ERROR
+            from .fraction_practice_plan import INVALID as PRACTICE_PLAN_ERROR
+
+            if error.args not in ((PRACTICE_POOL_ERROR,), (PRACTICE_PLAN_ERROR,)):
+                raise
+            # The bounded private planner has not made a provider request.
+            raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
+                telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+        if unit_composition is None:
+            from .study_fraction_expansions import ERROR as EXPANSION_ERROR
+            from .study_fraction_expansions import UNREPRESENTABLE as EXPANSION_UNREPRESENTABLE
+            from .study_fraction_expansions import bind_schema as bind_study_expansion
+
+            try:
+                unit_composition = bind_study_expansion(schema, payload)
+            except ValueError as error:
+                if error.args not in ((EXPANSION_ERROR,), (EXPANSION_UNREPRESENTABLE,)):
+                    raise
+                raise ProviderError(
+                    EXPANSION_UNREPRESENTABLE if error.args == (EXPANSION_UNREPRESENTABLE,) else
+                    "Für die geplanten Erweiterungsaufgaben fehlt ein vollständiger vorabgeprüfter Grafikbeleg. Es wurde keine KI-Anfrage gesendet.",
+                    code="invalid_output", billing_result=Result({}, 0, 0, 0,
+                        telemetry={"pre_dispatch": True}, cost_source="cancelled"),
+                ) from None
         if unit_composition is not None:
             payload = {**payload, "prepared_graphics": unit_composition.context}
             instructions += unit_composition.rules
@@ -1933,7 +1970,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         indexed_excerpts = config.provider == "openrouter" and excerpt_candidates is not None
-        if package_output is not None or unit_graphics is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
+        if package_output is not None or unit_graphics is not None or unit_composition is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
             validation_phase = "json"
             decoded = json.loads(text)
             if package_output is not None:

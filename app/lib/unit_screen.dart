@@ -1960,7 +1960,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         children: [
           u['round_kind'] == 'vocabulary'
               ? vocabularyResult(u)
-              : CoachingPanel(state: state, unit: u, refresh: load),
+              : completedCoaching(u),
           unitTips(u),
         ],
       );
@@ -2380,6 +2380,36 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ),
         if (helpExpanded) ...[SizedBox(height: 12), inlineHelp(u, q)],
       ],
+    );
+  }
+
+  Widget completedCoaching(Json u) {
+    final owner = ownerAccount;
+    final token = state.api.token, family = state.familyId;
+    final source = u['learning_session']?['source_signature'];
+    final questionsSignature = jsonEncode(u['questions']);
+    return CoachingPanel(
+      state: state,
+      unit: u,
+      refresh: load,
+      onQuestionExplanation: u['supports_question_explanation'] == true
+          ? (question) async {
+              if (!requestIsCurrent(u['id'], owner) ||
+                  !identical(unit, u) ||
+                  !visible ||
+                  !routeVisible ||
+                  ModalRoute.of(context)?.isCurrent == false ||
+                  state.api.token != token ||
+                  state.familyId != family ||
+                  unit?['learning_session']?['source_signature'] != source ||
+                  jsonEncode(unit?['questions']) != questionsSignature) {
+                return;
+              }
+              await perform(
+                () => showExplanation(context, u, completedQuestion: question),
+              );
+            }
+          : null,
     );
   }
 
@@ -3975,10 +4005,45 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     BuildContext context,
     Json u, {
     Json? feedbackQuestion,
+    Json? completedQuestion,
   }) async {
     final requestedOwner = ownerAccount;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
     final fromFeedback = feedbackQuestion != null;
+    final fromCompleted = completedQuestion != null;
+    if (fromFeedback && fromCompleted) return;
+    final completedSignature = fromCompleted
+        ? jsonEncode(completedQuestion)
+        : null;
+    Json? savedCompletedQuestion() {
+      final matches = (unit?['questions'] as List? ?? [])
+          .whereType<Map>()
+          .where((q) => q['id'] == completedQuestion?['id'])
+          .toList();
+      return matches.length == 1 ? Json.from(matches.single) : null;
+    }
+
+    bool completedIsCurrent() {
+      final saved = savedCompletedQuestion();
+      final attempts = saved?['attempts'] as List? ?? [];
+      return state.isChild &&
+          !awaitingContinue &&
+          completedQuestion?['id'] is String &&
+          completedQuestion?['id'] != '' &&
+          identical(unit, u) &&
+          unit?['status'] == 'completed' &&
+          unit?['supports_question_explanation'] == true &&
+          saved != null &&
+          attempts.isNotEmpty &&
+          (attempts.length >= 3 ||
+              attempts.any(
+                (attempt) =>
+                    attempt is Map &&
+                    ['correct', 'uncertain'].contains(attempt['outcome']),
+              )) &&
+          jsonEncode(saved) == completedSignature;
+    }
+
     bool feedbackIsCurrent() =>
         awaitingContinue &&
         answerOutcome == 'correct' &&
@@ -3993,14 +4058,25 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             !feedbackIsCurrent())) {
       return;
     }
-    final introduction = !fromFeedback && u['introduction_seen'] == false;
+    if (fromCompleted &&
+        (!visible ||
+            !routeVisible ||
+            ModalRoute.of(context)?.isCurrent == false ||
+            !completedIsCurrent())) {
+      return;
+    }
+    final introduction =
+        !fromFeedback && !fromCompleted && u['introduction_seen'] == false;
     final entryFollowup =
         !fromFeedback &&
+        !fromCompleted &&
         u['learning_session']?['action']?['reason_code'] ==
             'entry_probe_followup';
     // A new application keeps its own solution hidden: after the prerequisite
     // probe we explain the saved topic, not the next question's answer.
-    final q = fromFeedback
+    final q = fromCompleted
+        ? completedQuestion
+        : fromFeedback
         ? feedbackQuestion
         : introduction || entryFollowup
         ? null
@@ -4017,10 +4093,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         state.familyId == family &&
         unit?['learning_session']?['source_signature'] == source &&
         (!fromFeedback || feedbackIsCurrent()) &&
+        (!fromCompleted || completedIsCurrent()) &&
         (q == null ||
-            (fromFeedback ? answeredQuestion : currentQuestion) != null &&
+            (fromCompleted
+                        ? savedCompletedQuestion()
+                        : fromFeedback
+                        ? answeredQuestion
+                        : currentQuestion) !=
+                    null &&
                 inputSignature(
-                      (fromFeedback ? answeredQuestion : currentQuestion)!,
+                      (fromCompleted
+                          ? savedCompletedQuestion()
+                          : fromFeedback
+                          ? answeredQuestion
+                          : currentQuestion)!,
                     ) ==
                     questionSignature);
     final data = await state.api.post(
@@ -4031,7 +4117,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     );
     if (!context.mounted ||
         !currentExplanation() ||
-        (fromFeedback && data['question_id'] != q?['id'])) {
+        (fromCompleted &&
+            (!routeVisible || ModalRoute.of(context)?.isCurrent == false)) ||
+        ((fromFeedback || fromCompleted) && data['question_id'] != q?['id'])) {
       return;
     }
     final positionKey = (
@@ -4123,12 +4211,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ),
         actions: [
           TextButton(
-            onPressed: () => popUnitRoute(ctx, true),
-            child: Text('Weiter üben'),
+            onPressed: () => popUnitRoute(ctx, !fromCompleted),
+            child: Text(fromCompleted ? 'Schließen' : 'Weiter üben'),
           ),
         ],
       ),
     );
+    // Revisiting a completed question never resumes practice, acknowledges
+    // feedback or changes the support status of an already saved answer.
+    if (fromCompleted) return;
     if (continuePractice == true &&
         entryFollowup &&
         currentExplanation() &&
