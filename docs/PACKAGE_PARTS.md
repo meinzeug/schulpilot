@@ -92,3 +92,29 @@ Fach-, Quellen- und Darstellungsvalidatoren bleiben unverändert. Fertige gülti
 Teilbelege werden weiterverwendet; Konfiguration und Versuchszähler bleiben
 erhalten. Geschlossene Diagnosecodes nennen künftig ausschließlich die
 Prüfstelle und Fehlerklasse, niemals Anbietertexte, Eingaben oder Antworten.
+
+## Zusammenhängender Erzeugungsvertrag (1.36.3+115)
+
+Ein neu gestarteter realer Teilauftrag unter 114 wurde erneut abgewiesen
+(gemeldete Gebühr 0,049308 USD). Die generische Value-/Key-/Index-/Type-Meldung
+belegt keine einzelne konkrete Fehlerstelle; die verworfene Rohantwort wurde
+nicht gespeichert. Der fertige erste Teil und sämtliche bisherigen Gebühren
+bleiben erhalten. Eine reine Erhöhung der Ausgabelänge ist hierfür kein Beleg.
+
+Künstliche Gegenbeispiele zeigen zwei weitere Lücken im Anfrageschema: Eine
+gültige Grafik konnte mit einer anderen gültigen Referenz kombiniert werden;
+außerdem konnte die Katalogzuordnung das bereits serverseitig festgelegte Fach
+weglassen. Neue Teilaufträge binden deshalb Referenz-ID und -Version, Grafiktyp,
+gegebenenfalls Rezeptvariante, Fach-/Gruppenquellen und Aufdeckstufe im selben
+vollständigen Schritt. Das bekannte Fach bleibt in der Katalogzuordnung fest;
+unsichere Themenzuordnungen dürfen weiterhin leer bleiben. Fertige Teilbelege,
+Antworten und bestehende Einzelaufträge werden nicht umgeschrieben.
+
+Die Fähigkeitsbeschreibung verwendet tatsächlich erreichbare Darstellungen
+des endgültigen Schemas, einschließlich dieser gebundenen Kopien. Sämtliche
+nachgelagerten Quellen-, Fach-, Rechen-, Rezept- und Antwortprüfungen bleiben
+maßgeblich. Bei einer Ablehnung nennen geschlossene Diagnosedaten zusätzlich
+die lokale Prüfphase und bekannte Fehlerklassen. Anbietertexte, Eingaben,
+Quellzitate, unbekannte Schlüssel und Tracebacks werden dabei nicht gespeichert.
+Die Abrechnung behält ihre originalen Werte. Keine automatische Wiederholung,
+keine neue Migration und keine Änderung an Modell, Denkstufe oder Kostengrenzen.

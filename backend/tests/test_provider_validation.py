@@ -122,3 +122,114 @@ def test_unexpected_existing_telemetry_is_not_replaced():
     value = result()
     value.telemetry = "existing-invalid-receipt"
     assert annotate(value, error) is value and value.telemetry == "existing-invalid-receipt"
+
+
+@pytest.mark.parametrize("phase,error,reason", [
+    ("part_bounds", ValueError("Ein Lernpaketteil benötigt genau ein Fach."), "part_structure"),
+    ("catalog", ValueError("Unknown catalog subject identity"), "catalog_assignment"),
+    ("entry", ValueError("Eine geprüfte Voraussetzung wurde verändert."), "entry_probe_changed"),
+    ("subject", ValueError("Grafik ohne wörtlichen Quellenbeleg."), "subject_source"),
+    ("visual", ValueError("Unveränderte Wortkästen sind keine fachliche Phasenvisualisierung."), "visual_scene_phases"),
+    ("json", ValueError("PRIVATE_RESPONSE"), "schema_validation"),
+    ("visual", KeyError("PRIVATE_KEY"), "missing_field"),
+    ("visual", IndexError("PRIVATE_INDEX"), "invalid_index"),
+    ("visual", TypeError("PRIVATE_TYPE"), "invalid_type"),
+])
+def test_closed_stage_diagnostics_never_render_exceptions_or_change_billing(phase, error, reason):
+    value = result()
+    before = copy.deepcopy(value.__dict__)
+    annotate(value, error, phase=phase)
+    assert value.telemetry["validation"] == {"version": 1, "phase": phase,
+        "errors": [{"location": "field", "reason": reason}]}
+    assert {key: item for key, item in value.__dict__.items() if key != "telemetry"} == {
+        key: item for key, item in before.items() if key != "telemetry"}
+    assert value.telemetry["cost_preflight"] == before["telemetry"]["cost_preflight"]
+    assert "PRIVATE" not in json.dumps(value.telemetry)
+
+
+def test_unknown_phase_and_malicious_exception_arguments_are_closed_without_rendering():
+    class Secret:
+        def __str__(self):
+            raise AssertionError("Exception argument must not be rendered")
+
+        def __repr__(self):
+            raise AssertionError("Exception argument must not be represented")
+
+    class SecretError(ValueError):
+        def __str__(self):
+            raise AssertionError("Exception must not be rendered")
+
+    for error in (ValueError(Secret()), SecretError("PRIVATE_MESSAGE"),
+            ValueError("Grafik passt nicht zur gewählten Referenz. PRIVATE_SUFFIX")):
+        value = result()
+        annotate(value, error, phase="PRIVATE_PHASE")
+        assert value.telemetry["validation"] == {"version": 1, "phase": "schema",
+            "errors": [{"location": "field", "reason": "schema_validation"}]}
+        assert "PRIVATE" not in json.dumps(value.telemetry)
+
+
+@pytest.mark.parametrize("target,error,phase,reason", [
+    ("json", None, "json", "schema_validation"),
+    ("transport", None, "transport", "schema_validation"),
+    ("schulpilot.package_part_output.validate", ValueError("Der Grafikschritt überschreitet den begrenzten Umfang."),
+        "part_bounds", "part_bounds"),
+    ("schulpilot.subject_content.validate_output", KeyError("PRIVATE_CHILD_KEY"), "subject", "missing_field"),
+    ("schulpilot.visual_references.validate_output", ValueError("Unveränderte Wortkästen sind keine fachliche Phasenvisualisierung."),
+        "visual", "visual_scene_phases"),
+    ("schulpilot.visual_references.validate_output", IndexError("PRIVATE_INDEX"), "visual", "invalid_index"),
+    ("schulpilot.visual_references.validate_output", TypeError("PRIVATE_ARGUMENT"), "visual", "invalid_type"),
+])
+def test_actual_adapter_keeps_single_reported_bill_when_postvalidation_fails(monkeypatch, target, error, phase, reason):
+    import httpx
+    from package_output_helpers import PackageOutputCapture
+    from schulpilot import providers
+    from test_package_part_output import part
+    from test_package_transport import config
+
+    data, payload = part()
+    # Actual immutable reference metadata, matching the normal server context.
+    for reference in payload["visual_context"]["references"]:
+        reference["kind"] = "scene"
+    output, real_client, calls = PackageOutputCapture(monkeypatch), httpx.Client, []
+
+    def handler(request):
+        calls.append(request)
+        content = "{PRIVATE_JSON_PAYLOAD" if target == "json" else json.dumps(
+            {"PRIVATE_KEY": "PRIVATE_VALUE"} if target == "transport" else output.wire(data), ensure_ascii=False)
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": content}}],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 2000, "cost": 0.0202}})
+
+    def fail(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(providers.httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(providers, "external_allowed", lambda *a, **kw: None)
+    monkeypatch.setattr(providers, "decrypt", lambda _: "synthetic-no-network-key")
+    monkeypatch.setattr("schulpilot.model_routing.selection", lambda _: {
+        "route": {"upstreams": ["azure"]}, "region": "standard"})
+    if target not in ("json", "transport"):
+        monkeypatch.setattr(target, fail)
+    value = config()
+    value.max_output_tokens, value.reserve_micros = 8000, 250000
+    with pytest.raises(providers.ProviderError) as caught:
+        providers.request_provider(value, "package", payload)
+    billed = caught.value.billing_result
+    assert len(calls) == 1
+    assert billed.cost_micros == 20200 and billed.cost_source == "reported"
+    assert billed.input_tokens == 100 and billed.output_tokens == 2000
+    assert billed.telemetry["validation"] == {"version": 1, "phase": phase,
+        "errors": [{"location": "field", "reason": reason}]}
+    assert "PRIVATE" not in json.dumps(billed.telemetry)
+    assert "PRIVATE" not in str(caught.value)
+
+
+def test_pydantic_phase_keeps_existing_bounded_three_error_contract():
+    error = ValidationError.from_exception_data("PRIVATE_MODEL", [{"type": "missing",
+        "loc": ("units", 0, "questions", index, "PRIVATE_FIELD"), "input": {"secret": "PRIVATE_INPUT"}}
+        for index in range(5)])
+    value = result()
+    annotate(value, error, phase="schema")
+    assert value.telemetry["validation"] == {"version": 1, "phase": "schema", "errors": [
+        {"location": f"units.0.questions.{index}.field", "reason": "schema_validation"} for index in range(3)]}
+    assert "PRIVATE" not in json.dumps(value.telemetry)

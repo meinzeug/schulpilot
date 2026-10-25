@@ -8,14 +8,14 @@ import copy
 import json
 
 REVISION = "package-part-output-1"
-GRAPHIC_SCHEMA_REVISION = "package-part-graphics-1"
+GRAPHIC_SCHEMA_REVISION = "package-part-graphics-2"
 
 
 def enabled(payload):
     return payload.get("package_partition") is not None
 
 
-def bind_schema(schema):
+def bind_schema(schema, payload=None):
     def walk(node):
         if not isinstance(node, dict):
             return
@@ -59,6 +59,8 @@ def bind_schema(schema):
 
     walk(schema)
     _bind_graphic_branches(schema)
+    if payload is not None:
+        _bind_references(schema, payload)
 
 
 def _nonnull(field):
@@ -187,6 +189,137 @@ def _bind_graphic_branches(schema):
         raise ValueError("Für diesen Teilauftrag ist keine passende Grafik freigegeben.")
     graphic["anyOf"] = list(branches.values())
 
+def _bind_references(schema, payload):
+    """Bind the chosen immutable recipe and disclosure to the SAME step.
+
+    Only a new planned request is affected. Full strict objects, ordinary refs
+    and nested anyOf are understood by all existing adapters and the codec.
+    Canonical source/numeric/answer checks still validate the decoded response.
+    """
+    context = payload.get("visual_context") or {}
+    if not enabled(payload) or not context.get("required"):
+        return
+    definitions = schema.get("$defs", {})
+    templates = {key: copy.deepcopy(definitions[key]) for key in
+                 ("ExplanationStep", "Presentation", "VisualReferenceChoice", "Graphic")}
+    registered = {}
+
+    def resolved(node):
+        if "$ref" in node:
+            return copy.deepcopy(definitions[node["$ref"].rsplit("/", 1)[-1]])
+        return copy.deepcopy(node)
+
+    def register(node):
+        key = json.dumps(node, sort_keys=True, separators=(",", ":"))
+        if key not in registered:
+            name = "PartExplanation" + str(len(registered) + 1)
+            while name in definitions:
+                name += "x"
+            definitions[name] = node
+            registered[key] = {"$ref": "#/$defs/" + name}
+        return copy.deepcopy(registered[key])
+
+    def graphic_for(reference, stage):
+        kind = reference.get("kind")
+        original = next((branch for branch in templates["Graphic"].get("anyOf", [])
+                         if kind in branch["properties"]["kind"].get("enum", [])), None)
+        if original is None or stage not in original["properties"]["disclosure"].get("enum", []):
+            return None
+        graphic = copy.deepcopy(original)
+        fields = graphic["properties"]
+        fields["kind"] = {"type": "string", "enum": [kind]}
+        fields["disclosure"] = {"type": "string", "enum": [stage]}
+        variant = reference.get("variant")
+        if variant:
+            if "enum" in fields["variant"] and variant not in fields["variant"]["enum"]:
+                return None
+            if variant in ("roots", "pollination") and stage != "solution":
+                return None
+            fields["variant"] = {"type": "string", "enum": [variant]}
+        if kind == "lab":
+            recipe = reference.get("lab_recipe_id")
+            if not recipe:
+                return None
+            lab = resolved(fields["lab"])
+            if recipe not in lab["properties"]["recipe_id"].get("enum", []):
+                return None
+            lab["properties"]["recipe_id"] = {"type": "string", "enum": [recipe]}
+            # These are the two existing finite LabV1 parameter families, not
+            # client/model supplied programs or inferred physical values.
+            family = {"physics.force_motion": "ForceParameters", "german.sentence_shift": "SentenceParameters"}.get(recipe)
+            if family is None:
+                return None
+            lab["properties"]["parameters"] = {"$ref": "#/$defs/" + family}
+            fields["lab"] = register(lab)
+        return register(graphic)
+
+    def steps_for(subject, group, *, introduction):
+        sources = [row["ref"] for row in context.get("sources", [])
+                   if row.get("subject") == subject and row.get("group_id") == group]
+        if not sources:
+            raise ValueError("Der Teilauftrag hat keine passende Fach-/Gruppenquelle für Erklärschritte.")
+        competences = [row["id"] for row in context.get("competences", []) if row.get("subject") == subject]
+        branches = []
+        for reference in context.get("references", []):
+            if reference.get("subject") != subject:
+                continue
+            for stage in (("given",) if introduction else ("hint1", "hint2", "hint3", "solution")):
+                graphic = graphic_for(reference, stage)
+                if graphic is None:
+                    continue
+                presentation = copy.deepcopy(templates["Presentation"])
+                presentation["properties"]["blocks"]["items"] = graphic
+                choice = copy.deepcopy(templates["VisualReferenceChoice"])
+                choice["properties"]["id"]["enum"] = [reference["id"]]
+                choice["properties"]["version"]["enum"] = [reference["version"]]
+                step = copy.deepcopy(templates["ExplanationStep"])
+                fields = step["properties"]
+                fields["reference"] = register(choice)
+                fields["disclosure"] = {"type": "string", "enum": [stage]}
+                fields["presentation"] = register(presentation)
+                fields["source_refs"]["items"]["enum"] = list(dict.fromkeys(sources))
+                fields["competence_id"] = ({"anyOf": [{"type": "string", "enum": competences}, {"type": "null"}]}
+                                           if competences else {"type": "null"})
+                branch = register(step)
+                if branch not in branches:
+                    branches.append(branch)
+        if not branches:
+            raise ValueError("Der Teilauftrag hat keine passende Referenz/Grafik für seine Aufdeckstufe.")
+        return {"type": "array", "minItems": 1, "maxItems": 1,
+                "items": branches[0] if len(branches) == 1 else {"anyOf": branches}}
+
+    groups = {(row["subject"], row["id"]) for row in payload.get("selected_groups", [])}
+
+    def bind_questions(node, subject, group):
+        node = resolved(node)
+        if "anyOf" in node:
+            node["anyOf"] = [bind_questions(branch, subject, group) for branch in node["anyOf"]]
+        elif "explanation_steps" in node.get("properties", {}):
+            node["properties"]["explanation_steps"] = steps_for(subject, group, introduction=False)
+        return node
+
+    def bind_units(node):
+        node = resolved(node)
+        if "anyOf" in node:
+            node["anyOf"] = [bind_units(branch) for branch in node["anyOf"]]
+            return node
+        fields = node.get("properties", {})
+        subjects, ids = fields.get("subject", {}).get("enum", []), fields.get("group_id", {}).get("enum", [])
+        matches = [(subject, group) for subject, group in groups
+                   if (not subjects or subject in subjects) and (not ids or group in ids)]
+        if len(matches) != 1:
+            raise ValueError("Die Erklärgrafik benötigt das eindeutig geplante Fach und die Paketgruppe.")
+        subject, group = matches[0]
+        fields["subject"]["enum"], fields["group_id"]["enum"] = [subject], [group]
+        fields["explanation_steps"] = steps_for(subject, group, introduction=True)
+        fields["questions"]["items"] = bind_questions(fields["questions"]["items"], subject, group)
+        return node
+
+    units = schema.get("properties", {}).get("units")
+    if units is None:
+        raise ValueError("Der Grafikvertrag benötigt einen geplanten Paketauftrag.")
+    units["items"] = bind_units(units["items"])
+
 
 def validate(data):
     """Reject oversized generated prose/steps, with all semantic guards intact."""
@@ -238,7 +371,10 @@ Dies ist weder der gesamte Lernstoff noch ein Nachweis für bereits beherrschte 
 
 
 RULES += """
-package-part-graphics-1: kind bestimmt die PARAMETERFAMILIE; die Feldnamen können im Wire Aliase haben.
+package-part-graphics-2: reference.id/version gehört zu genau DEM gebundenen Grafiktyp,
+seiner freigegebenen Variante und gegebenenfalls seinem Laborrezept. Quellen nur aus demselben
+Fach und derselben Gruppe. Einführung given, Fragen Hinweis/Lösung; Text und Grafik dieselbe Stufe.
+kind bestimmt die PARAMETERFAMILIE; die Feldnamen können im Wire Aliase haben.
 scene: scene vollständig; text_probe=null,lab=null; labels enthält eine Textalternative;
 numbers=[],connections=[],marks=[],unit='',variant=''. Zwei belegte unterschiedliche Phasen,
 2–4 benannte Objekte, mindestens eine belegte Beziehung; Platznummern sind lokale Schemaplätze.

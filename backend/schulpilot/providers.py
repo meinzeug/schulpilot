@@ -1572,7 +1572,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .package_transport import rules as package_rules
 
         if package_part_output.enabled(payload):
-            package_part_output.bind_schema(schema)
+            package_part_output.bind_schema(schema, payload)
+            from .package_part_catalog import bind_schema as bind_part_catalog_schema
+
+            bind_part_catalog_schema(schema, payload)
         # Entry binding may remove entire answer formats after the earlier
         # capability pass. Describe only the final reachable formats.
         payload = {**payload, "content_context": subject_content.generation_context(
@@ -1804,6 +1807,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             f"KI-Anbieter meldet HTTP {response.status_code}. Schlüssel, Modell, Freigabe oder Kontingent prüfen.",
             billing_result=diagnostic,
         )
+    validation_phase = "json"
     try:
         if len(response.content) > 500_000:
             raise ValueError("oversize")
@@ -1813,6 +1817,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             raise ProviderError(
                 "Die Antwort des KI-Anbieters war nicht lesbar. Bitte später erneut versuchen."
             ) from None
+        validation_phase = "envelope"
         if not isinstance(raw, dict):
             raise ValueError("invalid envelope")
         if config.provider == "openrouter":
@@ -1865,18 +1870,25 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         indexed_excerpts = config.provider == "openrouter" and excerpt_candidates is not None
         if package_output is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
+            validation_phase = "json"
             decoded = json.loads(text)
             if package_output is not None:
+                validation_phase = "transport"
                 try:
                     decoded = package_output.decode(decoded)
-                except ValueError:
+                except ValueError as error:
+                    from .provider_validation import annotate
+
+                    annotate(billing_result, error, phase=validation_phase)
                     raise ProviderError(
                         "Die Paket-Ausgabe entspricht nicht dem angeforderten Ausgabeformat. Es wurden keine Ersatzaufgaben erstellt."
                     ) from None
             if homework_quotes is not None:
                 from .homework import decode_sources
 
+                validation_phase = "source"
                 decoded = decode_sources(decoded, homework_quotes)
+            validation_phase = "source"
             if indexed_excerpts and isinstance(decoded, dict):
                 for goal in decoded.get("learning_goals", []):
                     index = goal.get("source_excerpt_index") if isinstance(goal, dict) else None
@@ -1890,13 +1902,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
                 decoded = {**decoded, "next_unit": None}
             if indexed_choices:
+                validation_phase = "choice"
                 decoded = decode_choice_indices(decoded)
+            validation_phase = "schema"
             data = response_type.model_validate(decoded).model_dump()
         else:
+            validation_phase = "schema"
             data = response_type.model_validate_json(text).model_dump()
         if function == "package" and payload.get("package_partition") is not None:
             from .package_part_output import validate as validate_part_output
 
+            validation_phase = "part_bounds"
             validate_part_output(data)
         # A new optional field must not mutate legacy stored questions by
         # serializing an absent presentation as `null`. Explicit presentations
@@ -1912,27 +1928,34 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 for item in value:
                     omit_absent_presentations(item)
 
+        validation_phase = "normalization"
         omit_absent_presentations(data)
         action_proposal = None
         if controller_proposal:
             from .learning_controller import checked_proposal
 
+            validation_phase = "controller"
             action_proposal = checked_proposal(data.pop("next_step"), payload)
         catalog_assignment = None
         if catalog_context:
             from .catalog_ai import checked_assignment
 
+            validation_phase = "catalog"
             catalog_assignment = checked_assignment(data.pop("catalog_assignment"), catalog_context, data)
         if function == "extract":
+            validation_phase = "extract"
             data = TranscriptionOutput.model_validate(data).as_material()
         if exam_analysis:
             from .exam_review_transport import validate_bounds as validate_exam_bounds
 
+            validation_phase = "exam_bounds"
             validate_exam_bounds(data, config.max_output_tokens)
+        validation_phase = "subject"
         if function == "unit" and payload.get("goal") and payload.get("required_topic") and any(
             data[field] != payload["required_" + field] for field in ("subject", "topic")
         ):
             raise ProviderError("Die Übung passt nicht zum bestätigten Elternthema. Der Auftrag bleibt gespeichert.")
+        validation_phase = "practice"
         if tasks and {(q["id"], q["learning_goal_id"]) for q in data["questions"]} != {
             (task["id"], task["learning_goal_id"]) for task in tasks
         }:
@@ -1959,6 +1982,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             originals = payload.get("homework_original_prompts") or [material.get("content", "") for material in material_items]
             validate_practice_output(data, [*originals, *(payload.get("previous_prompts") or [])])
             validate_practice_focus(data, payload.get("homework_practice_focus"))
+        validation_phase = "source"
         if excerpt_candidates is not None and any(
             goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
         ):
@@ -1976,12 +2000,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             raise ProviderError("Die Sprachaufgabe verwendet keinen passenden bestätigten Wortbeleg.")
         if review_only and data.get("next_unit") is not None:
             raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
+        validation_phase = "counts"
         if block_count:
             if len(data["questions"]) != block_count:
                 raise ProviderError("Die KI hat die Lernetappe nicht vollständig erstellt. Bitte erneut versuchen.")
             if reasoning_stage and any(q["type"] != "choice" for q in data["questions"]):
                 raise ProviderError("Die Etappe enthält keine passenden Verständnisaufgaben. Bitte neu vorbereiten.")
             if not is_mathematics(payload.get("required_subject")):
+                validation_phase = "factual"
                 validate_factual_package(
                     {"units": [{**data, "group_id": "block"}]},
                     {
@@ -1990,6 +2016,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     },
                     allow_matching=compact_openrouter,
                 )
+        validation_phase = "counts"
         if package_targets and (
             len(data["units"]) != len(package_targets)
             or {unit["group_id"] for unit in data["units"]} != set(package_targets)
@@ -1999,7 +2026,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Die KI hat den vorgegebenen Lernumfang nicht vollständig erstellt. Bitte das Paket erneut versuchen."
             )
         if package_targets:
+            validation_phase = "factual"
             validate_factual_package(data, payload, allow_matching=compact_openrouter)
+        validation_phase = "coaching"
         if function == "coach" and payload.get("learning_goals"):
             data["learning_goals"] = payload["learning_goals"]
             if model_type is s.AssignedCoachingReviewOutput:
@@ -2014,19 +2043,23 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if payload.get("learning_entry"):
             from .learning_entry import validate_entry_output
 
+            validation_phase = "entry"
             validate_entry_output(payload, data)
         if function == "learning_asset":
             from .db import DB
             from .learning_assets import checked_output as checked_asset_output
 
+            validation_phase = "asset"
             with DB() as asset_db:
                 checked_asset_output(asset_db, data, payload["public_spec"])
         if visual_functions:
+            validation_phase = "subject"
             subject_content.validate_output(data, payload, bounded_matching=compact_openrouter)
             if payload.get("visual_context"):
                 from .db import DB
                 from .visual_references import validate_output as validate_visual_output
 
+                validation_phase = "visual"
                 with DB() as visual_db:
                     if function == "unit_visuals":
                         from .visual_jobs import checked_output
@@ -2034,6 +2067,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                         checked_output(visual_db, data, payload)
                     else:
                         validate_visual_output(visual_db, data, payload)
+        validation_phase = "billing"
         cost = None
         reported = usage.get("cost") if config.provider == "openrouter" else None
         if (
@@ -2078,7 +2112,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     except ValidationError as error:
         from .provider_validation import annotate
 
-        annotate(billing_result, error)
+        annotate(billing_result, error, phase=validation_phase)
         # Only known schema field names and numeric positions, never input,
         # unknown extra keys, validator context or echoed provider content.
         fields = {
@@ -2111,7 +2145,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Die KI-Ausgabe erfüllt die Aufgabenprüfung nicht. Es wurden keine Ersatzaufgaben erstellt. Prüfstellen: "
             + ", ".join(locations), billing_result=billing_result,
         ) from None
-    except (ValueError, KeyError, IndexError, TypeError):
+    except (ValueError, KeyError, IndexError, TypeError) as error:
+        from .provider_validation import annotate
+
+        annotate(billing_result, error, phase=validation_phase)
         raise ProviderError(
             "Die KI-Ausgabe ist unvollständig, abgelehnt oder nicht als sichere Aufgabenstruktur validierbar. Es wurden keine erfundenen Ersatzaufgaben erstellt.",
             billing_result=billing_result,

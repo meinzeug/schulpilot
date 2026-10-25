@@ -114,13 +114,15 @@ def context(subjects, profiles, *, schema=None, compact_matching=False, symbol_w
     selected = list(dict.fromkeys(subject for subject in subjects if isinstance(subject, str) and subject))
     allowed = {kind for subject in selected for kind in profiles.get(subject, ())}
     definitions = (schema or {}).get("$defs", {})
-    reachable = {id(item) for item in _nodes(schema or {}, definitions)}
-    graphic = definitions.get("Graphic", {})
-    presentation = definitions.get("Presentation", {})
+    reachable = list(_nodes(schema or {}, definitions))
+    # A request may bind immutable reference-specific copies of these objects.
+    # Only actually reachable fields describe the request, never unused defs.
+    graphics = [item["properties"] for item in reachable if
+                {"kind", "labels", "numbers", "scene", "text_probe", "lab"} <= item.get("properties", {}).keys()]
+    presentations = [item["properties"] for item in reachable if
+                     {"version", "evidence_kind", "blocks"} <= item.get("properties", {}).keys()]
     if schema is not None:
-        graphic = graphic if id(graphic) in reachable else {}
-        presentation = presentation if id(presentation) in reachable else {}
-        allowed &= set(graphic.get("properties", {}).get("kind", {}).get("enum", []))
+        allowed &= {kind for graphic in graphics for kind in graphic["kind"].get("enum", [])}
     types = question_types(schema) if schema is not None else []
     by_subject = {subject: set() for subject in selected}
     if schema is not None:
@@ -146,14 +148,15 @@ def context(subjects, profiles, *, schema=None, compact_matching=False, symbol_w
         ],
         "question_types": types,
         "answer_ui": {kind: ANSWER_UI[kind] for kind in types if kind in ANSWER_UI},
-        "max_blocks": presentation.get("properties", {}).get("blocks", {}).get("maxItems", 0),
+        "max_blocks": max((item["blocks"].get("maxItems", 0) for item in presentations), default=0),
         "use_for": {kind: PURPOSES[kind] for kind in sorted(allowed)},
         "local_interactions": {kind: INTERACTIONS[kind] for kind in sorted(allowed) if kind in INTERACTIONS},
     }
     if "lab" in allowed:
         from .learning_labs import RECIPES
 
-        enabled = set(definitions.get("LabV1", {}).get("properties", {}).get("recipe_id", {}).get("enum", []))
+        enabled = {recipe for item in reachable if {"recipe_id", "recipe_version", "parameters"} <= item.get("properties", {}).keys()
+                   for recipe in item["properties"]["recipe_id"].get("enum", [])}
         value["lab_recipes"] = {subject: [key for key, recipe in RECIPES.items() if key in enabled and subject in recipe["subjects"]]
             for subject in selected}
     if "grouped" in types:

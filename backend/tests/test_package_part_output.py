@@ -22,6 +22,7 @@ def part():
                 block["scene"]["steps"] = block["scene"]["steps"][:2]
     context["visual_context"]["sources"] = context["visual_context"]["sources"][:1]
     context["visual_context"]["references"] = context["visual_context"]["references"][:1]
+    context["visual_context"]["references"][0]["kind"] = "scene"
     payload = {**context, "materials": [{"subject": unit["subject"], "group_id": unit["group_id"],
         "topic": f"Künstliches Thema {index}", "content": context["visual_context"]["sources"][0]["content"]}
         for index in range(3)], "selected_groups": [{"id": unit["group_id"], "subject": unit["subject"],

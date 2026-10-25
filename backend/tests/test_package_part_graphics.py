@@ -180,7 +180,7 @@ def test_real_adapter_selected_branch_codec_and_bounds_guide_remain_consistent(m
     assert len(calls) == 1 and len(result.data["units"][0]["questions"]) == 2
     submitted, schema, instructions = _submitted(provider, calls[0])
     assert submitted["content_context"]["scene_limits"] == {"objects": 4, "steps": 2, "transition_ms": 800}
-    assert "package-part-graphics-1" in instructions and "0<=Zähler<=Nenner<=24" in instructions
+    assert package_part_output.GRAPHIC_SCHEMA_REVISION in instructions and "0<=Zähler<=Nenner<=24" in instructions
     # The actual request has only selected-profile, strict full Graphic branches.
     objects = []
     def visit(node):

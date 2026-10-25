@@ -1526,3 +1526,34 @@ unveränderten 250.000-µUSD-Reservierung bei 8000 Ausgabetokens. Das sind
 Bytemessungen und Vorabrechnungen, keine echten Token-, Preis- oder
 Modellqualitätsmessungen. Null Anbieteraufrufe. Keine neue Laufzeitabhängigkeit,
 keine Schema-/Choice-Decoderlockerung, keine Quellen- oder Antwortreparatur.
+
+### Referenzkopplung und geschlossene Nachprüfung (25.10.2026, 1.36.3+115)
+
+Der ausdrücklich erneut gestartete Teilauftrag unter Release114 kostete laut
+OpenRouter 0,049308 USD und wurde mit der generischen strukturellen
+Fehlermeldung abgewiesen. Seine genaue lokale Fehlerstelle ist rückwirkend
+nicht belegt. Eine rein lesende Prüfung der drei betroffenen bestätigten
+Quellen fand sowohl literale Bruchdarstellungen als auch Pfeilnotation und die
+vorhandenen Bruch-/Szenenreferenzen; daraus folgt noch kein Nachweis, welche
+Grafik tatsächlich erzeugt wurde oder fachlich geeignet war.
+
+Neue künstliche Gegenbeispiele prüfen die bisher unverbundene Auswahl von
+Referenz/Grafik und das Weglassen eines bereits festgelegten Katalogfachs.
+Der neue Erzeugungsvertrag bindet diese Angaben vor dem Anbieteraufruf;
+nachgelagerte Prüfungen und gemeldete Abrechnungswerte bleiben erhalten.
+Geschlossene lokale Validierungsphasen ergänzen die vorhandenen begrenzten
+Diagnosetags. Keine Rohantworten, Quelltexte oder privaten Fehlerargumente
+werden dafür protokolliert. Umfang und Grenzen:
+[PACKAGE_PARTS.md](PACKAGE_PARTS.md).
+
+Der gezielte gemeinsame Nachlauf für die Referenzkopplung umfasst 579 bestandene
+und einen vorgesehenen übersprungenen Testfall (206,90 s). Er verbindet
+Teilplanung, Koordinator/Worker, Referenz-/Grafik-/Fachfähigkeit, Katalog,
+Transport und Abrechnung mit künstlichen Eingaben. Dies ist kein Ergebnis der
+gesamten Testsuite und kein Nachweis einer erfolgreichen realen Generierung.
+
+Zusätzlich prüfen neun isolierte Fälle den Testdatenbank-Schutz: Die echte
+Test-Fixture verweigert ihren Lösch-/Initialisierungsschritt bei abweichender
+Engine-URL oder zwischengespeicherten Entwicklungseinstellungen. URL und
+Zugangsdaten erscheinen nicht im Fehler. Die Testumgebung muss vor dem ersten
+Appimport feststehen; diese Prüfung ist kein Wiederherstellungsmechanismus.

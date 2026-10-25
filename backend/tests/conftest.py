@@ -2,15 +2,16 @@ import os
 import tempfile
 
 from cryptography.fernet import Fernet
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 _directory = tempfile.mkdtemp(prefix="schulpilot-tests-")
 test_url = os.getenv("TEST_DATABASE_URL", "")
 if test_url:
-    from sqlalchemy.engine import make_url
-
     if not (make_url(test_url).database or "").endswith("_test"):
         raise RuntimeError("Integration tests require a dedicated database ending in _test")
-os.environ["DATABASE_URL"] = test_url or "sqlite:///" + _directory + "/test.sqlite"
+_EXPECTED_TEST_DATABASE_URL = test_url or "sqlite:///" + _directory + "/test.sqlite"
+os.environ["DATABASE_URL"] = _EXPECTED_TEST_DATABASE_URL
 os.environ["DATA_DIR"] = _directory
 os.environ["MASTER_KEY"] = Fernet.generate_key().decode()
 os.environ["ENVIRONMENT"] = "test"
@@ -26,8 +27,19 @@ from schulpilot.main import app  # noqa: E402
 HEADERS = {"X-Schulpilot-Request": "1", "X-Client-Platform": "native"}
 
 
+def require_test_database(actual_engine, actual_settings, expected_url):
+    """Refuse cached application state before any destructive test setup."""
+    try:
+        matches = make_url(actual_engine.url) == make_url(expected_url)
+    except (ArgumentError, AttributeError, TypeError, ValueError):
+        matches = False
+    if not matches or getattr(actual_settings, "environment", None) != "test":
+        raise RuntimeError("Destructive test setup requires the dedicated test database and test settings.")
+
+
 @pytest.fixture(autouse=True)
 def clean_database():
+    require_test_database(engine, settings, _EXPECTED_TEST_DATABASE_URL)
     old = dict(settings.__dict__)
     Base.metadata.drop_all(engine)
     init_db()

@@ -67,7 +67,8 @@ def candidates(db, subject, text=""):
             continue
         result.append({"id": row.id, "version": row.version, "digest": row.digest,
                        "kind": recipe["kind"], "purpose": recipe["purpose"],
-                       "interaction": recipe["interaction"], "subject": subject, "score": score})
+                       "interaction": recipe["interaction"], "subject": subject, "score": score,
+                       **{key: recipe[key] for key in ("variant", "lab_recipe_id") if recipe.get(key)}})
     return sorted(result, key=lambda row: (-row["score"], row["id"]))[:8]
 
 
