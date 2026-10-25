@@ -1475,3 +1475,13 @@ Fehlerstopp, expliziten Retry nur des fehlenden Teils und das Entfernen
 privater Zwischenkopien. Alle Anbieterantworten dieser Tests sind künstlich;
 diese Ergebnisse belegen keinen realen KI-Erfolg. Der zusätzliche gemeinsame
 Regressionstest des vorhandenen Paket-/Tagesablaufs läuft separat.
+
+Der zusätzliche gemeinsame Lauf zeigte 231 Erfolge, einen vorgesehenen Skip
+und genau eine Regression: Der einfache Fortschrittsabruf lud zusätzlich das
+Kind, obwohl keine Retryplanung erforderlich war. Die Korrektur verwendet die
+bereits im Retryzweig berechnete Teilplanung; der normale Statusabruf bleibt
+wieder bei genau einer kleinen Materialmetadatenabfrage. Die unveränderte
+bestehende Queryassertion und alle 20 neuen Koordinatorfälle bestanden danach
+gemeinsam: 21/21 in 17,32 Sekunden auf isolierter RAM-SQLite. Der vollständige
+233-Fälle-Nachlauf prüft die abschließende Quelle separat; kein Test wurde zur
+Annahme zusätzlicher Abfragen gelockert.

@@ -321,6 +321,7 @@ def preparation_data(db, day, child=None):
         status, error = "failed", job.error
     current = [{"id": m.id, "revision": m.revision} for m in source_pages]
     can_retry = status in ("failed", "blocked") and bool(source_pages)
+    new_part_contract = False
     if can_retry and current == state.get("sources"):
         if state.get("phase") == "extract":
             waiting = next((m for m in source_pages if m.status == "uploaded" and not m.confirmed), None)
@@ -334,6 +335,9 @@ def preparation_data(db, day, child=None):
             child = child or db.get(Child, day.child_id)
             try:
                 proposed = _prepare_parts(db, day, child, state, source_pages)
+                new_part_contract = bool(proposed.get("package_plan")) and (
+                    proposed["package_plan"] != state.get("package_plan")
+                    or proposed["package_config_revision"] != state.get("package_config_revision"))
                 if proposed.get("package_plan"):
                     plan = proposed["package_plan"]
                     _, completed = _part_outputs(proposed, plan)
@@ -371,11 +375,6 @@ def preparation_data(db, day, child=None):
     error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
     if error_code == "unknown" and error:
         error_code = message_code(error)
-    try:
-        new_part_contract = bool(_prepare_parts(db, day, child or db.get(Child, day.child_id), state, source_pages)) \
-            and not _current_plan(db, day, child or db.get(Child, day.child_id), state)
-    except (HTTPException, ValueError, KeyError, TypeError, IndexError):
-        new_part_contract = False
     if can_retry and not blocker and error_code == "cost_preflight" and job and not new_part_contract:
         failed_usage = db.scalar(select(Usage).where(Usage.job_id == job.id).order_by(Usage.created.desc()).limit(1))
         config = db.get(ProviderConfig, 1)
