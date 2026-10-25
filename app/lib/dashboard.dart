@@ -550,6 +550,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     _ => 0,
   };
   int version = 0;
+  Json? polledOverview;
   Timer? preparationPoll;
   GoRouter? observedRouter;
   Json? observingAccount;
@@ -565,7 +566,43 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       identical(state.user, observingAccount) &&
       state.familyId == observingFamily;
   void refresh() {
-    if (mounted && sameAccount) setState(() => version++);
+    if (mounted && sameAccount) {
+      setState(() {
+        polledOverview = null;
+        version++;
+      });
+    }
+  }
+
+  Future<void> pollPreparation(Json previous) async {
+    final account = state.user, family = state.familyId;
+    final session = state.api.token, revision = state.revision;
+    final currentVersion = version, child = widget.childId;
+    bool current() =>
+        mounted &&
+        sameAccount &&
+        foreground &&
+        visible &&
+        identical(state.user, account) &&
+        state.familyId == family &&
+        state.api.token == session &&
+        state.revision == revision &&
+        version == currentVersion &&
+        widget.childId == child;
+    if (!current() || reading) return;
+    reading = true;
+    try {
+      final next = await state.api.get(
+        '/children/$child/overview?compact=true',
+      );
+      if (current()) setState(() => polledOverview = next);
+    } catch (_) {
+      // A temporary status-read failure leaves the last authorized view intact.
+      // The next scheduled read is still a GET, never a preparation retry.
+    } finally {
+      reading = false;
+      if (current()) watchPreparation(polledOverview ?? previous);
+    }
   }
 
   bool get visible {
@@ -636,7 +673,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     preparationPoll = Timer(delay, () {
       preparationPoll = null;
       if (mounted && foreground && visible && sameAccount && !reading) {
-        refresh();
+        if (state.isChild) {
+          unawaited(pollPreparation(data));
+        } else {
+          refresh();
+        }
       }
     });
   }
@@ -672,6 +713,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               )),
               revision: '$version-${state.revision}',
               load: () async {
+                polledOverview = null;
                 reading = true;
                 try {
                   return await state.api.get(
@@ -681,7 +723,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   reading = false;
                 }
               },
-              builder: (data, reload) {
+              builder: (loaded, reload) {
+                final data = polledOverview ?? loaded;
                 watchPreparation(data);
                 if (state.isChild) {
                   return _ChildHomeContent(

@@ -1626,3 +1626,32 @@ Unabhängiges JSON-Schema-Validieren prüft den wirklichen Wirevertrag und
 weist einen falschen Fragebruch trotz ansonsten gültiger Grafikkennung ab.
 100 Compilerfälle und 13 Adapterfälle bestanden; dies ist kein Ergebnis der
 gesamten Testsuite oder Nachweis eines erfolgreichen erneuten Liveauftrags.
+
+Der anschließende reale Produktionslauf unter Quellversion `515f44e`
+(1.36.5+117) wurde erfolgreich abgeschlossen: sechs zusammengeführte Teile,
+sechs veröffentlichte Einheiten, zwölf Aufgaben und achtzehn gespeicherte
+Grafikschritte mit gültigen Referenz-Digests. Die gemeinsame Backendprüfung
+bestand mit 761 erfolgreichen Fällen und einem übersprungenen Fall; vier
+separate Operatorfälle bestanden ebenfalls. Tatsächliche erfolgreiche
+Teilkosten: 0,234892 USD einschließlich des wiederverwendeten ersten Teils;
+0,194954 USD entfielen auf die fünf fehlenden Teile. Frühere Fehlversuche sind
+separat erhalten. Private Quellen, Antworten und Bildschirmkopien bleiben
+außerhalb von Git. Details und Grenzen stehen in `docs/PACKAGE_PARTS.md`.
+
+### Ruhige Statusanzeige auf Heute (25.10.2026, 1.36.6+118)
+
+Der Kinder-Statusabruf in `dashboard.dart` rief bislang alle fünf Sekunden
+denselben vollständigen Ladeweg wie eine ausdrückliche Aktualisierung auf.
+`LoadView` ersetzte den bestehenden Inhalt durch seine Ladeanzeige; dadurch
+ging der Elementzustand der Heute-Karten verloren. Der Timer liest den
+Überblick nun still per GET und übernimmt eine gültige Antwort in den bereits
+angezeigten Inhalt. Während der Anfrage sowie bei einem vorübergehenden
+Lesefehler bleiben Inhalt und Scrollposition erhalten. Der nächste Statusabruf
+erzeugt weder eine Lernrunde noch eine erneute KI-Verarbeitung.
+
+Ein verspätetes Ergebnis wird nach Konto-, Familien-, Sitzungs-, Revisions-,
+Kind-, Routen- oder Vordergrundwechsel nicht übernommen. Die ausdrückliche
+Aktualisierung und andere Ladeansichten behalten ihren bisherigen Ablauf.
+Die neue Widgetregression verwendet verzögerte künstliche GET-Antworten und
+prüft den erhaltenen Elementzustand und Scrollversatz, Statuswechsel,
+Lesefehler und Sitzungswechsel; sie benötigt keine neuen KI-Aufrufe.

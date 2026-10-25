@@ -199,3 +199,32 @@ Hinweis-/Lösungsstufen. Quelle, Referenz und Parameter bleiben gekoppelt;
 verschiedene Quellen oder wertgleiche andere Bruchdarstellungen werden nicht
 zusammengelegt. Das vermeidet vierfach wiederholte Fragefelder, ohne eine
 Darstellung oder Hilfestufe zu entfernen.
+
+### Tatsächliche Produktionsprüfung unter 117
+
+Der konkret freigegebene Reparaturauftrag wurde mit der normalen Reservierung
+einmal erneut gestartet. Der bereits gespeicherte erste Teil blieb erhalten;
+die fünf fehlenden Teile wurden anschließend ohne weitere Wiederholung
+erfolgreich erzeugt und gemeinsam veröffentlicht. Die lesende Prüfung der
+gespeicherten Einheiten ergab sechs Einheiten, zwölf Aufgaben und achtzehn
+Erklärschritte mit jeweils einer Grafik. Alle sechs Grafik-Snapshots waren
+bereit. Die tatsächlich gespeicherten Referenzen
+`math.fraction.part_whole` Version1 und
+`language.forms.original_comparison` Version1 stimmten mit den unveränderlichen
+Referenz-Digests überein; alle Parameter-Digests waren vorhanden.
+
+Die sechzehn verwendbaren bestätigten Seiten besitzen sechzehn aktuelle
+Quellenverknüpfungen. Sieben bereits als unbrauchbar ausgeschlossene Seiten
+wurden weiterhin nicht in Aufgaben umgedeutet. Die zwei älteren Einheiten und
+fünf Antwortversuche waren weiterhin vorhanden; es wurden keine Kinderantworten
+zum Testen abgegeben. Eine nachträgliche Inhaltsgleichheit sämtlicher früherer
+Datensätze wird damit nicht als separat gemessener Nachweis behauptet.
+
+Die sechs erfolgreichen Teilaufrufe kosteten laut gespeicherten tatsächlichen
+OpenRouter-Belegen insgesamt 0,234892 USD, davon 0,194954 USD für die fünf
+Aufrufe unter 117. Frühere fehlgeschlagene Teilaufrufe bleiben mit zusätzlich
+0,231228 USD sichtbar. Keiner dieser elf Teiljobs hatte bei Abschluss noch
+unbekannte Gebühren oder offene Reservierungen. Desktop und Smartphone zeigten
+den fertigen Lernweg; eine neue Lernrunde wurde für diese Sichtprüfung nicht
+gestartet. Das belegt den konkreten Ablauf, keine vollständige Lehrplan- oder
+fachliche Qualitätsprüfung aller möglichen neuen Aufgaben.
