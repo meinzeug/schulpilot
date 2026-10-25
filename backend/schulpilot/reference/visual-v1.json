@@ -300,6 +300,25 @@
       "terms": [],
       "interaction": "Originalbeispiele bewusst auswählen und wortgleiche oder unterschiedliche Stellen lokal fokussieren; keine Umstellung, Bewertung oder automatische Animation.",
       "variant": "classification"
+    },
+    {
+      "id": "german.word_formation.parts",
+      "version": 1,
+      "subjects": [
+        "Deutsch"
+      ],
+      "kind": "sentence",
+      "purpose": "Vollständige sichtbare Wortbausteine einer ausdrücklich belegten Plusfolge vergleichen. Nur Originalbeschriftungen derselben Quellenzeile; keine erfundene Wortzerlegung, keine Pfeilrichtung und keine Grammatikbewertung. Eine Frage nennt mindestens einen vollständigen Originalbaustein.",
+      "terms": [
+        "Wortbildung",
+        "Vorsilbe",
+        "Präfix",
+        "Wortstamm",
+        "Nachsilbe",
+        "Suffix"
+      ],
+      "interaction": "Originalbausteine bewusst auswählen und Unterschiede lokal betrachten; keine eigene Umordnung oder Bewertung.",
+      "variant": null
     }
   ]
 }

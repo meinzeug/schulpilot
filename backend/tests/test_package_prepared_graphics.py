@@ -196,12 +196,15 @@ def test_scene_compiler_never_guesses_reverses_or_extends_a_relation(text):
     assert not any(row["kind"] == "scene" for row in prepared_graphics.compile_candidates(payload_for(text)))
 
 
-def test_other_subject_and_legacy_paths_and_existing_saved_parts_are_unchanged():
+def test_explicit_nonmath_source_binding_keeps_legacy_paths_and_existing_saved_parts_unchanged():
     payload = payload_for("Wasser → Dampf.", subject="Geographie")
     assert prepared_graphics.compile_candidates(payload)
-    assert bind(payload)[1] is None  # Future compiler expansion is explicit, not a silent all-subject rollout.
+    assert bind(payload)[1].context["revision"] == "package-source-graphics-1"
+    # The new source-bound nonmath contract is explicit; legacy requests and
+    # already saved canonical outputs do not acquire it retroactively.
     payload["package_partition"] = None
     assert prepared_graphics.compile_candidates(payload) == []
+    assert bind(payload)[1] is None
     data, _ = part()
     frozen = copy.deepcopy(data)
     package_part_output.validate(data)

@@ -6,14 +6,23 @@ Production decoding and all original rejection assertions remain authoritative.
 """
 import copy
 import json
+import math
 
-from schulpilot import package_output_transport
+from schulpilot import graphic_transport, package_output_transport
 from schulpilot.schemas import PackageOutput
 
 
 class PackageOutputCapture:
     def __init__(self, monkeypatch):
         self.binding = None
+        self.graphic_binding = None
+        original_graphics = graphic_transport.bind
+
+        def capture_graphics(schema):
+            self.graphic_binding = original_graphics(schema)
+            return self.graphic_binding
+
+        monkeypatch.setattr(graphic_transport, "bind", capture_graphics)
         original = package_output_transport.bind
         def capture(schema):
             self.binding = original(schema)
@@ -22,13 +31,36 @@ class PackageOutputCapture:
 
     def schema(self, actual):
         if self.binding is None:
+            if self.graphic_binding is not None:
+                assert actual == self.graphic_binding.wire_schema
+                return self.graphic_binding.canonical_schema
             return actual
         assert actual == self.binding.wire_schema
         return self.binding.canonical_schema
 
     def wire(self, value):
         if self.binding is None or not isinstance(value, dict) or "units" not in value:
-            return copy.deepcopy(value)
+            result = copy.deepcopy(value)
+            if self.graphic_binding is not None:
+                # Emit the requested native spelling, including deliberately
+                # invalid pairs. No repaired parameters or pre-billing reject.
+                def native(item):
+                    if isinstance(item, dict):
+                        presentation = item.get("presentation")
+                        if isinstance(presentation, dict):
+                            for block in presentation.get("blocks", []):
+                                if isinstance(block, dict) and block.get("kind") == "fraction":
+                                    values = block.get("numbers")
+                                    if isinstance(values, list):
+                                        values = [int(v) if type(v) is float and math.isfinite(v) and v.is_integer() else v for v in values]
+                                        block["numbers"] = json.dumps(values, separators=(",", ":"))
+                        for child in item.values():
+                            native(child)
+                    elif isinstance(item, list):
+                        for child in item:
+                            native(child)
+                native(result)
+            return result
         root = PackageOutput.model_json_schema()
         def defaults(schema, item):
             if "$ref" in schema:

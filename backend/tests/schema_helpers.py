@@ -32,3 +32,17 @@ def object_with(schema, required):
             for child in node:
                 yield from walk(child)
     return next(walk(resolved(schema)))
+
+
+def native_graphic_branches(schema):
+    """Native wire unions have complete strict leaves, no global base sibling."""
+    graphic = schema["$defs"]["Graphic"]
+    assert set(graphic) == {"anyOf"}
+    for branch in graphic["anyOf"]:
+        assert branch["type"] == "object" and branch["additionalProperties"] is False
+        assert set(branch["required"]) == set(branch["properties"])
+    return graphic["anyOf"]
+
+
+def native_graphic_kinds(schema):
+    return {kind for branch in native_graphic_branches(schema) for kind in branch["properties"]["kind"]["enum"]}

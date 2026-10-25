@@ -185,15 +185,26 @@ class Binding:
         return RULES
 
     @property
+    def fixed_text(self):
+        return True
+
+    def offered(self, candidate):
+        return _offered(candidate)
+
+    def question_bound(self, candidate, question):
+        return (candidate["kind"] == "fraction" and _question_anchor(candidate, question)
+                and bool(re.search(_fraction_prompt_pattern(candidate), question.get("prompt", ""))))
+
+    @property
     def context(self):
         return {"version": 1, "revision": REVISION,
                 "candidates": [{key: copy.deepcopy(value) for key, value in row.items() if key != "block"}
-                               for row in self.candidates if _offered(row)]}
+                               for row in self.candidates if self.offered(row)]}
 
     def hydrate(self, data):
         """Restore only the exact requested ID; reject every scope/field mix."""
         result = copy.deepcopy(data)
-        choices = {row["id"]: row for row in self.candidates if _offered(row)}
+        choices = {row["id"]: row for row in self.candidates if self.offered(row)}
         units = result.get("units") if isinstance(result, dict) else None
         if not isinstance(units, list) or len(units) != 1:
             raise ValueError("Ungültige Struktur der vorbereiteten Grafikzuordnung.")
@@ -218,10 +229,12 @@ class Binding:
                         raise ValueError("Vorbereitete Grafik gehört nicht zum Fach oder zur Paketgruppe.")
                     if step.get("disclosure") != selected["disclosure"] or (selected["disclosure"] == "given") != (item is unit):
                         raise ValueError("Vorbereitete Grafik gehört nicht zur erlaubten Aufdeckstufe.")
-                    if any(_digest(step.get(key)) != _digest(selected[key]) for key in ("reference", "source_refs", "text")):
+                    keys = ("reference", "source_refs", "text") if self.fixed_text else ("reference", "source_refs")
+                    if any(_digest(step.get(key)) != _digest(selected[key]) for key in keys):
                         raise ValueError("Vorbereitete Grafikmetadaten stimmen nicht mit der Auswahl überein.")
-                    if item is not unit and (selected["kind"] != "fraction" or not _question_anchor(selected, item)
-                            or not re.search(_fraction_prompt_pattern(selected), item.get("prompt", ""))):
+                    if not self.fixed_text and (not isinstance(step.get("text"), str) or not step["text"].strip() or len(step["text"]) > 350):
+                        raise ValueError("Ungültige Struktur der vorbereiteten Grafikzuordnung.")
+                    if item is not unit and not self.question_bound(selected, item):
                         raise ValueError("Vorbereitete Grafik passt nicht zu den ausdrücklichen Frageparametern.")
                     presentation["blocks"] = [copy.deepcopy(selected["block"])]
         return result
@@ -234,7 +247,12 @@ def bind_schema(schema, payload):
     # keeps its original strict contract. No unsupported substitute is emitted.
     if len(groups) != 1 or groups[0].get("subject") != "Mathematik" or not any(row["kind"] == "fraction" for row in candidates):
         return None
-    binding = Binding(tuple(candidates))
+    return bind_candidates(schema, Binding(tuple(candidates)))
+
+
+def bind_candidates(schema, binding, *, question_kinds=("fraction",), prompt_pattern=_fraction_prompt_pattern):
+    """Reuse the strict ID/stage binder; ordinary maths retains its own policy."""
+    candidates = binding.candidates
     definitions = schema["$defs"]
     step_template = copy.deepcopy(definitions["ExplanationStep"])
     presentation_template = copy.deepcopy(definitions["Presentation"])
@@ -246,8 +264,10 @@ def bind_schema(schema, payload):
     def step_ref(candidate):
         step = copy.deepcopy(step_template)
         props = step["properties"]
-        for key in ("text", "disclosure"):
+        for key in (("text", "disclosure") if binding.fixed_text else ("disclosure",)):
             props[key] = {"type": "string", "enum": [candidate[key]]}
+        if not binding.fixed_text:
+            props["text"].update(minLength=1, maxLength=350)
         choice = resolved(props["reference"])
         for key in ("id", "version"):
             choice["properties"][key]["enum"] = [candidate["reference"][key]]
@@ -276,7 +296,7 @@ def bind_schema(schema, payload):
     # strict step and immutable ID, with identical source/ref/parameter scope.
     question_bases = {}
     for candidate in candidates:
-        if candidate["kind"] != "fraction" or candidate["disclosure"] == "given":
+        if candidate["kind"] not in question_kinds or candidate["disclosure"] == "given":
             continue
         base = copy.deepcopy(candidate)
         base.pop("id")
@@ -292,7 +312,7 @@ def bind_schema(schema, payload):
         branches = []
         for stage_candidates in question_bases.values():
             candidate = stage_candidates[0]
-            pattern = _fraction_prompt_pattern(candidate)
+            pattern = prompt_pattern(candidate)
             prompt = node["properties"]["prompt"]
             if "pattern" in prompt and prompt["pattern"] != pattern:
                 raise ValueError("Der feste Fragevertrag lässt sich nicht verlustfrei an die Grafik binden.")

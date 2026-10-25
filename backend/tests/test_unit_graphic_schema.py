@@ -58,9 +58,9 @@ def test_actual_unit_request_binds_proper_fraction_pairs_before_model(monkeypatc
     sent, schema, instructions = _submitted(provider, calls[0])
     branch = fraction_branch(schema)
     field = branch["properties"]["numbers"]
-    assert field["minItems"] == field["maxItems"] == 2
-    assert field["enum"] == [[n, d] for d in range(1, 25) for n in range(d + 1)]
-    assert [7, 4] not in field["enum"] and [3, 4] in field["enum"]
+    assert set(schema["$defs"]["Graphic"]) == {"anyOf"}
+    assert field == {"type": "string", "enum": [f"[{n},{d}]" for d in range(1, 25) for n in range(d + 1)]}
+    assert "[7,4]" not in field["enum"] and "[3,4]" in field["enum"]
     assert all(branch["properties"][key] == {"type": "null"} for key in ("scene", "text_probe", "lab"))
     assert "0 <= n <= d <= 24" in instructions
     assert "fraction" in sent["content_context"]["graphic_kinds"]
@@ -80,10 +80,12 @@ def test_invalid_returned_fraction_is_still_rejected_once_with_billing(monkeypat
     billed = caught.value.billing_result
     assert billed is not None
     validation = billed.telemetry["validation"]
-    assert validation["phase"] == "schema"
-    assert validation["errors"][0] == {"location": "questions.0.explanation_steps.0.presentation.blocks.0", "reason": "fraction_bounds"}
+    assert validation["phase"] == "transport"
+    assert validation["errors"][0]["reason"] == "schema_validation"
+    with pytest.raises(ValidationError):
+        Graphic.model_validate(response["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0])
     schema = _submitted("openrouter", calls[0])[1]
-    assert numbers not in fraction_branch(schema)["properties"]["numbers"]["enum"]
+    assert json.dumps(numbers, separators=(",", ":")) not in fraction_branch(schema)["properties"]["numbers"]["enum"]
 
 
 def test_finite_pair_enum_preserves_json_numeric_equality_and_rejects_boolean_or_improper():
@@ -162,7 +164,7 @@ def test_actual_unit_request_large_public_source_stays_in_unchanged_sol_prefligh
     assert len(projections) == 1 and projections[0]["text_bytes"] == count
     assert projections[0]["projected_micros"] <= 250000
     # Public synthetic sizing receipt only; no model success or real price.
-    Path("/tmp/schulpilot122-unit-graphic-wire.json").write_text(json.dumps({
+    Path("/tmp/schulpilot123-unit-graphic-wire.json").write_text(json.dumps({
         "fixture": "public_MAT01_300_repeats", "provider_calls": 0, "mock_http_boundaries": 1,
         "instructions_bytes": len(instructions.encode()), "payload_bytes": len(text_payload.encode()),
         "schema_bytes": len(json.dumps(schema).encode()), "text_bytes": count,
@@ -170,10 +172,10 @@ def test_actual_unit_request_large_public_source_stays_in_unchanged_sol_prefligh
             "input_per_million_microusd": 2000000, "output_per_million_microusd": 10000000, "reasoning": "medium"}},
         sort_keys=True, indent=2))
     block = output(True)["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0]
-    Path("/tmp/schulpilot122-graphic-jsonschema-proof-input.json").write_text(json.dumps({
-        "schema": {"$ref": "#/$defs/Graphic", "$defs": schema["$defs"]}, "valid": [block,
-            {**block, "numbers": [0, 1]}, {**block, "numbers": [24, 24]}, {**block, "numbers": [1.0, 4.0]}],
-        "invalid": [{**block, "numbers": values} for values in ([7, 4], [1, 0], [1, 25], [-1, 4], [1.5, 4], [True, 4], [1])]}
+    Path("/tmp/schulpilot123-graphic-jsonschema-proof-input.json").write_text(json.dumps({
+        "schema": {"$ref": "#/$defs/Graphic", "$defs": schema["$defs"]}, "valid": [
+            {**block, "numbers": value} for value in ("[1,4]", "[0,1]", "[24,24]")],
+        "invalid": [{**block, "numbers": values} for values in ("[7,4]", "[1,0]", "[1,25]", "[-1,4]", "[1.5,4]", "[true,4]", "[1]", [1, 4])]}
         , ensure_ascii=False))
     assert config.max_output_tokens == 8000 and config.reserve_micros == 250000
 
@@ -243,8 +245,8 @@ def test_actual_unit_profile_capability_precedes_copied_branches_and_later_passe
     assert len(calls) == 1 and order == ["profile", "coherent", "context", "visual"]
     sent, schema, _ = _submitted("openrouter", calls[0])
     graphic = schema["$defs"]["Graphic"]
-    assert graphic == snapshots["coherent"]
-    allowed = set(graphic["properties"]["kind"]["enum"])
+    assert set(graphic) == {"anyOf"}
+    allowed = set(snapshots["coherent"]["properties"]["kind"]["enum"])
     assert {kind for branch in graphic["anyOf"] for kind in branch["properties"]["kind"]["enum"]} == allowed
     assert set(sent["content_context"]["graphic_kinds"]) == allowed
     actual_recipes = {key for key, recipe in RECIPES.items() if labs and subject in recipe["subjects"]}

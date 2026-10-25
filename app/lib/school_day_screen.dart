@@ -98,7 +98,8 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   late String? family = widget.state.familyId;
   late String? session = widget.state.api.token;
   final privateRoutes = <Route<dynamic>>{};
-  int generation = 0, readVersion = 0;
+  int generation = 0, readVersion = 0, reviewPickerEpoch = 0;
+  Route<dynamic>? reviewPickerRoute;
   bool queuedRead = false;
   bool foreground = true, routeVisible = true;
   late bool captureRequested = widget.startWithPhotos;
@@ -193,6 +194,13 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     foreground = lifecycle == AppLifecycleState.resumed;
+    if (!foreground) {
+      reviewPickerEpoch++;
+      final route = reviewPickerRoute;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route?.isActive == true) route!.navigator?.removeRoute(route);
+      });
+    }
     poll?.cancel();
     poll = null;
     if (active) unawaited(load());
@@ -1407,7 +1415,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           'invalid_output' =>
             isExtract
                 ? 'Eine Heftseite konnte noch nicht vollständig gelesen werden. Deine Fotos und bisherigen Abschriften bleiben gespeichert.'
-                : 'Die KI hat unvollständige Aufgaben geliefert. Wir haben sie nicht übernommen.',
+                : 'Neue Aufgaben oder Grafiken konnten nicht sicher geprüft werden. Deine gespeicherten Seiten und Runden bleiben erhalten.',
           'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',
           'unreadable_photo' => 'Ein Foto ist nicht gut lesbar. Nimm es bitte bei gutem Licht neu auf.',
           'cost_preflight' => 'Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.',
@@ -1433,9 +1441,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                     : 'Erneut vorbereiten'
               : 'Zur Startseite',
           status: isExtract && completed != null && total != null
-              ? Text(
-                  '$completed von $total Fotos wurden bereits verarbeitet.',
-                )
+              ? Text('$completed von $total Fotos wurden bereits verarbeitet.')
               : parts == null
               ? null
               : Column(
@@ -1942,6 +1948,96 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     );
   }
 
+  String reviewPageSnapshot() => jsonEncode([
+    for (final page in pages)
+      [
+        page['id'],
+        page['revision'],
+        page['page_number'],
+        page['status'],
+        page['confirmed'],
+      ],
+  ]);
+
+  String reviewPageStatus(Json page) => page['confirmed'] == true
+      ? 'Geprüft'
+      : page['status'] == 'unreadable'
+      ? 'Foto unlesbar'
+      : page['status'] == 'uploaded'
+      ? 'Erkennung offen'
+      : 'Noch prüfen';
+
+  Future<void> chooseReviewPage(Json selected) async {
+    if (!active || locked || day == null) return;
+    final version = generation, epoch = reviewPickerEpoch;
+    final id = day!['id'] as String, revision = day!['revision'];
+    final snapshot = reviewPageSnapshot();
+    final choices = pages.map(Json.from).toList();
+    bool current() =>
+        sameDay(version, id) &&
+        foreground &&
+        !locked &&
+        epoch == reviewPickerEpoch &&
+        day?['revision'] == revision &&
+        reviewPageSnapshot() == snapshot;
+    try {
+      await showDayDialog<void>(
+        context: context,
+        builder: (dialog) {
+          reviewPickerRoute = ModalRoute.of(dialog);
+          return AlertDialog(
+            title: const Text('Seite auswählen'),
+            content: SizedBox(
+              width: 480,
+              height: min(460.0, MediaQuery.sizeOf(dialog).height * .55),
+              child: Scrollbar(
+                child: ListView.builder(
+                  itemCount: choices.length,
+                  itemBuilder: (_, index) {
+                    final page = choices[index];
+                    return ListTile(
+                      key: ValueKey('school-day-page-choice:${page['id']}'),
+                      title: Text('Seite ${page['page_number']}'),
+                      subtitle: Text(reviewPageStatus(page)),
+                      selected: page['id'] == selected['id'],
+                      enabled: page['confirmed'] != true,
+                      minVerticalPadding: 12,
+                      trailing: Icon(
+                        page['confirmed'] == true
+                            ? Icons.check_circle_outline_rounded
+                            : page['id'] == selected['id']
+                            ? Icons.radio_button_checked_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                      ),
+                      onTap: page['confirmed'] == true
+                          ? null
+                          : () {
+                              if (!current() ||
+                                  ModalRoute.of(dialog)?.isCurrent != true) {
+                                return;
+                              }
+                              setState(() => reviewId = page['id']);
+                              closeDayDialog(dialog);
+                            },
+                    );
+                  },
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => closeDayDialog(dialog),
+                child: const Text('Abbrechen'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      reviewPickerRoute = null;
+    }
+  }
+
   Widget childChecking(BuildContext context) {
     final unconfirmed = pages
         .where((page) => page['confirmed'] != true)
@@ -1983,30 +2079,43 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Noch nicht bestätigte Seiten auswählen'),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final page in unconfirmed)
-              OutlinedButton(
-                onPressed: !active || working || waiting
-                    ? null
-                    : () => setState(() => reviewId = page['id']),
-                child: Text(
-                  'Seite ${page['page_number']} · ${page['status'] == 'unreadable'
-                      ? 'Foto unlesbar'
-                      : page['status'] == 'uploaded'
-                      ? 'Erkennung offen'
-                      : 'Noch prüfen'}',
+        OutlinedButton(
+          key: const ValueKey('school-day-page-picker'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+          onPressed: active && !locked
+              ? () => chooseReviewPage(selected)
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Seite ${selected['page_number']} prüfen',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '${day!['confirmed_count']} von ${pages.length} geprüft',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
+                const SizedBox(width: 8),
+                const Icon(Icons.expand_more_rounded),
+              ],
+            ),
+          ),
         ),
-        heading(
-          'Seite ${selected['page_number']} prüfen',
-          subtitle: '${day!['confirmed_count']} von ${pages.length} geprüft',
-        ),
+        const SizedBox(height: 4),
         MaterialReview(
           state,
           selected,

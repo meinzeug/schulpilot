@@ -185,7 +185,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       }
     } catch (error) {
       if (mounted && version == generation && ownerMatches) {
-        setState(() => readError = _studyError(error));
+        setState(() => readError = _studyError(error, child: state.isChild));
       }
     } finally {
       if (version == generation) {
@@ -217,7 +217,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       }
     } catch (error) {
       if (mounted && version == generation && ownerMatches) {
-        setState(() => actionError = _studyError(error));
+        setState(() => actionError = _studyError(error, child: state.isChild));
       }
     } finally {
       if (mounted && version == generation) setState(() => posting = false);
@@ -269,7 +269,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     } catch (error) {
       if (mounted && version == generation && ownerMatches) {
         setState(() {
-          actionError = _studyError(error);
+          actionError = _studyError(error, child: state.isChild);
           actionErrorBlock = id;
         });
       }
@@ -313,9 +313,11 @@ class _StudyPathPanelState extends State<StudyPathPanel>
             actionErrorBlock = blocks
                 .where((block) => block['job_id'] == jobId)
                 .firstOrNull?['id'];
-            actionError =
-                job['error'] as String? ??
-                'Diese Etappe konnte noch nicht vorbereitet werden.';
+            actionError = _studyError(
+              job['error'] as String? ??
+                  'Diese Etappe konnte noch nicht vorbereitet werden.',
+              child: state.isChild,
+            );
           });
           await load();
         } else {
@@ -326,7 +328,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       }
     } catch (error) {
       if (mounted && version == generation && ownerMatches) {
-        setState(() => readError = _studyError(error));
+        setState(() => readError = _studyError(error, child: state.isChild));
       }
     } finally {
       if (version == generation) {
@@ -374,7 +376,10 @@ class _StudyPathPanelState extends State<StudyPathPanel>
             if ((block['error'] ?? '').toString().isNotEmpty)
               Padding(
                 padding: EdgeInsets.only(top: 12),
-                child: Notice(block['error'], warning: true),
+                child: Notice(
+                  _studyError(block['error'] as String, child: state.isChild),
+                  warning: true,
+                ),
               ),
           ],
         ),
@@ -423,6 +428,10 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     final ready = (data?['ready_questions'] as num? ?? 0).toInt();
     final current = next;
     final editable = ownerMatches && state.isChild;
+    final hasFailure =
+        readError != null ||
+        actionError != null ||
+        blocks.any((block) => (block['error'] as String? ?? '').isNotEmpty);
     return Panel(
       padding: EdgeInsets.all(widget.dense ? 16 : 20),
       child: Column(
@@ -461,6 +470,14 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               Notice(actionError!, warning: true),
               TextButton(onPressed: load, child: Text('Stand prüfen')),
             ],
+            if (state.isChild && hasFailure)
+              TextButton.icon(
+                onPressed: () {
+                  if (active) openRoute(context, '/learn/${widget.childId}');
+                },
+                icon: Icon(Icons.view_list_outlined),
+                label: Text('Gespeicherte Runden ansehen'),
+              ),
             if (data != null && data['available'] != true) ...[
               SizedBox(height: 12),
               Text(
@@ -549,7 +566,13 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                     actionError == null)
                   Padding(
                     padding: EdgeInsets.only(bottom: 12),
-                    child: Notice(current['error'], warning: true),
+                    child: Notice(
+                      _studyError(
+                        current['error'] as String,
+                        child: state.isChild,
+                      ),
+                      warning: true,
+                    ),
                   ),
                 if (waiting || posting) ...[
                   LinearProgressIndicator(),
@@ -726,9 +749,24 @@ class _StudyPathPanelState extends State<StudyPathPanel>
   }
 }
 
-String _studyError(Object error) => error is ApiError
-    ? error.message
-    : 'Der Lernweg konnte gerade nicht geladen werden. Bitte versuche es noch einmal.';
+String _studyError(Object error, {bool child = false}) {
+  final message = error is ApiError
+      ? error.message
+      : error is String
+      ? error
+      : null;
+  if (child &&
+      message != null &&
+      RegExp(
+        r'\bHTTP\s*[0-9]{3}\b|\binvalid_schema\b',
+        caseSensitive: false,
+      ).hasMatch(message)) {
+    return 'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.';
+  }
+  return message ??
+      'Der Lernweg konnte gerade nicht geladen werden. Bitte versuche es noch einmal.';
+}
+
 String _blockLabel(dynamic status) => switch (status) {
   'planned' => 'Geplant',
   'generating' => 'Wird vorbereitet',

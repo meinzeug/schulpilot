@@ -204,7 +204,7 @@ def _meaningful(block, recipe, *, sources=None, question=None):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
     if block.kind == "lab" and block.lab.recipe_id != recipe.get("lab_recipe_id"):
         raise ValueError("Laborparameter passen nicht zur gewählten Referenz.")
-    if recipe.get("id") == "language.forms.original_comparison":
+    if recipe.get("id") in ("language.forms.original_comparison", "german.word_formation.parts"):
         labels = [" ".join(label.split()) for label in block.labels]
         quote = " ".join(block.source_excerpt.split())
         if (not 2 <= len(labels) <= 4 or len(set(labels)) != len(labels)
@@ -214,6 +214,12 @@ def _meaningful(block, recipe, *, sources=None, question=None):
             raise ValueError("Jeder Vergleichsausdruck muss vollständig und wortgetreu im Originalbeleg stehen.")
         if sources is not None and not any(quote in " ".join(source.split()) for source in sources):
             raise ValueError("Der Originalvergleich benötigt einen bestätigten Originalbeleg statt eines erzeugten Aufgabenbeispiels.")
+        if recipe.get("id") == "german.word_formation.parts":
+            from .package_prepared_scenes import word_part_bases
+
+            originals = [base for base, _ in word_part_bases(block.source_excerpt)]
+            if not originals or block.labels != originals[0]["labels"] or block.title != originals[0]["title"]:
+                raise ValueError("Die Wortbausteine benötigen eine unveränderte sichtbare Plusfolge im Originalbeleg.")
         if question is not None:
             prompt = " ".join(question.get("prompt", "").split())
             if not any(re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", prompt) for label in labels):

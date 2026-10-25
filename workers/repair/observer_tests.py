@@ -13,13 +13,19 @@ def payload():
         {"id": "retry", "closed": False, "attempted": True, "solution_exposed": False, "learning_goal_id": None},
         {"id": "fresh", "closed": False, "attempted": False, "solution_exposed": False, "learning_goal_id": None},
         {"id": "shown", "closed": False, "attempted": False, "solution_exposed": True, "learning_goal_id": None}],
-        "learning_goals": [], "resources": [], "observations": [{"ref": "attempt:synthetic"}]}
+        "learning_goals": [], "resources": [], "observations": [
+            {"ref": "attempt:closed-first", "question_id": "closed", "outcome": "incorrect", "assisted": False},
+            {"ref": "attempt:closed-latest", "question_id": "closed", "outcome": "uncertain", "assisted": False},
+            {"ref": "attempt:retry", "question_id": "retry", "outcome": "incorrect", "assisted": False}]}
 
 
 def test_closed_practice_and_unavailable_resources_excluded_before_transport():
     result = RPC({"method": "schema", "payload": payload()})
     branches = {b["properties"]["kind"]["enum"][0]: b["properties"] for b in result["schema"]["$defs"]["Step"]["anyOf"]}
     assert "recommend_resource" not in branches
+    # A closed workflow can have a genuinely unresolved latest verdict.
+    assert branches["clarify_assessment"]["question_id"]["enum"] == ["closed"]
+    assert branches["clarify_assessment"]["evidence_refs"]["items"]["enum"] == ["attempt:closed-latest"]
     assert branches["practice"]["question_id"]["enum"] == ["retry", "fresh", "shown"]
     assert branches["hint"]["question_id"]["enum"] == ["retry", "fresh", "shown"]
     assert branches["check_understanding"]["question_id"]["enum"] == ["fresh"]
@@ -37,7 +43,7 @@ def test_unavailable_actions_are_omitted_without_new_questions():
 @pytest.mark.parametrize("fault,code", [("closed", "decision_closed"), ("not_new", "decision_not_new"), ("flow", "decision_flow")])
 def test_strict_assessment_guards(fault, code):
     step = {"kind": "practice", "question_id": "retry", "learning_goal_id": None, "resource_id": None,
-            "evidence_refs": ["attempt:synthetic"], "reason": "Ein kleiner eigener Schritt.",
+            "evidence_refs": ["attempt:retry"], "reason": "Ein kleiner eigener Schritt.",
             "expected_result": "Eine eigene Antwort.", "on_success": None, "on_error": None}
     if fault == "closed":
         step["question_id"] = "closed"
@@ -51,6 +57,6 @@ def test_strict_assessment_guards(fault, code):
 
 def test_valid_open_practice_remains_possible():
     step = {"kind": "practice", "question_id": "retry", "learning_goal_id": None, "resource_id": None,
-            "evidence_refs": ["attempt:synthetic"], "reason": "Ein kleiner eigener Schritt.",
+            "evidence_refs": ["attempt:retry"], "reason": "Ein kleiner eigener Schritt.",
             "expected_result": "Eine eigene Antwort.", "on_success": None, "on_error": None}
     assert RPC({"method": "validate", "payload": payload(), "plan": {"version": 1, "steps": [step]}}) == {"valid": True}

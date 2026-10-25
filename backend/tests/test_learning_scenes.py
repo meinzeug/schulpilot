@@ -11,6 +11,7 @@ import httpx
 import pytest
 from package_output_helpers import PackageOutputCapture
 from pydantic import ValidationError
+from schema_helpers import native_graphic_branches, native_graphic_kinds
 from schulpilot import providers
 from schulpilot.answer_evaluation import evaluate
 from schulpilot.config import settings
@@ -336,10 +337,14 @@ def test_real_provider_pipeline_binds_schema_validates_and_projects_without_extr
     else:
         schema = body["schema"]
         instructions = body["system"]
-    assert "scene" in schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]
+    assert "scene" in native_graphic_kinds(schema)
     assert schema["$defs"]["SceneV1"]["properties"]["version"]["const"] == 1
-    assert "scene" in schema["$defs"]["Graphic"]["required"]  # nullable for legacy graphics
-    assert {"type": "null"} in schema["$defs"]["Graphic"]["properties"]["scene"]["anyOf"]
+    for branch in native_graphic_branches(schema):
+        assert "scene" in branch["required"]
+        if "scene" in branch["properties"]["kind"]["enum"]:
+            assert branch["properties"]["scene"] == {"$ref": "#/$defs/SceneV1"}
+        else:
+            assert branch["properties"]["scene"] == {"type": "null"}
     assert "scene:" in instructions
     assert body.get("max_tokens", body.get("max_output_tokens")) <= 4000
 

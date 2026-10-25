@@ -265,7 +265,27 @@ def test_grade_aware_strategy_reaches_worker_without_exporting_private_results(a
 
     def capture(config, function, payload, *args, **kwargs):
         calls.append(payload)
-        return Result(sample_unit(), 0, 0, 0)
+        # The prepared demo already contains variant0. This ordinary new round
+        # must use new, source-taught questions instead of replaying that unit.
+        data = sample_unit(variant=1)
+        data["questions"][1].update(
+            prompt="Kürze 4/8 vollständig: 4/8 = __ (als Bruch)",
+            hints=["Teile Zähler und Nenner durch 4."],
+            explanation="4 geteilt durch 4 ist 1; 8 geteilt durch 4 ist 2. Das Ergebnis ist 1/2.",
+        )
+        data["questions"][2].update(
+            type="choice", prompt="Welche Zahlen addierst du bei zwei Brüchen mit gleichem Nenner?",
+            options=["Die Zähler", "Die Nenner", "Zähler und Nenner"], answer="Die Zähler",
+            hints=["Der gemeinsame Nenner bleibt gleich."],
+            explanation="Bei gleichem Nenner addierst du nur die Zähler.",
+        )
+        data["questions"][3].update(
+            prompt="Welcher Bestandteil eines Bruchs zählt die ausgewählten Teile?", answer="Zähler",
+            accepted=["der Zähler"], hints=["Der gesuchte Bestandteil zählt die gemeinten Teile."],
+            explanation="Der Zähler zählt die ausgewählten Teile.",
+        )
+        assert {q["prompt"] for q in data["questions"]}.isdisjoint(payload["previous_prompts"])
+        return Result(s.UnitOutput.model_validate(data).model_dump(exclude_none=True), 0, 0, 0)
 
     monkeypatch.setattr(worker, "request_provider", capture)
     response = api.post(f"/api/children/{demo['child_id']}/units", json={"material_id": demo["material_id"]},

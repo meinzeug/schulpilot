@@ -73,12 +73,29 @@ void main() {
 
   for (final permission in [false, null]) {
     testWidgets(
-      'Fresh ${permission == false ? 'refusal refreshes without POST' : 'legacy missing flag preserves explicit protocol'}',
+      'Fresh ${permission == false ? 'refusal refreshes without plan POST' : 'legacy missing flag preserves explicit protocol'}',
       (tester) async {
         final server = PermissionRound(freshPermission: permission);
         await openWithPreparationRoute(tester, server);
-        expect(find.text('Passenden Lernweg finden'), findsOneWidget);
-        await room.tapText(tester, 'Passenden Lernweg finden');
+        expect(find.text('Antwort prüfen'), findsOneWidget);
+        expect(find.text('Passenden Lernweg finden'), findsNothing);
+        expect(server.planRequests, isEmpty);
+        await room.tapText(tester, 'Hilfe');
+        await tester.ensureVisible(find.text('Mehr Hilfe'));
+        await tester.tap(find.text('Mehr Hilfe'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(
+          find.text('Einen passenden Lernweg vorbereiten'),
+          findsOneWidget,
+        );
+        expect(server.planRequests, isEmpty);
+        await tester.ensureVisible(
+          find.text('Einen passenden Lernweg vorbereiten'),
+        );
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.tap(find.text('Einen passenden Lernweg vorbereiten'));
+        await tester.pumpAndSettle();
         expect(server.planRequests.length, permission == false ? 0 : 1);
         if (permission == false) {
           expect(find.text('Passenden Lernweg finden'), findsNothing);
@@ -89,6 +106,9 @@ void main() {
           );
         } else {
           expect(find.text('Gespeicherte Planvorbereitung'), findsOneWidget);
+          expect(server.planRequests.single['revision'], 7);
+          expect(server.planRequests.single['request_key'], isNotEmpty);
+          expect(server.planRequests.single['kind'], 'practice');
         }
         expect(server.answers, 0);
         expect(tester.takeException(), isNull);

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from schema_helpers import native_graphic_branches, native_graphic_kinds
 from schulpilot import learning_labs, providers, subject_content, visual_references
 from schulpilot.db import DB, Activity, Attempt, Child, Job, LearningUnit, Material, UnitSource, Usage
 from schulpilot.learning_labs import LabV1, checked_view, parse_view, resolve, view_facts
@@ -124,7 +125,7 @@ def test_real_provider_parse_final_schema_reference_validation_and_projection(mo
     result = providers.request_provider(_config(provider), "unit", payload)
     assert len(calls) == 1
     submitted, schema, system = _submitted(provider, calls[0])
-    assert "lab" in schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]
+    assert "lab" in native_graphic_kinds(schema)
     assert schema["$defs"]["LabV1"]["properties"]["recipe_id"]["enum"] == [recipe]
     assert submitted["content_context"]["lab_recipes"] == {output["subject"]: [recipe]}
     assert "EIGENE LERNLABORE" in system and "source_excerpt" not in json.dumps(result.request_receipt)
@@ -235,10 +236,19 @@ def test_closed_question_cannot_receive_lab_state_from_intro_or_before_help(api,
 
 @pytest.mark.parametrize("enabled", [False, True])
 def test_actual_api_queue_worker_provider_and_saved_graphics_retain_origin_capability(api, household, monkeypatch, enabled):
+    from copy import deepcopy
+
     from schulpilot import worker
     from test_providers import configured
 
-    _, mid, _, output = make_unit(household)
+    original_id, mid, _, original = make_unit(household)
+    output = deepcopy(original)
+    # This is a new ordinary round, not a second response for the stored unit.
+    # Both questions use the exact quantities in the immutable source/lab model.
+    output["questions"][0]["prompt"] = "Welche Größe bezeichnet m = 2 kg in diesem Modell?"
+    output["questions"][1].update(
+        prompt="Welche Größe bezeichnet a = 1 m/s² in diesem Modell?", answer="Beschleunigung")
+    assert {q["prompt"] for q in output["questions"]}.isdisjoint(q["prompt"] for q in original["questions"])
     _config("openai")
     configured(household[0]["families"][0]["id"])
     calls = _transport(monkeypatch, "openai", output)
@@ -257,7 +267,7 @@ def test_actual_api_queue_worker_provider_and_saved_graphics_retain_origin_capab
     worker.process(job_id)
     assert len(calls) == 1
     submitted, schema, _ = _submitted("openai", calls[0])
-    assert ("lab" in schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]) is enabled
+    assert ("lab" in native_graphic_kinds(schema)) is enabled
     assert bool(learning_labs.context_sources(submitted, "Physik")) is enabled
     with DB() as db:
         job = db.get(Job, job_id)
@@ -272,6 +282,7 @@ def test_actual_api_queue_worker_provider_and_saved_graphics_retain_origin_capab
             assert job.status == "failed" and not job.result
             assert db.query(LearningUnit).count() == 1
         assert db.query(Usage).count() == 1 and db.query(Attempt).count() == 0
+        assert db.get(LearningUnit, original_id).questions == original["questions"]
 
 
 
@@ -369,6 +380,6 @@ def test_labs_capability_does_not_offer_empty_recipe_enums_to_other_subjects(mon
     result = providers.request_provider(_config(provider), "unit", payload)
     assert len(calls) == 1 and result.data["subject"] == "Mathematik"
     _, schema, _ = _submitted(provider, calls[0])
-    assert "lab" not in schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]
-    assert schema["$defs"]["Graphic"]["properties"]["lab"] == {"type": "null"}
+    assert "lab" not in native_graphic_kinds(schema)
+    assert all(branch["properties"]["lab"] == {"type": "null"} for branch in native_graphic_branches(schema))
     assert "LabV1" not in schema["$defs"]

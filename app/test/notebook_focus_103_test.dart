@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -196,6 +197,14 @@ void main() {
         final text = tester.widget<Text>(title);
         expect(text.maxLines, isNull);
         expect(text.overflow, isNot(TextOverflow.ellipsis));
+        expect(
+          tester
+              .renderObject<RenderParagraph>(
+                find.descendant(of: title, matching: find.byType(RichText)),
+              )
+              .didExceedMaxLines,
+          isFalse,
+        );
         final bounds = tester.getRect(title);
         expect(bounds.left, greaterThanOrEqualTo(0));
         expect(bounds.right, lessThanOrEqualTo(width));

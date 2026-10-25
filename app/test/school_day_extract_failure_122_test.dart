@@ -53,7 +53,8 @@ void main() {
         },
       );
       await parts.openParts(tester, server);
-      expect(find.textContaining('unvollständige Aufgaben'), findsOneWidget);
+      expect(find.textContaining('Aufgaben oder Grafiken'), findsOneWidget);
+      expect(find.textContaining('Seiten und Runden bleiben erhalten'), findsOneWidget);
       expect(find.text('Lesen fortsetzen'), findsNothing);
       expect(server.submissions, 0);
     },

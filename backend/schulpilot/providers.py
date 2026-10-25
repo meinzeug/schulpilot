@@ -1631,6 +1631,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # private Unit, answer keys or invented confirmed-photo evidence.
         instructions = ASSET_RULES + subject_content.rules_for(subjects)
         outgoing_payload = {"public_spec": payload["public_spec"]}
+    unit_graphics = None
+    if function == "unit":
+        from .graphic_transport import bind as bind_graphic_transport
+
+        unit_graphics = bind_graphic_transport(schema)
+        if unit_graphics is not None:
+            wire_schema = unit_graphics.wire_schema
+            instructions += unit_graphics.rules
     from .explanation_guidance import rules as explanation_rules
 
     instructions += explanation_rules(function, payload)
@@ -1896,7 +1904,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         indexed_excerpts = config.provider == "openrouter" and excerpt_candidates is not None
-        if package_output is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
+        if package_output is not None or unit_graphics is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
             validation_phase = "json"
             decoded = json.loads(text)
             if package_output is not None:
@@ -1913,6 +1921,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             if prepared_graphics is not None:
                 validation_phase = "prepared_graphics"
                 decoded = prepared_graphics.hydrate(decoded)
+            if unit_graphics is not None:
+                validation_phase = "transport"
+                decoded = unit_graphics.decode(decoded)
             if homework_quotes is not None:
                 from .homework import decode_sources
 

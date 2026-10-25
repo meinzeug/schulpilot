@@ -26,7 +26,11 @@ def minimal_payload():
         ],
         "learning_goals": [],
         "resources": [],
-        "observations": [{"ref": "attempt:synthetic"}],
+        "observations": [
+            {"ref": "attempt:closed-first", "question_id": "closed", "outcome": "incorrect", "assisted": False},
+            {"ref": "attempt:closed-latest", "question_id": "closed", "outcome": "uncertain", "assisted": False},
+            {"ref": "attempt:retry", "question_id": "retry", "outcome": "incorrect", "assisted": False},
+        ],
     }
 
 
@@ -36,6 +40,8 @@ def test_schema_excludes_closed_practice_and_false_new_checks_before_provider_ca
     decisions.schema_refs(schema, payload)
     branches = {b["properties"]["kind"]["enum"][0]: b["properties"] for b in schema["$defs"]["Step"]["anyOf"]}
     assert "recommend_resource" not in branches
+    assert branches["clarify_assessment"]["question_id"]["enum"] == ["closed"]
+    assert branches["clarify_assessment"]["evidence_refs"]["items"]["enum"] == ["attempt:closed-latest"]
     assert branches["practice"]["question_id"]["enum"] == ["retry", "fresh", "shown"]
     assert branches["hint"]["question_id"]["enum"] == ["retry", "fresh", "shown"]
     assert branches["check_understanding"]["question_id"]["enum"] == ["fresh"]
@@ -87,7 +93,7 @@ def test_validator_keeps_strict_assessment_rules_with_diagnostic_codes(fault, co
         "question_id": "retry",
         "learning_goal_id": None,
         "resource_id": None,
-        "evidence_refs": ["attempt:synthetic"],
+        "evidence_refs": ["attempt:retry"],
         "reason": "Ein kleiner eigener Schritt.",
         "expected_result": "Eine eigene Antwort.",
         "on_success": None,

@@ -1219,8 +1219,6 @@ class _NotebookScreenState extends State<_NotebookContext>
                     header: true,
                     child: Text(
                       subject?['title'] ?? 'Dein Hefter',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,

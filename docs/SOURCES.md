@@ -1834,3 +1834,56 @@ beauftragte Live-Prüfung bleibt davon getrennt dokumentiert; bisher fünf
 vollständige allgemeine Heft-Lernrunden sind kein Abschluss der verlangten
 100 Runden. Nicht als lesbar erkannte Fotos zählen nur als verarbeitet,
 niemals automatisch als vollständig abgeschrieben oder bestätigt.
+
+Die vollständige CI von Release122 meldete zusätzlich zu den bestandenen
+gezielten Läufen eine Layoutregression: Die neue Heftaktion verkürzte lange
+Fachnamen auf eine Zeile. Release123 stellt deren Lesbarkeit wieder her.
+Die weitere Nacharbeit betrifft synthetische Vertragsfixtures: Ein bewusster
+Lernwegauftrag liegt seit Release120 unter den Hilfen; Beobachterdaten brauchen
+eine konkrete Frage und deren jüngstes Urteil, und neu erzeugte Testfragen
+dürfen nicht identisch zu bereits gespeicherten Fragen sein. Die tatsächlichen
+Prüfungen und absichtlich fehlerhaften Beobachterkandidaten bleiben erhalten.
+Ein früherer bestandener Ausschnitt wird nicht als bestandene vollständige CI
+ausgegeben.
+
+Release123 trennt zusätzlich zwei belegte Erzeugungsfehler. Die geschützte
+Produktionstelemetrie klassifiziert einen HTTP400 als `invalid_schema`; der
+konkrete vom Anbieter abgewiesene Teil wurde nicht als Rohantwort gespeichert.
+`native-graphic-1` projiziert daher ausschließlich die vollständig nachweisbare
+eigene Grafikunion in eigenständige strikte `anyOf`-Zweige. Endliche
+Bruchzahlenpaare werden nur im Anbietertransport als exakte Enum-Zeichenfolge
+geschrieben und vor der unveränderten kanonischen Quellen-/Antwort-/Grafikprüfung
+verlustfrei zurückgelesen. Antworten und Originalzitate bleiben opaque.
+Grundlage ist die [offizielle Structured-Outputs-Dokumentation](https://developers.openai.com/api/docs/guides/structured-outputs)
+(geprüft25.10.2026). Sie beschreibt die unterstützte Teilmenge und Größenlimits;
+sie belegt nicht den konkreten HTTP400-Untertyp dieses Aufrufs. Es gibt weder
+einen Anbieterwechsel noch höhere Kosten-, Token- oder Wiederholungsgrenzen.
+
+Der getrennte Paketfehler `scene_label_evidence` entsteht bei der abschließenden
+Prüfung von Beschriftungen. `package-source-graphics-1` erweitert den vorhandenen
+Paketbinder um vorher kanonisch geprüfte Original-Pfeilfolgen. Die Modellantwort
+wählt eine an Fach, Quelle, Revision, Referenzversion, Paketplan und Aufdeckstufe
+gebundene ID; Titel, Objektlabels und Phasenbelege stammen gemeinsam aus derselben
+vollständigen Originalfolge. Fragen brauchen die dazu passenden Originalanker.
+Nur der neue Nichtmathematikpfad lässt den sichtbaren Schritttext innerhalb
+der bestehenden Grenzen vom Modell verständlich erklären; die bereitgestellte
+Quellenbeschriftung heißt ausdrücklich `source_caption` und ersetzt diesen
+Text nicht. Die vorhandene Klassenstufen-Anleitung steuert genau dieses im
+Frontend sichtbare Feld. Der Mathematikbinder behält seine festen Texte.
+Die enge neue Referenz `german.word_formation.parts` verwendet den bereits
+freigegebenen Satzbausteinrenderer für ausdrücklich sichtbare Plusfolgen mit
+Wortbausteinrollen. Sie erfindet weder Wortzerlegungen noch Pfeilrichtungen oder
+Grammatikbewertungen. Bestehende Referenzversionen und die besondere
+Mathematik-/Bruchpolitik bleiben erhalten. Nicht belegbare Pfeilrezepte werden
+vor dem Aufruf aus der betreffenden Auswahl entfernt; passende bestehende
+fachliche Alternativen bleiben erreichbar. Lokale HTTP-Mocks und Schemafälle
+sind ausdrücklich kein Nachweis eines gelungenen Produktionsauftrags.
+Die neue Nichtmathematikauswahl bleibt vorab auf sechs vollständige
+Grafikbasen mit allen Offenlegungsstufen begrenzt. Quellen und Zitate werden
+dafür nicht gekürzt; die unveränderte Kosten-Vorprüfung bleibt maßgeblich.
+
+Die mobile Seitenprüfung zeigt lange Fotoabgaben in einer kompakten Auswahl
+statt als ständig sichtbare Chip-Liste vor dem Foto. Auswahl und Abbruch sind
+reine Leseaktionen; Bestätigung und Vorbereitung bleiben ausdrücklich. Die
+Lernwegansicht zeigt im Kinderzugang verständliche Fehlertexte und einen
+direkten Weg zu gespeicherten Runden statt roher HTTP-/Schemahinweise.

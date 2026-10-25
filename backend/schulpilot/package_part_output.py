@@ -66,7 +66,12 @@ def bind_schema(schema, payload=None):
         _bind_references(schema, payload)
         from .package_prepared_graphics import bind_schema as bind_prepared_graphics
 
-        return bind_prepared_graphics(schema, payload)
+        binding = bind_prepared_graphics(schema, payload)
+        if binding is not None:
+            return binding
+        from .package_prepared_scenes import bind_schema as bind_source_graphics
+
+        return bind_source_graphics(schema, payload)
     return None
 
 
@@ -155,6 +160,11 @@ def _bind_references(schema, payload):
         for reference in context.get("references", []):
             if reference.get("subject") != subject:
                 continue
+            if subject != "Mathematik":
+                from .package_prepared_scenes import reference_supported
+
+                if not reference_supported(reference, group_sources):
+                    continue
             if (original_comparison and reference.get("id") == "general.source_relation.phases"
                     and not any(re.search(r"→|->", source) for source in group_sources)):
                 # This old recipe requires a literal directed source edge.
