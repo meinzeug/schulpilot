@@ -194,7 +194,7 @@ def validate_question_step(raw, context, question):
 
 
 def bind_schema(schema, payload):
-    if not eligible(payload):
+    if not eligible(payload) or not (payload.get("visual_context") or {}).get("required"):
         return None
     tasks = payload.get("math_tasks")
     if not isinstance(tasks, list) or not tasks or not any(START.match(str(t.get("prompt", ""))) for t in tasks):

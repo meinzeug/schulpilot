@@ -17,6 +17,18 @@ from test_presentation_capability_paths import _config
 CONTENT = "Beim Erweitern multiplizierst du Zähler und Nenner mit derselben Zahl. Originalbrüche: 1/5 und 2/7."
 
 
+@pytest.mark.parametrize("context", [None, {}, {"required": False}])
+def test_legacy_requests_without_a_graphic_contract_leave_the_existing_schema_unchanged(context):
+    payload = {"required_subject": "Mathematik", "study_block": {"mode": "apply", "question_count": 2},
+        "math_tasks": [{"prompt": "Erweitere den Bruch 1/3 mit dem Faktor 2. Kürze nicht."}]}
+    if context is not None:
+        payload["visual_context"] = context
+    schema = {"type": "object", "properties": {"existing": {"type": "string"}}}
+    before = copy.deepcopy(schema)
+    assert expansion.bind_schema(schema, payload) is None
+    assert schema == before
+
+
 def prepared(household, phase="apply", count=2):
     with DB.begin() as db:
         child = db.get(Child, household[1]["id"])

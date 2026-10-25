@@ -2122,3 +2122,12 @@ Rückweg über die vorige geprüfte Releasefassung mit unveränderten privaten D
 und unveränderter Providerkonfiguration; private Quellkorrekturen behalten ihre
 Versionsgeschichte und dürfen nicht durch ein Release-Rollback zurückgeschrieben
 werden.
+
+Die erste vollständige CI dieses Builds fand acht bestehende Adapterfälle ohne
+Grafikauftrag, die der neue Binder zu früh abwies. Sein Einstieg ist deshalb
+zusätzlich auf einen tatsächlich erforderlichen Grafikkontext begrenzt; alte
+Anfragen behalten ihren bisherigen mathematischen Vertrag.144 gezielte Fälle
+für diese Kompatibilität, die neuen Proofs und die beiden Adapter bestanden
+anschließend ohne Fehler. Die ursprünglich signierten Artefakte werden als
+fehlgeschlagener CI-Versuch aufbewahrt und nicht aktiviert; der korrigierte
+Quellstand benötigt einen neuen gebundenen Build und eine neue CI-Prüfung.
