@@ -1333,6 +1333,11 @@ def request_practice(
     previous = db.scalar(select(Job).where(Job.idempotency == p.user.id + ":" + idempotency)) if idempotency else None
     if previous:
         payload["practice_number"] = previous.payload.get("practice_number", 1)
+        # Replay retains its original authority, including an absent legacy
+        # binding. A fresh session may observe this job, never reauthorize it.
+        for key in ("session_id", "family_id"):
+            if key in previous.payload:
+                payload[key] = previous.payload[key]
         return enqueue(db, p, db.get(Child, unit.child_id), "coach_practice", payload, idempotency)
     if plan_review(db, unit)["next_action"] not in ("repair", "check"):
         raise HTTPException(
@@ -1344,6 +1349,7 @@ def request_practice(
             409, "Die Übungsvorbereitung hat zweimal nicht geklappt. Bitte deine Eltern um Hilfe bitten."
         )
     payload["practice_number"] = sum(j.payload.get("unit_id") == unit.id for j in old_jobs) + 1
+    payload.update(session_id=p.session.id, family_id=child.family_id)
     return enqueue(db, p, db.get(Child, unit.child_id), "coach_practice", payload, idempotency)
 
 
@@ -1358,6 +1364,7 @@ def _practice_history_prompts(db, unit):
 
 def process_practice(job_id):
     """An unavailable generator must never discard an already saved review."""
+    from .controller_jobs import authority
     from .learning_sources import failure_billing
 
     result = None
@@ -1367,6 +1374,7 @@ def process_practice(job_id):
             job = db.get(Job, job_id)
             if not job or job.status != "running":
                 return
+            authority(db, job)
             unit = db.get(LearningUnit, job.payload["unit_id"])
             item = db.get(UnitCoaching, unit.id) if unit else None
             if not unit or unit.child_id != job.child_id or not item or item.status != "ready" or item.next_unit_id:
@@ -1434,6 +1442,8 @@ def process_practice(job_id):
             if not job or job.status != "running":
                 return
             db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
+            db.expire_all()
+            authority(db, job)
             unit = db.get(LearningUnit, job.payload["unit_id"])
             item = db.get(UnitCoaching, unit.id) if unit else None
             if (

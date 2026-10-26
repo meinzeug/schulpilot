@@ -2764,3 +2764,43 @@ fertigen Bruchrunde scheiterte weiterhin am bekannten Ausgabelängenfehler
 (Luna,4000Ausgabetokens,3670µUSD gemeldet). Alte Antworten und Rückblick blieben
 erreichbar. Dies ist ein getrennt beobachteter offener Anschlussroutingfehler,
 kein erfolgreicher neuer Durchlauf und noch kein Beleg für den neuen kgV-Pfad.
+
+137 ist als Commit 908395fb686538feeaa887a665642834bd3e2c31, Version 1.36.25+137
+ausgeliefert. Vollständige CI 40315112207: alle 8 Jobs erfolgreich, 4.587 Backendfälle
+bestanden, 44 übersprungen; 4.048 Flutterfälle bestanden, 19 übersprungen,
+299 Testdateien genau einmal. Signierte Direct-APK, Play-AAB, Web-JS und Reparatur-
+archiv sind an denselben Quellstand gebunden; lokale Signatur-/Geheimnisprüfung
+ohne Befund. Nach Deploy alle 5 Dienste aktiv, 17 Konfigurationen unverändert und
+Schema 0042 erhalten. Öffentliche APK/Webdateien wurden vollständig nachgehasht.
+
+Die zuvor gescheiterte normale kgV-Heftauswahl wurde live erfolgreich neu
+angefordert: eine bestätigte Seite, zwei Aufgaben, 42.404 µUSD gemeldete Erstellungskosten.
+Absichtlich 28 statt kgV(2,7)=14 wurde eindeutig falsch bewertet; Hinweis und
+Grafikerklärung geöffnet, einmaliger weiterer Versuch korrekt unterstützt.
+Die zweite Aufgabe wurde ohne Hilfe korrekt gelöst. Ergebnis sichtbar, Einheit
+serverseitig vollständig abgeschlossen, drei Attempts erhalten. 20 allgemeine
+Heftrunden sind damit persönlich belegt, Ziel 100 noch nicht erreicht.
+Desktop 1100px, Tablet 768px und Smartphone 390px wurden tatsächlich im Live-Browser
+bedient; der Grafikschritt blieb beim Breitenwechsel erhalten. Private Screenshots
+und Metadatennachweise liegen außerhalb der versionierten Quellen.
+Der lesende Live-Nachweis bestätigt einen bereiten Grafiksnapshot, eine Einführung,
+zwei Fragegrafikgruppen, eine aktuelle bestätigte Quellenrevision und das gespeicherte
+`math.multiples.common@1`-Receipt mit passendem Referenzdatenbank-Digest.
+
+138 ergänzt die getrennt beobachtete Anschlusskorrektur: Der tatsächliche
+verpflichtende Grafikvertrag wird vor der bestehenden Reservierung für die
+konfigurierte Sol-Route berücksichtigt. Quellen-/Coaching-Kontext und explizite
+Zweitversuchsgrenze bleiben maßgeblich; kein automatischer Retry, keine neue
+Route und keine Limitänderung. Neue Anschlussjobs binden außerdem die aus der
+Kindersitzung stammende Sitzung/Familie. Vor und nach dem Provideraufruf gilt der bestehende
+Authority-Helper, auch nach erneutem Laden des Transaktionszustands. Replays
+behalten ursprüngliche Authorityfelder; Legacyjobs werden nicht reautorisiert.
+
+Die 138-Kandidatenfassung bestand 87 Fälle auf netzgesperrter SQLite und frischem
+Unix-PG16, darunter 11 gezielte Sitzungsfälle (Widerruf/Ablauf/Konto-/Familien-
+wechsel und Widerruf während des Anrufs mit erhaltener realer Abrechnung).
+Roots integrierte Fassung stimmt im gesamtenBackendmanifest mit 468 Dateien exakt
+mit der geprüften PG-Kopie überein; eigener SQLite-Nachlauf 87/87 ohne Quelländerung.
+Der getrennte 87-Fälle-Kandidatennachweis und die vollständige 137-CI sind keine
+behauptete 138-CI oder Live-Abnahme. Andere ältere Jobarten sind durch diese
+gezielte Ergänzung nicht pauschal auf Sessionbindung geprüft.

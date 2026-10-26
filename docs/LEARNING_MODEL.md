@@ -227,3 +227,25 @@ gespeicherte Hauptlösung mit dem unabhängig berechneten kgV übereinstimmen.
 Unbekannte Schreibweisen oder widersprüchliche Hauptlösungen bleiben unklar;
 Antwortvarianten können keinen falschen gemeinsamen Wert richtig machen.
 Abspielen, Markieren und Zurücksetzen bleiben lokale Darstellung ohne Lernbeleg.
+
+### Anschlussrunden: Ausgabeumfang und Sitzung
+
+Eine bewusst angeforderte `coach_practice` erstellt neue Aufgaben mit demselben
+verpflichtenden Grafikvertrag wie eine normale Einheit. `coach_routing.py`
+ermittelt diesen tatsächlichen Bedarf vor der normalen Reservierung mit den
+vorhandenen Coaching- und Quellenprojektionen. Economy-Routing verwendet für
+diesen Grafikbedarf die bereits konfigurierte Sol-Route; kurze Verträge ohne
+Grafikbedarf behalten ihre vorhandene Auswahl. Ein ausdrücklich neu angeforderter
+zweiter Versuch nach genau erkanntem Längenfehler bleibt an Einheit, Quelle und
+Coaching-Signatur gebunden. Es gibt keinen automatischen Wiederholungsaufruf und
+keine Erhöhung von Routenlimits, Kontobudgets oder der Zwei-Versuchs-Grenze.
+
+Neue Anschlussaufträge speichern Sitzung und Familie aus dem berechtigten
+Kinderzugang. Vor dem Anbieteraufruf und erneut vor dem Speichern wird die
+vorhandene `controller_jobs.authority` geprüft. Abmeldung, Ablauf, Widerruf oder
+geänderte Kind-/Familienzuordnung verhindern die weitere Übernahme. Eine bereits
+erfolgte Anbieterleistung bleibt korrekt abgerechnet. Idempotente Wiederaufnahme
+erhält die ursprüngliche Autorisierung; sie ersetzt diese nicht durch eine neue
+Sitzung. Alte gespeicherte Ergebnisse bleiben lesbar, ungebundene alte Aufträge
+erhalten keine nachträgliche Berechtigung. Diese Ergänzung betrifft den gezielten
+Anschlussauftrag; andere ältere Jobarten sind damit nicht pauschal neu geprüft.

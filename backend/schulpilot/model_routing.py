@@ -282,11 +282,13 @@ def features_for(db, child_id, job_id):
     ids.update(ref.get("id") or ref.get("material_id") for ref in refs if isinstance(ref, dict))
     ids.discard(None)
     sources = list(db.scalars(select(Material).where(Material.child_id == child_id, Material.id.in_(ids)))) if ids else []
+    from .coach_routing import output_need as coach_output_need
     from .material_routing import extended_output as material_extended_output
     from .notebook_routing import extended_output as notebook_extended_output
     from .notebook_routing import length_failed as notebook_length_failed
 
     return {
+        **coach_output_need(db, child_id, job),
         "errors": sum(a.outcome == "incorrect" for a in attempts),
         "uncertain": sum(a.outcome == "uncertain" for a in attempts),
         "poor_image": any(m.uncertainties or m.quality_warnings or m.legibility in ("partial", "unreadable") for m in sources),
@@ -315,7 +317,11 @@ def choose_tier(function, features, *, economy=False):
         return "sol", "recorded_study_output_length"
     if function == "unit" and features.get("notebook_length_failed"):
         return "sol", "recorded_notebook_output_length"
+    if function == "coach_practice" and features.get("coach_length_failed"):
+        return "sol", "recorded_coach_output_length"
     if economy:
+        if function == "coach_practice" and features.get("coach_extended_output"):
+            return "sol", "coach_graphic_teaching"
         if function == "unit" and features.get("notebook_extended_output"):
             return "sol", "notebook_graphic_teaching"
         if function == "unit" and features.get("material_extended_output"):
