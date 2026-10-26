@@ -40,7 +40,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
   ModalRoute<dynamic>? route;
   bool invalidated = false, foreground = true;
   int generation = 0;
-  LanguageComparisonFocus focus = LanguageComparisonFocus.differences;
+  late LanguageComparisonFocus focus;
 
   String fingerprint() {
     try {
@@ -103,6 +103,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
   @override
   void initState() {
     super.initState();
+    focus = initialFocus();
     ownerState = widget.state;
     owner = ownerState?.user;
     ownerId = owner?['id']?.toString();
@@ -133,7 +134,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
     } else if (snapshot != fingerprint()) {
       snapshot = fingerprint();
       generation++;
-      focus = LanguageComparisonFocus.differences;
+      focus = initialFocus();
     }
   }
 
@@ -182,6 +183,36 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
         matches.single.start == 0 &&
         matches.single.end == text.length;
   });
+
+  Set<String> commonWords(List<String> texts) {
+    final sets = [
+      for (final text in texts)
+        words.allMatches(text).map((match) => match.group(0)!).toSet(),
+    ];
+    return sets
+        .skip(1)
+        .fold<Set<String>>(
+          sets.first,
+          (shared, next) => shared.intersection(next),
+        );
+  }
+
+  LanguageComparisonFocus initialFocus() {
+    final texts = originals;
+    if (texts == null) return LanguageComparisonFocus.none;
+    if (singleWords(texts)) {
+      final edges = commonEdges(texts);
+      return edges.$1 + edges.$2 > 0
+          ? LanguageComparisonFocus.differences
+          : LanguageComparisonFocus.none;
+    }
+    // Numeric labels retain their existing whole-token comparison. For prose,
+    // a shared literal word is only a spelling link, never a grammar judgment.
+    return commonWords(texts).isNotEmpty ||
+            !texts.any((text) => RegExp(r'\p{L}', unicode: true).hasMatch(text))
+        ? LanguageComparisonFocus.differences
+        : LanguageComparisonFocus.none;
+  }
 
   /// Exact grapheme prefixes/suffixes only, never a grammatical stem claim.
   (int, int) commonEdges(List<String> texts) {
@@ -273,16 +304,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
     }
     final letters = singleWords(texts);
     final edges = letters ? commonEdges(texts) : null;
-    final sets = [
-      for (final text in texts)
-        words.allMatches(text).map((match) => match.group(0)!).toSet(),
-    ];
-    final common = sets
-        .skip(1)
-        .fold<Set<String>>(
-          sets.first,
-          (shared, next) => shared.intersection(next),
-        );
+    final common = commonWords(texts);
     final epoch = generation;
     final rawTitle = widget.block['title'];
     final title = rawTitle is String && rawTitle.runes.length <= 160

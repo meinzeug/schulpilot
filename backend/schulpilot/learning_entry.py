@@ -63,8 +63,12 @@ def _probe(competence, seed, previous, ordinal, *, excluded_examples=()):
         value = int(hashlib.sha256((seed + ":" + str(offset)).encode()).hexdigest()[:12], 16)
         denominator = 3 + value % 10
         numerator = 1 + (value // 10) % (denominator - 1)
+        legacy_prompt = None
         if template == "fraction_meaning":
-            prompt = f"Ein Ganzes ist in {denominator} gleich große Teile geteilt. {numerator} Teile sind ausgewählt. Welchen Bruch beschreibt das? Schreibe Zähler/Nenner."
+            selection = "1 Teil ist ausgewählt" if numerator == 1 else f"{numerator} Teile sind ausgewählt"
+            prompt = f"Ein Ganzes ist in {denominator} gleich große Teile geteilt. {selection}. Welchen Bruch beschreibt das? Schreibe Zähler/Nenner."
+            if numerator == 1:
+                legacy_prompt = prompt.replace("1 Teil ist ausgewählt.", "1 Teile sind ausgewählt.", 1)
             answer = f"{numerator}/{denominator}"
         elif template == "fraction_components":
             prompt = f"Beim Bruch {numerator}/{denominator}: Welche Zahl ist der Nenner?"
@@ -77,7 +81,8 @@ def _probe(competence, seed, previous, ordinal, *, excluded_examples=()):
         if ((numerator, denominator) in excluded_examples
                 or template == "fraction_equivalence" and (2 * numerator, 2 * denominator) in excluded_examples):
             continue
-        if competences.normalized(prompt) not in previous:
+        if (competences.normalized(prompt) not in previous
+                and (legacy_prompt is None or competences.normalized(legacy_prompt) not in previous)):
             return {"id": "prior_" + ordinal, "type": "short", "prompt": prompt, "answer": answer,
                 "options": [], "accepted": [], "competence_id": competence["id"],
                 "visual_example": {"numerator": numerator, "denominator": denominator, "factor": 2,
@@ -107,6 +112,12 @@ def with_learning_entry(db, child, payload, sources, *, groups=None, enabled=Fal
     excluded_examples = ()
     if notebook_count:
         from .notebook_fraction_expansions import introduction_example
+
+        example = introduction_example(payload)
+        if example is not None:
+            excluded_examples = (example,)
+    else:
+        from .material_fraction_expansions import introduction_example
 
         example = introduction_example(payload)
         if example is not None:

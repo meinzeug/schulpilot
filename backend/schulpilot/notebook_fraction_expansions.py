@@ -164,8 +164,9 @@ def prepare(payload):
     return {**payload, KEY: plan}
 
 
-def _probe_candidates(payload):
-    context, plan = payload["visual_context"], payload[KEY]
+def _probe_candidates(payload, *, plan=None, revision=REVISION):
+    context = payload["visual_context"]
+    plan = payload[KEY] if plan is None else plan
     result = []
     reference = next((ref for ref in context["references"] if ref.get("id") == "math.fraction.part_whole"
         and ref.get("version") == 1 and ref.get("subject") == "Mathematik" and ref.get("digest")), None)
@@ -190,7 +191,7 @@ def _probe_candidates(payload):
         row = {"subject": "Mathematik", "group_id": None, "kind": "fraction", "disclosure": "solution",
             "reference": {"id": reference["id"], "version": 1}, "source_refs": [source["ref"]],
             "text": base[1], "block": block.model_dump(mode="json"), "question_core": copy.deepcopy(core)}
-        row["id"] = "nf_" + _digest([REVISION, row, _digest(source), reference["digest"]])[:24]
+        row["id"] = "nf_" + _digest([revision, row, _digest(source), reference["digest"]])[:24]
         ExplanationStep.model_validate({"id": row["id"], "text": row["text"], "competence_id": None,
             "disclosure": "solution", "reference": row["reference"], "source_refs": row["source_refs"],
             "presentation": {"version": 1, "evidence_kind": "knowledge", "blocks": [block]}})
@@ -239,11 +240,16 @@ def bind_schema(schema, payload):
         return None
     if prepare(payload) != payload:
         raise ValueError(ERROR)
-    context, plan = payload["visual_context"], payload[KEY]
+    return bind_prepared_plan(schema, payload, payload[KEY])
+
+
+def bind_prepared_plan(schema, payload, plan, *, binding_type=Binding, revision=REVISION):
+    """Shared pure renderer binding; each caller verifies its own real contract."""
+    context = payload["visual_context"]
     candidates = [expansion._candidate(context, task, "apply") for task in plan["tasks"]]
     if any(candidate is None for candidate in candidates):
         raise ValueError(ERROR)
-    probe_candidates = _probe_candidates(payload)
+    probe_candidates = _probe_candidates(payload, plan=plan, revision=revision)
     probes = {probe["id"]: probe for unit in (payload.get("learning_entry") or {}).get("units", [])
         for probe in unit.get("probes", [])}
     exclusions = []
@@ -254,7 +260,7 @@ def bind_schema(schema, payload):
     introductions = expansion._introductions(context, candidates, excluded_pairs=exclusions)
     if not introductions:
         raise ValueError(ERROR)
-    binding = Binding(tuple([*introductions, *probe_candidates, *candidates]))
+    binding = binding_type(tuple([*introductions, *probe_candidates, *candidates]))
     wrapper = {"$defs": schema["$defs"], "properties": {"units": {"items": copy.deepcopy(
         {key: value for key, value in schema.items() if key != "$defs"})}}}
 

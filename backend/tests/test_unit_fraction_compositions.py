@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from schulpilot import learning_entry, providers, visual_references
+from schulpilot import learning_entry, notebook_fraction_compositions, providers, visual_references
 from schulpilot import unit_fraction_compositions as compositions
 from schulpilot.db import DB, Child, Material
 from schulpilot.schemas import UnitOutput
@@ -28,12 +28,12 @@ def prepared(household, count=2):
         payload = visual_references.with_visual_context(db, child, payload, [page])
         payload = learning_entry.with_learning_entry(db, child, payload, [page], enabled=True)
         payload = visual_references.with_foundation_context(db, payload)
+        payload = notebook_fraction_compositions.prepare(notebook_fraction_compositions.with_history(payload, []))
     schema = providers.strict_schema(UnitOutput, preserve_limits=True)
     visual_references.bind_schema(schema, payload)
     learning_entry.bind_entry_schema(schema, payload)
     binding = compositions.bind_schema(schema, payload)
     assert binding is not None
-    plan = payload["learning_entry"]["units"][0]
     intro = next(c for c in binding.candidates if c["disclosure"] == "given")
 
     def step(candidate, text=None):
@@ -42,14 +42,12 @@ def prepared(household, count=2):
             "presentation": {"version": 1, "evidence_kind": "knowledge", "blocks": [candidate["id"]]}}
 
     questions = []
-    examples = iter((("9/4", "2¼"), ("5/4", "1¼"), ("7/3", "2⅓")))
-    for spec in learning_entry._specs(plan, count):
-        ratio, answer = next(examples) if not spec.get("type") else ("9/4", "2¼")
-        question = {"id": spec["id"], "type": "short", "prompt": f"Schreibe {ratio} als gemischte Zahl.", "answer": answer,
-            "options": [], "accepted": [], "hints": ["Bündele vollständige Ganze."], "explanation": "Zwei Ganze und ein Viertel."}
-        question.update({k: spec[k] for k in learning_entry.CORE if k in spec})
-        candidate = next(c for c in binding.candidates if c["disclosure"] == "solution" and binding.question_bound(c, question))
-        question["explanation_steps"] = [step(candidate)]
+    for core in [*payload[notebook_fraction_compositions.KEY]["probes"],
+            *[task["question_core"] for task in payload[notebook_fraction_compositions.KEY]["tasks"]]]:
+        candidate = next(c for c in binding.candidates if c.get("question_core", {}).get("id") == core["id"])
+        question = copy.deepcopy(core)
+        question.update(hints=["Bündele vollständige Ganze."], explanation="Vollständige Ganze und Rest.",
+            explanation_steps=[step(candidate)])
         questions.append(question)
     wire = {"subject": "Mathematik", "topic": "Unechte Brüche in gemischte Zahlen", "explanation": "Volle Ganze bündeln, den Rest darstellen.",
         "explanation_steps": [step(intro)], "questions": questions}
@@ -81,7 +79,7 @@ def test_count_entry_and_graphics_use_one_actual_http_mock(household, monkeypatc
     assert schema["properties"]["questions"]["minItems"] == schema["properties"]["questions"]["maxItems"] == count
     assert result.cost_source == "reported"
     main = next(q for q in result.data["questions"] if q["prompt"] == "Schreibe 9/4 als gemischte Zahl.")
-    assert main["prompt"] == next(q["prompt"] for q in wire["questions"] if q["prompt"] == main["prompt"]) and main["answer"] == "2¼"
+    assert main["prompt"] == next(q["prompt"] for q in wire["questions"] if q["prompt"] == main["prompt"]) and main["answer"] == "2 1/4"
     assert [b["numbers"] for b in main["explanation_steps"][0]["presentation"]["blocks"]] == [[4, 4], [4, 4], [1, 4]]
     from schulpilot.provider_cost_preflight import projection
     config = _config("openrouter")

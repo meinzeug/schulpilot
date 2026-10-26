@@ -31,7 +31,7 @@ from .db import (
     uid,
 )
 from .learning import record
-from .model_routing import job_config
+from .model_routing import job_config, selection
 from .providers import ProviderError, request_provider, reserve, settle, source_excerpt_candidates
 from .school_day import get_day, pages, planning_fingerprint
 from .security import authenticated, child_user, rate_limit
@@ -558,9 +558,12 @@ def process(job_id):
 
             payload = with_visual_context(db, child, payload, items)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+            route_snapshot = copy.deepcopy(selection(config))
             db.rollback()
         provider_requested = True
-        result = request_provider(ProviderConfig(**values), "unit", payload)
+        request_config = ProviderConfig(**values)
+        request_config._selected_route = route_snapshot
+        result = request_provider(request_config, "unit", payload)
         data = s.UnitOutput.model_validate(result.data).model_dump()
         from .coaching import normalized_prompt
 

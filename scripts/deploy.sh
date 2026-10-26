@@ -9,7 +9,7 @@ python3 scripts/android_manifest.py
 release="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
 ssh -o BatchMode=yes dorfspy python3 - < deploy/bootstrap_host.py
 ssh dorfspy "mkdir -p /opt/schulpilot/releases/$release"
-rsync -a --exclude='__pycache__' --exclude='.pytest_cache' backend deploy workers "dorfspy:/opt/schulpilot/releases/$release/"
+rsync -a --chown=root:root --chmod=Dgo-w,Fgo-w --exclude='__pycache__' --exclude='.pytest_cache' backend deploy workers "dorfspy:/opt/schulpilot/releases/$release/"
 rsync -a app/build/web/ "dorfspy:/opt/schulpilot/releases/$release/web/"
 ssh dorfspy "mkdir -p /opt/schulpilot/releases/$release/downloads"
 rsync -a artifacts/schulpilot-android.apk "dorfspy:/opt/schulpilot/releases/$release/downloads/schulpilot-android.apk"

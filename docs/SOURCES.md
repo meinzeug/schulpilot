@@ -2863,3 +2863,73 @@ weiterhin keine vollständige 139-CI oder Produktionsabnahme.
 
 Roots gemeinsamer Oberflächennachlauf nach Integration aller drei UI-Korrekturen
 bestand 40 Tests; Analyse der sieben betroffenen Dartdateien ohne Befund.
+
+139 ist als Commit b04136816357264cebbec2614633b8f092d08724 und Version
+1.36.27+139 ausgeliefert. CI 40327540173: alle acht Jobs erfolgreich,
+4.701 Backendfälle bestanden/44 übersprungen und 4.070 Flutterfälle bestanden/
+19 übersprungen; 302 Flutterdateien genau einmal. Die drei Backendshards decken
+4.745 reguläre Fälle in 229 Dateien disjunkt ab. Vier PostgreSQL-URL-Fallnamen
+werden im heruntergeladenen CI-Text maskiert; deshalb lässt sich der ursprüngliche
+Collection-Digest daraus nicht nochmals berechnen. Das ist keine zusätzliche
+ungeprüfte Behauptung über die maskierten Inhalte. Signierte APK, Play-AAB,
+Webdateien und Reparaturarchiv wurden an denselben Quellstand gebunden geprüft.
+Alle fünf Dienste aktiv, Schema 0042 und 17 Betriebskonfigurationen unverändert;
+öffentliche APK/Webdateien vollständig nachgehasht. Geschützte Sicherung:
+`/var/backups/schulpilot/elements139-config-20261026T132513Z`.
+
+Die fortgesetzte Liveprüfung unterscheidet drei weitere belegte Ausfälle:
+Eine normale Materialrunde scheiterte an `visual/visual_parameters`, eine
+explizite Runde zu gemischten Zahlen an der Bindung einer vorbereiteten Grafik
+an ihre Frage, eine geplante Deutschetappe an der Ausgabelänge. Konkrete verworfene
+Modellparameter werden ohne aufbewahrte Rohantwort nicht nachträglich behauptet.
+29 allgemeine, aus bestätigten Heftseiten abgeleitete Runden sind tatsächlich
+beantwortet und abgeschlossen, darunter eine gezielte Anschlussrunde. Reine
+Vorbereitungen, Wortschatzrunden und lokale Rendererfixtures zählen nicht mit.
+Ein Anbieterabbruch im zusätzlichen Rückblick verlor keine Antworten; genau ein
+bewusst angeforderter weiterer Rückblick war erfolgreich. Das Ziel 100 bleibt offen.
+
+140 ergänzt die vorhandenen, getrennten Erstellungspfade gezielt:
+Normale Materialrunden erhalten für ausdrücklich belegtes Erweitern vor dem
+Transport feste Rechenkerne und den geprüften Bruchrenderer. Ihre bestehenden
+zwei beziehungsweise vier/fünf Plätze und kuratierten Einstiegsfragen bleiben
+erhalten. Explizite Heftrunden zu gemischten Zahlen binden vorbereitete
+Grafikkandidaten vor dem Transport an die unveränderten Aufgabenkerne. Beide
+Pfade verwenden vollständige private Neuheitshistorie auch außerhalb des
+begrenzten Modellkontexts und prüfen sie vor Veröffentlichung erneut. Reine
+Begriffsfragen verbrauchen keine Zahlenkombination; mehrdeutige Zahlenangaben
+bleiben geschlossen. Der globale alte Faktorparser wird dafür nicht gelockert.
+
+Geplante Lernetappen prüfen ihren echten Grafikbedarf vor der vorhandenen
+Routenwahl. Der Worker bewahrt die bereits reservierten Routenmetadaten;
+der Transport verwendet in diesem eng geprüften Fall die schon freigegebenen
+8.000 Ausgabetokens statt einer zusätzlichen versteckten 4.500er Begrenzung.
+Andere Routen behalten ihre Grenze. Modell, Reasoning, Kostenreservierung,
+Providerrevision, Quellenrechte und ausdrückliche Wiederholungsgrenzen werden
+nicht geändert. Einzahltexte von Einstiegsfragen sind korrigiert; die alte
+Formulierung bleibt ausschließlich als Neuheitsalias erhalten.
+
+Der öffentliche Backendcode wird künftig beim Deployment als root-eigener,
+nicht gruppen-/weltbeschreibbarer Bestand übertragen. Auf 139 wurde der bereits
+ausgelieferte öffentliche Bestand mit 462 Dateien und sechs Verzeichnissen
+bei identischen Inhalts-Hashes entsprechend geschützt. Geschützte Metadaten-
+sicherung: `/root/schulpilot-qa139/public-code-139-7e4c76ad3fe5de461300e2808471b4fd`.
+Appdaten, virtuelle Umgebung, Dienste und Einstellungen wurden dabei nicht
+geändert. Ein ungeprüfter zusätzlicher Providerauftrag wurde daraus nicht abgeleitet.
+
+Roots integrierter 140-Backendstand stimmt in allen 480 manifestierten Dateien
+mit dem isoliert geprüften Verbund überein: 873/873 RAM-SQLite und 873/873
+Unix-PostgreSQL16, ohne Fehler oder Skips. Die konkreten JUnit-Fallmengen sind
+identisch, alle bisherigen 751 Fälle enthalten; 122 weitere Fälle prüfen die
+Material-, Historien- und Routenübergänge. Ein unterbrochener PG-Erstlauf wurde
+als unvollständig verworfen, bereinigt und auf unverändertem Stand wiederholt.
+Sämtliche temporären Testdaten und Cluster wurden entfernt.
+
+Ein davon getrennter UI-Nachlauf bestand 101 Widgetfälle in acht Dateien;
+Analyse der drei geänderten Dateien ohne Befund. Lange unnummerierte Grafik-
+Erklärungen erhalten ausschließlich zusätzliche sichtbare Absatzabstände an
+sicheren Prosegrenzen. Originaltext, Suche, Vorlesen, Tutor-Kontext und gespeicherte
+Schrittzahl bleiben erhalten; mehrdeutige Formeln, Code, Tabellen und Zitate
+werden nicht aufgeteilt. Vollständige Originalbeispiele ohne gemeinsames Wort
+beginnen ohne pauschale Unterstreichung; explizite Vergleichsschalter sowie
+der vorhandene Buchstabenvergleich passender kurzer Formen bleiben verfügbar.
+Dies sind lokale Nachweise; eine 140-Live-Abnahme wird damit nicht vorweggenommen.

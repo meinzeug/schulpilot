@@ -286,6 +286,7 @@ def features_for(db, child_id, job_id):
     from .material_routing import extended_output as material_extended_output
     from .notebook_routing import extended_output as notebook_extended_output
     from .notebook_routing import length_failed as notebook_length_failed
+    from .study_routing import extended_output as study_extended_output
 
     return {
         **coach_output_need(db, child_id, job),
@@ -296,6 +297,7 @@ def features_for(db, child_id, job_id):
             material_revision=data.get("material_revision")) if material else False,
         "transcription_review": extraction_recheck(db, child_id, job),
         "study_length_failed": study_length_failed(db, child_id, job),
+        "study_extended_output": study_extended_output(db, child_id, job),
         "notebook_length_failed": notebook_length_failed(db, child_id, job),
         "notebook_extended_output": notebook_extended_output(db, child_id, job),
         "material_extended_output": material_extended_output(db, child_id, job),
@@ -320,6 +322,8 @@ def choose_tier(function, features, *, economy=False):
     if function == "coach_practice" and features.get("coach_length_failed"):
         return "sol", "recorded_coach_output_length"
     if economy:
+        if function in ("unit", "study_block") and features.get("study_extended_output"):
+            return "sol", "study_graphic_teaching"
         if function == "coach_practice" and features.get("coach_extended_output"):
             return "sol", "coach_graphic_teaching"
         if function == "unit" and features.get("notebook_extended_output"):

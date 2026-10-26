@@ -1045,6 +1045,30 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             raise
         raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
             telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+    from .notebook_fraction_compositions import ERROR as NOTEBOOK_COMPOSITION_ERROR
+    from .notebook_fraction_compositions import EXHAUSTED as NOTEBOOK_COMPOSITION_EXHAUSTED
+    from .notebook_fraction_compositions import prepare as prepare_notebook_composition
+
+    try:
+        payload = prepare_notebook_composition(payload) if function == "unit" else payload
+    except ValueError as error:
+        if error.args not in ((NOTEBOOK_COMPOSITION_ERROR,), (NOTEBOOK_COMPOSITION_EXHAUSTED,)):
+            raise
+        raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
+            telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+    from .material_fraction_expansions import ERROR as MATERIAL_EXPANSION_ERROR
+    from .material_fraction_expansions import EXHAUSTED as MATERIAL_EXPANSION_EXHAUSTED
+    from .material_fraction_expansions import KEY as MATERIAL_EXPANSION_PLAN
+    from .material_fraction_expansions import prepare as prepare_material_expansion
+
+    try:
+        if function == "unit" and MATERIAL_EXPANSION_PLAN in payload:
+            payload = prepare_material_expansion(payload)
+    except ValueError as error:
+        if error.args not in ((MATERIAL_EXPANSION_ERROR,), (MATERIAL_EXPANSION_EXHAUSTED,)):
+            raise
+        raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
+            telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
     from .unit_multiples_common import ERROR as MULTIPLES_ERROR
     from .unit_multiples_common import EXHAUSTED as MULTIPLES_EXHAUSTED
     from .unit_multiples_common import RULE_ERROR as MULTIPLES_RULE_ERROR
@@ -1649,12 +1673,18 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
             unit_composition = bind_notebook_expansion(schema, payload)
             if unit_composition is None:
+                from .material_fraction_expansions import bind_schema as bind_material_expansion
+
+                unit_composition = bind_material_expansion(schema, payload)
+            if unit_composition is None:
                 unit_composition = bind_unit_composition(schema, payload)
         except ValueError as error:
             from .fraction_practice_plan import ERROR as PRACTICE_POOL_ERROR
             from .fraction_practice_plan import INVALID as PRACTICE_PLAN_ERROR
 
-            if error.args not in ((PRACTICE_POOL_ERROR,), (PRACTICE_PLAN_ERROR,), (NOTEBOOK_EXPANSION_ERROR,), (NOTEBOOK_EXPANSION_EXHAUSTED,)):
+            if error.args not in ((PRACTICE_POOL_ERROR,), (PRACTICE_PLAN_ERROR,), (NOTEBOOK_EXPANSION_ERROR,), (NOTEBOOK_EXPANSION_EXHAUSTED,),
+                    (NOTEBOOK_COMPOSITION_ERROR,), (NOTEBOOK_COMPOSITION_EXHAUSTED,),
+                    (MATERIAL_EXPANSION_ERROR,), (MATERIAL_EXPANSION_EXHAUSTED,)):
                 raise
             # The bounded private planner has not made a provider request.
             raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
@@ -1794,10 +1824,18 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             wire_schema = unit_graphics.wire_schema
             instructions += unit_graphics.rules
     extended_unit_wire = False
+    study_wire = False
     if function == "unit" and config.provider == "openrouter":
         from .model_routing import selection
 
-        extended_unit_wire = selection(config).get("reason") in {
+        route_reason = selection(config).get("reason")
+        stage = payload.get("study_block")
+        study_wire = (route_reason in {"study_graphic_teaching", "recorded_study_output_length"}
+            and isinstance(stage, dict) and stage.get("mode") in ("understand", "detective", "apply", "recall")
+            and type(stage.get("question_count")) is int and 2 <= stage["question_count"] <= 5
+            and (payload.get("visual_context") or {}).get("required") is True
+            and not any(payload.get(key) for key in ("review", "homework_practice", "exam_preparation", "exam_review_practice")))
+        extended_unit_wire = study_wire or route_reason in {
             "material_graphic_teaching", "notebook_graphic_teaching",
         }
     if unit_composition is not None or extended_unit_wire:
@@ -1808,11 +1846,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         wire_schema = schema_projection(wire_schema)
     if function == "unit":
         from .coach_fraction_expansions import HISTORY as COACH_EXPANSION_HISTORY
+        from .material_fraction_expansions import HISTORY as MATERIAL_EXPANSION_HISTORY
+        from .notebook_fraction_compositions import HISTORY_KEY as NOTEBOOK_COMPOSITION_HISTORY
         from .notebook_fraction_expansions import HISTORY_KEY as NOTEBOOK_EXPANSION_HISTORY
         from .unit_multiples_common import HISTORY_KEY as MULTIPLES_HISTORY
 
         outgoing_payload = {key: value for key, value in outgoing_payload.items()
-            if key not in (COACH_EXPANSION_HISTORY, NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY)}
+            if key not in (COACH_EXPANSION_HISTORY, MATERIAL_EXPANSION_HISTORY, NOTEBOOK_COMPOSITION_HISTORY,
+                NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY)}
     from .explanation_guidance import rules as explanation_rules
 
     instructions += explanation_rules(function, payload)
@@ -1927,7 +1968,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     else 4200
                     if function == "coach" and payload.get("defer_practice")
                     else 4500
-                    if block_count
+                    if block_count and not study_wire
                     else config.max_output_tokens,
                 ),
                 "temperature": 0,
@@ -2265,6 +2306,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
             validation_phase = "practice"
             validate_notebook_expansion(payload, data)
+            from .notebook_fraction_compositions import validate_output as validate_notebook_composition
+
+            validate_notebook_composition(payload, data)
+            from .material_fraction_expansions import validate_output as validate_material_expansion
+
+            validate_material_expansion(payload, data)
             from .unit_multiples_common import validate_output as validate_multiples_output
 
             validate_multiples_output(payload, data)

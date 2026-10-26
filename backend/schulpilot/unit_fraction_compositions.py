@@ -165,6 +165,13 @@ class Binding(PackageBinding):
             "Den vorab geprüften kurzen Schritttext unverändert übernehmen. Bei der Komposition darfst du ausschließlich "
             "den gebundenen Eingangsbruch und seine geprüften Ganzes-/Restanteile erklären. Antworten und feste "
             "Einstiegsfragen niemals ändern. Gegebene Einführung zeigt nur EIN allgemeines Ganzes, keine Aufgabenlösung.")
+        if any(candidate.get("planned_notebook") for candidate in self.candidates):
+            from .notebook_fraction_compositions import REVISION as notebook_revision
+
+            rules += ("\n" + notebook_revision + ": Jede verbleibende Heftaufgabe ist vorab vollständig geplant. "
+                "Übernimm id, type, prompt, answer, options und accepted exakt aus question_core der zugeordneten "
+                "solution-ID. Keine weiteren Brüche oder Aufgaben ergänzen. Voraussetzungen behalten ihren eigenen "
+                "festen Lernstart-Core und ihre eigene Grundlagenquelle. Nur Hinweise und kurze Erklärungen ergänzen.")
         if any(candidate.get("planned_practice") for candidate in self.candidates):
             from .fraction_practice_plan import REVISION as practice_revision
 
@@ -244,6 +251,9 @@ def bind_schema(schema, payload):
         selected = plan(candidates, payload.get("practice_tasks") or practice_tasks(payload),
             payload.get("fraction_practice_history"))
         candidates = [*[c for c in candidates if c["disclosure"] == "given"], *selected]
+    from .notebook_fraction_compositions import bind_candidates as bind_notebook_candidates
+
+    candidates = bind_notebook_candidates(payload, candidates)
     # Fixed prerequisite probes retain their own curated source and reference.
     for source in context.get("sources", []):
         if source.get("source_type") != "curated_foundation":
@@ -271,12 +281,14 @@ def bind_schema(schema, payload):
         props = node["properties"]
         core = candidate.get("question_core")
         if core:
-            if candidate.get("planned_practice"):
-                if (props["id"].get("enum") != [core["id"]]
-                        or props.get("learning_goal_id", {}).get("enum") != [core["learning_goal_id"]]
+            if candidate.get("planned_practice") or candidate.get("planned_notebook"):
+                if ((candidate.get("planned_practice") and props["id"].get("enum") != [core["id"]])
+                        or (candidate.get("planned_notebook") and props["id"].get("enum") not in (None, [core["id"]]))
+                        or (candidate.get("planned_practice")
+                            and props.get("learning_goal_id", {}).get("enum") != [core["learning_goal_id"]])
                         or "short" not in props["type"].get("enum", [])):
                     return None
-                for key in ("type", "prompt", "answer"):
+                for key in ("id", "type", "prompt", "answer"):
                     fixed = props[key].get("enum", [props[key]["const"]] if "const" in props[key] else [])
                     if fixed and core[key] not in fixed:
                         return None

@@ -376,16 +376,46 @@ def process(job_id):
                 from .visual_references import with_visual_context
 
                 payload = with_visual_context(db, child, payload, source_pages, groups=job.payload.get("groups"))
+                if job.kind == "unit" and config.provider == "openrouter" and route_snapshot.get("reason") == "material_graphic_teaching":
+                    from .material_fraction_expansions import add_reference as add_material_expansion
+
+                    payload = add_material_expansion(db, payload)
                 from .learning_entry import with_learning_entry
                 from .visual_references import with_foundation_context
 
                 payload = with_learning_entry(db, child, payload, source_pages, groups=job.payload.get("groups"),
                     enabled=bool(job.payload.get("learning_entry_enabled")) and not synthetic)
                 payload = with_foundation_context(db, payload)
+                if job.kind == "unit" and config.provider == "openrouter" and route_snapshot.get("reason") == "material_graphic_teaching":
+                    from .material_fraction_expansions import eligible as material_expansion_eligible
+                    from .material_fraction_expansions import prepare as prepare_material_expansion
+                    from .material_fraction_expansions import with_history as material_expansion_history
+
+                    if material_expansion_eligible(payload):
+                        from .material_fraction_expansions import ERROR as MATERIAL_EXPANSION_ERROR
+                        from .material_fraction_expansions import EXHAUSTED as MATERIAL_EXPANSION_EXHAUSTED
+
+                        try:
+                            payload = prepare_material_expansion(material_expansion_history(payload, novelty_prompts))
+                        except ValueError as error:
+                            if error.args not in ((MATERIAL_EXPANSION_ERROR,), (MATERIAL_EXPANSION_EXHAUSTED,)):
+                                raise
+                            raise ProviderError(error.args[0], code="invalid_output") from None
                 if job.kind == "unit" and job.payload.get("notebook_practice"):
                     from .notebook_fraction_expansions import with_history
 
                     payload = with_history(payload, novelty_prompts)
+                    from .notebook_fraction_compositions import ERROR as COMPOSITION_ERROR
+                    from .notebook_fraction_compositions import EXHAUSTED as COMPOSITION_EXHAUSTED
+                    from .notebook_fraction_compositions import prepare as prepare_composition
+                    from .notebook_fraction_compositions import with_history as with_composition_history
+
+                    try:
+                        payload = prepare_composition(with_composition_history(payload, novelty_prompts))
+                    except ValueError as error:
+                        if error.args not in ((COMPOSITION_ERROR,), (COMPOSITION_EXHAUSTED,)):
+                            raise
+                        raise ProviderError(error.args[0], code="invalid_output") from None
                     from .unit_multiples_common import ERROR as MULTIPLES_ERROR
                     from .unit_multiples_common import EXHAUSTED as MULTIPLES_EXHAUSTED
                     from .unit_multiples_common import RULE_ERROR as MULTIPLES_RULE_ERROR
@@ -536,9 +566,26 @@ def process(job_id):
                     validate_output(db, db.get(Child, job.child_id), job.payload, data)
                 if unit_novelty.applies(job, material):
                     unit_novelty.validate_output(db, job.child_id, source_pages, data)
+                    from .material_fraction_expansions import KEY as MATERIAL_EXPANSION_PLAN
+                    from .material_fraction_expansions import validate_history as validate_material_expansion_history
+
+                    if MATERIAL_EXPANSION_PLAN in payload:
+                        validate_material_expansion_history(payload, data,
+                            unit_novelty.previous_prompts(db, job.child_id, source_pages))
+                    from .notebook_fraction_compositions import CURRENT_ERROR as COMPOSITION_HISTORY_CHANGED
+                    from .notebook_fraction_compositions import KEY as COMPOSITION_PLAN
+                    from .notebook_fraction_compositions import validate_history as validate_composition_history
                     from .unit_multiples_common import KEY as MULTIPLES_PLAN
                     from .unit_multiples_common import validate_history as validate_multiples_history
 
+                    if COMPOSITION_PLAN in payload:
+                        try:
+                            validate_composition_history(payload, data,
+                                unit_novelty.previous_prompts(db, job.child_id, source_pages))
+                        except ValueError as error:
+                            if error.args != (COMPOSITION_HISTORY_CHANGED,):
+                                raise
+                            raise ProviderError(error.args[0], code="source_changed") from None
                     if MULTIPLES_PLAN in payload:
                         validate_multiples_history(payload, data,
                             unit_novelty.previous_prompts(db, job.child_id, source_pages))

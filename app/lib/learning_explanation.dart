@@ -93,6 +93,56 @@ String? _numberedExplanationParagraphs(String text) {
   return changed ? display.toString() : null;
 }
 
+// Add breathing room to long saved prose without changing its words, the
+// spoken text or the number of explanation steps. Ambiguous notation stays as
+// saved; this is a sentence-boundary projection, not a summary or a rewrite.
+String? _explanationParagraphs(String text) {
+  final numbered = _numberedExplanationParagraphs(text);
+  if (numbered != null) return numbered;
+  if (text.length <= 280 ||
+      text.contains('\n') ||
+      text.contains('`') ||
+      text.contains('|') ||
+      text.contains('\t') ||
+      RegExp(r'[\\=<>≤≥±×÷∑√]').hasMatch(text) ||
+      formulaSegments(text).isNotEmpty ||
+      RegExp(r'^\s*(?:#{1,6}\s|[-*+]\s|[0-9]+[.)]\s)').hasMatch(text)) {
+    return null;
+  }
+  final quotes = RegExp(r'"[^"\n]*"|„[^“]*“|“[^”]*”|«[^»]*»')
+      .allMatches(text)
+      .toList();
+  final unquoted = text.replaceAll(
+    RegExp(r'"[^"\n]*"|„[^“]*“|“[^”]*”|«[^»]*»'),
+    '',
+  );
+  if (RegExp('["„“”«»]').hasMatch(unquoted)) return null;
+  final display = StringBuffer();
+  var offset = 0;
+  for (final boundary in RegExp(r'[.!?][ ]+(?=[A-ZÄÖÜ])').allMatches(text)) {
+    if (quotes.any(
+      (quote) => boundary.start >= quote.start && boundary.start < quote.end,
+    )) {
+      continue;
+    }
+    final before = text.substring(0, boundary.start + 1);
+    // Ordinals, initials and familiar abbreviations are not sentence ends.
+    if (RegExp(
+      r'(?:\b[0-9]+|\b[A-Za-zÄÖÜäöü]|\b(?:bzw|ca|Dr|Prof|Nr|Abs|bspw|etc|usw))\.$',
+      caseSensitive: false,
+    ).hasMatch(before)) {
+      continue;
+    }
+    if (boundary.end - offset < 200) continue;
+    display.write(text.substring(offset, boundary.end));
+    display.write('\n\n');
+    offset = boundary.end;
+  }
+  if (offset == 0) return null;
+  display.write(text.substring(offset));
+  return display.toString();
+}
+
 /// The same saved explanation, presented in readable steps, never new AI text.
 class LearningExplanation extends StatefulWidget {
   final String text;
@@ -546,7 +596,7 @@ class _LearningExplanationState extends State<LearningExplanation>
           prompt: widget.prompt,
           reader: LearningReader(
             selected['text'],
-            visibleText: _numberedExplanationParagraphs(selected['text']),
+            visibleText: _explanationParagraphs(selected['text']),
             state: widget.state,
             sourceKey: (widget.sourceKey, selected['id']),
             isCurrent: widget.isCurrent,
