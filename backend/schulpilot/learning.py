@@ -1387,7 +1387,10 @@ def explanation(unit_id: str, data: s.ExplanationRequest | None = None, p=Depend
     return {"explanation": text, "question_id": q["id"] if q else None,
             "explanation_visual_status": visual_state["explanation_visual_status"],
             "explanation_visual_reason": visual_state["explanation_visual_reason"],
-            "explanation_steps": question_projection(db, unit, q, closed=True) if q else visual_projection(db, unit)["explanation_steps"],
+            # This explicit action opens the full saved explanation. A model
+            # may have placed its sole graphic at a hint stage rather than at
+            # solution; do not return the text while filtering that graphic.
+            "explanation_steps": question_projection(db, unit, q, closed=True, hints=3) if q else visual_projection(db, unit)["explanation_steps"],
             "presentation": public_presentation(q.get("presentation") or legacy_presentation(q, unit_source_texts(db, unit)), closed=True) if q else None}
 
 
