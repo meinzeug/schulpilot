@@ -14,11 +14,11 @@ from .subject_content import PROFILES, Graphic, validate_question
 from .visual_reference_schemas import ExplanationStep
 from .visual_references import _meaningful
 
-REVISION = "package-prepared-graphics-2"
+REVISION = "package-prepared-graphics-3"
 MAX_BASE_CANDIDATES = 8
 STAGES = ("given", "hint1", "hint2", "hint3", "solution")
 RULES = """
-package-prepared-graphics-2: DIESER Auftrag verwendet ausschließlich servergeprüfte Grafiken.
+package-prepared-graphics-3: DIESER Auftrag verwendet ausschließlich servergeprüfte Grafiken.
 prepared_graphics.candidates enthält endliche IDs mit genau gebundener Quelle, Referenz,
 Stufe und Schritttext. Wähle eine zum tatsächlichen Lernziel passende ID. Im angeforderten
 Wireformat ist presentation.blocks=[dieseID], NICHT ein neu abgeschriebener Graphic-Block.
@@ -34,6 +34,10 @@ aber nicht als \\frac{n}{d}/\\dfrac{n}{d}; keine andere wertgleiche Darstellung.
 übrigen Formeln dürfen wie bisher LaTeX verwenden. Die Originalquelle bleibt unverändert. Frage-Step-ID,
 Text, Quelle und Aufdeckstufe gehören zum selben gewählten Zweig. Szenen sind in diesem
 vorbereiteten Mathevertrag nur für die Einführung verfügbar, nicht als Fragegrafik.
+Ausnahme: Eine feste learning_entry-Vorwissensfrage ist über ihren vollständigen
+question_core an genau ihr kuratiertes Grundlagenbeispiel gebunden. Alle Kernfelder
+unverändert lassen; diese Grafik erst als solution verwenden. Den Bruchanker nicht
+in die feste Frage hineinschreiben und keine andere Frage an diese Grafik binden.
 
 """
 
@@ -87,6 +91,35 @@ def _scene_bases(content):
                 "text_probe": None, "lab": None}, "Die belegte Pfeilfolge: " + quote)
 
 
+def _foundation_core(payload, source, base):
+    """Recognize only the exact server-selected probe and immutable rule source.
+
+    A source answer, matching fraction or model-written ID alone is no proof.
+    The full curated snapshot and core digest must agree with the entry plan.
+    """
+    if source.get("source_type") != "curated_foundation" or base["kind"] != "fraction":
+        return None
+    from .competences import resolve_reference
+    from .learning_entry import CORE
+
+    actual = resolve_reference(source.get("reference_id"), source.get("version"), source.get("digest"))
+    if not actual or actual["digest"] != source.get("digest"):
+        return None
+    for plan in (payload.get("learning_entry") or {}).get("units", []):
+        if (plan.get("subject"), plan.get("group_id")) != (source.get("subject"), source.get("group_id")):
+            continue
+        for probe in plan.get("probes", []):
+            if probe.get("id") != source.get("example_question_id") or probe.get("reference_id") != actual["reference_id"]:
+                continue
+            core = {key: probe[key] for key in CORE}
+            example = probe.get("visual_example") or {}
+            content = actual["content"] + "\n" + probe["prompt"] + "\nGeprüfte Antwort des eigenen Grundlagenbeispiels: " + probe["answer"]
+            if (_digest(core) == source.get("example_digest") and content == source.get("content")
+                    and base["numbers"] == [example.get("numerator"), example.get("denominator")]):
+                return core
+    return None
+
+
 def compile_candidates(payload):
     """Return bounded PRIVATE candidates from the exact current safe context.
 
@@ -104,6 +137,9 @@ def compile_candidates(payload):
         refs = [row for row in context.get("references", []) if row.get("subject") == subject]
         sources = [row for row in context.get("sources", []) if row.get("subject") == subject
                    and row.get("group_id") == group_id and isinstance(row.get("content"), str)]
+        # Fixed probes must not lose their only graphic behind eight earlier
+        # photographic examples. This changes no source or selected task.
+        sources.sort(key=lambda row: row.get("source_type") != "curated_foundation")
         count = 0
         for source in sources:
             bases = list(_fraction_bases(source["content"])) if subject == "Mathematik" else []
@@ -114,11 +150,16 @@ def compile_candidates(payload):
                 if base["kind"] not in PROFILES.get(subject, ()) or len(text) > 350:
                     continue
                 references = [row for row in refs if row.get("kind") == base["kind"]]
+                core = _foundation_core(payload, source, base)
+                if source.get("source_type") == "curated_foundation" and core is None:
+                    continue
                 added = False
                 for reference in references:
                     if type(reference.get("version")) is not int or not reference.get("digest"):
                         continue  # Actual immutable recipe metadata, not model/client aliases.
                     for stage in STAGES:
+                        if core is not None and stage not in ("given", "solution"):
+                            continue  # A fixed diagnostic's answer is no hint.
                         try:
                             block = Graphic.model_validate({**base, "disclosure": stage})
                             _meaningful(block, reference)
@@ -133,6 +174,8 @@ def compile_candidates(payload):
                         record = {"subject": subject, "group_id": group_id, "reference": value.reference.model_dump(),
                                   "disclosure": stage, "source_refs": value.source_refs, "text": value.text,
                                   "kind": block.kind, "block": block.model_dump(mode="json")}
+                        if core is not None:
+                            record["question_core"] = core
                         identity = {"revision": REVISION, "plan_digest": payload.get("package_plan_digest"),
                                     "partition": payload["package_partition"], "source_digest": _digest(source),
                                     "reference_digest": reference["digest"], "candidate": record}
@@ -192,6 +235,8 @@ class Binding:
         return _offered(candidate)
 
     def question_bound(self, candidate, question):
+        if candidate.get("question_core"):
+            return all(question.get(key) == value for key, value in candidate["question_core"].items())
         return (candidate["kind"] == "fraction" and _question_anchor(candidate, question)
                 and bool(re.search(_fraction_prompt_pattern(candidate), question.get("prompt", ""))))
 
@@ -247,7 +292,26 @@ def bind_schema(schema, payload):
     # keeps its original strict contract. No unsupported substitute is emitted.
     if len(groups) != 1 or groups[0].get("subject") != "Mathematik" or not any(row["kind"] == "fraction" for row in candidates):
         return None
-    return bind_candidates(schema, Binding(tuple(candidates)))
+    def question_binding(node, candidate):
+        props = node["properties"]
+        core = candidate.get("question_core")
+        if core:
+            # Existing entry binding already closed these values. Merely pair
+            # them with the matching proof; never rewrite a task to fit a panel.
+            if any(props[key].get("enum") != [core[key]] for key in ("id", "type", "prompt", "answer")):
+                return None
+        else:
+            pattern = _fraction_prompt_pattern(candidate)
+            prompt = props["prompt"]
+            if "pattern" in prompt and prompt["pattern"] != pattern:
+                raise ValueError("Der feste Fragevertrag lässt sich nicht verlustfrei an die Grafik binden.")
+            fixed = prompt.get("enum", [prompt["const"]] if "const" in prompt else [])
+            if fixed and not any(isinstance(value, str) and re.search(pattern, value) for value in fixed):
+                return None
+            prompt["pattern"] = pattern
+        return node
+
+    return bind_candidates(schema, Binding(tuple(candidates)), question_binding=question_binding)
 
 
 def bind_candidates(schema, binding, *, question_kinds=("fraction",), prompt_pattern=_fraction_prompt_pattern, question_binding=None):

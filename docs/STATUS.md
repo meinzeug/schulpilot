@@ -1,4 +1,14 @@
-# Zuletzt belegter Produktionsstand · 1.36.30+142
+# Zuletzt belegter Produktionsstand · 1.36.32+144
+
+Stand: 26.10.2026. Release `20261026T205002Z-70225d4`, Produktcommit `70225d43fcb084c8e5bf274438de36b87accd74b`, Schema `0042`. Alle fünf Dienste aktiv; 17 unmittelbar gesicherte Betriebskonfigurationen erhalten. Öffentliche Direct-APK und Web-JavaScript bytegenau zum signierten Build geprüft. Die vollständige [CI40389201927](https://github.com/meinzeug/schulpilot/actions/runs/40389201927) ist erfolgreich.
+
+Der neue Alltagstest verwendet einen eigenen regulären künstlichen Haushalt und selbst erzeugte realistische Fotos mit Handschrift, roter Korrektur, Drehung und unleserlichen Stellen. 143 korrigierte einen veralteten Schulbuddy-Systembudgetwert, normale Tintenklassifizierung und die mobile Fotoabgabe. 144 erhält beim Gegenlesen alle nummerierten Abschnitte und trennt gestrichene Zahlen von Ergänzungen in der Quellenansicht. Drei erneut regulär hochgeladene Seiten wurden vollständig gelesen und automatisch gegengeprüft. Die Verarbeitung lief bei geschlossenem Appdokument weiter. Das seitliche Arbeitsblatt enthält nachweislich alle acht Blöcke einschließlich 1km=1000m, 27t=27000kg, 3/7 und der getrennten 60/40-Korrektur.
+
+Eine echte englische Testrunde wurde im künstlichen Kinderkonto abgeschlossen: ein unklarer Schreibversuch und eine unterstützte Auswahl bleiben entsprechend gekennzeichnet. Rückblick und Antworten überstanden Neuladen. Der Kontextchat konnte die geöffnete Englischseite erklären. Ein danach entdeckter Konflikt zwischen fester Bruch-Vorwissensfrage und Grafikbindung wird separat korrigiert; das neue Mathematikpaket ist zu diesem Zwischenstand noch nicht erfolgreich erzeugt. Native Android-Hintergrundzustellung wurde nicht beobachtet. Die frühere 100-Runden-Serie bleibt auf Nutzerauftrag bei 29 abgeschlossenen Runden beendet.
+
+---
+
+# Vorheriger belegter Produktionsstand · 1.36.30+142
 
 Stand: 26.10.2026. Release `20261026T184440Z-e9b6f11`, Produktcommit `e9b6f11b35e8af36bb8658ab7dc7f002afe89f3f`, PostgreSQL-Schema `0042`. Alle fünf Schulpilot-Dienste aktiv. Öffentliche signierte Direct-APK und Web-JavaScript stimmen bytegenau mit dem geprüften Build überein; Play-AAB separat geprüft. Die 17 unmittelbar vor Auslieferung gesicherten Konfigurationsdateien und vorhandenen Google-Nachweise blieben erhalten.
 
