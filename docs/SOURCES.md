@@ -2982,8 +2982,10 @@ wurden entfernt. Anschließend wurde nur die Backend-Versionszeichenfolge erhöh
 Fälle; Analyse der sechs geänderten UI-/Testdateien ohne Befund. Die drei
 isolierten UI-Nachbargates bestanden vorher 108, 82 beziehungsweise 40 Fälle;
 überlappende Fälle sind keine zusätzlichen Live-Lernrunden.
-Die ausdrücklich freigegebene Live-Prüfung steht weiterhin bei 29 von 100
-abgeschlossenen allgemeinen Heftrunden. Ein fehlgeschlagener Vorbereitungsauftrag
-zählt nicht als abgeschlossene Lernrunde. Automatische Quellenprüfung, neue
+Der Betreiber hat die 100-Runden-Testserie am 26.10. ausdrücklich beendet.
+Ihr Abschlussstand sind 29 abgeschlossene allgemeine Heftrunden; die letzte
+Testrunde war bereits beendet. Der anschließende fehlgeschlagene
+Vorbereitungsauftrag hat keine weitere Runde erzeugt und zählt nicht mit.
+Weitere Runden dieser Testserie werden nicht begonnen. Automatische Quellenprüfung, neue
 Elternübersicht, kompakte Einzelrückmeldungen und Schulbuddy-Lesekontext werden
 getrennt weiterentwickelt und sind durch diese 141-Nachweise nicht abgenommen.
