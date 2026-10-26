@@ -153,7 +153,7 @@ class SourceImageRegion(Bounded):
 
 class SourceAnnotation(Bounded):
     """Literal visible mark, never a factual correction or inferred authorship."""
-    kind: Literal["crossout", "insertion", "correction", "highlight", "comment", "unknown"]
+    kind: Literal["ink", "crossout", "insertion", "correction", "highlight", "comment", "unknown"]
     quote: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=500)
     color: Literal["unknown", "black", "pencil", "blue", "red", "green", "purple", "orange"] = "unknown"
     author: Literal["unknown", "student", "teacher"] = "unknown"

@@ -52,12 +52,17 @@ Auch synthetisch oder als Funktionstest gekennzeichnete Seiten werden vollständ
 Nichts aus Erwartungen an die Klassenstufe oder aus Vorwissen ergänzen. Sichtbare Fehler nicht korrigieren.
 Unterscheide besonders Teilbarkeit \\mid und Nichtteilbarkeit \\nmid, Minus/Plus, Zähler/Nenner,
 Hoch-/Tiefstellungen und gemischte Zahlen. Keine bekannte richtige Ersatzgleichung einsetzen.
-Rote/grüne/blaue Schrift, Einfügungen und Durchstreichungen WÖRTLICH in text erhalten;
-zusätzlich annotations mit kind, quote (exakter Teil desselben text) und sichtbarer color.
+Alle sichtbaren Schriftfarben und tatsächlichen Einfügungen/Durchstreichungen WÖRTLICH in text erhalten.
+annotations sind für echte sichtbare Markierungen (Streichung, Einfügung, Korrektur, Hervorhebung, Randkommentar).
+Normale blaue/schwarze/rote Handschrift ist KEINE unbekannte Markierung und KEIN Schülerlösungsnachweis.
+Nur wenn die gewöhnliche Schriftfarbe als Metadatum erhalten wird, dafür kind=ink verwenden; alternativ annotations=[].
+kind=unknown nur für eine tatsächlich besondere, aber nicht deutbare Markierung, niemals für normale Tinte.
+Bei echten Markierungen quote als exakten Teil desselben text und die sichtbare color angeben.
 Keine TeX-Farbbefehle. Farbe ist kein Nachweis für Urheber oder Richtigkeit.
 author=unknown, außer ein ausdrücklich sichtbarer Wortlaut belegt die Urheberschaft;
 dann author_evidence als exakten Wortlaut aus diesem Block liefern. Niemals Lehrkraft aus Rot ableiten.
-literal_role=student_work für klar erkennbar ausgefüllte Schülerarbeit, annotation für
+Handschriftliche Merksätze, Regeln, Überschriften und abgeschriebene Unterrichtsbeispiele sind nicht allein wegen der Handschrift student_work.
+literal_role=student_work nur für klar erkennbare eigene Antworten zu Aufgaben, annotation für
 sichtbare Randkorrektur; instruction/example nur für sichtbare Aufgaben-/Beispielrollen,
 bei Zweifel unknown. Diese Rollen sind keine fachlichen Urteile.
 reading_uncertainties benennt konkrete unklare Zeichen/Positionen im jeweiligen Block,

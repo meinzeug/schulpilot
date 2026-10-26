@@ -328,7 +328,7 @@ def test_partial_automatic_package_notice_never_claims_all_photos_are_ready(api,
     for _ in range(2):
         items = api.get("/api/notifications/inbox").json()["items"]
         assert len(items) == 1
-        assert "Lernpaket aus 3 von 4 Seiten bereit · 1 noch offen" in items[0]["title"]
+        assert "Lernpaket bereit · 1 von 4 Fotos noch offen" in items[0]["title"]
     with DB() as db:
         assert db.scalar(select(func.count()).select_from(Job)) == 0
         assert db.scalar(select(func.count()).select_from(NotificationRead)) == 0

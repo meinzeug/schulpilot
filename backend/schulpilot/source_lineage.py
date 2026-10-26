@@ -21,7 +21,7 @@ from .db import Job, LearningUnit, UnitSource, Usage
 from .source_lineage_models import SourceImageReceipt, SourceInvalidation, SourceRevision
 from .subject_content import SourceBlock
 
-POLICY_VERSION = "literal-safety-1"
+POLICY_VERSION = "literal-safety-2"
 PREPROCESS_VERSION = "exif-rgb-max3200-jpeg95-1"
 REASONS = {
     "exam_only": "Eine korrigierte Arbeit ist keine allgemeine Lernstoffquelle.",

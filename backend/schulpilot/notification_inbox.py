@@ -146,7 +146,7 @@ def recent_events(db, user, current=None, *, direct_messages=False, direct_exams
             suffix = {"needs_review":"Bitte prüfen", "needs_photo":"Ein Foto neu aufnehmen", "processing":"Wird vorbereitet",
                       "ready":"Lernpaket bereit", "saved":"Für später gespeichert", "failed":"Vorbereitung noch offen", "blocked":"Vorbereitung noch offen"}.get(current_status, "Heftseiten öffnen")
             if current_status == "ready" and (ready_count := sum(r.confirmed for r in source_rows)) < count:
-                suffix = f"Lernpaket aus {ready_count} von {count} Seiten bereit · {count - ready_count} noch offen"
+                suffix = f"Lernpaket bereit · {count - ready_count} von {count} Fotos noch offen"
             title = f"{prefix} · {suffix}"
         add("message:" + row.id, row.child_id, row.created, title, route, row.kind)
 
