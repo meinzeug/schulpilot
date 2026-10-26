@@ -165,8 +165,12 @@ class Binding(prepared.Binding):
 
 def bind_schema(schema, payload):
     from .package_prepared_focus import bind_schema as bind_focus
+    from .package_prepared_sentences import bind_schema as bind_sentences
 
     candidates = compile_candidates(payload)
     if candidates:
         return prepared.bind_candidates(schema, Binding(tuple(candidates)), question_kinds=("scene", "sentence"), prompt_pattern=prompt_pattern)
+    binding = bind_sentences(schema, payload)
+    if binding is not None:
+        return binding
     return bind_focus(schema, payload)

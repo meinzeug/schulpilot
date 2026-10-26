@@ -35,6 +35,10 @@ json envelope transport prepared_graphics source choice schema part_bounds norma
 subject practice counts factual coaching entry asset visual billing
 """.split())
 _VALUE_REASONS = {
+    "Satzmarkierung hat keinen eindeutigen Rollenbeleg.": "sentence_role_evidence",
+    "Der Originalfokus benötigt eine unveränderte vollständige Original-Liste ohne erfundene Beziehungen.": "original_focus_shape",
+    "Der Originalfokus benötigt den exakt bestätigten Quellenbeleg.": "original_focus_source",
+    "Die Originalfokus-Frage benötigt dieselben Originaloptionen ohne Antwort im Prompt.": "original_focus_question",
     "Ungültige vorbereitete Grafikzuordnung.": "prepared_graphic_binding",
     "Ungültige Struktur der vorbereiteten Grafikzuordnung.": "prepared_graphic_structure",
     "Unbekannte vorbereitete Grafik-ID.": "prepared_graphic_id",

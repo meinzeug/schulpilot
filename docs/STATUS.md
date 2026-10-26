@@ -1,4 +1,12 @@
-# Zuletzt belegter Produktionsstand · 1.36.32+144
+# Zuletzt belegter Produktionsstand · 1.36.33+145
+
+Stand:26.10.2026. Release `20261026T211952Z-7d1f842`, Produktcommit `7d1f842e795dbb4a75608eef788f3db2b54d866e`, Schema0042. Fünf Dienste aktiv,17Konfigurationen erhalten, Signaturen/Geheimnisscan und öffentliche Web-/APK-Bytes geprüft. Die feste Bruch-Vorwissensfrage ist an ihr eigenes kuratiertes Grafikbeispiel gebunden. Der vorher lokal scheiternde Mathematikteil wurde live in22Sekunden erfolgreich vorbereitet und über die vorhandene kostenlose Teilfreigabe als Runde geöffnet. Kreis-/Balkenwechsel und Nennerfokus der tatsächlichen Grafik wurden bedient. Keine automatische Veröffentlichung oder Ersatzaufgabe.
+
+Der getrennte Deutschauftrag wurde nach49Sekunden bei der visuellen Prüfung verworfen. Die gespeicherte inhaltsfreie Diagnose nennt nur die Phase; die genaue alte Modellantwort wurde nicht gespeichert.146 ergänzt deshalb einen eng geprüften Originalsatz-Pfad und zusätzliche geschlossene Diagnosecodes.143SQLitefälle,30Unix-PostgreSQLfälle und ein Replay des exakt betroffenen künstlichen Payloads bestanden. Eine neue146-Auslieferung oder erfolgreiche Deutschwiederholung wird hier noch nicht behauptet. Native Pushanzeige auf einem eigenen Smartphone bleibt unbeobachtet.
+
+---
+
+# Vorheriger belegter Produktionsstand · 1.36.32+144
 
 Stand: 26.10.2026. Release `20261026T205002Z-70225d4`, Produktcommit `70225d43fcb084c8e5bf274438de36b87accd74b`, Schema `0042`. Alle fünf Dienste aktiv; 17 unmittelbar gesicherte Betriebskonfigurationen erhalten. Öffentliche Direct-APK und Web-JavaScript bytegenau zum signierten Build geprüft. Die vollständige [CI40389201927](https://github.com/meinzeug/schulpilot/actions/runs/40389201927) ist erfolgreich.
 
