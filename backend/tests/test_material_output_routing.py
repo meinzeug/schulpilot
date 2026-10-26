@@ -58,6 +58,21 @@ def post(book, value, key="normal-material-output-request"):
     return book.client.post(f"/api/children/{book.child['id']}/units", json=value, headers={"Idempotency-Key": key})
 
 
+def test_material_detail_advertises_explicit_source_selection_without_writes(routed):
+    material_id = routed.refs[0]["id"]
+    with DB() as db:
+        before = counts(db)
+        subject_id = db.get(Material, material_id).subject_id
+    for _ in range(2):
+        response = routed.client.get(f"/api/materials/{material_id}")
+        assert response.status_code == 200
+        assert response.json()["subject_id"] == subject_id
+        assert response.json()["supports_notebook_practice"] is True
+        assert response.json()["fixed_example"] is False
+    with DB() as db:
+        assert counts(db) == before
+
+
 @pytest.mark.parametrize("review", [False, True])
 def test_real_today_api_unknown_count_reserves_sol_once_and_preserves_saved_evidence(routed, review):
     value = selection(routed, review=review)

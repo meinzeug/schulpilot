@@ -2610,3 +2610,48 @@ quellen- und stufengebundenen Schritt. Damit wird auch das sonst ungebundene
 vollständige Grafikunion-Schema nicht zusätzlich angefordert. Die vorhandenen
 Kostenregressionen mit40.000 künstlichen Zusatzbytes bleiben eine eigene
 Abnahmegrenze; Reservierungen werden für die neue Bindung nicht erhöht.
+
+Einheitlicher Heftseiten-Einstieg26.10.2026 ·1.36.24+136:
+135 wurde nach4.438 bestandenen Backend- und4.026 bestandenen Fluttertests
+veröffentlicht;44/19 Fälle sind die ausgewiesenen Backend-/Plattformausnahmen.
+Die direkte Quellenprüfung und die hervorgehobene Phase „Prüfen“ wurden im
+ursprünglichen echten Schultag im Browser bestätigt. Der folgende einmalige
+normale Heft-Nachtest scheiterte vor dem Versand an97.203 Textbytes und einer
+konservativen Projektion von282.598µUSD gegenüber250.000µUSD Reservierung.
+Es wurden0 Anbieter- und0 Ausgabetokens sowie0 Kosten gespeichert. Dies ist
+kein erfolgreicher KI-Test und kein Grund, die Kostenprüfung zu umgehen.
+
+Die Ursache des unerwartet großen Umfangs ist im tatsächlichen API-Pfad belegt:
+Die Materialseiten-Aktion schickte nurmaterial_id. Der unveränderte historische
+Backendvertrag ergänzt dann alle bestätigten Seiten desselben Fachs und
+Schultags. Bei dieser Quelle waren es18 Seiten. Der Hefter besitzt bereits
+einen davon getrennten, expliziten revisionsgebundenen Auswahlvertrag. Der
+zusätzlich kopierte Legacy-Einstieg verwendete ihn bislang nicht.
+
+136 verbindet die reguläre Heftseiten-Aktion beider Rollen mit dem vorhandenen
+NotebookPracticeDialog und der persistenten LearningPreparation-Statusseite.
+Vorausgewählt ist ausschließlich die aktuelle bestätigte Seite. Weitere Seiten
+werden bewusst hinzugefügt, die individuelle Aufgabenanzahl bleibt im vorhandenen
+begrenzten Vertrag. Erst „Runde vorbereiten“ sendet genau einen idempotenten POST
+mitnotebook_sources und den exakten Revisionen; danach ausschließlich Status-GETs.
+Der lange API-Polling-/Sofortstartweg entfällt für reguläre Notebook-Seiten.
+Der bewusste Start der fertigen Runde bleibt getrennt. Unbekannte Ausgangslagen
+behalten ihren Abgleich mit demselben Schlüssel im vorhandenen Dialog.
+
+Die berechtigte Materialantwort liefert dafür zusätzlich die gespeicherte
+stabile Fach-ID, die Auswahlfähigkeit und die Kennzeichnung fester Beispiele.
+Keine neue Autorisierung oder Migration; der bestehende Backendvertrag prüft
+weiter Kind/Familie, Fach, Quelle, Revision, Anzahl, Sitzung und Kosten atomar.
+Feste synthetische Beispiele sowie spezialisierte Nicht-Heft-Verträge behalten
+bestehende Pfade. Bei einem alten Backend ohne explizite Auswahlmetadaten führt
+die neue reguläre Seitenaktion in die Heftsammlung und startet keine ungefragt
+vergrößerte KI-Anfrage. Sprachseiten behalten ihren vorhandenen Spracheinstieg.
+
+Neue verbundene Flutter-Tests prüfen Kinder und berechtigte Eltern, die exakte
+Einseiten-Auswahl, Quelle/Revision/Anzahl/Idempotenz, reine Vorbereitung ohne
+Rundenstart, Abbruch, Kontowechsel und den alten Backendfall. Der Backendtest
+prüft die ergänzten Detailmetadaten bei wiederholten GETs ohne neue Jobs, Usage,
+Einheiten oder Antworten. Die vorhandenen Mehrseiten-, Kosten-, Neuheits-,
+Wortschatz- und Materialleseprüfungen bleiben Teil der Abnahme. Die17 bisher
+persönlich vollständig beobachteten allgemeinen Heftrunden sind weiterhin
+keine abgeschlossene100-Runden-Prüfung.

@@ -108,6 +108,7 @@ def material_data(material):
             "title",
             "status",
             "subject",
+            "subject_id",
             "topic",
             "content",
             "uncertainties",
@@ -126,7 +127,9 @@ def material_data(material):
          "confirmed_tasks": [row["text"] for row in task_preview(material.content, material.homework, material.task_decisions)
                              if row["classification"] == "homework" and any(
                                  d["key"] == row["key"] and d["classification"] == "homework" for d in material.task_decisions or [])],
-         "supports_task_confirmation": True}
+         "supports_task_confirmation": True,
+         "supports_notebook_practice": True,
+         "fixed_example": bool(material.fixture_id)}
 
 
 def assignment_data(assignment):

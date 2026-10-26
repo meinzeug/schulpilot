@@ -19,6 +19,7 @@ import 'material_words.dart';
 import 'subject_picker.dart';
 import 'learning_content.dart';
 import 'notebook_photo.dart';
+import 'notebook_practice_dialog.dart';
 
 Future<void> importMaterial(
   BuildContext context,
@@ -1360,6 +1361,36 @@ class _MaterialReviewState extends State<MaterialReview>
       source['id'] == widget.data['id'] &&
       source['revision'] == widget.data['revision'];
 
+  Future<bool> prepareNotebookPage(Json data) async {
+    if (data['purpose'] != 'notebook' ||
+        data['synthetic'] == true ||
+        data['fixture_id'] != null ||
+        data['fixed_example'] == true) {
+      return false;
+    }
+    if (!sourceCurrent(data)) return true;
+    final subjectId = data['subject_id'];
+    if (data['supports_notebook_practice'] != true ||
+        subjectId is! String ||
+        !RegExp(r'^[a-f0-9]{32}$').hasMatch(subjectId) ||
+        data['revision'] is! int) {
+      openRoute(context, '/library/${data['child_id']}');
+      return true;
+    }
+    final jobId = await showSourceTool<String>(
+      (_, _) => NotebookPracticeDialog(
+        state: widget.state,
+        childId: data['child_id'],
+        subjectId: subjectId,
+        page: Json.from(data),
+      ),
+    );
+    if (jobId != null && mounted && sourceCurrent(data)) {
+      openRoute(context, '/learning-preparation/${data['child_id']}/$jobId');
+    }
+    return true;
+  }
+
   bool get editedPreviewCurrent =>
       previewSubject == subject.text &&
       previewTopic == topic.text &&
@@ -1892,6 +1923,8 @@ class _MaterialReviewState extends State<MaterialReview>
                     icon: Icons.auto_stories_outlined,
                     onPressed: () async {
                       if (!sourceCurrent(d)) return;
+                      if (await prepareNotebookPage(d)) return;
+                      if (!mounted || !sourceCurrent(d)) return;
                       final childId = d['child_id'] as String;
                       final result = await widget.state.api.job(
                         '/children/$childId/units',
@@ -2419,6 +2452,8 @@ class _MaterialReviewState extends State<MaterialReview>
                 );
                 return;
               }
+              if (await prepareNotebookPage(d)) return;
+              if (!mounted || !sourceCurrent(d)) return;
               final result = await widget.state.api.job(
                 '/children/${d['child_id']}/units',
                 {'material_id': d['id']},
