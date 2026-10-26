@@ -6,6 +6,30 @@ import 'ui.dart';
 import 'api.dart';
 import 'learning_tool_scope.dart';
 
+List<Map<String, dynamic>> _sourceMarks(Map<String, dynamic> block) {
+  final seen = <String>{};
+  final values = block['annotations'];
+  if (values is! List || values.length > 8) return [];
+  return [
+    for (final value in values)
+      if (value is Map &&
+          const {
+            'crossout',
+            'correction',
+            'insertion',
+            'comment',
+            'highlight',
+            'unknown',
+          }.contains(value['kind']) &&
+          value['quote'] is String &&
+          (value['quote'] as String).isNotEmpty &&
+          (value['quote'] as String).length <= 500 &&
+          (block['text'] as String).contains(value['quote'] as String) &&
+          seen.add('${value['kind']}:${value['quote']}:${value['color']}'))
+        Map<String, dynamic>.from(value),
+  ];
+}
+
 /// Reading projection of the saved transcript. Never edits or completes a source.
 class LearningContent extends StatelessWidget {
   final String text;
@@ -61,11 +85,16 @@ class LearningContent extends StatelessWidget {
               style: style,
               interactive: interactive,
               figure:
-                  block.$2['kind'] == 'diagram_text' &&
+                  (block.$2['kind'] == 'diagram_text' ||
+                          _sourceMarks(block.$2).isNotEmpty) &&
                       block.$2['image_region'] is Map &&
                       parts
                               .take(block.$1 + 1)
-                              .where((b) => b['kind'] == 'diagram_text')
+                              .where(
+                                (b) =>
+                                    b['kind'] == 'diagram_text' ||
+                                    _sourceMarks(b).isNotEmpty,
+                              )
                               .length <=
                           6
                   ? figureBuilder?.call(block.$1, block.$2)
@@ -98,6 +127,86 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = block['text'] as String;
+    final marks = _sourceMarks(block);
+    if (marks.isNotEmpty) {
+      return SurfaceInset(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Markierungen im Foto',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            if (figure != null) ...[figure!, const SizedBox(height: 8)],
+            for (final mark in marks)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      mark['kind'] == 'crossout'
+                          ? Icons.remove_circle_outline
+                          : Icons.edit_note_rounded,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            switch (mark['kind']) {
+                              'crossout' => 'Gestrichen im Foto',
+                              'correction' || 'insertion' => 'Ergänzt im Foto',
+                              'comment' => 'Notiz im Foto',
+                              'highlight' => 'Hervorgehoben im Foto',
+                              _ => 'Markierung noch unklar',
+                            },
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: context.palette.muted,
+                            ),
+                          ),
+                          MathText(
+                            mark['quote'],
+                            style: body.copyWith(
+                              fontWeight: FontWeight.w700,
+                              decoration: mark['kind'] == 'crossout'
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Text(
+              'Das zeigt die Einträge im Original. Es ist keine Bewertung.',
+              style: TextStyle(fontSize: 13, color: context.palette.muted),
+            ),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('Wörtliche Abschrift mit allen Einträgen'),
+              children: [
+                const Text(
+                  'Ursprüngliche und ergänzte Einträge stehen hier zusammen. Beachte die Markierungen oben.',
+                ),
+                const SizedBox(height: 8),
+                _Section(
+                  {...block, 'annotations': <dynamic>[]},
+                  style: style,
+                  interactive: interactive,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
     if (block['kind'] == 'heading' || RegExp(r'^#{1,3}\s+').hasMatch(text)) {
       return MathText(
         text.replaceFirst(RegExp(r'^#{1,3}\s+'), ''),

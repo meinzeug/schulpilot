@@ -6,7 +6,7 @@ SCHULPILOT verbindet eigene Heftseiten mit verständlichen Erklärungen, anschau
 
 Die reguläre signierte Direct-APK ist auf der Website vor und nach der Anmeldung erhältlich. Die App ist keine Website in einer Android-WebView. Privates Schulmaterial liegt ausschließlich im eigenen Familienbereich.
 
-> Produktionsstand: `1.36.30+142`, ausgeliefert am 26.10.2026. Automatische Heftseitenprüfung und erweiterte Fertigmeldungen sind integriert; diese Installation verwendet die automatische Zweitlesung. Die Glocke lässt sich direkt scrollen und bestätigt sichtbare Meldungen als gelesen. Auslieferungsbelege und Prüfgrenzen stehen in [STATUS.md](docs/STATUS.md). Ein erfolgreicher lokaler Test oder eine FCM-Annahme belegt keine sichtbare Zustellung auf einem Smartphone.
+> Produktionsstand: `1.36.31+143`, ausgeliefert am 26.10.2026. Automatische Heftseitenprüfung und erweiterte Fertigmeldungen sind integriert; diese Installation verwendet die automatische Zweitlesung. Der Fotoassistent öffnet die Auswahl direkt, zeigt das Foto vor den Werkzeugen und hält die Abgabe oberhalb der Vorschauen. Gewöhnliche Tinte ist von echten Korrekturen getrennt; eine unsichere Zusatzannotation verwirft nicht den ganzen gelesenen Text. Die Glocke lässt sich direkt scrollen und bestätigt sichtbare Meldungen als gelesen. Auslieferungsbelege und Prüfgrenzen stehen in [STATUS.md](docs/STATUS.md). Ein erfolgreicher lokaler Test oder eine FCM-Annahme belegt keine sichtbare Zustellung auf einem Smartphone.
 
 ## Was die App unterstützt
 

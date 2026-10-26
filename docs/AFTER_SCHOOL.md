@@ -129,3 +129,8 @@ veröffentlichten Version und gegebenenfalls der echten Geräte erfolgt gesonder
 „Fotos auswählen“ öffnet unmittelbar die normale Geräteauswahl. Tages- und Zwischenspeichergrenzen werden weiterhin durchgesetzt; nicht übernommene Fotos behalten ihren einzelnen Beleg. Im Zuschnitt steht das Originalbild vor optionalen Ansichts-/Drehwerkzeugen; Randregler, Rückgängig und Vorschau bleiben erreichbar. Sobald Fotos vorhanden sind, steht „Fotos abgeben“ oberhalb der Vorschauen. Ein lokaler Widgetfall mit vier Seiten prüft die sichtbare Hauptaktion auf390px.
 
 Unzuverlässige Markierungsmetadaten einer OCR-Antwort dürfen lesbare Abschrift nicht verwerfen: ein nicht exakt verankertes Annotationszitat wird nicht geraten, sondern entfernt und der ganze Abschnitt unsicher markiert. Farbe allein ergibt weiterhin keine Lehrerzuordnung. Das ist keine Quellenbestätigung oder fachliche Korrektur; der gesondert reservierte Gegencheck und die bestehende Quellenprojektion bleiben erforderlich.
+
+
+### Quellmarkierungen und laufender Bildabgleich144
+
+Korrekturzeichen sind keine aneinandergereihten Ergebniszahlen: gestrichene, ergänzte und unklare Einträge werden ausdrücklich getrennt gezeigt. Der volle Wortlaut bleibt erhalten; keine automatische fachliche Richtig-Markierung. Geschützte Abschnitte überleben auch überlappende/gedrehte Bildbereiche. Die Detailseite aktualisiert eine laufende automatische Prüfung still per bestehendem GET; eigene Korrekturen bleiben revisionsgeschützt. Dies startet weder KI noch eine Lernrunde und setzt den weitergehenden pausierten Live-Ausbau nicht fort.

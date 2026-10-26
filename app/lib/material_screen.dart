@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:convert';
 
@@ -813,9 +814,14 @@ class MaterialScreen extends StatefulWidget {
   State<MaterialScreen> createState() => _MaterialScreenState();
 }
 
-class _MaterialScreenState extends State<MaterialScreen> {
+class _MaterialScreenState extends State<MaterialScreen>
+    with WidgetsBindingObserver {
   int version = 0;
-  Json? visibleMaterial;
+  Json? visibleMaterial, liveMaterial;
+  Timer? reviewWatch;
+  bool readingReview = false, foreground = true;
+  int reviewRead = 0;
+
   ({String materialId, String path})? confirmationReturn;
   late final account = widget.state.user;
   late final family = widget.state.familyId;
@@ -829,11 +835,78 @@ class _MaterialScreenState extends State<MaterialScreen> {
   @override
   void initState() {
     super.initState();
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(accountChanged);
+    reviewWatch = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => readReview(),
+    );
+  }
+
+  bool get checking =>
+      visibleMaterial?['material_review']?['mode'] == 'automatic' &&
+      visibleMaterial?['material_review']?['status'] == 'checking';
+
+  Future<void> readReview() async {
+    if (!current ||
+        !foreground ||
+        !checking ||
+        readingReview ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    final source = visibleMaterial,
+        id = widget.materialId,
+        generation = reviewRead,
+        revision = version;
+    readingReview = true;
+    try {
+      final data = await widget.state.api.get('/materials/$id');
+      if (!mounted ||
+          !current ||
+          !foreground ||
+          !identical(visibleMaterial, source) ||
+          generation != reviewRead ||
+          revision != version ||
+          widget.materialId != id ||
+          data['id'] != id ||
+          ModalRoute.of(context)?.isCurrent != true) {
+        return;
+      }
+      // Update the existing editor, not its route/key. Its revision guard retains
+      // a local correction instead of silently overwriting it with the AI pass.
+      setState(() => liveMaterial = data);
+    } catch (_) {
+      // Keep the saved page and editor usable. No provider retry or new POST.
+    } finally {
+      readingReview = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState value) {
+    foreground = value == AppLifecycleState.resumed;
+    if (foreground) unawaited(readReview());
+  }
+
+  @override
+  void didUpdateWidget(covariant MaterialScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.materialId != widget.materialId) {
+      reviewRead++;
+      visibleMaterial = liveMaterial = null;
+    }
   }
 
   void accountChanged() {
-    if (!current && mounted) setState(() {});
+    if (!current && mounted) {
+      reviewRead++;
+      liveMaterial = null;
+      setState(() {});
+    }
   }
 
   Future<void> afterConfirmation(Json source, Json saved) async {
@@ -853,7 +926,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
             WidgetsBinding.instance.lifecycleState ==
                 AppLifecycleState.resumed);
     void reload() {
-      if (unchanged()) setState(() => version++);
+      if (unchanged()) {
+        setState(() {
+          liveMaterial = null;
+          reviewRead++;
+          version++;
+        });
+      }
     }
 
     if (!unchanged()) return;
@@ -919,6 +998,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
       if (!unchanged()) return;
       setState(() {
         confirmationReturn = (materialId: id, path: returnPath);
+        liveMaterial = null;
+        reviewRead++;
         version++;
       });
     }
@@ -926,6 +1007,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
   @override
   void dispose() {
+    reviewWatch?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     widget.state.removeListener(accountChanged);
     super.dispose();
   }
@@ -940,7 +1023,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
         : LoadView<Json>(
             key: ValueKey((version, widget.materialId, ObjectKey(account))),
             load: () => widget.state.api.get('/materials/${widget.materialId}'),
-            builder: (data, refresh) {
+            builder: (initial, refresh) {
+              final data = liveMaterial ?? initial;
               visibleMaterial = data;
               if (!current) return SizedBox.shrink();
               return Column(
@@ -966,7 +1050,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     simpleChild: widget.state.isChild,
                     onConfirmed: (saved) => afterConfirmation(data, saved),
                     onRefresh: () {
-                      if (current) setState(() => version++);
+                      if (current) {
+                        setState(() {
+                          liveMaterial = null;
+                          reviewRead++;
+                          version++;
+                        });
+                      }
                     },
                   ),
                 ],

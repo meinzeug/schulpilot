@@ -336,62 +336,70 @@ def _protected_readings(data, snapshot):
     protected block retain the original literal text and stay out of grading.
     Both full passes remain immutable in provenance.
     """
+    import re
+
     from .source_lineage import false_equality
 
     result = copy.deepcopy(data)
     blocks = result["source_blocks"]
-    for old in snapshot.snapshot.get("source_blocks", []):
+    originals = snapshot.snapshot.get("source_blocks", [])
+    retained = []
+    uncertain = "Die beiden Abschriften dieses Schüler-/Korrekturbereichs unterscheiden sich; Original erhalten."
+
+    def same(left, right):
+        # Formatting only, never numerical/semantic equivalence or fuzzy approval.
+        return " ".join(left.split()) == " ".join(right.split())
+
+    def warning(block, message):
+        block["reading_uncertainties"] = list(dict.fromkeys([*block.get("reading_uncertainties", []), message]))[:8]
+
+    for index, old in enumerate(originals):
         if not (
             old.get("literal_role") in ("student_work", "annotation")
-            or old.get("annotations")
+            or any(mark.get("kind") != "ink" for mark in old.get("annotations", []))
             or false_equality(old["text"])
         ):
             continue
-        if any(block == old for block in blocks):
-            continue
-        same_text = next((b for b in blocks if b["text"] == old["text"]), None)
-        if same_text is not None:
-            roles = {old.get("literal_role"), same_text.get("literal_role")}
-            same_text["literal_role"] = (
-                "student_work"
-                if "student_work" in roles
-                else "annotation"
-                if "annotation" in roles
-                else same_text.get("literal_role", "unknown")
-            )
-            same_text["annotations"] = list(
-                {
-                    digest(mark): mark for mark in [*old.get("annotations", []), *same_text.get("annotations", [])]
-                }.values()
-            )
-            continue
-        region = old.get("image_region")
+        exact = next((block for block in blocks if same(block["text"], old["text"])), None)
+        preserved = copy.deepcopy(old)
+        if exact is not None:
+            # Retain the first literal spelling; merge only marks anchored in it.
+            roles = {old.get("literal_role"), exact.get("literal_role")}
+            preserved["literal_role"] = "student_work" if "student_work" in roles else "annotation" if "annotation" in roles else exact.get("literal_role", "unknown")
+            preserved["annotations"] = list({digest(mark): mark for mark in [*old.get("annotations", []), *exact.get("annotations", [])]
+                                             if mark["quote"] in preserved["text"]}.values())
+            for value in exact.get("reading_uncertainties", []):
+                warning(preserved, value)
+            blocks.remove(exact)
+        else:
+            # A numbered item is an explicit document anchor. Approximate image
+            # boxes alone must NEVER erase another paragraph (especially rotated
+            # photos or neighbouring answers with overlapping bounding boxes).
+            label = re.match(r"^\s*(\d{1,3}[.)])(?:\s|$)", old["text"])
+            matches = [block for block in blocks if label and
+                       re.match(r"^\s*" + re.escape(label[1]) + r"(?:\s|$)", block["text"])]
+            if len(matches) == 1:
+                blocks.remove(matches[0])  # Both raw passes remain in provenance.
+            else:
+                region = old.get("image_region")
+                for block in blocks:
+                    other = block.get("image_region")
+                    if not region or not other or (
+                        max(region["left"], other["left"]) < min(region["right"], other["right"])
+                        and max(region["top"], other["top"]) < min(region["bottom"], other["bottom"])
+                    ):
+                        warning(block, "Ein abweichender Schülerbereich lässt sich nicht eindeutig diesem Abschnitt zuordnen.")
+            warning(preserved, uncertain)
+            result["legibility"] = "partial"
+            result["uncertainties"] = list(dict.fromkeys([*result["uncertainties"], "Abweichender Schüler-/Korrekturbereich bleibt ungeklärt."]))[:30]
+        retained.append((index, preserved))
 
-        def overlaps(other):
-            return max(region["left"], other["left"]) < min(region["right"], other["right"]) and max(
-                region["top"], other["top"]
-            ) < min(region["bottom"], other["bottom"])
-
-        if region:
-            # OCR bounding boxes are approximate; equality is not sufficient.
-            blocks[:] = [b for b in blocks if not (b.get("image_region") and overlaps(b["image_region"]))]
-        for block in blocks:
-            if not region or not block.get("image_region"):
-                block["reading_uncertainties"] = [
-                    *block.get("reading_uncertainties", [])[:7],
-                    "Ein abweichender Schülerbereich lässt sich keinem Bildbereich sicher zuordnen.",
-                ]
-        retained = copy.deepcopy(old)
-        retained["reading_uncertainties"] = [
-            *old.get("reading_uncertainties", [])[:7],
-            "Die beiden Abschriften dieses Schüler-/Korrekturbereichs unterscheiden sich; Original erhalten.",
-        ]
-        blocks.append(retained)
-        result["legibility"] = "partial"
-        result["uncertainties"] = [
-            *result["uncertainties"][:29],
-            "Abweichender Schüler-/Korrekturbereich bleibt ungeklärt.",
-        ]
+    # Insert protected representatives only AFTER all comparisons. No later
+    # overlap can delete a previously retained first reading or an exact match.
+    for index, block in reversed(retained):
+        following = next((candidate for old in originals[index + 1:] for candidate in blocks
+                          if same(candidate["text"], old["text"])), None)
+        blocks.insert(blocks.index(following) if following is not None else len(blocks), block)
     result["content"] = "\n\n".join(block["text"] for block in blocks)
     return result
 
@@ -609,7 +617,7 @@ def process(job_id):
             pass_receipt = extraction_receipt(db, job, values, image, result)
             pass_receipt.update(
                 version=VERSION,
-                check_contract_revision="literal-image-countercheck-1",
+                check_contract_revision="literal-image-countercheck-2",
                 check_status="checked",
                 first_snapshot_id=snapshot.id,
                 first_snapshot_digest=snapshot.digest,
