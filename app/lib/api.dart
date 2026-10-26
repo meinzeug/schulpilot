@@ -10,6 +10,7 @@ import 'notification_inbox.dart';
 import 'pending_uploads.dart';
 import 'lesson_voice.dart';
 import 'learning_drafts.dart';
+import 'notebook_requests.dart';
 import 'family_call_service.dart';
 
 import 'transport.dart' if (dart.library.js_interop) 'transport_web.dart';
@@ -358,6 +359,7 @@ class AppState extends ChangeNotifier {
   final FlutterSecureStorage storage;
   late final PendingUploads pendingUploads = PendingUploads(storage);
   late final LearningDraftStore learningDrafts = LearningDraftStore(storage);
+  late final NotebookRequests notebookRequests = NotebookRequests(storage);
   late final PushClient push = PushClient(api);
   late final NotificationInbox inbox = NotificationInbox(api);
   final FamilyCallService Function(AppState state)? familyCallFactory;
@@ -631,6 +633,8 @@ class AppState extends ChangeNotifier {
       _requireAuthentication(intent);
     }
     if (previous != null && previous['id'] != response['user']['id']) {
+      await notebookRequests.clear();
+      _requireAuthentication(intent);
       await LessonVoiceSession.shared.stop();
       _requireAuthentication(intent);
       recoveredPhoto = null;
@@ -737,6 +741,7 @@ class AppState extends ChangeNotifier {
     api.token = null;
     user = null;
     familyId = null;
+    await notebookRequests.clear();
     recoveredPhoto = null;
     recoveredPhotoPurpose = 'notebook';
     recoveredPhotos.clear();

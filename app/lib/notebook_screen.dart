@@ -463,6 +463,7 @@ class _NotebookScreenState extends State<_NotebookContext>
 
   Future<void> practicePage(Json item) async {
     if (!canPractice(item) || ModalRoute.of(context)?.isCurrent != true) return;
+    final hostRoute = ModalRoute.of(context);
     final jobId = await privateDialog<String>(
       (_) => NotebookPracticeDialog(
         state: widget.state,
@@ -471,7 +472,13 @@ class _NotebookScreenState extends State<_NotebookContext>
         page: Json.from(item),
       ),
     );
-    if (!mounted || !current || jobId == null) return;
+    if (!mounted ||
+        !current ||
+        jobId == null ||
+        hostRoute?.isCurrent != true ||
+        !identical(ModalRoute.of(context), hostRoute)) {
+      return;
+    }
     openRoute(context, '/learning-preparation/${widget.childId}/$jobId');
   }
 

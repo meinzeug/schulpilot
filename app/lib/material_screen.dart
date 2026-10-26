@@ -1377,6 +1377,7 @@ class _MaterialReviewState extends State<MaterialReview>
       openRoute(context, '/library/${data['child_id']}');
       return true;
     }
+    final hostRoute = ModalRoute.of(context);
     final jobId = await showSourceTool<String>(
       (_, _) => NotebookPracticeDialog(
         state: widget.state,
@@ -1385,7 +1386,12 @@ class _MaterialReviewState extends State<MaterialReview>
         page: Json.from(data),
       ),
     );
-    if (jobId != null && mounted && sourceCurrent(data)) {
+    if (jobId != null &&
+        mounted &&
+        sourceCurrent(data) &&
+        hostRoute != null &&
+        identical(ModalRoute.of(context), hostRoute) &&
+        hostRoute.isCurrent) {
       openRoute(context, '/learning-preparation/${data['child_id']}/$jobId');
     }
     return true;

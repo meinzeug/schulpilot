@@ -38,26 +38,112 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
   String? error, listError;
   Json? sentBody;
   String? requestKey;
+  String? jobId;
+  bool restoring = true;
+  late final requestEpoch = widget.state.notebookRequests.generation;
+  late final requestSlot =
+      '${owner!['id']}:$family:${widget.childId}:${widget.subjectId}:${widget.page['id']}';
 
-  bool get current =>
-      mounted &&
-      owner != null &&
+  bool get sameAccount =>
       identical(widget.state.user, owner) &&
       widget.state.familyId == family &&
-      widget.state.api.token == token;
+      widget.state.api.token == token &&
+      widget.state.notebookRequests.generation == requestEpoch;
+
+  bool get current => mounted && owner != null && sameAccount;
   bool get active =>
       current &&
       (WidgetsBinding.instance.lifecycleState == null ||
           WidgetsBinding.instance.lifecycleState ==
               AppLifecycleState.resumed) &&
       ModalRoute.of(context)?.isCurrent == true;
-  bool get locked => sending || sentBody != null;
+  bool get locked => restoring || sending || sentBody != null;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(accountChanged);
+    restoreRequest();
+  }
+
+  void applyRequest(Json value) {
+    final body = value['body'];
+    final sources = body is Map ? body['notebook_sources'] : null;
+    if (body is! Map ||
+        body['material_id'] != widget.page['id'] ||
+        body['question_count'] is! int ||
+        body['question_count'] < 2 ||
+        body['question_count'] > 5 ||
+        sources is! List ||
+        sources.isEmpty ||
+        sources.length > 12 ||
+        sources.any(
+          (s) =>
+              s is! Map ||
+              s['id'] is! String ||
+              s['revision'] is! int ||
+              s['revision'] < 1,
+        ) ||
+        value['key'] is! String ||
+        !RegExp(r'^notebook-[a-f0-9]{32}$').hasMatch(value['key']) ||
+        (value['job_id'] != null && value['job_id'] is! String)) {
+      throw ApiError(
+        'Der gespeicherte Auftrag konnte nicht sicher zugeordnet werden.',
+      );
+    }
+    sentBody = Json.from(value['body']);
+    requestKey = value['key'] as String;
+    jobId = value['job_id'] as String?;
+    count.text = '${sentBody!['question_count']}';
+    pages
+      ..clear()
+      ..addEntries([
+        for (final source in sentBody!['notebook_sources'])
+          MapEntry(source['id'] as String, Json.from(source)),
+      ]);
+  }
+
+  Future<void> restoreRequest() async {
+    try {
+      final value = await widget.state.notebookRequests.get(requestSlot);
+      if (!current) return;
+      if (value != null) applyRequest(value);
+      setState(() => restoring = false);
+    } catch (_) {
+      if (current) {
+        setState(
+          () => error = 'Der gespeicherte Auftrag konnte nicht geladen werden. Öffne die Seite erneut.',
+        );
+      }
+    }
+  }
+
+  Future<void> newRound() async {
+    if (!active || sending || jobId == null) return;
+    setState(() => sending = true);
+    try {
+      await widget.state.notebookRequests.finish(
+        requestSlot,
+        requestKey!,
+        null,
+        requestEpoch,
+      );
+      if (!active) return;
+      setState(() {
+        sentBody = null;
+        requestKey = jobId = null;
+        pages
+          ..clear()
+          ..[widget.page['id']] = Json.from(widget.page);
+      });
+    } catch (_) {
+      if (current) {
+        setState(() => error = 'Der Auftrag konnte nicht abgeglichen werden.');
+      }
+    } finally {
+      if (current) setState(() => sending = false);
+    }
   }
 
   void accountChanged() {
@@ -149,7 +235,17 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
   }
 
   Future<void> prepare() async {
-    if (!active || sending || !(form.currentState?.validate() ?? false)) return;
+    if (!active ||
+        restoring ||
+        sending ||
+        !(form.currentState?.validate() ?? false)) {
+      return;
+    }
+    if (jobId != null) {
+      Navigator.of(context).pop(jobId);
+      return;
+    }
+    var reconciliation = sentBody != null;
     FocusManager.instance.primaryFocus?.unfocus();
     sentBody ??= {
       'material_id': widget.page['id'],
@@ -166,6 +262,17 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
       error = null;
     });
     try {
+      final saved = await widget.state.notebookRequests.claim(requestSlot, {
+        'body': sentBody,
+        'key': requestKey,
+      }, requestEpoch);
+      if (!mounted || !active) return;
+      reconciliation = reconciliation || saved['key'] != requestKey;
+      applyRequest(saved);
+      if (jobId != null) {
+        Navigator.of(context).pop(jobId);
+        return;
+      }
       final result = await widget.state.api.post(
         '/children/${widget.childId}/units',
         sentBody,
@@ -174,18 +281,43 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
           'X-Schulpilot-Account': owner!['id'] as String,
         },
       );
-      if (!mounted || !active) return;
       if (result['id'] is! String) {
         throw ApiError('Der vorbereitete Stand konnte nicht geöffnet werden.');
       }
+      if (!sameAccount) return;
+      await widget.state.notebookRequests.finish(
+        requestSlot,
+        requestKey!,
+        result['id'] as String,
+        requestEpoch,
+      );
+      if (!mounted || !active) return;
       Navigator.of(context).pop(result['id'] as String);
     } catch (e) {
+      bool rejected = false;
+      if (!reconciliation &&
+          sameAccount &&
+          e is ApiError &&
+          e.status >= 400 &&
+          e.status < 500) {
+        try {
+          await widget.state.notebookRequests.finish(
+            requestSlot,
+            requestKey!,
+            null,
+            requestEpoch,
+          );
+          rejected = true;
+        } catch (_) {
+          // Keep the key/body when local storage cannot confirm removal.
+        }
+      }
       if (!current) return;
       setState(() {
         error = e is ApiError ? e.message : 'Die Verbindung wurde unterbrochen. Du kannst denselben Auftrag abgleichen.';
         // A definitive rejection created no job. Unknown outcomes retain the
         // exact payload/key; a deliberate reconciliation cannot reserve twice.
-        if (e is ApiError && e.status >= 400 && e.status < 500) {
+        if (rejected) {
           sentBody = null;
           requestKey = null;
         }
@@ -349,6 +481,17 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
                 ],
               ),
               const SizedBox(height: 8),
+              if (sentBody != null)
+                Text(
+                  jobId != null
+                      ? 'Diese Vorbereitung ist bereits gespeichert. Du kannst sie öffnen oder bewusst eine neue Runde anfragen.'
+                      : 'Ein Auftrag wurde bereits angefragt. Gleiche denselben Auftrag ab; dabei wird keine zweite Runde angelegt.',
+                ),
+              if (jobId != null)
+                TextButton(
+                  onPressed: sending ? null : newRound,
+                  child: const Text('Neue Runde auswählen'),
+                ),
               const Text(
                 'Du bekommst neue Aufgaben mit Erklärungen zu diesen Seiten. Dein bisheriger Lernstand bleibt erhalten.',
               ),
@@ -372,10 +515,14 @@ class _NotebookPracticeDialogState extends State<NotebookPracticeDialog>
           child: const Text('Zurück'),
         ),
         FilledButton(
-          onPressed: sending ? null : prepare,
+          onPressed: sending || restoring ? null : prepare,
           child: Text(
-            sending
+            restoring
+                ? 'Gespeicherten Auftrag prüfen …'
+                : sending
                 ? 'Wird angefragt …'
+                : jobId != null
+                ? 'Vorbereitung öffnen'
                 : sentBody != null
                 ? 'Vorbereitung abgleichen'
                 : 'Runde vorbereiten',

@@ -1,12 +1,16 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/material_screen.dart';
+import 'package:schulpilot/notebook_practice_dialog.dart';
+import 'package:schulpilot/notebook_requests.dart';
 import 'package:schulpilot/ui.dart';
 
 import 'child_sources_input_ux87_test.dart' as sources;
@@ -15,6 +19,7 @@ Future<(AppState, List<http.Request>, GoRouter)> open(
   WidgetTester tester, {
   bool supported = true,
   String role = 'child',
+  Future<http.Response> Function(http.Request)? respond,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -29,6 +34,7 @@ Future<(AppState, List<http.Request>, GoRouter)> open(
               requests.add(request);
               expect(request.method, 'POST');
               expect(request.url.path, '/api/children/child/units');
+              if (respond != null) return respond(request);
               return http.Response(
                 jsonEncode({'id': 'new-job', 'status': 'queued'}),
                 202,
@@ -103,6 +109,29 @@ Future<void> tap(WidgetTester tester, String label) async {
 }
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  test('Unknown requests survive capacity and stale completions cannot return after logout', () async {
+    final store = NotebookRequests(const FlutterSecureStorage());
+    for (var i = 0; i < 32; i++) {
+      await store.claim('slot$i', {'key': 'key$i', 'body': {}}, 0);
+    }
+    await expectLater(
+      store.claim('overflow', {'key': 'new'}, 0),
+      throwsA(isA<ApiError>()),
+    );
+    expect((await store.get('slot0'))?['key'], 'key0');
+    await store.finish('slot0', 'key0', 'job', 0);
+    await store.claim('overflow', {'key': 'new'}, 0);
+    expect(await store.get('slot0'), isNull);
+    await store.clear();
+    await store.finish('slot1', 'key1', 'late-job', 0);
+    await expectLater(
+      store.claim('late', {'key': 'late'}, 0),
+      throwsA(isA<ApiError>()),
+    );
+    expect(await store.get('slot1'), isNull);
+  });
   for (final role in ['child', 'parent']) {
     testWidgets(
       'Material action selects only its current revision and opens durable preparation: $role',
@@ -161,6 +190,119 @@ void main() {
       await tap(tester, 'Jetzt lernen');
       expect(find.text('Hefte auswählen'), findsOneWidget);
       expect(requests, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'Background during POST retains returned job across reopening without another POST',
+    (tester) async {
+      final response = Completer<http.Response>();
+      final (_, requests, _) = await open(
+        tester,
+        respond: (_) => response.future,
+      );
+      await tap(tester, 'Jetzt lernen');
+      await tap(tester, 'Runde vorbereiten');
+      expect(requests, hasLength(1));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pumpAndSettle();
+      response.complete(http.Response('{"id":"saved-job"}', 202));
+      await tester.pumpAndSettle();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text('Gespeicherte Vorbereitung'), findsNothing);
+      await tap(tester, 'Jetzt lernen');
+      await tap(tester, 'Vorbereitung öffnen');
+      expect(find.text('Gespeicherte Vorbereitung'), findsOneWidget);
+      expect(requests, hasLength(1));
+    },
+  );
+
+  testWidgets(
+    'Dismissed unknown POST restores exact key and payload after app state recreation',
+    (tester) async {
+      var first = true;
+      final (_, requests, _) = await open(
+        tester,
+        respond: (_) async {
+          if (first) {
+            first = false;
+            throw http.ClientException('offline');
+          }
+          return http.Response('{"id":"saved-job"}', 202);
+        },
+      );
+      await tap(tester, 'Jetzt lernen');
+      await tap(tester, 'Runde vorbereiten');
+      await tap(tester, 'Zurück');
+      final savedKey = requests.single.headers['Idempotency-Key'];
+      final savedBody = requests.single.body;
+      // A fresh AppState/dialog uses the same secure-storage metadata.
+      final (_, resumed, _) = await open(tester);
+      await tap(tester, 'Jetzt lernen');
+      expect(resumed, isEmpty);
+      await tap(tester, 'Vorbereitung abgleichen');
+      expect(resumed, hasLength(1));
+      expect(resumed.single.headers['Idempotency-Key'], savedKey);
+      expect(resumed.single.body, savedBody);
+      expect(find.text('Gespeicherte Vorbereitung'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Cover arriving during dialog exit is not replaced by late preparation navigation',
+    (tester) async {
+      final response = Completer<http.Response>();
+      await open(tester, respond: (_) => response.future);
+      await tap(tester, 'Jetzt lernen');
+      final navigator = Navigator.of(
+        tester.element(find.byType(NotebookPracticeDialog)),
+      );
+      await tap(tester, 'Runde vorbereiten');
+      response.complete(http.Response('{"id":"saved-job"}', 202));
+      await tester.pump();
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('Andere Ansicht')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Andere Ansicht'), findsOneWidget);
+      expect(find.text('Gespeicherte Vorbereitung'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'A source conflict after a lost acknowledgement never forgets the original key',
+    (tester) async {
+      var number = 0;
+      final (_, requests, _) = await open(
+        tester,
+        respond: (_) async {
+          number++;
+          return http.Response(
+            number == 1
+                ? '{"detail":"unknown"}'
+                : '{"detail":"source changed"}',
+            number == 1 ? 503 : 409,
+          );
+        },
+      );
+      await tap(tester, 'Jetzt lernen');
+      await tap(tester, 'Runde vorbereiten');
+      await tap(tester, 'Vorbereitung abgleichen');
+      await tap(tester, 'Zurück');
+      await tap(tester, 'Jetzt lernen');
+      await tap(tester, 'Vorbereitung abgleichen');
+      expect(requests, hasLength(3));
+      expect(
+        requests.map((r) => r.headers['Idempotency-Key']).toSet(),
+        hasLength(1),
+      );
+      expect(requests.map((r) => r.body).toSet(), hasLength(1));
     },
   );
 }

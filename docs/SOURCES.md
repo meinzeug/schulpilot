@@ -2655,3 +2655,39 @@ Einheiten oder Antworten. Die vorhandenen Mehrseiten-, Kosten-, Neuheits-,
 Wortschatz- und Materialleseprüfungen bleiben Teil der Abnahme. Die17 bisher
 persönlich vollständig beobachteten allgemeinen Heftrunden sind weiterhin
 keine abgeschlossene100-Runden-Prüfung.
+
+136-Folgeprüfung vor Veröffentlichung: Ein unabhängiger Review fand, dass ein
+Hintergrundwechsel den Auswahl-Dialog während des POST entfernt und damit dessen
+nur lokalen Abgleichschlüssel verliert. Der neue NotebookRequests-Store nutzt den
+vorhandenen SecureStorage ausschließlich für Account-/Familien-/Kind-/Fach-/
+Quellenkennungen, Revisionen, Aufgabenanzahl, Requestschlüssel und bekannte Job-ID.
+Er claimt vor dem POST dauerhaft und seriell; unbekannte Ausgänge werden weder
+zeitlich gelöscht noch verdrängt. Maximal32 Einträge, nur bereits bestätigte
+Jobkennungen dürfen für neue Claims weichen. Ohne speicherbaren Claim kein POST.
+Späte Antworten dürfen denselben Auftrag auch nach Dialogverlust quittieren;
+Kontowechsel/Logout löscht serialisiert und erhöht sofort eine Epoch. Bekannte
+Jobs öffnen ohne POST, unbekannte werden ausschließlich bewusst mit demselben
+Body/Schlüssel abgeglichen. Eine weitere Runde benötigt eine eigene ausdrückliche
+Auswahl. Nach Dialogschluss ist Navigation nur von der wieder aktuellen
+Ursprungsroute zulässig, auch im vorhandenen Hefter-Einstieg.
+
+Die ergänzten Regressionen prüfen Hintergrund während POST, gespeicherte späte
+Jobantwort ohne zweiten POST, Wiederherstellung mit neuem AppState und identischem
+Schlüssel/Body, überdeckte Route während Dialogausgang, Kapazität ohne Verlust
+ungewisser Aufträge und die Sperre späterer Abschlüsse nach Logout. Die erste
+Testausführung enthielt eine await-auf-void-Fehlerstelle im neuen Test und fehlende
+SecureStorage-Testinitialisierung; danach war ein synthetischer Lifecyclewechsel
+unvollständig. Diese Testfehler wurden korrigiert, keine Providerprüfung ersetzt.
+Die18. allgemeine Heftrunde wurde inzwischen persönlich mobil vollständig beendet
+und getrennt mit vorhandenen Serverantwortmetadaten im privaten Prüfledger belegt.
+Ein zweiter Reviewbefund wurde ebenfalls vor Veröffentlichung behoben: Ein409
+nach verlorenem Antwort-ACK beweist nicht, dass der frühere Auftrag fehlt, weil
+Quellenprüfung vor dem serverseitigen Idempotenzlookup erfolgen kann. Solche
+Abgleichfehler behalten den ursprünglichen Body/Key. Nur ein nachweislich erster
+neuer, ausdrücklich abgewiesener POST gibt den lokalen Claim wieder frei.
+Der zusätzliche503→409→Wiederöffnen-Test prüft exakt diese Beibehaltung.
+Lokale Folgeabnahme:44 verbundene UI-/Entwurfsprüfungen bestanden, anschließend
+21 Auswahl-/Wiederaufnahmeprüfungen auf dem abschließenden Produktcode bestanden;
+Flutter analyze ohne Hinweise. Die102 SQLite-/102 PostgreSQL-Prüfungen des
+unveränderten Backendcodes bleiben erhalten; die vollständige CI wird an den
+neuen Quellencommit gebunden, ebenso reale Web-/Direct-/Play-Buildartefakte.
