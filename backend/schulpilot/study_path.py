@@ -270,6 +270,7 @@ def plan_sources_current(db, day):
 
 def path_data(db, day, child):
     value = day.learning_plan or {}
+    pending_review = [m for m in pages(db, day) if not m.confirmed or not m.content.strip()]
     result = {
         "available": bool(value),
         "id": day.id,
@@ -283,6 +284,8 @@ def path_data(db, day, child):
         "technical_review_required": False,
         "block_reason": None,
         "stale": False,
+        "pending_review_count": len(pending_review),
+        "next_review_material_id": pending_review[0].id if pending_review else None,
     }
     if not value:
         return result
@@ -348,9 +351,11 @@ def path_data(db, day, child):
         )
     if result["stale"]:
         result["block_reason"] = (
+            "Bitte zuerst die offenen Heftseiten prüfen. Deine Antworten bleiben erhalten."
+            if pending_review else
             "Die Heftseiten wurden geändert. Bitte die Lernreise neu planen. Deine Antworten bleiben erhalten."
         )
-    if next_block and not unit:
+    if next_block and not unit and not result["stale"]:
         current_job = db.get(Job, saved.get("job_id")) if saved.get("job_id") else None
         if not current_job or current_job.status not in ("queued", "running"):
             condition = (Job.child_id == child.id, Job.kind == "study_block",

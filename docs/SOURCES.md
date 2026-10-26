@@ -2511,3 +2511,49 @@ ebenfalls. Alte Proben, begonnene Einheiten, Antworten und Quellen werden nicht
 umgeschrieben. Die endliche Planung und der Abbruch bei echter Erschöpfung bleiben.
 Der abschließende eingefrorene Nachlauf umfasst beide Fälle sowie die bestehenden
 Einstiegs-, Erweiterungs-, Transport-, Routen- und Kostenprüfungen.
+
+Lernweg- und Workerprüfung26.10.2026 ·1.36.22+134:
+Der vom Betreiber geöffnete ältere Schultag wurde tatsächlich im Browser und
+anschließend über eine auf diesen Haushalt/Tag beschränkte, ausschließlich
+lesende PostgreSQL-Prüfung untersucht.23 Seiten, davon sechs unbestätigt,
+acht gespeicherte Runden und kein aktiver Kinderauftrag erklären die aktuelle
+Sperre. Die sichtbare Aktion „Lernweg neu planen“ schlug deshalb erneut mit
+„Bitte zuerst alle Heftseiten prüfen und bestätigen“ fehl. Die alten
+fehlgeschlagenen Etappen sind damit kein Beleg für einen aktuell laufenden
+oder neu fehlgeschlagenen Anbieteraufruf. Privater Seiteninhalt und Antworten
+wurden bei dieser Metadatenprüfung weder ausgewählt noch protokolliert.
+
+Der lesende Lernwegvertrag ergänzt Anzahl und nächste ID offener Quellen.
+Die gemeinsame Flutter-Oberfläche zeigt dafür „Seiten prüfen“ und öffnet die
+eigene Materialprüfung. Unmögliche Neuplanung und veraltete Etappenfehler
+weichen diesem tatsächlichen nächsten Schritt. Bearbeitungszahlen und Zugang
+zu gespeicherten Runden bleiben erhalten. Lesen, Navigieren und Aktualisieren
+bestätigen keine Quelle und erzeugen keine Aufgaben. Nach ausdrücklicher
+Quellenbestätigung kann der Lernweg wieder bewusst neu geplant werden;
+Bestätigung, Quellenrevision und die vorhandenen Inhaltsprüfungen bleiben nötig.
+
+Die133-Liveprüfung deckte zusätzlich eine unterbrochene Metadatenweitergabe
+auf: Der normale Heftauftrag wurde trotz gebundener Sol-Route erneut vor dem
+Versand gestoppt, mit106.029 Textbytes und300.250µUSD Kostenprojektion statt
+höchstens250.000µUSD.0 Anbietertokens und0 Verbrauch wurden gespeichert.
+Die direkten künstlichen Adaptertests hatten die Routenauswahl selbst angehängt;
+der echte Worker kopierte dagegen nur persistente ProviderConfig-Spalten und
+verlor dabei den ursprünglichen Auswahlgrund. Der kompatible Rückfallgrund
+reserved_route aktivierte die in133 ergänzte kompakte Schemafassung nicht.
+
+134 kopiert deshalb den bereits aus der reservierten Usage gebundenen
+Auswahlsnapshot vor dem Rollback und hängt ihn an die nachher verwendete
+Requestkonfiguration. Keine neue Modellwahl, keine zusätzliche Reservierung,
+kein höheres Token-/Zeit-/Kostenlimit und kein Anbieterfallback. Die vorhandene
+Kostenprüfung und sämtliche kanonischen Aufgabenprüfungen bleiben aktiv.
+Die echten künstlichen API→Reservierung→Worker→Mock-HTTP-Tests prüfen nun den
+vollständigen unveränderten Snapshot an dieser tatsächlichen Grenze, sowohl
+für normale Heftaufgaben als auch für Rückblicke und vorhandene Einführungen.
+
+Die134-Oberflächentests prüfen die Quellenführung auch ohne bisherigen Plan,
+auf schmaler Ansicht, mit erhaltenem Rundenzugang und ohne automatische POSTs.
+Backendtests prüfen unbestätigte und leere Quellen, unveränderte Pläne bei GET,
+keine Jobs/Usage/Antworten/Aktivität und erneute Planung erst nach ausdrücklicher
+Bestätigung. Abnahme und Veröffentlichung gelten ausschließlich für den dafür
+geprüften Quellstand. Persönlich vollständig beobachtet sind14 allgemeine
+Heft-Lernrunden; dies ist weiterhin keine abgeschlossene100-Runden-Prüfung.

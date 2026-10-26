@@ -511,6 +511,9 @@ class _StudyPathPanelState extends State<StudyPathPanel>
         (exhaustedBlocks.containsKey(current['id']) ||
             data?['technical_review_required'] == true);
     final editable = ownerMatches && state.isChild;
+    final reviewCount = (data?['pending_review_count'] as num? ?? 0).toInt();
+    final reviewMaterial = data?['next_review_material_id'] as String?;
+    final needsReview = reviewCount > 0;
     final blockReason = data?['block_reason'] as String?;
     final hasBlocker = blockReason != null && blockReason.isNotEmpty;
     final technicalFailure =
@@ -567,7 +570,43 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               Notice(actionError!, warning: true),
               TextButton(onPressed: load, child: Text('Stand prüfen')),
             ],
-            if (technicalFailure) ...[
+            if (needsReview) ...[
+              const SizedBox(height: 12),
+              Text(
+                reviewCount == 1
+                    ? 'Eine Heftseite noch prüfen'
+                    : '$reviewCount Heftseiten noch prüfen',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Prüfe die erkannten Texte. Deine bisherigen Antworten bleiben erhalten.',
+              ),
+              if (editable &&
+                  reviewMaterial != null &&
+                  RegExp(r'^[a-f0-9]{32}$').hasMatch(reviewMaterial)) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () {
+                    if (navigationCurrent()) {
+                      openRoute(context, '/material/$reviewMaterial');
+                    }
+                  },
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: const Text('Seiten prüfen'),
+                ),
+              ],
+              TextButton.icon(
+                onPressed: () {
+                  if (navigationCurrent()) openRoute(context, '/learn/$child');
+                },
+                icon: const Icon(Icons.view_list_outlined),
+                label: const Text('Gespeicherte Runden ansehen'),
+              ),
+            ] else if (technicalFailure) ...[
               const Text('Deine Fotos sind gespeichert.'),
               const SizedBox(height: 12),
               FilledButton.icon(
@@ -601,7 +640,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                     ? 'Dein Stoff wird zu mehreren kleinen Etappen.'
                     : 'Für diesen Tag ist noch kein Lernweg geplant.',
               ),
-              if (editable) ...[
+              if (editable && !needsReview) ...[
                 SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: posting ? null : createPlan,
@@ -632,7 +671,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                 ),
               ],
               SizedBox(height: 20),
-              if (current != null) ...[
+              if (current != null && !needsReview) ...[
                 if (current['unit_id'] != null &&
                     !waiting &&
                     !posting &&
@@ -730,12 +769,13 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                     ),
                   ),
                 ],
-              ] else if (blocks.isNotEmpty)
+              ] else if (current == null && blocks.isNotEmpty)
                 Text(
                   'Alle Etappen sind bearbeitet. Gut gemacht!',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
-              if ((data?['block_reason'] as String? ?? '').isNotEmpty) ...[
+              if (!needsReview &&
+                  (data?['block_reason'] as String? ?? '').isNotEmpty) ...[
                 SizedBox(height: 12),
                 Text(
                   _studyError(
@@ -745,7 +785,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                   style: TextStyle(color: context.palette.muted),
                 ),
               ],
-              if (editable && data?['stale'] == true) ...[
+              if (editable && !needsReview && data?['stale'] == true) ...[
                 SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: posting ? null : createPlan,

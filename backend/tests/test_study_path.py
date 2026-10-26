@@ -211,6 +211,43 @@ def test_five_confirmed_pages_plan_twenty_questions_without_generating_or_writin
         assert db.scalar(select(func.count()).select_from(Usage)) == 0
 
 
+@pytest.mark.parametrize("existing_plan", [False, True])
+@pytest.mark.parametrize("problem", ["unconfirmed", "empty"])
+def test_pending_source_review_is_actionable_without_replanning_or_generation(study, existing_plan, problem):
+    if existing_plan:
+        create(study)
+    with DB.begin() as db:
+        material = db.get(Material, study["materials"][1])
+        material.revision += 1
+        if problem == "unconfirmed":
+            material.confirmed = False
+        else:
+            material.content = " "
+        before = copy.deepcopy(db.get(SchoolDay, study["day_id"]).learning_plan)
+    for _ in range(2):
+        response = study["client"].get(path(study))
+        assert response.status_code == 200
+        data = response.json()
+        assert data["pending_review_count"] == 1
+        assert data["next_review_material_id"] == study["materials"][1]
+        assert data["available"] is existing_plan and data["can_continue"] is False
+        if existing_plan:
+            assert data["stale"] is True and "offenen Heftseiten prüfen" in data["block_reason"]
+    assert study["client"].post(path(study)).status_code == 409
+    with DB() as db:
+        assert db.get(SchoolDay, study["day_id"]).learning_plan == before
+        for model in (Job, Usage, Attempt, Activity):
+            assert db.scalar(select(func.count()).select_from(model)) == 0
+    # Explicit source confirmation permits planning again, never a GET or retry.
+    with DB.begin() as db:
+        material = db.get(Material, study["materials"][1])
+        material.confirmed = True
+        material.content = "Die Sonne ist ein Stern. " * 44
+    data = create(study)
+    assert data["pending_review_count"] == 0 and data["next_review_material_id"] is None
+    assert data["can_continue"] is True and data["stale"] is False
+
+
 def test_parents_only_read_and_other_children_or_families_cannot_open_path(api, mailbox, study):
     planned = create(study)
     assert api.get(path(study)).status_code == 200

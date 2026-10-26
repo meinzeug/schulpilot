@@ -1,5 +1,6 @@
 """Durable DB queue. At most one provider attempt; abandoned jobs never replay."""
 
+import copy
 import logging
 import re
 import signal
@@ -42,7 +43,7 @@ from .db import (
 from .families import remove_family, unlink_uploads
 from .fixtures import FIXTURE_ID, LIVE_FIXTURE_IDS, PACKAGE_FIXTURE_ID
 from .learning import record
-from .model_routing import job_config
+from .model_routing import job_config, selection
 from .notifications import deliver_one
 from .notifications import prepare as prepare_notifications
 from .providers import ProviderError, request_provider, settle
@@ -365,6 +366,9 @@ def process(job_id):
                 fixture_value = PACKAGE_FIXTURE_ID
             variant = len(previous)
             config_values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+            # Carry the reserved decision across the transaction boundary too.
+            # Persistent columns retain the model, but lose its original reason.
+            route_snapshot = copy.deepcopy(selection(config))
             function = job.kind
             from .catalog_ai import with_catalog_context
 
@@ -398,8 +402,10 @@ def process(job_id):
                     data = synthetic_report(db, db.get(LearningUnit, job.payload["review_of"]), "check")["next_unit"]
         else:
             provider_requested = True
+            request_config = ProviderConfig(**config_values)
+            request_config._selected_route = route_snapshot
             result = request_provider(
-                ProviderConfig(**config_values), function, payload, image_bytes, synthetic_fixture=fixture_value
+                request_config, function, payload, image_bytes, synthetic_fixture=fixture_value
             )
             data = result.data
         with DB.begin() as db:

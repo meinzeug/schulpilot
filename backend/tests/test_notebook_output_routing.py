@@ -158,7 +158,31 @@ def test_free_graphic_actual_native_schema_dispatch_keeps_approved_sol_limits(ro
     assert "prepared_graphics" not in outgoing
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert schema["properties"]["questions"]["minItems"] == schema["properties"]["questions"]["maxItems"] == 2
-    assert "Graphic" in schema["$defs"]
+    # Compact transport renames local definitions; assert the actual graphic
+    # contract and its references, rather than a private anchor's spelling.
+    from test_graphic_native_transport import subset_record
+
+    subset_record(schema)
+
+    def resolve(node):
+        while "$ref" in node:
+            node = schema["$defs"][node["$ref"].removeprefix("#/$defs/")]
+        return node
+
+    def fraction_branches(node):
+        if isinstance(node, dict):
+            properties = node.get("properties", {})
+            if "fraction" in resolve(properties.get("kind", {})).get("enum", []):
+                yield node
+            for child in node.values():
+                yield from fraction_branches(child)
+        elif isinstance(node, list):
+            for child in node:
+                yield from fraction_branches(child)
+
+    graphics = list(fraction_branches(schema))
+    assert graphics
+    assert all({"numbers", "source_excerpt", "disclosure"} <= set(item["required"]) for item in graphics)
     with DB() as db:
         assert db.scalar(select(Usage).where(Usage.job_id == job_id)).route_snapshot["reason"] == "notebook_graphic_teaching"
 

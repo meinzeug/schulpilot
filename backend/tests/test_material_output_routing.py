@@ -23,6 +23,7 @@ from schulpilot.db import (
 )
 from schulpilot.material_routing import MESSAGE, extended_output
 from schulpilot.model_routing import features_for, job_config
+from schulpilot.model_routing import selection as selected_route
 from schulpilot.providers import reserve
 from sqlalchemy import delete, event, select
 from sqlalchemy.orm.attributes import flag_modified
@@ -113,6 +114,17 @@ def test_actual_worker_native_schema_uses_full_output_contract_and_reserved_sol(
     result = post(routed, value)
     assert result.status_code == 202, result.text
     job_id, captures = result.json()["id"], []
+    with DB() as db:
+        reserved_snapshot = copy.deepcopy(db.scalar(select(Usage).where(Usage.job_id == job_id)).route_snapshot)
+    actual_request = worker.request_provider
+    decisions = []
+
+    def observe_decision(config, *args, **kwargs):
+        decisions.append(copy.deepcopy(selected_route(config)))
+        assert selected_route(config) == reserved_snapshot
+        return actual_request(config, *args, **kwargs)
+
+    monkeypatch.setattr(worker, "request_provider", observe_decision)
     real = httpx.Client
 
     class CaptureComplete(BaseException):
@@ -129,6 +141,7 @@ def test_actual_worker_native_schema_uses_full_output_contract_and_reserved_sol(
     with pytest.raises(CaptureComplete):
         worker.process(job_id)
     assert len(captures) == 1
+    assert decisions == [reserved_snapshot]
     sent = captures[0]
     assert sent["max_tokens"] == 8000 and sent["reasoning"]["effort"] == "medium"
     payload = json.loads(sent["messages"][1]["content"][0]["text"])

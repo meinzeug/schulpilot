@@ -101,6 +101,11 @@ Future<GoRouter> _open(
         path: '/other',
         builder: (_, _) => const Scaffold(body: Text('Andere Ansicht')),
       ),
+      GoRoute(
+        path: '/material/:id',
+        builder: (_, state) =>
+            Scaffold(body: Text('Seitenprüfung ${state.pathParameters['id']}')),
+      ),
     ],
   );
   await tester.pumpWidget(
@@ -145,6 +150,49 @@ void _pause(WidgetTester tester) {
 }
 
 void main() {
+  for (final available in [false, true]) {
+    testWidgets(
+      'Pending source review replaces impossible planning: $available',
+      (tester) async {
+        _viewport(tester);
+        const material = '11111111111111111111111111111111';
+        var posts = 0;
+        final data = _path(
+          available: available,
+          stale: true,
+          blocks: [_block('first')..['error'] = 'KI-Anbieter meldet HTTP 400.'],
+        );
+        data.addAll({
+          'pending_review_count': 6,
+          'next_review_material_id': material,
+        });
+        final state = _state(
+          MockClient((request) async {
+            if (request.method == 'POST') posts++;
+            return _json(data);
+          }),
+        );
+        final router = await _open(tester, state);
+        expect(find.text('6 Heftseiten noch prüfen'), findsOneWidget);
+        expect(find.text('Lernweg neu planen'), findsNothing);
+        expect(find.text('Lernweg planen'), findsNothing);
+        expect(
+          find.text(
+            'Diese Etappe konnte gerade nicht vorbereitet werden. Deine gespeicherten Runden bleiben erhalten.',
+          ),
+          findsNothing,
+        );
+        expect(find.text('Gespeicherte Runden ansehen'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 12));
+        expect(posts, 0);
+        await _tap(tester, 'Seiten prüfen');
+        expect(find.text('Seitenprüfung $material'), findsOneWidget);
+        expect(posts, 0);
+        expect(tester.takeException(), isNull);
+        await _dispose(tester, router);
+      },
+    );
+  }
   const technicalFailures = <(String, String)>[
     (
       'HTTP',
