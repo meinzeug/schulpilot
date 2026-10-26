@@ -26,7 +26,22 @@ class SchulbuddyContext {
     this.references = const {},
     this.binding,
   ]);
-  Json get fields => {'page_kind': pageKind, ...references};
+  // Query references remain strings; strict JSON integer slots do not.
+  // Convert only exact, safely representable decimal text. Invalid values
+  // stay unchanged for backend rejection, never clamped or replaced by zero.
+  Json get fields => {
+    'page_kind': pageKind,
+    for (final entry in references.entries)
+      entry.key:
+          const {
+                'graphic_index',
+                'material_revision',
+                'exam_revision',
+              }.contains(entry.key) &&
+              RegExp(r'^(?:0|[1-9][0-9]{0,14})$').hasMatch(entry.value)
+          ? int.tryParse(entry.value) ?? entry.value
+          : entry.value,
+  };
   String get key =>
       binding == null ? jsonEncode(fields) : jsonEncode([fields, binding]);
   SchulbuddyContext get navigationFallback => SchulbuddyContext(

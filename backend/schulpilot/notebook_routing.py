@@ -9,7 +9,7 @@ import re
 from fastapi import HTTPException
 from sqlalchemy import select
 
-from .db import Child, Job
+from .db import Child, Job, Subject
 
 LENGTH_MESSAGE = (
     "Die KI hat die begrenzte Ausgabelänge erreicht. Die unvollständige Antwort wurde verworfen; "
@@ -61,3 +61,57 @@ def length_failed(db, child_id, job):
             continue
         return True
     return False
+
+
+def extended_output(db, child_id, job):
+    """Use the real source compiler contract, never input length as output size.
+
+    Only two-question selections with immutable prepared fraction steps keep
+    the small economy route. This read-only check does not plan questions,
+    publish data, consume history, reserve money or dispatch a provider.
+    The worker still rebuilds and validates its full current context normally.
+    """
+    if not job or job.child_id != child_id or job.kind != "unit" or job.status != "queued":
+        return False
+    data = job.payload
+    if not isinstance(data, dict) or not data.get("notebook_practice"):
+        return False
+    child = db.get(Child, child_id, populate_existing=True)
+    if child is None:
+        return False
+    from .notebook_practice import guard
+    from .providers import ProviderError
+
+    try:
+        pages = guard(db, child, data)
+    except (HTTPException, ProviderError):
+        return False
+    anchor = next((page for page in pages if page.id == data.get("material_id")), None)
+    if (anchor is None or type(data.get("material_revision")) is not int
+            or data["material_revision"] != anchor.revision):
+        return False
+    if data["notebook_practice"]["question_count"] != 2:
+        return True
+    from . import notebook_fraction_expansions as notebook_expansion
+    from . import study_fraction_expansions as expansion
+    from .unit_fraction_compositions import compile_candidates
+    from .visual_references import with_visual_context
+
+    subject = db.get(Subject, anchor.subject_id)
+    payload = {"required_subject": subject.title,
+        "notebook_practice": {key: data["notebook_practice"][key] for key in ("version", "question_count")},
+        "material": {"subject": anchor.subject, "topic": anchor.topic, "content": anchor.content},
+        **({"labs_enabled": True} if data.get("labs_enabled") is True else {})}
+    payload = with_visual_context(db, child, payload, pages)
+    context = payload["visual_context"]
+    # add_reference has already checked the immutable database recipe/digest.
+    # _supported is the exact predicate used again by prepare and bind_schema;
+    # failure/exhaustion in the later planner remains a zero-dispatch stop.
+    if (notebook_expansion._supported(payload) and any(ref.get("id") == expansion.RECIPE
+            and type(ref.get("version")) is int and ref["version"] == expansion.VERSION
+            and ref.get("digest") for ref in context["references"])
+            and expansion._introductions(context, [])):
+        return False
+    candidates = compile_candidates(context)
+    return not (any(row["disclosure"] == "given" for row in candidates)
+        and any(row["disclosure"] == "solution" for row in candidates))

@@ -377,6 +377,18 @@
       "interaction": "fraction_expansion",
       "variant": null,
       "scope": "unit_composition_only"
+    },
+    {
+      "id": "german.original_examples.comparison",
+      "version": 1,
+      "subjects": [
+        "Deutsch"
+      ],
+      "kind": "sentence",
+      "purpose": "Zwei bis vier vollständige kurze Originalbeispiele nebeneinander vergleichen. Beschriftungen und Schreibweise bleiben wortgetreu im selben bestätigten Quellenbeleg; keine erfundene Umstellung, Wortzerlegung, Grammatikrolle oder Richtig-/Falschbewertung. Wortgleichheit und Unterschiede sind nur formaler Textvergleich. Eine Frage nennt mindestens einen vollständigen Originalausdruck. Zahlen, Verbindungen, Markierungen und Einheit bleiben leer.",
+      "terms": [],
+      "interaction": "Originalbeispiele bewusst auswählen und gleiche oder unterschiedliche Wörter lokal fokussieren; keine Bewertung oder automatisch gestartete Animation.",
+      "variant": "classification"
     }
   ]
 }

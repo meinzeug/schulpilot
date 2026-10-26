@@ -284,7 +284,8 @@ void main() {
       final body = Json.from(jsonDecode(posts.single.body));
       expect(body['question'], 'Erklär mir den Inhalt der Seite');
       expect(body['material_id'], unit);
-      expect(body['material_revision'], '7');
+      expect(body['material_revision'], 7);
+      expect(body['material_revision'], isA<int>());
       await tap(t, find.byTooltip('Schulbuddy schließen'));
       expect(find.text('200 %'), findsOneWidget);
       await tap(t, find.byTooltip('Schließen'));

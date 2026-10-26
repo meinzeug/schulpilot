@@ -282,6 +282,8 @@ def features_for(db, child_id, job_id):
     ids.update(ref.get("id") or ref.get("material_id") for ref in refs if isinstance(ref, dict))
     ids.discard(None)
     sources = list(db.scalars(select(Material).where(Material.child_id == child_id, Material.id.in_(ids)))) if ids else []
+    from .material_routing import extended_output as material_extended_output
+    from .notebook_routing import extended_output as notebook_extended_output
     from .notebook_routing import length_failed as notebook_length_failed
 
     return {
@@ -293,6 +295,8 @@ def features_for(db, child_id, job_id):
         "transcription_review": extraction_recheck(db, child_id, job),
         "study_length_failed": study_length_failed(db, child_id, job),
         "notebook_length_failed": notebook_length_failed(db, child_id, job),
+        "notebook_extended_output": notebook_extended_output(db, child_id, job),
+        "material_extended_output": material_extended_output(db, child_id, job),
         "sources_known": bool(ids) and len(sources) == len(ids),
         "source_count": len(sources),
         "source_chars": sum(len(m.content or "") for m in sources),
@@ -312,6 +316,10 @@ def choose_tier(function, features, *, economy=False):
     if function == "unit" and features.get("notebook_length_failed"):
         return "sol", "recorded_notebook_output_length"
     if economy:
+        if function == "unit" and features.get("notebook_extended_output"):
+            return "sol", "notebook_graphic_teaching"
+        if function == "unit" and features.get("material_extended_output"):
+            return "sol", "material_graphic_teaching"
         if features.get("poor_image") or features.get("errors", 0) >= 2 or features.get("uncertain", 0):
             return "sol", "recorded_difficulty"
         if function in ("extract", "coach", "decision", "vocabulary_import"):

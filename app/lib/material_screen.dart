@@ -2057,6 +2057,83 @@ class _MaterialReviewState extends State<MaterialReview>
     widget.onRefresh();
   }
 
+  List<Widget> sourceExclusionNotices(Json data) {
+    final groups = <(String?, String), Set<String>>{};
+    final pageReasons = <(String?, String)>{};
+    for (final raw in (data['source_learning']['exclusions'] as List? ?? [])) {
+      if (raw is! Map || raw['message'] is! String) continue;
+      final reason = (
+        raw['reason'] is String ? raw['reason'] as String : null,
+        raw['message'] as String,
+      );
+      final blocks = groups.putIfAbsent(reason, () => <String>{});
+      final id = raw['block_id'];
+      if (id is String && id.isNotEmpty) {
+        blocks.add(id);
+      } else {
+        pageReasons.add(reason);
+      }
+    }
+    final references = <String, Map>{
+      for (final raw in (data['source_block_refs'] as List? ?? []))
+        if (raw is Map && raw['block_id'] is String)
+          raw['block_id'] as String: raw,
+    };
+    return [
+      for (final group in groups.entries)
+        if (group.value.isEmpty)
+          Text(group.key.$2)
+        else
+          ExpansionTile(
+            key: ValueKey((
+              'source-exclusion-group',
+              data['id'],
+              data['revision'],
+              group.key,
+            )),
+            tilePadding: EdgeInsets.zero,
+            title: Text(group.key.$2),
+            subtitle: Text(
+              group.value.length == 1
+                  ? '1 Textabschnitt betroffen'
+                  : '${group.value.length} Textabschnitte betroffen',
+            ),
+            children: [
+              if (pageReasons.contains(group.key))
+                const Text(
+                  'Dieser Hinweis betrifft auch die gesamte Heftseite.',
+                ),
+              for (final id in group.value)
+                if (references[id]?['block_index'] is int &&
+                    (references[id]!['block_index'] as int) >= 0 &&
+                    references[id]?['text'] is String)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Textabschnitt ${(references[id]!['block_index'] as int) + 1}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text(references[id]!['text'] as String),
+                      ],
+                    ),
+                  ),
+              if (group.value.any(
+                (id) =>
+                    references[id]?['block_index'] is! int ||
+                    (references[id]!['block_index'] as int) < 0 ||
+                    references[id]?['text'] is! String,
+              ))
+                const Text(
+                  'Die genaue Zuordnung dieser Textabschnitte ist hier nicht verfügbar.',
+                ),
+            ],
+          ),
+    ];
+  }
+
   Widget childReview(BuildContext context) {
     final d = widget.data;
     final synthetic = d['synthetic'] == true;
@@ -2311,11 +2388,7 @@ class _MaterialReviewState extends State<MaterialReview>
                           const Text(
                             'Diese Abschrift wurde nicht vollständig fachlich geprüft.',
                           ),
-                        for (final raw
-                            in (d['source_learning']['exclusions'] as List? ??
-                                []))
-                          if (raw is Map && raw['message'] is String)
-                            Text(raw['message'] as String),
+                        ...sourceExclusionNotices(d),
                       ],
                     ),
                 ],

@@ -11,6 +11,7 @@ from .visual_reference_models import UnitVisualSnapshot, VisualReference
 from .visual_reference_schemas import ExplanationStep
 
 BUNDLE = Path(__file__).with_name("reference") / "visual-v1.json"
+ORIGINAL_COMPARISONS = frozenset({"language.forms.original_comparison", "german.original_examples.comparison"})
 REASONS = {"no_confirmed_source", "subject_unresolved", "no_reference", "missing_steps", "invalid_graphic", "source_changed"}
 RULES = """\nVERBINDLICHE ERKLÄRSCHRITTE: visual_context enthält tatsächlich vorhandene, versionierte eigene Darstellungsrezepte.
 Erzeuge für die Einführung 1–3 explanation_steps, für jede Frage 1–2 explanation_steps. Jeder Schritt benötigt einen fachlich passenden sichtbaren Graphic-Block, dieselben belegten Zahlen/Einheiten und einen erlaubten reference.id/version.
@@ -214,7 +215,7 @@ def _meaningful(block, recipe, *, sources=None, question=None):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
     if block.kind == "lab" and block.lab.recipe_id != recipe.get("lab_recipe_id"):
         raise ValueError("Laborparameter passen nicht zur gewählten Referenz.")
-    if recipe.get("id") in ("language.forms.original_comparison", "german.word_formation.parts"):
+    if recipe.get("id") in ORIGINAL_COMPARISONS or recipe.get("id") == "german.word_formation.parts":
         labels = [" ".join(label.split()) for label in block.labels]
         quote = " ".join(block.source_excerpt.split())
         if (not 2 <= len(labels) <= 4 or len(set(labels)) != len(labels)

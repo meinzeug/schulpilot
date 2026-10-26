@@ -233,7 +233,8 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
-    if (kind == 'forms' && block['variant'] == 'classification') {
+    if ((kind == 'forms' || kind == 'sentence') &&
+        block['variant'] == 'classification') {
       return LanguageComparisonWidget(block, state: state, action: action);
     }
     if (kind == 'lab') {

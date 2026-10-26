@@ -20,6 +20,11 @@ def retry(notebook):
     family_id = notebook.parent["families"][0]["id"]
     setup_policy(family_id)
     with DB.begin() as db:
+        # The small initial route now requires a real immutable graphic binder.
+        for ref in notebook.refs[:2]:
+            material = db.get(Material, ref["id"])
+            material.content = "Beim Erweitern multiplizierst du Zähler und Nenner mit derselben Zahl. Beispiele: 1/5 und 2/7."
+            material.topic = "Brüche erweitern"
         config = db.get(ProviderConfig, 1)
         config.reserve_micros, config.max_output_tokens = 500000, 8000
         config.routing_policy = {**config.routing_policy, "economy_mode": True, "routes": {

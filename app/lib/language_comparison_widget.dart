@@ -211,7 +211,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
 
   @override
   Widget build(BuildContext context) {
-    if (widget.block['kind'] != 'forms' ||
+    if (!const {'forms', 'sentence'}.contains(widget.block['kind']) ||
         widget.block['variant'] != 'classification' ||
         !disclosed) {
       return const SizedBox.shrink();

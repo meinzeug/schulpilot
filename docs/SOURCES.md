@@ -2336,3 +2336,94 @@ als Runden gezählt. Der Auftrag über100 Durchläufe ist damit noch nicht erfü
 Version1.36.19+131 behält Schema0042, Anbieterwahl, Reservierungen, Token- und
 Kontogrenzen. Build-, Signatur-, CI- und Produktionsbelege werden erst für den
 festgeschriebenen Quellcommit erzeugt; vorbereitete Helfer sind keine Abnahme.
+
+## 2026-10-26 · Ausgabeprofil und typisierter Schulbuddy-Kontext (132)
+
+Die fortgesetzte Produktionsprüfung beendete die zuvor nur erzeugte allgemeine
+Simple-Past-Runde. Der private Nachweis zählt jetzt neun vollständige allgemeine
+Heft-Lernrunden im ausdrücklich freigegebenen Konto. Fehlgeschlagene Erzeugungen
+zählen nicht; der Auftrag über100 Runden bleibt offen. Der vollständige131-Build,
+seine acht erfolgreichen CI-Jobs und die öffentlichen APK-/JavaScript-Hashes
+sind getrennt an239fab6 gebunden. Seine komplette Flutter-Testvereinigung umfasst
+4000 bestandene Fälle und19 gesonderte Plattform-Skips in292 Dateien.
+
+Zwei weitere bewusst gestartete Vorbereitungen scheiterten ohne neue Einheit an
+Ausgabelänge: eine explizite Heftauswahl auf130 und ein normaler Material-/Review-
+Start von Heute auf131. Beide gespeicherten Reservierungssnapshots wählten Luna
+mit4000 Ausgabetokens. Die geschlossenen Fehlermetadaten enthalten keinen
+vollständigen ursprünglichen Modelloutput. Nachträglich abgeglichene Tokenzahlen
+beweisen nicht, welcher Teil der Anfrage die Länge ausschöpfte. Eine pauschale
+Behauptung über alle historischen HTTP400-Fehler folgt daraus ebenfalls nicht.
+
+Die neue Auswahl berücksichtigt deshalb den tatsächlichen Ausgabevertrag vor
+der normalen Reservierung: freie Grafik-/Erklärschritte benötigen auch bei
+kurzem Quelltext die bereits freigegebene Sol-Route. Kleine explizite Zweier-
+Heftauswahlen behalten Luna nur bei tatsächlich gebundenen, geprüften endlichen
+Bruchvorlagen. Quellen-, Referenzversions-/Digest- und spätere Workerprüfungen
+bleiben erhalten. Es gibt keine neuen Modellkennungen, höheren gemeinsamen
+Token-/Kostenlimits, Anbieterfallbacks oder automatischen Wiederholungen.
+Bereits reservierte Aufträge behalten ihren ursprünglichen Snapshot.
+
+Die Liveprüfung des Schulbuddys auf131 zeigte einen weiteren getrennten Fehler:
+Der gespeicherte Erklärkontext war im GET erreichbar, aber sein POST übertrug
+graphic_index als Zeichenfolge. Das strikte Backend lehnte die Frage mit422
+vor Reservierung ab. Nur die drei bekannten numerischen JSON-Felder
+graphic_index/material_revision/exam_revision erhalten jetzt einen Integer;
+GET-Parameter, IDs und übrige Texte bleiben unverändert. Ungültige Werte werden
+weder durch0 ersetzt noch entfernt oder gerundet. Die Backendvalidierung bleibt
+maßgeblich. Fünf neue Protokollfälle scheiterten gegen den bisherigen Client;
+mit dem Fix bestanden sie samt Nachbarn. Die gemeinsame Flutter-Analyse ist
+sauber,73 gezielte Oberflächen-/Tutorprüfungen bestanden.
+
+Identische Quellenwarnungen werden nach tatsächlichem Grund und Wortlaut
+zusammengefasst. Die Anzahl bezeichnet betroffene Textabschnitte, keine Zahl
+unabhängiger OCR-Fehler; ihre gespeicherten Originalstellen bleiben aufklappbar.
+Technische Vorbereitungsfehler zeigen Kindern eine ehrliche kurze Meldung und
+einen reinen Navigationsweg zu gespeicherten Runden. Quellen-/Zugangs-/Kosten-
+sperren behalten ihren eigenen Grund; Eltern erhalten weiterhin die konkrete
+Diagnose. Anzeigen, Neuladen und Navigation erzeugen keine Wiederholungsaufträge.
+
+Schema bleibt0042. Weitere Datenbank-, CI-, Build- und Produktionsprüfungen
+werden separat für den endgültigen132-Quellcommit gebunden. Die hier genannten
+Widgetprüfungen sind noch kein Beleg einer erfolgreichen neuen Live-KI-Antwort.
+
+Eine weitere ausdrücklich beauftragte Serverprüfung auf131 bestätigte denselben
+Längenfehler bei einem neuen normalen Material-/Reviewauftrag. Getrennt davon
+stoppte Teilindex5 eines19-seitigen Pakets lokal vor dem Anbieteraufruf: Die
+bereits vorhandene Quellenprüfung fand für seine Deutschgruppe keine passende
+Einführungsgrafik. Der Aufruf wurde als cancelled mit0 Kosten und0 Tokens
+abgeschlossen; dies ist kein erneuter HTTP400 und kein Kontolimit. Die fünf
+vorangegangenen Teilaufträge meldeten completed; daraus allein wird kein
+vollständig geprüftes Gesamtpaket abgeleitet. Alte Jobs und Ergebnisse bleiben.
+
+Die betroffene Originalseite wurde im vorhandenen privaten Export persönlich
+angesehen und ihre aktuelle bestätigte Abschrift im angemeldeten Browser gelesen.
+Sie enthält unter anderem lesbare Verbformpaare, aber weder eine für das alte
+Szenenrezept nötige Pfeilfolge noch eine geeignete Wortbausteinfolge. Der bisherige
+Originalvergleich galt nur für Fremdsprachen/DaZ. Neu ist deshalb ausschließlich
+das unveränderliche Rezept german.original_examples.comparison/1 für Deutsch:
+zwei bis vier wörtlich belegte Beispiele, ohne Zahlen, Grammatikrollen, Pfeile
+oder zusätzliche Parameter. Es verwendet das vorhandene sentence-Fachprofil
+und denselben lokalen Wortvergleich wie die bereits vorhandene Fremdsprachen-
+Darstellung. Der Decoder, Quellen-/Gruppen-/Fragebezug und Aufdeckstufen bleiben
+streng; kein allgemeines forms-Fallback oder verändertes altes Rezept.
+
+Die normale Routenauswahl bestand209 Fälle auf einer frischen PostgreSQL16-
+Instanz ohne Fehler oder Skip; der eigene Unix-Cluster und Testdaten wurden
+entfernt. Ein zusätzlicher SQLite-Lauf auf normalem Dateispeicher erreichte seine
+600-Sekunden-Grenze und gilt ausdrücklich nicht als bestanden. Ein unveränderter
+erneuter Lauf nutzt eine eigene RAM-Datenbank mit derselben Grenze. Die neue
+Deutsch-Grafikbindung samt bestehenden Vergleichs-/Paketprüfungen bestand94
+SQLite-Fälle mit unveränderten Backendquellen und anschließender Testbereinigung.
+Diese gezielten Mengen überschneiden sich; sie werden nicht addiert.
+
+Der unveränderte Routing-Nachlauf in RAM bestand104 SQLite-Fälle ohne Skip.
+Die94 Deutsch-/Paketfälle bestanden außerdem auf einer frischen PostgreSQL16-
+Instanz; Quellen und Manifest blieben unverändert, Cluster und Testdaten wurden
+entfernt.22 Flutterfälle für den neuen Deutsch-Satzvergleich und die vorhandene
+Vergleichskomponente bestanden, einschließlich320/390px und großer Schrift.
+Die vollständige Analyse der gemeinsamen App meldete keine Befunde. Der erste
+neue Renderer-Test zeigte korrekt, dass neben dem äußeren Dispatcher auch die
+innere Kindprüfung der Vergleichskomponente ergänzt werden musste. Beide
+akzeptieren jetzt nur die vorhandenen forms-/sentence-Klassifikationsblöcke;
+Kontobindung, Aufdeckstufen, Literalgrenzen und lokale Bedienung bleiben gleich.

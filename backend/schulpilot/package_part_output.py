@@ -82,6 +82,8 @@ def _bind_references(schema, payload):
     and nested anyOf are understood by all existing adapters and the codec.
     Canonical source/numeric/answer checks still validate the decoded response.
     """
+    from .visual_references import ORIGINAL_COMPARISONS
+
     context = payload.get("visual_context") or {}
     if not enabled(payload) or not context.get("required"):
         return
@@ -122,7 +124,7 @@ def _bind_references(schema, payload):
             if variant in ("roots", "pollination") and stage != "solution":
                 return None
             fields["variant"] = {"type": "string", "enum": [variant]}
-        if reference.get("id") == "language.forms.original_comparison":
+        if reference.get("id") in ORIGINAL_COMPARISONS:
             # The original-language comparison has one finite parameter
             # family. Do not invite irrelevant marks, numbers or relations.
             fields["labels"].update(minItems=2, maxItems=4)
@@ -156,7 +158,7 @@ def _bind_references(schema, payload):
         group_sources = [row.get("content", "") for row in context.get("sources", [])
                          if row.get("subject") == subject and row.get("group_id") == group]
         original_comparison = any(row.get("subject") == subject
-            and row.get("id") == "language.forms.original_comparison" for row in context.get("references", []))
+            and row.get("id") in ORIGINAL_COMPARISONS for row in context.get("references", []))
         for reference in context.get("references", []):
             if reference.get("subject") != subject:
                 continue

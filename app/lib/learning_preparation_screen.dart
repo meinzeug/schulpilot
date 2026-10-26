@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'study_path_panel.dart' show isTechnicalPreparationFailure;
 import 'ui.dart';
 
 /// Observes a single already reserved job. Opening/reloading never creates one.
@@ -146,6 +147,14 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
         job?['status'] == 'completed' && job?['result']?['unit_id'] is String;
     final failed = job != null && !waiting && !ready;
     final planning = job?['kind'] == 'decision';
+    final failure = error ?? job?['error'];
+    final technicalFailure =
+        (failed || error != null) &&
+        widget.state.isChild &&
+        isTechnicalPreparationFailure(
+          failure,
+          code: error == null ? (job?['error_code'] as String?) : null,
+        );
     return PageFrame(
       state: widget.state,
       title: planning ? 'Dein nächster Lernschritt' : 'Deine Lernrunde',
@@ -198,7 +207,11 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
                 ],
                 if (failed || error != null) ...[
                   Text(
-                    error is ApiError
+                    technicalFailure
+                        ? failed
+                              ? 'Diese Runde konnte gerade nicht vorbereitet werden. Deine Heftseiten und gespeicherten Runden bleiben erhalten.'
+                              : 'Wir können den Stand gerade nicht laden. Deine Heftseiten und gespeicherten Runden bleiben erhalten.'
+                        : error is ApiError
                         ? (error as ApiError).message
                         : job?['error'] as String? ??
                               'Deine Heftseiten bleiben gespeichert.',
@@ -237,7 +250,7 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
                     icon: Icons.refresh_rounded,
                     onPressed: load,
                   ),
-                if (failed && widget.state.isChild) ...[
+                if ((failed || technicalFailure) && widget.state.isChild) ...[
                   SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () {
