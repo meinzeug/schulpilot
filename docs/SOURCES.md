@@ -2427,3 +2427,25 @@ neue Renderer-Test zeigte korrekt, dass neben dem äußeren Dispatcher auch die
 innere Kindprüfung der Vergleichskomponente ergänzt werden musste. Beide
 akzeptieren jetzt nur die vorhandenen forms-/sentence-Klassifikationsblöcke;
 Kontobindung, Aufdeckstufen, Literalgrenzen und lokale Bedienung bleiben gleich.
+
+Der erste132-Kandidat d0edd3d wurde nicht aktiviert. Sein gebundener Build und
+seine vollständige Flutter-CI bestanden4022 Fälle mit19 getrennten Plattform-
+Skips in296 Dateien, aber ein Backendjob fand drei Regressionen. Die normale
+Materialvorauswahl erfasste einen ausdrücklich als OCR-Neulesung markierten
+Diagnoseauftrag. Dieser Spezialpfad ist nun wie Eltern-/Prüfungsaufträge aus
+dem neuen Profil ausgeschlossen; die alte Diagnoseprüfung bleibt unverändert.
+Die neue Deutschreferenz war außerdem ohne Suchbegriffe für jeden Deutschtext
+angeboten und vergrößerte zwei schon große Mehrfachanfragen über ihre bestehende
+Kostenreservierung. Sie wird jetzt nur bei passenden Originalpaar-Markern oder
+belegten Themenwörtern ausgewählt. Der konkrete betroffene Quellenvergleich
+bleibt abgedeckt; beliebige Prosa löst ihn nicht mehr aus. Kostenprüfung, alter
+Mehrfachtransport und Reservierung wurden nicht gelockert.
+
+Der Nachlauf bestand157 Fälle auf SQLite und einer frischen PostgreSQL16-
+Instanz, jeweils ohne Skip, mit unveränderten Backendquellen und bereinigten
+Testdaten. Er enthält die unveränderten fehlgeschlagenen Altprüfungen und neue
+Auswahl-/Spezialpfadfälle. Der vorherige Kandidat samt tatsächlichen Binärdateien,
+Signaturbelegen und fehlgeschlagener CI bleibt separat archiviert. Die erneuten
+Build-/CI-/Produktionsbelege werden an den korrigierten Commit gebunden. Die
+weitergeführte Liveprüfung beendete außerdem eine zehnte allgemeine Heft-
+Lernrunde; eine externe Gesamtzählung wird nicht als eigener UI-Test ausgegeben.

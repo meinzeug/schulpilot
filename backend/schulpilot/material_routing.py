@@ -13,7 +13,7 @@ from sqlalchemy.orm import load_only
 from .db import Child, LearningUnit, Material, UnitSource
 
 MESSAGE = "Die Quellen dieser Lernrunde wurden geändert. Bitte die bestätigten Heftseiten neu auswählen."
-_SPECIAL = ("assignment_id", "notebook_practice", "study_block", "homework_practice", "exam_round_id", "exam_review_practice", "controller_guard")
+_SPECIAL = ("assignment_id", "notebook_practice", "study_block", "homework_practice", "exam_round_id", "exam_review_practice", "controller_guard", "reprocess_guard")
 
 
 def extended_output(db, child_id, job):

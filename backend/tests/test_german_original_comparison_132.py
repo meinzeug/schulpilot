@@ -13,7 +13,7 @@ from test_package_transport import config
 
 REFERENCE = "german.original_examples.comparison"
 EXAMPLES = ["Das Heft liegt hier.", "Die Hefte liegen hier."]
-SOURCE = "\n".join(EXAMPLES)
+SOURCE = " - ".join(EXAMPLES)
 
 
 def context(db):
@@ -57,6 +57,19 @@ def test_new_recipe_uses_existing_german_sentence_profile_and_keeps_old_recipe_i
         assert "Deutsch" not in old.recipe["subjects"]
         assert old.digest == visual_references.digest(old.recipe)
         assert not any(row["id"] == REFERENCE for row in visual_references.candidates(db, "Mathematik", SOURCE))
+
+
+@pytest.mark.parametrize("text", ["Ein eigener Beispielsatz beschreibt einen Zusammenhang.",
+    "Kuenstlicher Stoff: Bruch Zaehler Nenner Satz Subjekt Spiegel Winkel Stromkreis."])
+def test_unrelated_german_prose_does_not_expand_the_existing_package_request(text):
+    with DB() as db:
+        assert not any(row["id"] == REFERENCE for row in visual_references.candidates(db, "Deutsch", text))
+
+
+@pytest.mark.parametrize("separator", [" - ", " – ", " — "])
+def test_explicit_original_pairs_offer_the_comparison_without_an_invented_arrow(separator):
+    with DB() as db:
+        assert any(row["id"] == REFERENCE for row in visual_references.candidates(db, "Deutsch", separator.join(EXAMPLES)))
 
 
 @pytest.mark.parametrize("fault", ["spelling", "invented", "substring", "marks", "numbers", "group", "prompt"])

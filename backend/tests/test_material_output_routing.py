@@ -230,7 +230,7 @@ def test_unrecognized_payload_count_is_not_a_two_question_compiler_contract(rout
         assert extended_output(db, routed.child["id"], db.get(Job, job_id)) is True
 
 
-@pytest.mark.parametrize("key", ["assignment_id", "study_block", "homework_practice", "exam_round_id", "exam_review_practice", "controller_guard"])
+@pytest.mark.parametrize("key", ["assignment_id", "study_block", "homework_practice", "exam_round_id", "exam_review_practice", "controller_guard", "reprocess_guard"])
 def test_specialist_flows_keep_their_own_routing_contracts(routed, key):
     job_id = unreserved(routed)
     with DB.begin() as db:
