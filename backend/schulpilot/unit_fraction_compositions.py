@@ -93,12 +93,23 @@ def compile_candidates(context):
     if not special:
         return []
     rows = []
+    rule_sources = []
     for source in context.get("sources", []):
         if (not eligible(source) or type(source.get("revision")) is not int or source["revision"] < 1
                 or not re.fullmatch(r"[a-f0-9]{32}", source.get("material_id", ""))
                 or source.get("group_id") is not None):
             continue
-        for match in LITERAL.finditer(source["content"]):
+        matches = list(LITERAL.finditer(source["content"]))
+        from .fraction_conversion_rule import evidence
+
+        rule = evidence(source["content"], {
+            tuple(map(int, match.groups()[:2] if match[1] else match.groups()[2:])) for match in matches
+        })
+        if rule:
+            rule_sources.append((source, rule))
+        for match in matches:
+            if len(rows) >= 6:
+                break
             n, d = map(int, match.groups()[:2] if match[1] else match.groups()[2:])
             if not d or d > 24 or re.search(r"[+−-]\s*$", source["content"][:match.start()]):
                 continue
@@ -123,8 +134,30 @@ def compile_candidates(context):
                 row["id"] = "uc_" + _digest({"revision": REVISION, "candidate": row})[:24]
                 if all(old["id"] != row["id"] for old in rows):
                     rows.append(row)
-            if len(rows) >= 6:
-                return rows
+    # A copied worked example alone never licenses new inputs. The same safe
+    # source must explicitly state division of numerator by denominator and
+    # contain a correct, matching quotient/remainder example. Keep original
+    # candidates/IDs intact and add only private solution candidates; the
+    # existing planner sends just the selected questions, never this full pool.
+    if rule_sources:
+        from .fraction_conversion_rule import inputs
+
+        source, rule = rule_sources[0]
+        existing = {tuple(row["proof"]["input"]) for row in rows}
+        for n, d in inputs():
+            if (n, d) in existing:
+                continue
+            q, r = divmod(n, d)
+            block = Graphic.model_validate({"kind": "fraction", "title": "Ein Ganzes",
+                "disclosure": "solution", "source_excerpt": rule["quote"], "labels": [], "numbers": [d, d],
+                "connections": [], "marks": [], "unit": "", "variant": ""}).model_dump(mode="json")
+            row = {"subject": "Mathematik", "group_id": None, "kind": "fraction",
+                "reference": {"id": RECIPE, "version": special["version"]}, "source_refs": [source["ref"]],
+                "disclosure": "solution", "text": _v2_text(n, d, q, r, "solution"),
+                "block": block, "proof": {"version": 1, "input": [n, d], "whole": q, "remainder": r,
+                    "source_digest": _digest(source), "reference_digest": special["digest"], "rule": copy.deepcopy(rule)}}
+            row["id"] = "uc_" + _digest({"revision": REVISION, "candidate": row})[:24]
+            rows.append(row)
     return rows
 
 
@@ -238,6 +271,11 @@ def bind_schema(schema, payload):
         return None
     context = payload.get("visual_context") or {}
     candidates = compile_candidates(context)
+    # New rule-derived values are private planner input, never an unbounded
+    # menu for ordinary generation. Only the consciously selected notebook or
+    # goal-bound follow-up planner may pick and close their exact task cores.
+    if "notebook_composition_plan" not in payload and not _focused_practice(payload):
+        candidates = [candidate for candidate in candidates if not candidate.get("proof", {}).get("rule")]
     if not candidates:
         if _focused_practice(payload):
             from .fraction_practice_plan import ERROR as practice_pool_error

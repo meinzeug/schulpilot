@@ -551,15 +551,17 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   };
   int version = 0;
   Json? polledOverview;
+  Json? lastOverview;
   Timer? preparationPoll;
   GoRouter? observedRouter;
   Json? observingAccount;
   String? observingFamily;
   Duration? pollInterval;
-  bool foreground = true,
-      preparing = false,
-      routeVisible = true,
-      reading = false;
+  int visibilityEpoch = 0, activeReads = 0;
+  bool resumeReadPending = false;
+  bool overviewUnavailable = false;
+  bool foreground = true, preparing = false, routeVisible = true;
+  bool get reading => activeReads > 0;
   AppState get state => widget.state;
   bool get sameAccount =>
       state.user != null &&
@@ -567,10 +569,44 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       state.familyId == observingFamily;
   void refresh() {
     if (mounted && sameAccount) {
+      preparationPoll?.cancel();
+      preparationPoll = null;
+      resumeReadPending = false;
       setState(() {
         polledOverview = null;
+        lastOverview = null;
+        overviewUnavailable = false;
         version++;
       });
+    }
+  }
+
+  void resumeOverview() {
+    if (!mounted || !sameAccount || !foreground || !visible) return;
+    if (reading) {
+      resumeReadPending = true;
+    } else if (lastOverview case final previous?) {
+      unawaited(pollPreparation(previous));
+    } else {
+      refresh();
+    }
+  }
+
+  void scheduleResumeOverview() {
+    final epoch = visibilityEpoch, session = state.api.token;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && epoch == visibilityEpoch && session == state.api.token) {
+        resumeOverview();
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  void finishRead() {
+    activeReads--;
+    if (!reading && resumeReadPending) {
+      resumeReadPending = false;
+      scheduleResumeOverview();
     }
   }
 
@@ -578,9 +614,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     final account = state.user, family = state.familyId;
     final session = state.api.token, revision = state.revision;
     final currentVersion = version, child = widget.childId;
+    final currentVisibility = visibilityEpoch;
     bool current() =>
         mounted &&
         sameAccount &&
+        !overviewUnavailable &&
         foreground &&
         visible &&
         identical(state.user, account) &&
@@ -588,26 +626,39 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         state.api.token == session &&
         state.revision == revision &&
         version == currentVersion &&
+        visibilityEpoch == currentVisibility &&
         widget.childId == child;
     if (!current() || reading) return;
-    reading = true;
+    preparationPoll?.cancel();
+    preparationPoll = null;
+    activeReads++;
     try {
       final next = await state.api.get(
         '/children/$child/overview?compact=true',
       );
-      if (current()) setState(() => polledOverview = next);
+      if (current() && next['child']?['id'] == child) {
+        setState(() => polledOverview = next);
+      }
+    } on ApiError catch (error) {
+      if (current() && (error.status == 403 || error.status == 404)) {
+        setState(() {
+          overviewUnavailable = true;
+          polledOverview = lastOverview = null;
+        });
+      }
     } catch (_) {
       // A temporary status-read failure leaves the last authorized view intact.
       // The next scheduled read is still a GET, never a preparation retry.
     } finally {
-      reading = false;
+      finishRead();
       if (current()) watchPreparation(polledOverview ?? previous);
     }
   }
 
   bool get visible {
     final path = observedRouter?.routeInformationProvider.value.uri.path;
-    return path == '/app' || path == '/child/${widget.childId}';
+    return (widget.childMode && path == '/app') ||
+        path == '/child/${widget.childId}';
   }
 
   @override
@@ -630,30 +681,51 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     }
   }
 
+  @override
+  void didUpdateWidget(covariant ChildDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.childId != widget.childId ||
+        !identical(oldWidget.state, widget.state)) {
+      visibilityEpoch++;
+      preparationPoll?.cancel();
+      preparationPoll = null;
+      resumeReadPending = false;
+      polledOverview = null;
+      lastOverview = null;
+      overviewUnavailable = false;
+    }
+  }
+
   void routeChanged() {
     final next = visible;
+    if (next != routeVisible) visibilityEpoch++;
     if (next && !routeVisible && foreground && sameAccount) {
-      scheduleMicrotask(() {
-        if (mounted) refresh();
-      });
+      scheduleResumeOverview();
     }
     routeVisible = next;
-    if (!next) preparationPoll?.cancel();
+    if (!next) {
+      resumeReadPending = false;
+      preparationPoll?.cancel();
+      preparationPoll = null;
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     final wasForeground = foreground;
     foreground = lifecycle == AppLifecycleState.resumed;
+    if (foreground != wasForeground) visibilityEpoch++;
     if (!foreground) {
+      resumeReadPending = false;
       preparationPoll?.cancel();
       preparationPoll = null;
     } else if (!wasForeground && visible && sameAccount) {
-      refresh();
+      scheduleResumeOverview();
     }
   }
 
   void watchPreparation(Json data) {
+    lastOverview = data;
     preparing =
         (data['pending_preparations'] as List? ?? []).any(
           (p) => p['status'] == 'processing',
@@ -672,11 +744,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     pollInterval = delay;
     preparationPoll = Timer(delay, () {
       preparationPoll = null;
-      if (mounted && foreground && visible && sameAccount && !reading) {
-        if (state.isChild) {
-          unawaited(pollPreparation(data));
+      if (mounted && foreground && visible && sameAccount) {
+        if (reading) {
+          // A superseded read can still be completing during a child change.
+          // Keep the current view's bounded cadence without overlapping GETs.
+          watchPreparation(data);
         } else {
-          refresh();
+          unawaited(pollPreparation(data));
         }
       }
     });
@@ -714,16 +788,21 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               revision: '$version-${state.revision}',
               load: () async {
                 polledOverview = null;
-                reading = true;
+                activeReads++;
                 try {
                   return await state.api.get(
                     '/children/${widget.childId}/overview?compact=true',
                   );
                 } finally {
-                  reading = false;
+                  finishRead();
                 }
               },
               builder: (loaded, reload) {
+                if (overviewUnavailable) {
+                  return const Notice(
+                    'Diese Lernübersicht ist nicht mehr verfügbar. Öffne den Kinderbereich bei Bedarf erneut.',
+                  );
+                }
                 final data = polledOverview ?? loaded;
                 watchPreparation(data);
                 if (state.isChild) {

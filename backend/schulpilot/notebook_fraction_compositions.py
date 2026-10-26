@@ -1,4 +1,4 @@
-"""Finite source-literal cores for explicitly selected mixed-number notebook rounds.
+"""Finite source-backed cores for explicitly selected mixed-number notebook rounds.
 
 The existing composition compiler owns source/reference/arithmetic proofs and
 rendering. This local plan closes only the remaining ordinary practice slots;
@@ -22,7 +22,7 @@ ERROR = (
 )
 EXHAUSTED = (
     "Auf diesen Heftseiten sind keine weiteren neuen Umwandlungsaufgaben für die gewählte Runde verfügbar. "
-    "Wähle eine andere bestätigte Heftseite. Es wurde keine KI-Anfrage gesendet."
+    "Wähle eine andere bestätigte Heftseite oder weniger Aufgaben. Es wurde keine KI-Anfrage gesendet."
 )
 CURRENT_ERROR = (
     "Eine Umwandlungsaufgabe wurde inzwischen bereits verwendet oder ihr Lernstart geändert. "

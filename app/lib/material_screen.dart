@@ -810,6 +810,8 @@ class MaterialScreen extends StatefulWidget {
 
 class _MaterialScreenState extends State<MaterialScreen> {
   int version = 0;
+  Json? visibleMaterial;
+  ({String materialId, String path})? confirmationReturn;
   late final account = widget.state.user;
   late final family = widget.state.familyId;
   late final session = widget.state.api.token;
@@ -829,6 +831,94 @@ class _MaterialScreenState extends State<MaterialScreen> {
     if (!current && mounted) setState(() {});
   }
 
+  Future<void> afterConfirmation(Json source, Json saved) async {
+    final id = widget.materialId, revision = version;
+    final route = ModalRoute.of(context);
+    final router = GoRouter.of(context);
+    final location = router.routeInformationProvider.value.uri.toString();
+    bool unchanged() =>
+        current &&
+        widget.materialId == id &&
+        version == revision &&
+        identical(visibleMaterial, source) &&
+        identical(ModalRoute.of(context), route) &&
+        route?.isCurrent != false &&
+        router.routeInformationProvider.value.uri.toString() == location &&
+        (WidgetsBinding.instance.lifecycleState == null ||
+            WidgetsBinding.instance.lifecycleState ==
+                AppLifecycleState.resumed);
+    void reload() {
+      if (unchanged()) setState(() => version++);
+    }
+
+    if (!unchanged()) return;
+    final child = source['child_id'], dayId = source['school_day_id'];
+    final identifier = RegExp(r'^[a-f0-9]{32}$');
+    // Only a first, explicit notebook confirmation advances this review batch.
+    // Saved-page edits, exam originals and old standalone imports keep reload.
+    if (source['confirmed'] == true ||
+        source['purpose'] == 'exam' ||
+        child is! String ||
+        !identifier.hasMatch(child) ||
+        dayId is! String ||
+        !identifier.hasMatch(dayId) ||
+        saved['id'] != id ||
+        saved['child_id'] != child ||
+        saved['confirmed'] != true ||
+        saved['status'] != 'confirmed' ||
+        saved.containsKey('school_day_id') && saved['school_day_id'] != dayId ||
+        widget.state.isChild && widget.state.user?['child_id'] != child) {
+      reload();
+      return;
+    }
+    final returnPath = '/after-school/$child?day=$dayId';
+    try {
+      // Use the original persisted day, including archived days. Its GET keeps
+      // server page order; opening or polling never confirms or starts AI.
+      final day = await widget.state.api.get('/school-days/$dayId');
+      if (!unchanged()) return;
+      final pages = day['pages'];
+      if (day['id'] != dayId ||
+          day['child_id'] != child ||
+          pages is! List ||
+          pages.isEmpty ||
+          pages.length > 24 ||
+          pages.any(
+            (page) =>
+                page is! Map ||
+                page['id'] is! String ||
+                !identifier.hasMatch(page['id']) ||
+                page['child_id'] != child ||
+                page['school_day_id'] != dayId,
+          ) ||
+          pages.map((page) => page['id']).toSet().length != pages.length) {
+        throw ApiError('Die Seitenübersicht ist gerade nicht verfügbar.');
+      }
+      final own = pages.where((page) => page['id'] == id).firstOrNull;
+      if (own == null ||
+          own['confirmed'] != true ||
+          own['status'] != 'confirmed' ||
+          saved['revision'] is int && own['revision'] != saved['revision']) {
+        reload();
+        return;
+      }
+      final next = pages
+          .where(
+            (page) => page['confirmed'] != true && page['status'] == 'review',
+          )
+          .firstOrNull;
+      // Unreadable or still processing pages stay visible in the day view;
+      // their absence from this review queue never declares them confirmed.
+      router.go(next == null ? returnPath : '/material/${next['id']}');
+    } catch (_) {
+      if (!unchanged()) return;
+      setState(() {
+        confirmationReturn = (materialId: id, path: returnPath);
+        version++;
+      });
+    }
+  }
+
   @override
   void dispose() {
     widget.state.removeListener(accountChanged);
@@ -845,16 +935,38 @@ class _MaterialScreenState extends State<MaterialScreen> {
         : LoadView<Json>(
             key: ValueKey((version, widget.materialId, ObjectKey(account))),
             load: () => widget.state.api.get('/materials/${widget.materialId}'),
-            builder: (data, refresh) => !current
-                ? SizedBox.shrink()
-                : MaterialReview(
+            builder: (data, refresh) {
+              visibleMaterial = data;
+              if (!current) return SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (confirmationReturn?.materialId == widget.materialId) ...[
+                    const Notice(
+                      'Die Seite ist gespeichert. Die nächsten Seiten konnten gerade nicht geladen werden.',
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (current &&
+                            ModalRoute.of(context)?.isCurrent != false) {
+                          context.go(confirmationReturn!.path);
+                        }
+                      },
+                      child: const Text('Weitere Seiten prüfen'),
+                    ),
+                  ],
+                  MaterialReview(
                     widget.state,
                     data,
                     simpleChild: widget.state.isChild,
+                    onConfirmed: (saved) => afterConfirmation(data, saved),
                     onRefresh: () {
                       if (current) setState(() => version++);
                     },
                   ),
+                ],
+              );
+            },
           ),
   );
 }
@@ -863,6 +975,7 @@ class MaterialReview extends StatefulWidget {
   final AppState state;
   final Json data;
   final VoidCallback onRefresh;
+  final Future<void> Function(Json)? onConfirmed;
   final VoidCallback? onDeleted;
   final bool showUnitAction;
   final bool simpleChild;
@@ -871,6 +984,7 @@ class MaterialReview extends StatefulWidget {
     this.data, {
     super.key,
     required this.onRefresh,
+    this.onConfirmed,
     this.onDeleted,
     this.showUnitAction = true,
     this.simpleChild = false,
@@ -1980,7 +2094,12 @@ class _MaterialReviewState extends State<MaterialReview>
     validateCorrection();
     if (!current || sourceConflict) return;
     final d = widget.data;
-    final owner = widget.state.user;
+    final route = ModalRoute.of(context);
+    bool stillCurrent() =>
+        sourceCurrent(d) &&
+        identical(ModalRoute.of(context), route) &&
+        route?.isCurrent != false;
+    if (!stillCurrent()) return;
     if (d['purpose'] != 'exam' &&
         d.containsKey('vocabulary_preview') &&
         !editedPreviewCurrent &&
@@ -1995,9 +2114,7 @@ class _MaterialReviewState extends State<MaterialReview>
         {'subject': draftSubject, 'topic': draftTopic, 'content': draftContent},
       );
       if (!mounted ||
-          !identical(owner, widget.state.user) ||
-          d['id'] != widget.data['id'] ||
-          d['revision'] != widget.data['revision'] ||
+          !stillCurrent() ||
           subject.text != draftSubject ||
           topic.text != draftTopic ||
           content.text != draftContent) {
@@ -2039,10 +2156,7 @@ class _MaterialReviewState extends State<MaterialReview>
         '/materials/${d['id']}/task-preview',
         body,
       );
-      if (!mounted ||
-          !identical(owner, widget.state.user) ||
-          d['id'] != widget.data['id'] ||
-          d['revision'] != widget.data['revision']) {
+      if (!mounted || !stillCurrent()) {
         return;
       }
       final items = (preview['items'] as List? ?? [])
@@ -2063,11 +2177,7 @@ class _MaterialReviewState extends State<MaterialReview>
           rootNavigator: true,
         ).push(route);
         if (identical(taskPreviewRoute, route)) taskPreviewRoute = null;
-        if (decisions == null ||
-            !mounted ||
-            !identical(owner, widget.state.user) ||
-            d['id'] != widget.data['id'] ||
-            d['revision'] != widget.data['revision']) {
+        if (decisions == null || !mounted || !stillCurrent()) {
           return;
         }
         body['task_decisions'] = decisions;
@@ -2077,10 +2187,7 @@ class _MaterialReviewState extends State<MaterialReview>
       '/materials/${d['id']}/confirm',
       body,
     );
-    if (!mounted ||
-        !identical(owner, widget.state.user) ||
-        d['id'] != widget.data['id'] ||
-        d['revision'] != widget.data['revision']) {
+    if (!mounted || !stillCurrent()) {
       return;
     }
     widget.state.collectionViews.remove(correctionKey);
@@ -2093,7 +2200,11 @@ class _MaterialReviewState extends State<MaterialReview>
         '${counted(words['confirmed_words'] as num? ?? 0, 'Wort', 'Wörter')} gespeichert${(words['review_words'] as num? ?? 0) > 0 ? ' · ${words['review_words']} noch prüfen' : ''}.',
       );
     }
-    widget.onRefresh();
+    if (widget.onConfirmed != null) {
+      await widget.onConfirmed!(result);
+    } else {
+      widget.onRefresh();
+    }
   }
 
   List<Widget> sourceExclusionNotices(Json data) {

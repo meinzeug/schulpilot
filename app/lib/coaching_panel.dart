@@ -378,9 +378,6 @@ class _ChildCoachingPanel extends StatelessWidget {
     final strengths = report['strengths'] as List? ?? [];
     final focus = report['practice_focus'] as List? ?? [];
     final reviews = report['question_reviews'] as List? ?? [];
-    final highlight = decision == 'repair' || decision == 'parent_help'
-        ? focus.firstOrNull
-        : strengths.firstOrNull;
     final childId = unit['child_id'] ?? state.user?['child_id'];
     final questions = unit['questions'] as List? ?? [];
     final facts = _RoundFacts(questions);
@@ -529,10 +526,6 @@ class _ChildCoachingPanel extends StatelessWidget {
                     child: Tag('Beispielrückblick · ohne KI'),
                   ),
                   SizedBox(height: 12),
-                ],
-                if (highlight != null) ...[
-                  MathText(highlight.toString()),
-                  SizedBox(height: 18),
                 ],
                 if (facts.uncertain > 0) ...[
                   Text(

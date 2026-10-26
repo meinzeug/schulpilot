@@ -2933,3 +2933,57 @@ werden nicht aufgeteilt. Vollständige Originalbeispiele ohne gemeinsames Wort
 beginnen ohne pauschale Unterstreichung; explizite Vergleichsschalter sowie
 der vorhandene Buchstabenvergleich passender kurzer Formen bleiben verfügbar.
 Dies sind lokale Nachweise; eine 140-Live-Abnahme wird damit nicht vorweggenommen.
+
+## 26.10.2026 – Aktualisierung ohne Seitenverlust und weitere Bruchbeispiele (141)
+
+140 wurde als `5e9854e`, Version 1.36.28+140, tatsächlich ausgeliefert.
+Alle acht CI-Jobs waren erfolgreich: Backend 4.838 bestanden / 44 übersprungen,
+Flutter 4.084 bestanden / 19 übersprungen. Öffentliche APK und Web-JavaScript
+wurden vollständig geladen und mit dem gebauten Bestand verglichen; Signatur,
+Quellversion, geschützte Konfigurationen und Dienste wurden geprüft. Ein neues
+Live-Vorbereiten einer Heftrunde scheiterte danach vor dem Anbieteraufruf:
+Der endliche Pool verwendeter Originalbeispiele war ausgeschöpft, Verbrauch null.
+Eine getrennte lesende Diagnose bestätigte die ausdrücklich geschriebene
+allgemeine Umwandlungsregel und das richtige Divisionsbeispiel in der Quelle;
+ein unbekannt formulierter alter Umwandlungsauftrag war nicht die Ursache.
+
+141 ergänzt deshalb ausschließlich bei dieser belegten Regel einen endlichen
+Pool kleiner neuer unechter Brüche. Division, Ganzzahl, Rest, Antwort und
+Grafikparameter werden vor dem Modellaufruf lokal berechnet. Die Regel und ihr
+korrektes Originalbeispiel müssen aus derselben sicheren Quellenfassung stammen.
+Ein Themenname oder ein einzelnes abgeschriebenes Zahlenbeispiel genügt nicht.
+Werte sind bis auf Gleichwertigkeit eindeutig; vollständige eigene Historie
+und die erneute Prüfung nach dem Aufruf bleiben verbindlich. Nur die ausgewählten
+geschlossenen Aufgabenkerne erreichen das Modell, nicht der gesamte neue Pool.
+Normale ungeplante Runden behalten ihre vorherige Kandidatengrenze.
+
+Der Eltern-Lernüberblick benutzte alle 15 Sekunden den vollständigen Ladezustand.
+Ein künstlicher Vorfix-Test reproduzierte das Entfernen der sichtbaren Übersicht.
+Der Timer aktualisiert nun ausschließlich die Daten im vorhandenen Widgetbaum;
+Entwürfe, Fokus, aufgeklappte Bereiche und Scrollposition bleiben bestehen.
+Verdeckte oder pausierte Ansichten pollen nicht, überholte Antworten werden
+verworfen, entzogene Zugriffe entfernen die alte Ansicht. Ein bewusster Refresh
+bleibt möglich. Timer und Rückkehr lösen keine KI und keine Schreibaktion aus.
+
+Nach einem erfolgreichen ausdrücklichen „Stimmt, weiter“ lädt die einzelne
+Quellenansicht den ursprünglichen Schultag lesend neu und öffnet dessen nächste
+noch zu prüfende Seite. Nach der letzten Seite folgt die Tagesübersicht.
+Ein fehlgeschlagener Folge-GET wiederholt niemals die Bestätigung; neue Seiten
+werden weder automatisch bestätigt noch verarbeitet. Andere Korrekturentwürfe,
+Vokabelvorschauen, Klassenarbeitsquellen und gespeicherte Antworten bleiben erhalten.
+Die Ergebnis-Hauptkarte zeigt außerdem keinen doppelten langen Rückblickabsatz
+mehr; der bisherige Vollbericht bleibt erreichbar. Eine umfassendere kompakte
+Lernbegleitung ist ein eigener anschließender Umbau.
+
+Lokale integrierte Nachweise: 135 identische Fälle erfolgreich in isolierter
+RAM-SQLite und Unix-PostgreSQL16, ohne externe Aufrufe; Testdaten und Cluster
+wurden entfernt. Anschließend wurde nur die Backend-Versionszeichenfolge erhöht.
+73 Flutter-Widgetfälle aus fünf Dateien bestanden gemeinsam, darunter 48 neue
+Fälle; Analyse der sechs geänderten UI-/Testdateien ohne Befund. Die drei
+isolierten UI-Nachbargates bestanden vorher 108, 82 beziehungsweise 40 Fälle;
+überlappende Fälle sind keine zusätzlichen Live-Lernrunden.
+Die ausdrücklich freigegebene Live-Prüfung steht weiterhin bei 29 von 100
+abgeschlossenen allgemeinen Heftrunden. Ein fehlgeschlagener Vorbereitungsauftrag
+zählt nicht als abgeschlossene Lernrunde. Automatische Quellenprüfung, neue
+Elternübersicht, kompakte Einzelrückmeldungen und Schulbuddy-Lesekontext werden
+getrennt weiterentwickelt und sind durch diese 141-Nachweise nicht abgenommen.
