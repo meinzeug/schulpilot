@@ -183,7 +183,8 @@ Future<void> click(WidgetTester t, String text) async {
 
 Finder practiceButton() =>
     find.byWidgetPredicate((w) => w is ActionButton && w.label == retry);
-Finder roundsButton() => find.widgetWithText(TextButton, rounds);
+Finder roundsButton() =>
+    find.byWidgetPredicate((w) => w is ActionButton && w.label == rounds);
 
 void main() {
   testWidgets(
@@ -289,9 +290,9 @@ void main() {
       expect(h.calls.single.headers['Idempotency-Key'], isNotEmpty);
       final filled = find.descendant(
         of: practiceButton(),
-        matching: find.byType(FilledButton),
+        matching: find.byType(OutlinedButton),
       );
-      expect(t.widget<FilledButton>(filled).onPressed, isNull);
+      expect(t.widget<OutlinedButton>(filled).onPressed, isNull);
       await t.pump(const Duration(seconds: 10));
       expect(h.calls, hasLength(1));
       response.complete(
@@ -308,7 +309,7 @@ void main() {
     'The existing server retry boundary is preserved without an automatic further attempt',
     (t) async {
       const limit =
-          'Die Übungsvorbereitung hat zweimal nicht geklappt. Bitte deine Eltern um Hilfe bitten.';
+          'Die neue Übung konnte nicht vorbereitet werden. Deine Antworten und dein Rückblick bleiben gespeichert. Öffne eine vorhandene Runde.';
       final h = Harness(
         reply: (_) async => http.Response(
           jsonEncode({'detail': limit}),
@@ -392,7 +393,7 @@ void main() {
       final h = Harness();
       await h.open(t);
       final retryAction = t.widget<ActionButton>(practiceButton()).onPressed;
-      final navigate = t.widget<TextButton>(roundsButton()).onPressed!;
+      final navigate = t.widget<ActionButton>(roundsButton()).onPressed;
       switch (change) {
         case 'logout':
           h.state.user = null;
@@ -421,7 +422,7 @@ void main() {
       final h = Harness();
       await h.open(t);
       final retryAction = t.widget<ActionButton>(practiceButton()).onPressed;
-      final navigate = t.widget<TextButton>(roundsButton()).onPressed!;
+      final navigate = t.widget<ActionButton>(roundsButton()).onPressed;
       unawaited(h.router.push<void>('/app'));
       await t.pumpAndSettle();
       await retryAction();

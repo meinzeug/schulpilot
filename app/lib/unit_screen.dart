@@ -3560,6 +3560,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> openHelp(Json u) async {
     FocusManager.instance.primaryFocus?.unfocus();
+    if (u['introduction_seen'] == false) {
+      await moreHelp(u);
+      return;
+    }
     final q = currentQuestion;
     if (q != null &&
         !done(q) &&
@@ -4248,7 +4252,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ModalRoute.of(context)?.isCurrent != false &&
         unit?['status'] == 'active' &&
         unit?['introduction_seen'] == false) {
-      await perform(() => finishIntroduction(unit!));
+      await (actionBusy
+          ? finishIntroduction(unit!)
+          : perform(() => finishIntroduction(unit!)));
     }
   }
 

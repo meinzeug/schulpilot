@@ -147,6 +147,9 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
     from .notebook_fraction_expansions import add_reference as add_notebook_expansion
 
     value = add_notebook_expansion(db, value)
+    from .coach_fraction_expansions import add_reference as add_coach_expansion
+
+    value = add_coach_expansion(db, value)
     from .unit_multiples_common import add_reference as add_multiples_reference
 
     return add_multiples_reference(db, value)
@@ -292,7 +295,12 @@ def validate_steps(db, steps, subject, context, *, question=None, group_id=None,
             if introduction or not any(r.get("id") == stored.id and r.get("version") == stored.version
                     and r.get("digest") == stored.digest == digest(stored.recipe) for r in context.get("references", [])):
                 raise ValueError("Ungültiger vorabgeprüfter Erweiterungsbeweis.")
-            validate_question_step(step, context, question)
+            if step.id.startswith("cf_"):
+                from .coach_fraction_expansions import validate_question_step as validate_coach_expansion
+
+                validate_coach_expansion(step, context, question)
+            else:
+                validate_question_step(step, context, question)
             checked.append(step.model_dump())
             continue
         if stored.id == "math.fraction.wholes_remainder":

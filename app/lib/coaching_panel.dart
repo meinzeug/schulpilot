@@ -388,6 +388,7 @@ class _ChildCoachingPanel extends StatelessWidget {
       'queued',
       'running',
     ].contains(coach?['practice_status']);
+    final practiceCanRetry = coach?['practice_can_retry'] != false;
     final practiceFailed =
         ready &&
         coach?['practice_status'] == 'failed' &&
@@ -608,37 +609,47 @@ class _ChildCoachingPanel extends StatelessWidget {
                       ),
                       SizedBox(height: 14),
                     ],
-                    ActionButton(
-                      label: coach?['practice_status'] == 'failed'
-                          ? 'Übung erneut vorbereiten'
-                          : decision == 'check'
-                          ? 'Ohne Hilfe ausprobieren'
-                          : 'Gezielt weiterüben',
-                      icon: Icons.auto_fix_high_rounded,
-                      onPressed: () async {
-                        final current = currentAction;
-                        if (!current()) return;
-                        await state.api.post(
-                          '/units/${unit['id']}/practice',
-                          null,
-                          {
-                            'Idempotency-Key':
-                                'practice-${DateTime.now().microsecondsSinceEpoch}',
-                          },
-                        );
-                        if (current()) await refresh();
-                      },
-                    ),
-                    if (practiceFailed && childId is String)
-                      TextButton.icon(
-                        onPressed: () {
+                    if (practiceFailed && childId is String) ...[
+                      ActionButton(
+                        label: 'Vorhandene Runden öffnen',
+                        icon: Icons.view_list_outlined,
+                        onPressed: () async {
                           final current = currentAction;
                           if (current()) {
                             openRoute(context, '/learn/$childId');
                           }
                         },
-                        icon: Icon(Icons.view_list_outlined),
-                        label: Text('Vorhandene Runden öffnen'),
+                      ),
+                      if (!practiceCanRetry) ...[
+                        SizedBox(height: 8),
+                        Text(
+                          'Du kannst mit deinen vorhandenen Runden weiterlernen.',
+                        ),
+                      ],
+                      SizedBox(height: 10),
+                    ],
+                    if (practiceCanRetry)
+                      ActionButton(
+                        label: coach?['practice_status'] == 'failed'
+                            ? 'Übung erneut vorbereiten'
+                            : decision == 'check'
+                            ? 'Ohne Hilfe ausprobieren'
+                            : 'Gezielt weiterüben',
+                        secondary: practiceFailed,
+                        icon: Icons.auto_fix_high_rounded,
+                        onPressed: () async {
+                          final current = currentAction;
+                          if (!current()) return;
+                          await state.api.post(
+                            '/units/${unit['id']}/practice',
+                            null,
+                            {
+                              'Idempotency-Key':
+                                  'practice-${DateTime.now().microsecondsSinceEpoch}',
+                            },
+                          );
+                          if (current()) await refresh();
+                        },
                       ),
                   ],
                 if (coach?['next_review'] != null) ...[

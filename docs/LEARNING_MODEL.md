@@ -249,3 +249,38 @@ erhält die ursprüngliche Autorisierung; sie ersetzt diese nicht durch eine neu
 Sitzung. Alte gespeicherte Ergebnisse bleiben lesbar, ungebundene alte Aufträge
 erhalten keine nachträgliche Berechtigung. Diese Ergänzung betrifft den gezielten
 Anschlussauftrag; andere ältere Jobarten sind damit nicht pauschal neu geprüft.
+
+### Geprüfte Erweiterungsgrafiken in Anschlussübungen
+
+`coach_fraction_expansions.py` verbindet ausdrücklich angeforderte Reparatur-
+und Prüfrunden mit dem bestehenden Rezept `math.fraction.expansion@1`. Nur eine
+bestätigte wörtliche Erweiterungsregel und die passenden belegten Lernziel-IDs
+öffnen diesen Pfad. Der vorhandene Rechenplan legt beide Aufgaben, Antworten,
+Ziele und die Phasen Verstehen beziehungsweise Erinnern vor dem Modellaufruf
+fest. Beide Bruchbilder entstehen aus denselben unabhängig geprüften Werten;
+der resultierende Nenner ist auf die darstellbaren 24 Teile begrenzt.
+
+Das private Schema bindet Grafik-ID, Text, Referenzdigest, Quelle, Rechenbeweis
+und Offenlegung. Das Modell ergänzt Hinweise, erfindet aber keine neuen
+Grafikparameter. Der Einstieg zeigt einen getrennten Originalbruch. Vollständige
+Fragenhistorie, Quellenrevision und aktueller Veröffentlichungskontext werden
+vorher und nachher geprüft; die kompakte Ausschlussliste bleibt lokal. Andere
+Lernziele behalten ihren bestehenden Weg. Unbekannte oder erschöpfte Beispiele
+führen zu einem begrenzten Abbruch, nicht zu einem automatischen Wiederholen.
+
+Die lesende Projektion `practice_can_retry` beschreibt nur den verbleibenden
+Vorbereitungsversuch der betreffenden Kindereinheit. Sie ersetzt keine Rechte-,
+Quellen- oder Kostenprüfung. Nach zwei erfolglosen Vorbereitungen bietet die
+Oberfläche gespeicherte Runden als Hauptaktion an und blendet den wirkungslosen
+Wiederholen-Knopf aus. Technische Erzeugungsfehler werden nicht als Aufgabe der
+Eltern dargestellt. Fehlende Felder alter Backends behalten den Legacyablauf;
+idempotente Wiederaufnahme bleibt auch nach der Grenze unverändert möglich.
+
+Die Hilfe vor dem ersten Selbstversuch öffnet zunächst die sichtbare Auswahl,
+ohne einen unsichtbaren Fragehinweis als Unterstützung zu speichern. Eine
+ausdrücklich gewählte Themenerklärung verwendet den bestehenden Grafikdialog;
+deren Abschluss führt auch innerhalb des bereits laufenden Hilfemenüs zur
+ersten Aufgabe. Vorhandene Schutzprüfungen für Route, Quelle und Anfragezustand
+bleiben erhalten. Bekannte Pfeilzeichen in mathematischen Fließtexten verwenden
+gebündelte Symbolglyphen; Originaltext, Vorlesetext und Aufgabenwerte bleiben
+unverändert.

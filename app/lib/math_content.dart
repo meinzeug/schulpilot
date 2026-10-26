@@ -27,6 +27,11 @@ class MathText extends Text {
     unicode: true,
   );
 
+  static const _literalArrows = <String, IconData>{
+    '→': Icons.arrow_forward_rounded,
+    '↳': Icons.subdirectory_arrow_right_rounded,
+  };
+
   static const _vulgarFractions = <String, (String, String)>{
     '¼': ('1', '4'),
     '½': ('1', '2'),
@@ -106,7 +111,8 @@ class MathText extends Text {
     _fractionSpans(value.substring(end), base, spans);
     if (formulas.isEmpty &&
         !fraction.hasMatch(value) &&
-        spoken(value) == value) {
+        spoken(value) == value &&
+        !RegExp('[→↳]').hasMatch(value)) {
       return super.build(context);
     }
     return Text.rich(
@@ -127,7 +133,7 @@ class MathText extends Text {
     var end = 0;
     for (final match in fraction.allMatches(value).take(40)) {
       if (match.start > end) {
-        spans.add(TextSpan(text: value.substring(end, match.start)));
+        _plainSpans(value.substring(end, match.start), base, spans);
       }
       final (numerator, denominator) = parts(match);
       spans.add(
@@ -144,7 +150,45 @@ class MathText extends Text {
       );
       end = match.end;
     }
-    spans.add(TextSpan(text: value.substring(end)));
+    _plainSpans(value.substring(end), base, spans);
+  }
+
+  static void _plainSpans(
+    String value,
+    TextStyle base,
+    List<InlineSpan> spans,
+  ) {
+    // Literal arrows are absent from the bundled body font. Reuse bundled
+    // Material glyphs without changing the original text or narration.
+    // Match whole graphemes so combining marks stay in their original run.
+    final text = StringBuffer();
+    void flush() {
+      if (text.isNotEmpty) {
+        spans.add(TextSpan(text: text.toString()));
+        text.clear();
+      }
+    }
+
+    for (final grapheme in value.characters) {
+      final icon = _literalArrows[grapheme];
+      if (icon == null) {
+        text.write(grapheme);
+      } else {
+        flush();
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            // RichText scales the span once, like the fraction spans above.
+            child: MediaQuery.withNoTextScaling(
+              child: ExcludeSemantics(
+                child: Icon(icon, size: base.fontSize ?? 14, color: base.color),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+    flush();
   }
 }
 

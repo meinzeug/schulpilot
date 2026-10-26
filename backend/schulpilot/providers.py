@@ -45,6 +45,19 @@ def openrouter_failure(error):
     return "Der KI-Anbieter hat die Antwort abgebrochen. Bitte später erneut versuchen."
 
 
+def openrouter_failure_code(error):
+    """Categorize the existing closed envelope without exposing upstream details."""
+    metadata = error.get("metadata", {}) if isinstance(error, dict) else {}
+    category = metadata.get("error_type") if isinstance(metadata, dict) else None
+    if category in ("rate_limit_exceeded", "provider_overloaded"):
+        return "provider_busy"
+    if category == "timeout":
+        return "provider_timeout"
+    # This describes availability only, not a verified network/config cause.
+    # Unknown HTTP200 errors can have incurred real, still-unknown charges.
+    return "provider_unavailable"
+
+
 @dataclass
 class Result:
     data: dict
@@ -1063,6 +1076,20 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .study_fraction_expansions import planning_limit as expansion_planning_limit
 
         expansion_limit = expansion_planning_limit(payload)
+        from .coach_fraction_expansions import ERROR as COACH_EXPANSION_ERROR
+        from .coach_fraction_expansions import EXHAUSTED as COACH_EXPANSION_EXHAUSTED
+        from .coach_fraction_expansions import planning_inputs as coach_expansion_inputs
+
+        try:
+            coach_expansion = coach_expansion_inputs(payload)
+        except ValueError as error:
+            if error.args not in ((COACH_EXPANSION_ERROR,), (COACH_EXPANSION_EXHAUSTED,)):
+                raise
+            raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
+                telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+        if coach_expansion is not None:
+            expansion_limit = coach_expansion["denominator_limit"]
+            excluded.extend(coach_expansion["excluded_prompts"])
         try:
             math_examples = fraction_tasks(
                 material_items,
@@ -1649,6 +1676,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                         telemetry={"pre_dispatch": True}, cost_source="cancelled"),
                 ) from None
         if unit_composition is None:
+            from .coach_fraction_expansions import bind_schema as bind_coach_expansion
+
+            try:
+                unit_composition = bind_coach_expansion(schema, payload)
+            except ValueError as error:
+                if error.args not in ((COACH_EXPANSION_ERROR,), (COACH_EXPANSION_EXHAUSTED,)):
+                    raise
+                raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
+                    telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+        if unit_composition is None:
             from .unit_multiples_common import bind_schema as bind_multiples
 
             try:
@@ -1770,11 +1807,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # remain unchanged. These routes can contain several full entry steps.
         wire_schema = schema_projection(wire_schema)
     if function == "unit":
+        from .coach_fraction_expansions import HISTORY as COACH_EXPANSION_HISTORY
         from .notebook_fraction_expansions import HISTORY_KEY as NOTEBOOK_EXPANSION_HISTORY
         from .unit_multiples_common import HISTORY_KEY as MULTIPLES_HISTORY
 
         outgoing_payload = {key: value for key, value in outgoing_payload.items()
-            if key not in (NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY)}
+            if key not in (COACH_EXPANSION_HISTORY, NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY)}
     from .explanation_guidance import rules as explanation_rules
 
     instructions += explanation_rules(function, payload)
@@ -1999,7 +2037,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # OpenRouter can return HTTP 200 with only an error after generation
         # has started. An HTTP success is not a completed learning response.
         if config.provider == "openrouter" and raw.get("error") is not None:
-            raise ProviderError(openrouter_failure(raw["error"]))
+            raise ProviderError(openrouter_failure(raw["error"]), code=openrouter_failure_code(raw["error"]))
         usage = raw.get("usage", {})
         if config.provider == "openai":
             if raw.get("status") != "completed":
@@ -2018,7 +2056,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 raise ProviderError("Die KI hat keine Lernantwort geliefert. Bitte später erneut versuchen.")
             choice = choices[0]
             if choice.get("error") is not None:
-                raise ProviderError(openrouter_failure(choice["error"]))
+                raise ProviderError(openrouter_failure(choice["error"]), code=openrouter_failure_code(choice["error"]))
             if choice.get("finish_reason") != "stop":
                 if choice.get("finish_reason") == "length":
                     raise ProviderError(

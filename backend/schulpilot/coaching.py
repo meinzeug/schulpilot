@@ -44,6 +44,11 @@ log = logging.getLogger("schulpilot.coaching")
 CHECK_KINDS = ("check", "spaced_review", "study_recall")
 RECOMMENDED_DAILY_ROUNDS = 3
 MAX_REQUESTS = 2
+MAX_PRACTICE_REQUESTS = 2
+PRACTICE_LIMIT_MESSAGE = (
+    "Die neue Übung konnte nicht vorbereitet werden. Deine Antworten und dein Rückblick bleiben gespeichert. "
+    "Öffne eine vorhandene Runde."
+)
 
 
 def observations(db, unit):
@@ -718,6 +723,15 @@ def report_projection(db, unit, stored):
     return report
 
 
+def practice_attempt_count(db, unit):
+    """Read-only count of this unit's existing preparation attempts, not reviews."""
+    return db.scalar(select(func.count()).select_from(Job).where(
+        Job.child_id == unit.child_id,
+        Job.kind == "coach_practice",
+        Job.payload["unit_id"].as_string() == unit.id,
+    )) or 0
+
+
 def view(db, unit):
     from .subject_content import open_learning_unit
 
@@ -752,6 +766,15 @@ def view(db, unit):
         .order_by(Job.payload["practice_number"].as_integer().desc().nullslast(), Job.created.desc(), Job.id.desc())
         .limit(1)
     )
+    # Only preparation state/attempt availability; ordinary source, access and
+    # quota checks remain authoritative at the explicit request endpoint.
+    practice_can_retry = (
+        unit.status == "completed" and status == "ready"
+        and bool((item.report or {}).get("practice_deferred")) and not item.next_unit_id
+        and decision in ("repair", "check")
+        and (not practice_job or practice_job.status not in ("queued", "running"))
+        and practice_attempt_count(db, unit) < MAX_PRACTICE_REQUESTS
+    )
     return {
         "status": status,
         "decision": decision,
@@ -764,6 +787,7 @@ def view(db, unit):
         "provider": item.provider,
         "model": item.model,
         "practice_deferred": bool((item.report or {}).get("practice_deferred") and not item.next_unit_id),
+        "practice_can_retry": practice_can_retry,
         "practice_job_id": practice_job.id if practice_job else None,
         "practice_status": practice_job.status if practice_job else None,
         "practice_error": practice_job.error if practice_job else None,
@@ -1343,12 +1367,10 @@ def request_practice(
         raise HTTPException(
             409, "Bitte schau in deinen Rückblick. Eine spätere Wiederholung oder Elternhilfe ist dran."
         )
-    old_jobs = list(db.scalars(select(Job).where(Job.child_id == unit.child_id, Job.kind == "coach_practice")))
-    if sum(j.payload.get("unit_id") == unit.id for j in old_jobs) >= 2:
-        raise HTTPException(
-            409, "Die Übungsvorbereitung hat zweimal nicht geklappt. Bitte deine Eltern um Hilfe bitten."
-        )
-    payload["practice_number"] = sum(j.payload.get("unit_id") == unit.id for j in old_jobs) + 1
+    attempts = practice_attempt_count(db, unit)
+    if attempts >= MAX_PRACTICE_REQUESTS:
+        raise HTTPException(409, PRACTICE_LIMIT_MESSAGE)
+    payload["practice_number"] = attempts + 1
     payload.update(session_id=p.session.id, family_id=child.family_id)
     return enqueue(db, p, db.get(Child, unit.child_id), "coach_practice", payload, idempotency)
 
@@ -1433,6 +1455,9 @@ def process_practice(job_id):
             from .unit_fraction_compositions import with_practice_history
 
             payload = with_practice_history(payload, complete_history)
+            from .coach_fraction_expansions import with_history as with_expansion_history
+
+            payload = with_expansion_history(payload, complete_history)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.rollback()
         provider_requested = True
@@ -1463,15 +1488,19 @@ def process_practice(job_id):
                 review.pop("assessment_kind", None)
             data["next_unit"] = result.data
             verify_current_provider(db, unit, values, "unit", job)
+            from .coach_fraction_expansions import CURRENT_ERROR as EXPANSION_HISTORY_CHANGED
+            from .coach_fraction_expansions import validate_practice_history as validate_expansion_history
             from .fraction_practice_plan import CURRENT_ERROR as PRACTICE_HISTORY_CHANGED
             from .unit_fraction_compositions import validate_practice_history
 
             try:
-                validate_practice_history(payload, result.data, _practice_history_prompts(db, unit))
+                current_prompts = _practice_history_prompts(db, unit)
+                validate_practice_history(payload, result.data, current_prompts)
+                validate_expansion_history(payload, result.data, current_prompts)
             except ValueError as error:
-                if error.args != (PRACTICE_HISTORY_CHANGED,):
+                if error.args not in ((PRACTICE_HISTORY_CHANGED,), (EXPANSION_HISTORY_CHANGED,)):
                     raise
-                raise ProviderError(PRACTICE_HISTORY_CHANGED) from None
+                raise ProviderError(error.args[0]) from None
             save_report(
                 db,
                 unit,

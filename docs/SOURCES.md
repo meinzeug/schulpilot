@@ -2804,3 +2804,62 @@ mit der geprüften PG-Kopie überein; eigener SQLite-Nachlauf 87/87 ohne Quellä
 Der getrennte 87-Fälle-Kandidatennachweis und die vollständige 137-CI sind keine
 behauptete 138-CI oder Live-Abnahme. Andere ältere Jobarten sind durch diese
 gezielte Ergänzung nicht pauschal auf Sessionbindung geprüft.
+
+138 ist inzwischen als Commit afb119a18a7920065f2c78866cbeeb8ecc4ba2d7,
+Version 1.36.26+138 ausgeliefert. CI 40319757423: alle acht Jobs erfolgreich,
+4.632 Backendfälle bestanden/44 übersprungen sowie 4.048 Flutterfälle bestanden/
+19 übersprungen; 299 Flutterdateien genau einmal. Signaturen, Quellbindung,
+Reparaturarchiv und Geheimnisprüfung bestanden. Alle fünf Dienste aktiv,
+Schema 0042 und 17 Konfigurationen unverändert; öffentliche APK/Webdateien
+vollständig mit den lokalen Hashes verglichen. Geschützte Sicherung:
+`/var/backups/schulpilot/elements138-config-20261026T122116Z`.
+
+Der ausdrücklich wiederholte Anschlussauftrag nutzte nun nachweislich Sol,
+8.000 Ausgabetokens und die bestehenden 250.000 µUSD Reservierung, mit gültiger
+Sitzungs-/Familienbindung. Er lieferte 2.290 Ausgabetokens und 56.288 µUSD
+gemeldete Kosten, wurde aber an `visual/visual_parameters` verworfen. Das belegt
+eine zweite Grafik-Vertragslücke nach dem behobenen Längenproblem. Der konkrete
+falsche Modellparameter ist ohne aufbewahrte Rohantwort nicht rekonstruierbar.
+Ein separater normaler Heftauftrag wurde vom Anbieter abgebrochen; sein Preis
+bleibt unbekannt und die Reservierung erhalten. Keine automatischen Retries.
+
+139 ergänzt einen eigenen geschlossenen Coach-Adapter für die bereits belegte
+Erweiterungsregel. Er verwendet vorhandene Rechenplanung, Referenzdatenbank,
+Bruchrenderer und Quellen-/Historienprüfungen. Der getrennte Kandidat bestand
+336 synthetische Backendfälle ohne Fehler/Skips bei unveränderten 470 Quellhashes.
+Die technische Fehlerführung ergänzt eine lesende Retry-Verfügbarkeit ohne
+Erhöhung der Zwei-Versuchs-Grenze; 36 Backendfälle und 26 normale Widgetfälle
+bestanden (zwei versteckte Setup-/Teardown-Ereignisse sind keine zusätzlichen
+Tests). HTTP200-Fehlerumschläge des Anbieters erhalten geschlossene Verfügbarkeits-
+kategorien; acht echte Mock-Transportfälle prüfen genau einen Request und die
+unveränderte Abrechnung bekannter und unbekannter Kosten. Dies sind Kandidaten-
+nachweise, keine behauptete 139-Produktionsabnahme.
+
+26 allgemeine Heft-Lernrunden sind persönlich im Live-Browser abgeschlossen,
+74 fehlen noch zum ausdrücklich beauftragten Ziel. Zusätzliche kgV-Runden
+prüften Tutor öffnen/schließen mit erhaltenem Entwurf, Smartphone-/Tabletwechsel
+und Neuladen zwischen Antwort und Feedbackquittierung ohne doppelte Antworten.
+Reine Wortschatzrunden, fehlgeschlagene Vorbereitungen und synthetische Tests
+werden nicht mitgezählt. Private Screenshots und Zählbelege bleiben außerhalb
+der versionierten Quellen.
+
+Roots integrierte 139-Fassung bestand jeweils 380 Fälle auf netzgesperrter
+RAM-SQLite und frischem Unix-PG16, ohne Fehler oder Skips. Alle 473 Backenddateien
+stimmen mit der geprüften Kopie überein; Manifest und Quellen blieben während
+beider Läufe unverändert, temporäre Datenbank und Verzeichnisse wurden entfernt.
+
+Die nächste echte Bruchrunde belegte zusätzlich eine unsichtbare Einstiegshilfe:
+Der Hinweis wurde gespeichert, obwohl die Einstiegsansicht ihn nicht zeigte.
+Die gezielte Oberflächenkorrektur öffnet zunächst das sichtbare Hilfemenü;
+erst eine ausdrückliche Wahl lädt die Erklärung. Der vorhandene Grafikdialog
+führt danach zuverlässig zur ersten Aufgabe. Sechs neue und 24 benachbarte
+Widgetfälle bestanden. Eine zweite Sichtprüfung belegte fehlende Pfeilglyphen
+in der gebündelten Textschrift. Zwei bekannte Literale verwenden jetzt bereits
+gebündelte Materialglyphen, bei unveränderten Daten, Formeln und Sprachtexten.
+Acht neue und 159 benachbarte Fälle bestanden; 320/390 px bei großer Schrift
+und Desktop wurden mit den tatsächlichen Schriftdateien gerendert geprüft.
+Beide gezielten Analysen waren fehlerfrei. Diese lokalen Nachweise ersetzen
+weiterhin keine vollständige 139-CI oder Produktionsabnahme.
+
+Roots gemeinsamer Oberflächennachlauf nach Integration aller drei UI-Korrekturen
+bestand 40 Tests; Analyse der sieben betroffenen Dartdateien ohne Befund.
