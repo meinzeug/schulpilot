@@ -1,0 +1,15 @@
+digraph LearningFlow {
+ graph [rankdir=TB,bgcolor="transparent",pad="0.3",nodesep="0.32",ranksep="0.38",fontname="DejaVu Sans",labelloc="t",label="Vom eigenen Heft zur passenden Lernrunde",fontsize=19,fontcolor="#16283d"];
+ node [shape=box,style="rounded,filled",fontname="DejaVu Sans",fontsize=11,color="#c9d6e1",fillcolor="#edf3f8",fontcolor="#16283d",margin="0.15,0.12"];
+ edge [color="#586c85",arrowsize=0.7,penwidth=1.3,fontname="DejaVu Sans",fontsize=9,fontcolor="#40516a"];
+ a [label="Eigene Fotos\nbewusst abgeben",fillcolor="#dceaf9"];
+ b [label="Wörtlich lesen\nBild + Revision erhalten"];
+ c [label="Quelle prüfen\nmanuell oder\nfreigegebener Zweitcheck",fillcolor="#e9e2fb",color="#b9a3de"];
+ d [label="Verwendbare Blöcke\nUnsicheres getrennt halten",fillcolor="#d9f2f1",color="#75b8b8"];
+ e [label="Fachlich bündeln\nbegrenzte Teilaufträge"];
+ f [label="Verstehen + üben\nGrafik · eigene Antwort · Hilfe",fillcolor="#dceaf9"];
+ g [label="Versuche speichern\nRückblick + nächster Schritt",fillcolor="#e9e2fb"];
+ h [label="Foto bleibt erhalten\nauch mit Lücken / Technikfehler",fillcolor="#fff3df",color="#c5a66c"];
+ a -> b -> c -> d -> e -> f -> g;
+ c -> h [style=dashed];h -> d [style=dashed,label="nur sichere Inhalte"];
+}

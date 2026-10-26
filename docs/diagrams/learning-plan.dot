@@ -1,0 +1,16 @@
+digraph Plan {
+ graph [rankdir=TB,bgcolor="transparent",pad="0.3",nodesep="0.4",ranksep="0.42",fontname="DejaVu Sans",label="Überschaubar planen — freiwillig weiterlernen",labelloc="t",fontsize=19,fontcolor="#16283d"];
+ node [shape=box,style="rounded,filled",fontname="DejaVu Sans",fontsize=11,color="#c9d6e1",fillcolor="#edf3f8",fontcolor="#16283d",margin="0.18,0.13"];
+ edge [color="#586c85",arrowsize=0.7,penwidth=1.3,fontname="DejaVu Sans",fontsize=9,fontcolor="#40516a"];
+ a [label="Elternziele + Prüfungstermine\nBestätigter Stoff + Wiederholungen\nLerntage · Schwerpunkte · Pausen"];
+ d [label="Nächste überschaubare Portion",fillcolor="#e9e2fb",color="#b9a3de"];
+ e [label="GEPLANT\nnoch keine erzeugten Aufgaben",fillcolor="#fff3df",color="#c5a66c"];
+ f [label="Bewusst vorbereiten\neigener reservierter Auftrag"];
+ g [label="ERZEUGT\ngespeicherte Runde",fillcolor="#dceaf9"];
+ h [label="BEARBEITET\nechte Antworten + Rückmeldung",fillcolor="#d9f2f1",color="#75b8b8"];
+ i [label="Runde beenden\ngezielt weiterlernen / pausieren"];
+ j [label="Aktive Serversekunden"];
+ k [label="Tages-/Wochenminimum\ngetrennt vom Rundenabschluss",fillcolor="#e9e2fb"];
+ a -> d;d -> e -> f -> g -> h -> i;
+ j -> k;k -> d [style=dashed,label="Mindestziel, keine Obergrenze"];i -> d [constraint=false,style=dashed,label="freiwillig möglich"];
+}

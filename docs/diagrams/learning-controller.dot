@@ -1,0 +1,19 @@
+digraph Controller {
+ graph [rankdir=TB,bgcolor="transparent",pad="0.3",nodesep="0.45",ranksep="0.4",fontname="DejaVu Sans",label="Lernbegleitung mit gespeichertem Kontext",labelloc="t",fontsize=19,fontcolor="#16283d"];
+ node [shape=box,style="rounded,filled",fontname="DejaVu Sans",fontsize=11,color="#c9d6e1",fillcolor="#edf3f8",fontcolor="#16283d",margin="0.18,0.13"];
+ edge [color="#586c85",arrowsize=0.7,penwidth=1.3,fontname="DejaVu Sans",fontsize=9,fontcolor="#40516a"];
+ a [label="Aktuelle Quellen + Ziele"];
+ b [label="Antworten · Hilfen · Elternplanung"];
+ c [label="Gespeicherter Lernkontext\nFrage · Phase · Entwurf · Revision",fillcolor="#dceaf9"];
+ d [label="Lokale Regeln + vorhandene Ressourcen"];
+ e [label="Begründeter nächster Schritt",fillcolor="#e9e2fb",color="#b9a3de"];
+ f [label="Vorhandene Erklärung\noder Aufgabe nutzen"];
+ g [label="Neue Vorbereitung\nausdrücklich anfordern",fillcolor="#d9f2f1",color="#75b8b8"];
+ h [label="Atomar reservieren\nfeste Modellroute"];
+ i [label="Ausgabe prüfen\nRechte · Quellen · Plan erneut prüfen"];
+ j [label="Endlichen Kurzplan speichern"];
+ k [label="Aktion des Kindes abwarten",fillcolor="#dceaf9"];
+ l [label="Echtes Ereignis speichern\nkeine Antwort umschreiben",fillcolor="#e9e2fb"];
+ {rank=same;a;b} a -> c;b -> c;c -> d -> e;e -> f;e -> g -> h -> i -> j;
+ f -> k;j -> k;k -> l;l -> c [constraint=false,style=dashed,label="neuer gespeicherter Stand"];
+}

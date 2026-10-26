@@ -1,0 +1,18 @@
+digraph Evidence {
+ graph [rankdir=TB,bgcolor="transparent",pad="0.3",nodesep="0.38",ranksep="0.43",fontname="DejaVu Sans",label="Lernstand aus nachvollziehbaren Antworten",labelloc="t",fontsize=19,fontcolor="#16283d"];
+ node [shape=box,style="rounded,filled",fontname="DejaVu Sans",fontsize=11,color="#c9d6e1",fillcolor="#edf3f8",fontcolor="#16283d",margin="0.18,0.13"];
+ edge [color="#586c85",arrowsize=0.7,penwidth=1.3,fontname="DejaVu Sans",fontsize=9,fontcolor="#40516a"];
+ a [label="Eigene gespeicherte Antwort",fillcolor="#dceaf9"];
+ b [label="Attempt\nZeit · Quelle · genutzte Hilfe"];
+ c [label="Selbstständig im ersten\nVersuch richtig",fillcolor="#d9f2f1",color="#75b8b8"];
+ d [label="Mit Hilfe oder\nerneut richtig",fillcolor="#e9e2fb",color="#b9a3de"];
+ e [label="Weiter üben /\nBewertung offen",fillcolor="#fff3df",color="#c5a66c"];
+ f [label="Alle beantworteten Aufgaben + Versuche"];
+ g [label="Später neue Aufgabe\nselbstständig abrufen"];
+ h [label="Zusätzliche langfristige Beobachtung\nProduktregel: drei Prüftage über sieben Tage",fillcolor="#d9f2f1"];
+ i [label="Foto · Lesen · Chat\nVideo · Erkunden"];
+ j [label="Bearbeitung oder Hilfe\nkein Beherrschungsnachweis",fillcolor="#fff3df"];
+ k [label="Nachvollziehbare Sicht\nfür Kind und Eltern",fillcolor="#dceaf9"];
+ a -> b;b -> c;b -> d;b -> e;c -> f;d -> f;e -> f;c -> g -> h;f -> k;h -> k;i -> j;j -> k [style=dashed,label="bleibt getrennt"];
+ {rank=same;c;d;e} {rank=same;h;f;j}
+}

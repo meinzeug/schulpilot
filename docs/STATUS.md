@@ -1,4 +1,16 @@
-# Aktuell: neue Marke und beweglicher Schulbuddy · 1.31.0+105
+# Zuletzt belegter Produktionsstand · 1.36.29+141
+
+Stand der hier aufgeführten Auslieferungsbelege: 26.10.2026. Release `20261026T164357Z-d71ab9a`, Quellcommit `d71ab9aa5078c735d167179ead2551afab30b8d2`, PostgreSQL-Schema `0042`. Alle fünf Schulpilot-Dienste aktiv; 17 gesicherte Betriebskonfigurationen unverändert. Öffentliche APK und Web-JavaScript stimmen bytegenau mit den geprüften Artefakten überein.
+
+Version141 erhält die Elternübersicht beim stillen Statusabgleich, führt nach ausdrücklicher Seitenbestätigung zur nächsten offenen Tagesseite und erweitert den vorhandenen Ganzes-/Rest-Aufgabenpool ausschließlich bei einer belegten schriftlichen Bruchregel. 135 identische Backendfälle unter RAM-SQLite und Unix-PostgreSQL sowie 73 integrierte Flutterfälle bestanden. [CI40350465737](https://github.com/meinzeug/schulpilot/actions/runs/40350465737) ist für exakt diesen Commit in allen acht Jobs erfolgreich.
+
+Die auf Nutzerauftrag beendete allgemeine Live-Testserie bleibt bei **29 abgeschlossenen Heft-Lernrunden**. Es werden daraus keine weiteren Serienrunden gestartet; ihre gespeicherten Antworten bleiben erhalten. Sie ist kein vollständiger fachlicher Nachweis für sämtliche Inhalte.
+
+Der Repository-Ausbau für Version142 umfasst automatische Heftseiten-Gegenprüfung, kompaktere Eltern-/Rückblickansichten, klar getrennte wörtliche Schulbuddy-Lesehilfe und direkte Fertigmeldungen. Seine lokalen Prüfungen sind getrennt dokumentiert; dieser Absatz behauptet noch keine produktive Aktivierung oder beobachtete Android-Pushzustellung. Aktuelle Auslieferungs- und Quellennachweise werden in [SOURCES.md](SOURCES.md) fortgeführt.
+
+---
+
+# Historisch: neue Marke und beweglicher Schulbuddy · 1.31.0+105
 
 Live https://schulpilot.dorfspy.de · Produktcommit `7ba70c8a8bdc83aa3493b31c4cb4b9fcca02a567` · Release `20261024T105052Z-7ba70c8`.
 Freundlicher violetter Kopf als normales Logo; vollständiger Roboter mit schwarzem Hut beim Start, Handheben und Zwinkern in einer endlichen Bildfolge. Schulbuddy bleibt die geflügelte Buch-/Roboterfigur. Er lässt sich aus dem Header ziehen, frei platzieren und wieder andocken; der schmale Ziehhinweis hat einen Zehnsekundenzyklus. Glocke und Initialen passen zur Figurenfamilie. Eigene geschützte Profilfotos für alle Rollen; im Kinderkonto bewusst unter „Profil“. Fachhefter behalten Header, untere Navigation und schwebenden Buddy.
