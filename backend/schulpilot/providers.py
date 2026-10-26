@@ -1716,9 +1716,18 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if unit_graphics is not None:
             wire_schema = unit_graphics.wire_schema
             instructions += unit_graphics.rules
-    if unit_composition is not None:
+    extended_unit_wire = False
+    if function == "unit" and config.provider == "openrouter":
+        from .model_routing import selection
+
+        extended_unit_wire = selection(config).get("reason") in {
+            "material_graphic_teaching", "notebook_graphic_teaching",
+        }
+    if unit_composition is not None or extended_unit_wire:
         from .package_transport import schema_projection
 
+        # Share identical schema nodes; output fields and canonical validation
+        # remain unchanged. These routes can contain several full entry steps.
         wire_schema = schema_projection(wire_schema)
     if function == "unit":
         from .notebook_fraction_expansions import HISTORY_KEY as NOTEBOOK_EXPANSION_HISTORY
@@ -1730,7 +1739,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     instructions += explanation_rules(function, payload)
     user_text = json.dumps(outgoing_payload, ensure_ascii=False, separators=(",", ":"))
     schema_text = (json.dumps(wire_schema, ensure_ascii=False, separators=(",", ":"))
-                   if function in ("package", "learning_asset") else json.dumps(wire_schema))
+                   if function in ("package", "learning_asset") or extended_unit_wire else json.dumps(wire_schema))
     # Image transport bytes are not text tokens. A separately approved exact-
     # route allowance is an operator estimate, never an invented tokenizer rule.
     image_data = base64.b64encode(image_bytes).decode() if image_bytes else ""

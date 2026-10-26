@@ -2449,3 +2449,65 @@ Signaturbelegen und fehlgeschlagener CI bleibt separat archiviert. Die erneuten
 Build-/CI-/Produktionsbelege werden an den korrigierten Commit gebunden. Die
 weitergeführte Liveprüfung beendete außerdem eine zehnte allgemeine Heft-
 Lernrunde; eine externe Gesamtzählung wird nicht als eigener UI-Test ausgegeben.
+
+## 26.10.2026 – reguläre Heft-Runden und verlustfreier Schematransport133
+
+132 wurde mit4.407 bestandenen Backendfällen und44 getrennten Skips sowie
+4.022 Flutterfällen mit19 Plattform-Skips veröffentlicht. APK, AAB, Webdatei,
+Quellbindung, Signatur und Geheimnisprüfung bestanden. Die konkrete gestoppte
+Paketverarbeitung wurde im berechtigten Kinderzugang bewusst wiederaufgenommen:
+beide fehlenden Teile wurden gespeichert, alle sieben Runden sind erreichbar.
+Die Metadaten aller18 zuvor vorhandenen allgemeinen Einheiten und72 vorherigen
+Aufträge blieben gleich. Die zwei neuen Aufträge meldeten zusammen69.282µUSD;
+unbekannte Gebühren werden dadurch nicht als bekannt oder kostenlos ausgegeben.
+Eine tatsächliche Schulbuddy-Frage aus der gespeicherten Bruchgrafik erhielt eine
+Antwort; beim Schließen blieb dieselbe Grafik geöffnet. Persönlich vollständig
+geprüft sind inzwischen zwölf allgemeine Heft-Runden, nicht hundert.
+
+Ein zusätzlich bewusst gestarteter normaler Heftseitenauftrag zeigte eine zweite
+Grenze: Die Route war bereits korrekt Sol mit8.000 Ausgabetokens und250.000µUSD
+Reservierung, wurde aber lokal mitcost_preflight gestoppt.106.011 Textbytes und
+die gespeicherten Preisobergrenzen von2.000.000/10.000.000µUSD pro Million
+Eingabe-/Ausgabetokens ergaben300.214µUSD. Es erfolgte kein Anbieteraufruf;
+der alte fehlgeschlagene Auftrag und seine0-Verbrauchsbuchung bleiben erhalten.
+Dies ist kein neues Kontolimit und kein Anlass, die Kostenprüfung zu umgehen.
+
+133 verwendet für die beiden neuen Routen material_graphic_teaching und
+notebook_graphic_teaching zusätzlich die bestehende schema_projection:
+identische Schemaknoten werden über lokale JSON-Schema-Referenzen geteilt.
+Ausgabefelder, Quellen, Werte und kanonische Prüfungen bleiben erhalten; es
+werden weder Antwortfelder umbenannt noch neue Decoder oder Modellaufrufe
+ergänzt. Die Kostenprojektion zählt diese tatsächlich versendete kompakte
+Schemafassung. Alte Routen und bestehende feste Bruchkompositionen behalten
+ihren bisherigen Transport. Modell, Reasoning, Reservierung, Preisobergrenzen
+und Kontolimits werden nicht verändert.
+
+Zehn künstliche SQLite-Fälle prüfen beide Routen mit kleinen und umfangreicheren
+Deutsch-/Mathematikanfragen an denselben Preis- und Ausgabelimits. Auch weiterhin
+zu große Anfragen müssen vor der einzigen Mock-HTTP-Grenze mit0 Anbieteraufrufen
+und0 Kosten abgelehnt werden. Der isolierte RAM-Testbestand wurde entfernt;
+Backendquellen blieben während des Laufs unverändert. Eine anfängliche lokale
+Sandbox-Ausführung blockierte beim Testclient und wurde beendet; sie gilt nicht
+als erfolgreicher Lauf. Die nachfolgenden Abnahmen verwenden den bestehenden
+separaten Unix-/Mock-Netzwerkschutz. Breitere Abnahme und133-Liveprüfung folgen
+auf genau den dafür eingefrorenen Quellstand.
+
+Der erste breitere133-Lauf bestand218 SQLite-Fälle. PostgreSQL bestand217 von
+218 Fällen; bei einem bestehenden Fünfer-Heft-Test brach bereits dessen lokaler
+Vorbereitungshelfer vor dem Anbieteradapter ab. Drei isolierte Parameterfälle
+bestanden anschließend. Der Befund wurde nicht als behoben oder als erfolgreicher
+Gesamtlauf ausgegeben: feste künstliche Seeds reproduzieren einen realen Konflikt,
+bei dem die Vorwissensfragen beide Originalbrüche der Einführung benötigen und
+deshalb kein sicher getrenntes Erklärbeispiel übrig bleibt.
+
+Neue ausdrücklich gewählte Erweiterungsrunden reservieren deshalb genau einen
+im bestätigten Inhalt belegten Originalbruch für die Einführung. Neue Proben
+verwenden ihn weder als Eingabepaar noch als Erweiterungsantwort; die eigentlichen
+Übungsaufgaben schließen ihn ebenfalls als abgeleitete Antwort aus. Das ist eine
+Planungsausschlussmenge, keine künstliche Übungshistorie oder Leistungsbewertung.
+Eine feste zweite Regression mit dem einzigen Original2/4 und einer gezielt
+kollidierenden Aufgabe1/2 mitFaktor2 zeigte denselben Abbruch und besteht jetzt
+ebenfalls. Alte Proben, begonnene Einheiten, Antworten und Quellen werden nicht
+umgeschrieben. Die endliche Planung und der Abbruch bei echter Erschöpfung bleiben.
+Der abschließende eingefrorene Nachlauf umfasst beide Fälle sowie die bestehenden
+Einstiegs-, Erweiterungs-, Transport-, Routen- und Kostenprüfungen.

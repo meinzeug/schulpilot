@@ -57,7 +57,7 @@ def _known(row):
         and row["status"] in ("repeated_independent", "review_due"))
 
 
-def _probe(competence, seed, previous, ordinal):
+def _probe(competence, seed, previous, ordinal, *, excluded_examples=()):
     template = competence["probe"]
     for offset in range(256):
         value = int(hashlib.sha256((seed + ":" + str(offset)).encode()).hexdigest()[:12], 16)
@@ -74,6 +74,9 @@ def _probe(competence, seed, previous, ordinal):
             answer = f"{2 * numerator}/{2 * denominator}"
         else:
             return None
+        if ((numerator, denominator) in excluded_examples
+                or template == "fraction_equivalence" and (2 * numerator, 2 * denominator) in excluded_examples):
+            continue
         if competences.normalized(prompt) not in previous:
             return {"id": "prior_" + ordinal, "type": "short", "prompt": prompt, "answer": answer,
                 "options": [], "accepted": [], "competence_id": competence["id"],
@@ -101,6 +104,13 @@ def with_learning_entry(db, child, payload, sources, *, groups=None, enabled=Fal
     from .notebook_practice import requested_count
 
     notebook_count = requested_count(payload)
+    excluded_examples = ()
+    if notebook_count:
+        from .notebook_fraction_expansions import introduction_example
+
+        example = introduction_example(payload)
+        if example is not None:
+            excluded_examples = (example,)
     if not sources and isinstance(payload.get("goal"), dict):
         return payload  # Existing explicit parent goal, no invented photo proof.
     if any(material.child_id != child.id for material in sources):
@@ -135,7 +145,8 @@ def with_learning_entry(db, child, payload, sources, *, groups=None, enabled=Fal
         if not protected and not reuse:
             for identifier in selected:
                 if rows[identifier].get("probe") and not _known(by_id.get(identifier)):
-                    value = _probe(rows[identifier], child.id + str(refs) + identifier, previous, prefix + "_" + str(len(probes) + 1))
+                    value = _probe(rows[identifier], child.id + str(refs) + identifier, previous,
+                        prefix + "_" + str(len(probes) + 1), excluded_examples=excluded_examples)
                     if value:
                         probes.append(value)
                         references[identifier] = competences.resolve_reference(identifier, competences.VERSION)

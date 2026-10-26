@@ -1,6 +1,7 @@
 """Source-backed expansion slots inside an explicitly selected notebook round.
 
-The existing entry probes and their own curated references stay unchanged.
+Saved entry probes and their own curated references stay unchanged. New probes
+reserve an original introduction before the remaining practice slots are filled.
 Only remaining practice slots receive finite arithmetic BEFORE generation.
 """
 import copy
@@ -38,6 +39,16 @@ def _supported(payload):
         return False
     catalog = _catalog(expansion._sources(payload["visual_context"]), "Mathematik", "")
     return "Brüche erweitern" in catalog and not any(label in catalog for label in ("Brüche kürzen", "Brüche addieren"))
+
+
+def introduction_example(payload):
+    """Reserve one literal original before selecting NEW prerequisite probes."""
+    if not _supported(payload):
+        return None
+    for source in expansion._sources(payload["visual_context"]):
+        for base, _ in _fraction_bases(source["content"]):
+            return tuple(base["numbers"])
+    return None
 
 
 def add_reference(db, payload):
@@ -126,6 +137,12 @@ def prepare(payload):
     practice = [slot for slot in slots if slot["role"] == "practice"]
     previous = payload.get("previous_prompts") or []
     exclusions, excluded_prompts = _history(payload)
+    example = introduction_example(payload)
+    if example is not None:
+        # An introduction is teaching, not practice history. Keep its literal
+        # pair out of derived answers without adding any learner evidence.
+        excluded_prompts = [*excluded_prompts, *[_task("expand", numbers, "apply")[0]
+            for numbers in sorted(_pool()) if (numbers[0] * numbers[2], numbers[1] * numbers[2]) == example]]
     try:
         tasks = fraction_tasks(sources, "Mathematik", "", previous, "apply", len(practice),
             _digest([REVISION, context, slots, previous]), required_labels=["Brüche erweitern"] * len(practice),
