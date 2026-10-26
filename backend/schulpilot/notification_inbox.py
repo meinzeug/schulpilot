@@ -133,7 +133,7 @@ def recent_events(db, user, current=None, *, direct_messages=False, direct_exams
             if not day or day.child_id != row.child_id or day_id in seen_preparations:
                 continue
             seen_preparations.add(day_id)
-            source_rows = list(db.execute(select(Material.subject).where(Material.school_day_id == day_id, Material.child_id == row.child_id)))
+            source_rows = list(db.execute(select(Material.subject, Material.confirmed).where(Material.school_day_id == day_id, Material.child_id == row.child_id)))
             count = len(source_rows)
             if count == 0:
                 continue
@@ -145,6 +145,8 @@ def recent_events(db, user, current=None, *, direct_messages=False, direct_exams
             current_status = (day.preparation or {}).get("status")
             suffix = {"needs_review":"Bitte prüfen", "needs_photo":"Ein Foto neu aufnehmen", "processing":"Wird vorbereitet",
                       "ready":"Lernpaket bereit", "saved":"Für später gespeichert", "failed":"Vorbereitung noch offen", "blocked":"Vorbereitung noch offen"}.get(current_status, "Heftseiten öffnen")
+            if current_status == "ready" and (ready_count := sum(r.confirmed for r in source_rows)) < count:
+                suffix = f"Lernpaket aus {ready_count} von {count} Seiten bereit · {count - ready_count} noch offen"
             title = f"{prefix} · {suffix}"
         add("message:" + row.id, row.child_id, row.created, title, route, row.kind)
 

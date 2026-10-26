@@ -286,6 +286,35 @@ void mobile(WidgetTester tester, [double width = 390]) {
 }
 
 void main() {
+  testWidgets('four saved photos keep the hand-off action visible on a phone', (
+    tester,
+  ) async {
+    mobile(tester);
+    final server = PreparationServer(
+      pages: [for (var i = 1; i <= 4; i++) source(i)],
+    );
+    final navigation = router(server.state());
+    addTearDown(navigation.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+    );
+    await settleUi(tester);
+    final submit = find.text('Fotos abgeben');
+    expect(submit, findsOneWidget);
+    final bounds = tester.getRect(submit);
+    expect(bounds.top, greaterThan(0));
+    expect(
+      bounds.bottom,
+      lessThan(
+        tester.view.physicalSize.height / tester.view.devicePixelRatio - 80,
+      ),
+    );
+    await tester.tap(submit);
+    await settleUi(tester);
+    expect(server.submissions, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
   testWidgets('Photos hand off once and survive leaving before OCR finishes', (
@@ -707,13 +736,7 @@ void main() {
       );
       await settleUi(tester);
       await tapText(tester, 'Fotos auswählen');
-      expect(pickerCalls, 0);
-      expect(
-        find.textContaining('Pro Schultag sind 24 Seiten möglich'),
-        findsOneWidget,
-      );
-      await tester.tap(find.widgetWithText(FilledButton, 'Fotos auswählen'));
-      await settleUi(tester);
+      expect(find.byType(AlertDialog), findsNothing);
       expect(pickerCalls, 1);
       expect(server.submissions, 0);
       expect(find.textContaining('gerade nicht erreichbar'), findsNothing);
@@ -846,7 +869,6 @@ void main() {
       );
       await settleUi(tester);
       await tapText(tester, 'Fotos auswählen');
-      await tester.tap(find.widgetWithText(FilledButton, 'Fotos auswählen'));
       for (var i = 0; i < 8; i++) {
         for (
           var wait = 0;
@@ -952,9 +974,6 @@ void main() {
           await tapText(tester, 'Letztes Foto wiederfinden');
         } else {
           await tapText(tester, 'Fotos auswählen');
-          await tester.tap(
-            find.widgetWithText(FilledButton, 'Fotos auswählen'),
-          );
         }
         for (
           var wait = 0;

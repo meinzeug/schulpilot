@@ -1248,12 +1248,13 @@ class _NotificationPanelState extends State<NotificationPanel>
             ),
             actions: [
               TextButton(
-                onPressed: asking
-                    ? null
-                    : () {
-                        if (allowedAction()) Navigator.pop(dialog);
-                      },
-                child: const Text('Später'),
+                // A browser permission prompt may never resolve (embedded
+                // browsers in particular). Leaving this sheet must stay possible;
+                // its late result cannot register a device after cancellation.
+                onPressed: () {
+                  if (allowedAction()) Navigator.pop(dialog);
+                },
+                child: Text(asking ? 'Abbrechen' : 'Später'),
               ),
               FilledButton.icon(
                 key: const ValueKey('push-browser-permission'),

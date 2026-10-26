@@ -15,6 +15,10 @@ index role segments text variants order parameters mass_kg acceleration_m_s2 exa
 reference source_refs field_group fields answer_ui value position
 """.split())
 _REASONS = {
+    "Value error, Eine Literalannotation benötigt den unveränderten Wortlaut dieses Blocks.": "ocr_mark_quote",
+    "Value error, Urheberschaft benötigt einen ausdrücklich sichtbaren Beleg; Farbe allein reicht nicht.": "ocr_author_evidence",
+    "Value error, Eine Farbe oder ein Name belegt keine sichtbare Urheberrolle.": "ocr_author_role",
+
     "Value error, Lernszene benötigt Szenendaten und Textalternative, keine fachfremden Grafikparameter.": "scene_parameters",
     "Value error, Szenendaten gehören ausschließlich zu kind scene.": "scene_kind",
     "Value error, Bruchmodell braucht Zähler und positiven Nenner bis24.": "fraction_bounds",

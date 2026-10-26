@@ -705,26 +705,9 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
         );
       }
       if (!mounted) return;
-      final accepted = await showDayDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text('Fotos auswählen'),
-          content: Text(
-            'Bis zu ${counted(remaining, 'Foto', 'Fotos')} auf einmal. Pro Schultag sind ${day!['max_pages']} Seiten möglich. Auf dem Gerät passen höchstens 8 Fotos oder 3 MB in den Zwischenspeicher. Weitere Fotos kannst du danach hinzufügen.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => closeDayDialog(ctx, false),
-              child: Text('Abbrechen'),
-            ),
-            FilledButton(
-              onPressed: () => closeDayDialog(ctx, true),
-              child: Text('Fotos auswählen'),
-            ),
-          ],
-        ),
-      );
-      if (accepted != true || !currentCapture()) return;
+      // The explicit gallery action opens the picker directly. Selection and
+      // local-buffer limits are still enforced below, with per-photo receipts.
+      if (!currentCapture()) return;
       if (nativeAndroid) await rememberCameraSource(state, widget.childId);
       List<XFile> files;
       try {
@@ -1839,6 +1822,14 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                 Notice(
                   'Alle 24 Plätze für heute sind belegt. Du kannst die vorgemerkten Fotos noch abgeben. Deine Seiten bleiben gespeichert.',
                 ),
+              if (hasPhotos) ...[
+                const SizedBox(height: 12),
+                ActionButton(
+                  label: 'Fotos abgeben',
+                  icon: Icons.cloud_upload_outlined,
+                  onPressed: () => run(prepareInBackground),
+                ),
+              ],
               SizedBox(height: 16),
               if (allowUploads && day!['synthetic'] == true && pages.isEmpty)
                 ActionButton(
@@ -2143,12 +2134,6 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               '${pendingPhotos.length} ${pendingPhotos.length == 1 ? 'Foto ist' : 'Fotos sind'} noch auf diesem Gerät. Mit Fotos abgeben werden sie gesendet.',
             ),
           ],
-          SizedBox(height: 18),
-          ActionButton(
-            label: 'Fotos abgeben',
-            icon: Icons.cloud_upload_outlined,
-            onPressed: () => run(prepareInBackground),
-          ),
         ],
       ],
     );

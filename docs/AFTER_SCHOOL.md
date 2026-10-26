@@ -122,3 +122,10 @@ und Widgetfällen geprüft, insbesondere `test_material_auto_review.py`,
 `material_auto_review_142_test.dart` und `material_confirm_next_141_test.dart`.
 Dies ist noch kein Deployment- oder Live-Erkennungsbeleg. Die Abnahme der
 veröffentlichten Version und gegebenenfalls der echten Geräte erfolgt gesondert.
+
+
+### Kompakter Fotoeinstieg143
+
+„Fotos auswählen“ öffnet unmittelbar die normale Geräteauswahl. Tages- und Zwischenspeichergrenzen werden weiterhin durchgesetzt; nicht übernommene Fotos behalten ihren einzelnen Beleg. Im Zuschnitt steht das Originalbild vor optionalen Ansichts-/Drehwerkzeugen; Randregler, Rückgängig und Vorschau bleiben erreichbar. Sobald Fotos vorhanden sind, steht „Fotos abgeben“ oberhalb der Vorschauen. Ein lokaler Widgetfall mit vier Seiten prüft die sichtbare Hauptaktion auf390px.
+
+Unzuverlässige Markierungsmetadaten einer OCR-Antwort dürfen lesbare Abschrift nicht verwerfen: ein nicht exakt verankertes Annotationszitat wird nicht geraten, sondern entfernt und der ganze Abschnitt unsicher markiert. Farbe allein ergibt weiterhin keine Lehrerzuordnung. Das ist keine Quellenbestätigung oder fachliche Korrektur; der gesondert reservierte Gegencheck und die bestehende Quellenprojektion bleiben erforderlich.

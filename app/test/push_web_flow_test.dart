@@ -412,6 +412,40 @@ void main() {
     },
   );
   testWidgets(
+    'a pending browser prompt can be cancelled without late device registration',
+    (tester) async {
+      final f = _Fixture();
+      f.transport.allowed = false;
+      f.transport.pendingPermission = Completer<bool>();
+      final state = _State(f.api, f.push)..user = f.owner;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(),
+          home: Scaffold(
+            body: SingleChildScrollView(child: NotificationPanel(state)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Auf diesem Gerät einschalten'));
+      await tester.tap(find.text('Auf diesem Gerät einschalten'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('push-browser-permission')));
+      await tester.pump();
+      expect(find.text('Bitte im Browser bestätigen …'), findsOneWidget);
+      await tester.tap(find.text('Abbrechen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Im Browser erlauben'), findsNothing);
+      expect(f.registrations, isEmpty);
+      f.transport.pendingPermission!.complete(true);
+      await tester.pumpAndSettle();
+      expect(f.registrations, isEmpty);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(f.close);
+    },
+  );
+  testWidgets(
     'an overlaid or replaced-account permission sheet cannot prompt from an old callback',
     (tester) async {
       final f = _Fixture();

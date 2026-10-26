@@ -61,7 +61,11 @@ def configured(db, *, verify_catalog=False, probe=False):
         catalog_model(binding.model)
     values = {c.name: getattr(binding, c.name) for c in ProviderConfig.__table__.columns}
     values.update(emergency_stop=base.emergency_stop or binding.emergency_stop,
-                  global_limit_micros=min(base.global_limit_micros, binding.global_limit_micros),
+                  # Row2 records the selected model, including a historical
+                  # copy of setup values. The operator's current system limit
+                  # has exactly one authority: row1. Keep all feature-local
+                  # reservations, token bounds and emergency stops unchanged.
+                  global_limit_micros=base.global_limit_micros,
                   reserve_micros=min(base.reserve_micros, binding.reserve_micros),
                   max_output_tokens=min(base.max_output_tokens, binding.max_output_tokens),
                   routing_policy={}, encrypted_key=None)

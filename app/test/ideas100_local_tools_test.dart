@@ -373,6 +373,7 @@ void main() {
       );
       await tap(t, find.text('Zuschnitt öffnen'));
       expect(find.text('Foto 2 von 3 prüfen'), findsOneWidget);
+      await tap(t, find.text('Foto drehen & Ansicht'));
       await tap(t, find.text('Original ansehen'));
       expect(find.byType(CustomPaint), findsWidgets);
       await tap(t, find.text('Ergebnis ansehen'));
@@ -436,6 +437,7 @@ void main() {
         ),
       );
       await tap(t, find.text('Prüfen'));
+      await tap(t, find.text('Foto drehen & Ansicht'));
       await tap(t, find.text('Um 90° drehen'));
       await tap(t, find.text('Abbrechen'));
       expect(frame!.turns, 1);

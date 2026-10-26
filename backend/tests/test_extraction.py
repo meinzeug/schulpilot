@@ -376,8 +376,10 @@ def test_compact_transcription_wire_keeps_literal_symbols_marks_regions_and_whit
     assert 't' not in saved and 'r' not in saved
     with pytest.raises(ValidationError):
         TranscriptionBlock.model_validate({**wire, 'r':{'l':900,'t':20,'r':10,'b':800}})
-    with pytest.raises(ValidationError):
-        TranscriptionBlock.model_validate({**wire, 'a':[{'k':'comment','q':'erfunden'}]})
+    quarantined = TranscriptionBlock.model_validate({**wire, 'a':[{'k':'comment','q':'erfunden'}]})
+    assert quarantined.text == literal and not quarantined.annotations
+    assert quarantined.reading_uncertainties
+
 
 
 def test_compact_wire_saves_repeated_metadata_without_shortening_original_text():

@@ -293,83 +293,6 @@ class _CropDialogState extends State<CropDialog> {
               'Namen bitte abschneiden. Der Text soll gut lesbar sein.',
               style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final (id, label) in const [
-                  ('edit', 'Zuschnitt bearbeiten'),
-                  ('original', 'Original ansehen'),
-                  ('crop', 'Ergebnis ansehen'),
-                ])
-                  ChoiceChip(
-                    label: Text(label),
-                    selected: photoView == id,
-                    onSelected: encoding
-                        ? null
-                        : (_) => setState(() => photoView = id),
-                  ),
-                IconButton(
-                  tooltip: 'Zuschnitt rückgängig',
-                  onPressed: undoFrames.isEmpty || encoding
-                      ? null
-                      : () => setState(() {
-                          redoFrames.add(frame);
-                          restoreFrame(undoFrames.removeLast());
-                        }),
-                  icon: const Icon(Icons.undo),
-                ),
-                IconButton(
-                  tooltip: 'Zuschnitt wiederholen',
-                  onPressed: redoFrames.isEmpty || encoding
-                      ? null
-                      : () => setState(() {
-                          undoFrames.add(frame);
-                          restoreFrame(redoFrames.removeLast());
-                        }),
-                  icon: const Icon(Icons.redo),
-                ),
-              ],
-            ),
-            if (widget.batchIndex != null)
-              const Text(
-                'Jedes Foto hat einen eigenen Zuschnitt. Bereits übernommene Fotos bleiben erhalten.',
-              ),
-            TextButton.icon(
-              onPressed: image == null || encoding
-                  ? null
-                  : () => setState(() {
-                      rememberFrame();
-                      image = img.copyRotate(image!, angle: 90);
-                      quarterTurns = (quarterTurns + 1) % 4;
-                      preview = Uint8List.fromList(
-                        img.encodeJpg(image!, quality: 85),
-                      );
-                      final oldLeft = left,
-                          oldTop = top,
-                          oldRight = right,
-                          oldBottom = bottom;
-                      left = 1 - oldBottom;
-                      top = oldLeft;
-                      right = 1 - oldTop;
-                      bottom = oldRight;
-                      publishFrame();
-                    }),
-              icon: Icon(Icons.rotate_right),
-              label: Text('Um 90° drehen'),
-            ),
-            TextButton.icon(
-              onPressed: image == null || encoding
-                  ? null
-                  : () => setState(() {
-                      rememberFrame();
-                      left = top = 0;
-                      right = bottom = 1;
-                      publishFrame();
-                    }),
-              icon: Icon(Icons.crop_free_rounded),
-              label: Text('Ganzes Foto verwenden'),
-            ),
             if (image == null)
               Notice(
                 'Dieses Bild kann nicht gelesen werden. Wähle bitte ein anderes Foto als JPEG oder PNG.',
@@ -377,7 +300,7 @@ class _CropDialogState extends State<CropDialog> {
               ),
             if (image != null)
               SizedBox(
-                height: (MediaQuery.sizeOf(context).height * .40).clamp(
+                height: (MediaQuery.sizeOf(context).height * .48).clamp(
                   240,
                   420,
                 ),
@@ -501,6 +424,88 @@ class _CropDialogState extends State<CropDialog> {
                 ),
               ),
             SizedBox(height: 16),
+            ExpansionTile(
+              title: const Text('Foto drehen & Ansicht'),
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (id, label) in const [
+                      ('edit', 'Zuschnitt bearbeiten'),
+                      ('original', 'Original ansehen'),
+                      ('crop', 'Ergebnis ansehen'),
+                    ])
+                      ChoiceChip(
+                        label: Text(label),
+                        selected: photoView == id,
+                        onSelected: encoding
+                            ? null
+                            : (_) => setState(() => photoView = id),
+                      ),
+                    IconButton(
+                      tooltip: 'Zuschnitt rückgängig',
+                      onPressed: undoFrames.isEmpty || encoding
+                          ? null
+                          : () => setState(() {
+                              redoFrames.add(frame);
+                              restoreFrame(undoFrames.removeLast());
+                            }),
+                      icon: const Icon(Icons.undo),
+                    ),
+                    IconButton(
+                      tooltip: 'Zuschnitt wiederholen',
+                      onPressed: redoFrames.isEmpty || encoding
+                          ? null
+                          : () => setState(() {
+                              undoFrames.add(frame);
+                              restoreFrame(redoFrames.removeLast());
+                            }),
+                      icon: const Icon(Icons.redo),
+                    ),
+                  ],
+                ),
+                if (widget.batchIndex != null)
+                  const Text(
+                    'Jedes Foto hat einen eigenen Zuschnitt. Bereits übernommene Fotos bleiben erhalten.',
+                  ),
+                TextButton.icon(
+                  onPressed: image == null || encoding
+                      ? null
+                      : () => setState(() {
+                          rememberFrame();
+                          image = img.copyRotate(image!, angle: 90);
+                          quarterTurns = (quarterTurns + 1) % 4;
+                          preview = Uint8List.fromList(
+                            img.encodeJpg(image!, quality: 85),
+                          );
+                          final oldLeft = left,
+                              oldTop = top,
+                              oldRight = right,
+                              oldBottom = bottom;
+                          left = 1 - oldBottom;
+                          top = oldLeft;
+                          right = 1 - oldTop;
+                          bottom = oldRight;
+                          publishFrame();
+                        }),
+                  icon: Icon(Icons.rotate_right),
+                  label: Text('Um 90° drehen'),
+                ),
+                TextButton.icon(
+                  onPressed: image == null || encoding
+                      ? null
+                      : () => setState(() {
+                          rememberFrame();
+                          left = top = 0;
+                          right = bottom = 1;
+                          publishFrame();
+                        }),
+                  icon: Icon(Icons.crop_free_rounded),
+                  label: Text('Ganzes Foto verwenden'),
+                ),
+              ],
+            ),
             ExpansionTile(
               title: Text('Bild zuschneiden'),
               children: [

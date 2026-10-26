@@ -7,6 +7,7 @@ valid; the user still has to check and confirm every material.
 """
 
 import io
+import re
 import warnings
 from typing import Annotated, Literal
 
@@ -116,6 +117,36 @@ class TranscriptionBlock(SourceBlock):
     annotations: list[TranscriptionAnnotation] = Field(default_factory=list, max_length=8, alias="a")
     reading_uncertainties: list[Annotated[str, Field(min_length=1, max_length=300)]] = Field(default_factory=list, max_length=8, alias="u")
 
+    @model_validator(mode="after")
+    def literal_marks(self):
+        """Keep literal OCR even when advisory mark metadata is inconsistent.
+
+        Never repair text or invent a quote/author. Unanchored metadata is
+        removed and its entire block quarantined by reading_uncertainties;
+        the separately reserved visual review can resolve it from the photo.
+        SourceBlock itself stays strict for all downstream source writes.
+        """
+        retained = []
+        unanchored = False
+        for mark in self.annotations:
+            if mark.quote not in self.text:
+                unanchored = True
+                continue
+            role = (r"\b(?:Lehrer|Lehrerin|Lehrkraft|teacher)\b" if mark.author == "teacher"
+                    else r"\b(?:Schüler|Schülerin|Schülerantwort|student)\b")
+            if mark.author != "unknown" and (
+                not mark.author_evidence or mark.author_evidence not in self.text
+                or not re.search(role, mark.author_evidence, flags=re.IGNORECASE)
+            ):
+                # Colour and inferred authorship never become learning evidence.
+                mark.author, mark.author_evidence = "unknown", ""
+            retained.append(mark)
+        self.annotations = retained
+        if unanchored:
+            warning = "Eine sichtbare Markierung ist im erkannten Wortlaut nicht sicher zuzuordnen. Diesen Abschnitt am Foto gegenprüfen."
+            self.reading_uncertainties = [*self.reading_uncertainties[:7], warning]
+        return super().literal_marks()
+
 
 class TranscriptionOutput(s.Strict):
     # The schema intentionally starts with the actual transcription, rather
@@ -132,6 +163,12 @@ class TranscriptionOutput(s.Strict):
 
     @model_validator(mode="after")
     def valid_public_transcript(self):
+        local = [value for block in self.blocks for value in block.reading_uncertainties]
+        if local and self.legibility != "unreadable":
+            if self.legibility == "readable":
+                self.legibility = "partial"
+            # Keep page-level notices bounded; block-local warnings remain intact.
+            self.uncertainties = list(dict.fromkeys([*self.uncertainties, *local]))[:30]
         self.as_material()
         return self
 

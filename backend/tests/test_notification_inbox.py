@@ -312,3 +312,23 @@ def test_legacy_notification_links_validate_the_own_child_target(api, household)
     assert sum(row['route'] == '/material/'+own_id for row in data['items']) == 1
     assert sum(row['route'] == f"/child/{child['id']}" for row in data['items']) == 3
     assert foreign_id not in str(data)
+
+
+def test_partial_automatic_package_notice_never_claims_all_photos_are_ready(api, household):
+    from schulpilot.db import Material, SchoolDay
+    _, child = household
+    with DB.begin() as db:
+        day = SchoolDay(id=uid(), child_id=child["id"], school_date="2026-10-26", preparation={"status": "ready"})
+        db.add(day)
+        db.flush()
+        for index in range(4):
+            db.add(Material(child_id=child["id"], school_day_id=day.id, title="Artificial page", subject="Mathematik",
+                            confirmed=index != 1, status="confirmed" if index != 1 else "uploaded"))
+        db.add(Message(child_id=child["id"], kind="preparation", body="Artificial ready notice", context={"day_id": day.id}))
+    for _ in range(2):
+        items = api.get("/api/notifications/inbox").json()["items"]
+        assert len(items) == 1
+        assert "Lernpaket aus 3 von 4 Seiten bereit · 1 noch offen" in items[0]["title"]
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Job)) == 0
+        assert db.scalar(select(func.count()).select_from(NotificationRead)) == 0

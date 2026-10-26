@@ -3109,3 +3109,14 @@ Tutor-Dateien bestanden anschließend dieselben 20/20 Fälle jeweils unter
 RAM-SQLite und PostgreSQL16, ohne externe Verbindungen; die künstlichen
 Datenbanken wurden entfernt. Diese Nachläufe sind überlappende Regressionen und
 werden nicht zu einer angeblich vollständig grünen ersten CI addiert.
+
+
+## Alltagstest143 · 26.10.2026
+
+Eigener regulärer künstlicher Haushalt, Klasse6, vier eigens erzeugte und visuell geprüfte Fotos (Mathematikheft, seitliches Arbeitsblatt mit roten Korrekturen, Deutsch/Satzglieder, Englisch/Simple past). Keine echten Kinderantworten. Nutzerfreigabe15USD für diesen Test; bestehende Anbieter-/Familiengrenzen bleiben aktiv. Erstlauf: sieben OCR-/Gegenprüfungsaufträge und ein Paketauftrag,257Sekunden vom ersten Claim bis zum Paketabschluss; eine Seite scheiterte an Markierungsmetadaten. Gemeldete Kosten0,124230USD, keine offene Reservierung zu diesem Zwischenstand. Kein vollständiger Vierseiten-Erfolg behauptet.
+
+143 erhält den wörtlichen OCR-Text bei unzuverlässigen Zusatzannotationen: unbelegte Autorenschaft wird unbekannt, nicht verankerte Zitate werden entfernt und der betroffene Abschnitt ausdrücklich unsicher/vom bewerteten Lernen ausgeschlossen. Der bestehende Zweitleseauftrag kann ihn am Original klären. Quell- und Aufgabenvalidierung bleiben streng. Fertigmeldungen nennen bei offenen Fotos den tatsächlich bestätigten Teilumfang. Schulbuddy verwendet das aktuelle Betreiber-Systembudget statt einer veralteten Kopie der Modellbindung; keine Budgetkonfiguration geändert.
+
+Fotoauswahl ohne doppelten Bestätigungsdialog; Zuschnitt zeigt das Foto vor optionalen Werkzeugen; Abgabe liegt vor der Fotoliste. Ausbleibende Browserfreigabe bleibt abbrechbar, verspätete Zustimmung registriert kein Gerät. Lokale Nachweise:55SQLite- und164Unix-PostgreSQL16-Fälle;77betroffene Flutterfälle plus21erneute Fotoassistentfälle einschließlich sichtbarer Hauptaktion bei vier Fotos; Flutteranalyse ohne Befund. PostgreSQL-Runner übernahm lediglich ein historisches base_commit-Textlabel; die tatsächlichen unveränderten Quelldateien sind durch Manifest1b7e6de3e39c76ec644a6ccc34ebb819043fe47f04564498692e900cf6541830 gebunden. Native Zustellung auf einem Smartphone ist damit nicht abgenommen.
+
+Private Testzugänge, künstliche Fotos, genaue Prompts, Hashes, Messungen und Screenshots liegen außerhalb von Git unter artifacts/elements143/everyday. Der lokale Testhaushalt ist auf24Stunden,30Aufrufe und15USD begrenzt. Laufende Alltagstest-Abnahme und tatsächlicher Produktionsstand werden nach dem Deployment ergänzt; diese Zeilen behaupten noch keine143-Auslieferung.

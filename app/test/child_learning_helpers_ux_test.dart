@@ -390,6 +390,7 @@ void main() {
       );
       await tester.pumpWidget(home(CropDialog(bytes)));
       await tester.pumpAndSettle();
+      await tap(tester, find.text('Foto drehen & Ansicht'));
       await tap(tester, find.text('Bild zuschneiden'));
       tester.widget<Slider>(find.byType(Slider).first).onChanged!(.2);
       await tester.pump();
