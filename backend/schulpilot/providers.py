@@ -1640,6 +1640,24 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             payload = {**payload, "prepared_graphics": unit_composition.context}
             instructions += unit_composition.rules
             prune_schema(schema)
+        elif config.provider == "openrouter":
+            from .model_routing import selection
+            from .unit_reference_graphics import RULES as UNIT_REFERENCE_RULES
+            from .unit_reference_graphics import bind_schema as bind_unit_references
+
+            if selection(config).get("reason") in {"material_graphic_teaching", "notebook_graphic_teaching"}:
+                try:
+                    if bind_unit_references(schema, payload):
+                        instructions += UNIT_REFERENCE_RULES
+                        prune_schema(schema)
+                except ValueError as error:
+                    if error.args != ("Der Teilauftrag hat keine passende Referenz/Grafik für seine Aufdeckstufe.",):
+                        raise
+                    raise ProviderError(
+                        "Für diese Heftseiten fehlt noch eine passende geprüfte Erklärgrafik. "
+                        "Deine Fotos und gespeicherten Runden bleiben erhalten.",
+                        code="invalid_output", billing_result=Result({}, 0, 0, 0, cost_source="cancelled"),
+                    ) from None
     if exam_analysis:
         from .exam_review_transport import rules as exam_transport_rules
 

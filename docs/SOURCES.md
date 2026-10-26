@@ -2557,3 +2557,56 @@ keine Jobs/Usage/Antworten/Aktivität und erneute Planung erst nach ausdrücklic
 Bestätigung. Abnahme und Veröffentlichung gelten ausschließlich für den dafür
 geprüften Quellstand. Persönlich vollständig beobachtet sind14 allgemeine
 Heft-Lernrunden; dies ist weiterhin keine abgeschlossene100-Runden-Prüfung.
+
+Referenzkopplung26.10.2026 ·1.36.23+135:
+134 wurde nach4.423 bestandenen Backend- und4.024 bestandenen Fluttertests
+veröffentlicht;44 Backend- und19 Flutterfälle sind ausgewiesene Ausnahmen.
+Die öffentlichen Web-/APK-Hashes entsprechen dem signierten Quellstand. Der
+ursprünglich geöffnete ältere Schultag zeigt auf Desktop und390px mobil die
+sechs offenen Quellen und die direkte Seitenprüfung. Ihr Button wurde bis zur
+tatsächlich offenen Materialansicht bedient; keine Quelle wurde dabei bestätigt.
+
+Der einmal bewusst gestartete normale Heft-Nachtest überwand den bisherigen
+Kosten-Vorabbruch. Der Anbieter lieferte22.197 Eingabe- und3.011 Ausgabetokens,
+mit gemeldeten74.504µUSD. Die Ausgabe wurde anschließend alsinvalid_output
+mitvisual/scene_label_evidence verworfen. Kosten und alter Fehler bleiben
+vollständig gespeichert. Unbekannte Gebühren gelten weiterhin nicht als bekannt.
+Die private fehlerhafte Antwort wurde nicht protokolliert oder dauerhaft
+aufbewahrt; welcher einzelne Titel oder welches Label betroffen war, lässt sich
+aus dem bewusst begrenzten Fehlerbeleg nicht feststellen.
+
+Codeprüfung und künstliche Regression zeigen einen Unterschied zwischen beiden
+Erzeugungswegen: Kleine Paketaufträge koppeln unveränderliche Referenz, tatsächlichen
+Grafiktyp/Variante, Fachquelle und Aufdeckstufe im selben Schema-Zweig. Der normale
+Heftauftrag bot diese Felder bislang weitgehend unabhängig an.135 verwendet für
+neue nichtmathematische normale beziehungsweise explizite Heftrunden auf den beiden
+bereits freigegebenen erweiterten Routen dieselbe vorhandene Referenzkopplung.
+Eine bloße Originalwortfolge erhält dadurch keine unpassende allgemeine Pfeilszene,
+wenn keine vollständige belegte Pfeilfolge vorhanden ist. Quellenbelege und
+kanonische Beschriftungsprüfung bleiben unverändert; eine erfundene Beschriftung
+wird weiterhin verworfen. Das ist eine Einschränkung des angeforderten Vertrags
+vor dem Anbieteraufruf, keine nachträgliche Korrektur einer falschen Modellantwort.
+
+Es wird kein Paket erzeugt, keine Antwort umgeschrieben und keine feste
+Zweieranzahl übernommen: Bereits gebundene Aufgabenanzahl und Vorwissensfragen
+bleiben erhalten. Mathematik, Rückblicke, Klassenarbeits-/Hausaufgabenverträge,
+begonnene Runden und alte Anbieterwege werden nicht umgebunden. Fehlende geprüfte
+Darstellungen führen vor dem Versand zu einem ausdrücklichen Fehler mit0 Kosten;
+kein Ersatzinhalt und kein automatischer Anbieterretry. Die neue gemeinsame
+Hilfsfunktion nutzt denselben Quellen-/Referenzcode wie die vorhandenen Paketteile.
+
+Auch der historische Assistentenkopf zeigt bei noch unbestätigten Seiten wieder
+„Prüfen“ als aktuelle Phase, statt „Fertig“ hervorzuheben. Dies ist ausschließlich
+eine lesende UI-Projektion; Schultagsstatus, Antworten und Lernplan werden beim
+Lesen nicht umgeschrieben. Neue Regressionen prüfen gültige Originalvergleiche,
+weiterhin abgewiesene erfundene Labels, unveränderte Aufgabenzahlen, geschützte
+Spezialverträge sowie die sichtbare Phase ohne automatische Schreibanfragen.
+Eine neue echte Anbieterprüfung ist erst nach dieser nachgewiesenen Korrektur
+und Veröffentlichung vorgesehen; der134-Nachtest wird nicht als KI-Erfolg ausgegeben.
+Der neue normale Referenzvertrag verhindert außerdem ein zweites unabhängiges
+question.presentation-Panel außerhalb des gebundenen Erklärungsschritts. Die
+Frage muss aus ihrem Prompt verständlich sein; ihre Erklärungsgrafik bleibt im
+quellen- und stufengebundenen Schritt. Damit wird auch das sonst ungebundene
+vollständige Grafikunion-Schema nicht zusätzlich angefordert. Die vorhandenen
+Kostenregressionen mit40.000 künstlichen Zusatzbytes bleiben eine eigene
+Abnahmegrenze; Reservierungen werden für die neue Bindung nicht erhöht.

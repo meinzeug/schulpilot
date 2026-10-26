@@ -75,7 +75,7 @@ def bind_schema(schema, payload=None):
     return None
 
 
-def _bind_references(schema, payload):
+def _bind_references(schema, payload, *, unit_subject=None):
     """Bind the chosen immutable recipe and disclosure to the SAME step.
 
     Only a new planned request is affected. Full strict objects, ordinary refs
@@ -85,7 +85,7 @@ def _bind_references(schema, payload):
     from .visual_references import ORIGINAL_COMPARISONS
 
     context = payload.get("visual_context") or {}
-    if not enabled(payload) or not context.get("required"):
+    if (not enabled(payload) and unit_subject is None) or not context.get("required"):
         return
     definitions = schema.get("$defs", {})
     templates = {key: copy.deepcopy(definitions[key]) for key in
@@ -206,6 +206,10 @@ def _bind_references(schema, payload):
             node["anyOf"] = [bind_questions(branch, subject, group) for branch in node["anyOf"]]
         elif "explanation_steps" in node.get("properties", {}):
             node["properties"]["explanation_steps"] = steps_for(subject, group, introduction=False)
+            if unit_subject is not None:
+                # A second independent panel would bypass the reference/stage
+                # contract. New ordinary units use their bound explanation.
+                node["properties"]["presentation"] = {"type": "null"}
         return node
 
     def bind_units(node):
@@ -224,6 +228,16 @@ def _bind_references(schema, payload):
         fields["explanation_steps"] = steps_for(subject, group, introduction=True)
         fields["questions"]["items"] = bind_questions(fields["questions"]["items"], subject, group)
         return node
+
+    if unit_subject is not None:
+        fields = schema["properties"]
+        subjects = fields["subject"].get("enum", [])
+        if subjects and unit_subject not in subjects:
+            raise ValueError("Die Erklärgrafik gehört nicht zum gebundenen Fach.")
+        fields["subject"]["enum"] = [unit_subject]
+        fields["explanation_steps"] = steps_for(unit_subject, None, introduction=True)
+        fields["questions"]["items"] = bind_questions(fields["questions"]["items"], unit_subject, None)
+        return
 
     units = schema.get("properties", {}).get("units")
     if units is None:

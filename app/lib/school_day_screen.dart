@@ -1236,7 +1236,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
         failed && !technicalFailure && preparation?['can_retry'] != true;
     final step = stage == 'collecting'
         ? 0
-        : stage == 'ready'
+        : stage == 'ready' && pages.every((page) => page['confirmed'] == true)
         ? 2
         : 1;
     return PageFrame(
@@ -2692,7 +2692,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     final stage = day?['stage'] ?? 'collecting';
     final step = stage == 'collecting'
         ? 0
-        : stage == 'ready'
+        : stage == 'ready' && pages.every((page) => page['confirmed'] == true)
         ? 2
         : 1;
     final parent = !state.isChild;

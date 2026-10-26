@@ -8,6 +8,26 @@ import 'school_day_parts_113_test.dart' as parts;
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
+  for (final confirmed in [false, true]) {
+    testWidgets(
+      'Historical ready header reflects pending source review: $confirmed',
+      (tester) async {
+        final server = background.PreparationServer(
+          stage: 'ready',
+          pages: [background.source(1, confirmed: confirmed)],
+        );
+        server.archived = true;
+        await parts.openParts(tester, server);
+        final selected = tester.widget<Text>(
+          find.text(confirmed ? '3 Fertig' : '2 Prüfen'),
+        );
+        expect(selected.style?.fontWeight, FontWeight.w700);
+        parts.expectNoWrites(server);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final changed in [false, true]) {
     testWidgets('Six old parts have honest currentness: $changed', (
       tester,
