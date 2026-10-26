@@ -110,13 +110,18 @@ void main() {
         );
         expect(find.text('1 offener Hilfewunsch'), findsOneWidget);
         expect(find.text('Offene Pflichtaufträge: 1'), findsOneWidget);
+        expect(find.text('7 Aufgaben mit Antwort'), findsOneWidget);
+        expect(find.byType(ParentPracticeSummary), findsNothing);
         expect(
           tester.getTopLeft(find.text('1 offener Hilfewunsch')).dy,
-          lessThan(tester.getTopLeft(find.byType(ParentPracticeSummary)).dy),
+          lessThan(tester.getTopLeft(find.text('7 Aufgaben mit Antwort')).dy),
         );
         expect(find.text('Die letzten sieben Tage'), findsNothing);
         expect(find.text('Regelmäßig mit KI auswerten'), findsNothing);
         final before = f.requests.length;
+        await toggleParentDetails104(tester, 'Antworten genauer ansehen');
+        expect(find.byType(ParentPracticeSummary), findsOneWidget);
+        expect(f.requests.length, before);
         await toggleParentDetails104(tester, 'Fächer & Wochenrückblick');
         expect(find.text('Die letzten sieben Tage'), findsOneWidget);
         expect(f.requests.length, before);

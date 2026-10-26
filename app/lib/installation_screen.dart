@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
 import 'admin_workspace_ui.dart';
+import 'admin_material_review.dart';
 import 'settings_screen.dart';
 import 'ui.dart';
 
@@ -802,6 +803,10 @@ class _InstallationScreenState extends State<InstallationScreen>
   Widget providerSection() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      if (!widget.initial) ...[
+        AdminMaterialReviewSettings(widget.state, enabled: step == 2),
+        const SizedBox(height: 12),
+      ],
       ProviderForm(
         widget.state,
         Map<String, dynamic>.from(config!['provider']),

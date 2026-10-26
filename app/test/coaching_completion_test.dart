@@ -470,6 +470,11 @@ void main() {
       await _open(tester, fixture);
       expect(
         find.text('Gespeicherter Rückblick auf diese Runde.'),
+        findsNothing,
+      );
+      await _tap(tester, 'Vollständigen Rückblick ansehen');
+      expect(
+        find.text('Gespeicherter Rückblick auf diese Runde.'),
         findsOneWidget,
       );
       expect(

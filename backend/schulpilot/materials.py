@@ -238,9 +238,10 @@ def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)
     if material.purpose == "exam":
         from .exam_review_models import ExamReviewPage
         linked_exam = db.scalar(select(ExamReviewPage.exam_id).where(ExamReviewPage.material_id == material.id))
+    from .material_review import public_status
     from .source_lineage import block_data, learning_source
 
-    return material_data(material) | {"source_learning": learning_source(db, material), "source_block_refs": block_data(material), "supports_source_history": True} | ({"exam_id": linked_exam} if material.purpose == "exam" else {}) | {"duplicate_candidates": duplicate_sources(db, material),
+    return material_data(material) | {"material_review": public_status(db, material), "source_learning": learning_source(db, material), "source_block_refs": block_data(material), "supports_source_history": True} | ({"exam_id": linked_exam} if material.purpose == "exam" else {}) | {"duplicate_candidates": duplicate_sources(db, material),
         "has_image": bool(material.path), "fixed_example": bool(material.fixture_id),
         "processing_job": ({"id": extraction.id, "kind": extraction.kind, "status": extraction.status,
                             "error": extraction.error, "error_code": extraction.error_code} if extraction else None)}
@@ -546,7 +547,7 @@ def enqueue(db, p, child, kind, payload, idempotency, *, commit=True):
         payload["assignment_revision"] = db.get(Assignment, payload["assignment_id"]).revision
     existing = db.scalar(select(Job).where(Job.idempotency == key))
     if existing:
-        comparable = {k: v for k, v in existing.payload.items() if k not in ("controller_guard", "learning_entry_enabled", "labs_enabled")}
+        comparable = {k: v for k, v in existing.payload.items() if k not in ("controller_guard", "learning_entry_enabled", "labs_enabled", "auto_review_origin", "completion_origin", "ready_notice_receipts")}
         payload_comparable = {k: v for k, v in payload.items() if k not in ("learning_entry_enabled", "labs_enabled")}
         if existing.child_id != child.id or existing.kind != kind or comparable != payload_comparable:
             raise HTTPException(409, "Dieser Anfrageschlüssel wurde bereits für einen anderen Auftrag verwendet.")
@@ -558,6 +559,17 @@ def enqueue(db, p, child, kind, payload, idempotency, *, commit=True):
         source_pages = [db.get(Material, identifier, populate_existing=True) for identifier in source_ids]
         if source_pages and not any(material and material.child_id == child.id and usable_source(db, material) for material in source_pages):
             raise HTTPException(409, "Die gewählten Heftseiten enthalten noch keine verwendbare Lehrgrundlage. Bitte unsichere oder fehlerhafte Stellen zuerst prüfen.")
+    if kind in ("unit", "coach_practice", "controller_check", "package"):
+        from .study_authority import bind
+
+        payload["completion_origin"] = bind(db, p, child)
+    if (kind == "extract" and not payload.get("reprocess_guard")
+            and db.get(Material, payload["material_id"]).purpose == "notebook"):
+        from .material_review import origin
+
+        review_origin = origin(db, p, child)
+        if review_origin:
+            payload["auto_review_origin"] = review_origin
     rate_limit(db, "job:" + p.user.id, 30, 60, commit=False)
     # Atomically limit each child to one pending paid operation.
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"]))):

@@ -27,15 +27,19 @@ def events_for_child(db, child, current):
     for day in db.scalars(query):
         state = day.preparation or {}
         status, run_id = state.get("status"), state.get("run_id")
-        if (status not in ("needs_review", "needs_photo", "ready") or state.get("notice_status") != status
+        if (status not in ("needs_review", "needs_photo", "ready", "saved") or state.get("notice_status") != status
                 or not isinstance(run_id, str) or not re.fullmatch(r"[a-f0-9]{32}", run_id, re.ASCII)
                 or not notice_allowed(db, day)):
             continue
-        route = f"/after-school/{child.id}?day={day.id}"
-        if not valid_preparation_path(route):
+        from .ready_notifications import day_route
+
+        route = day_route(db, day, child) or f"/after-school/{child.id}?day={day.id}"
+        from .ready_notifications import valid_unit_path
+
+        if not (valid_preparation_path(route) or valid_unit_path(route)):
             continue
         result.append({"id": f"preparation:{day.id}:{run_id}:{status}",
-            "kind": "preparation_ready" if status == "ready" else "preparation_review",
+            "kind": "preparation_ready" if status in ("ready", "saved") else "preparation_review",
             "created": state["notice_created"], "route": route})
     return result
 

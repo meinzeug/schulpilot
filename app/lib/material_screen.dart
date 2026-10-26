@@ -1006,6 +1006,50 @@ class _MaterialReviewState extends State<MaterialReview>
   int? correctionRevision;
   String get correctionKey =>
       'source_correction:${widget.data['child_id']}:${widget.data['id']}';
+  Json? get automaticReview {
+    final value = widget.data['material_review'];
+    if (value is! Map ||
+        value['mode'] != 'automatic' ||
+        !const {
+          'checking',
+          'checked',
+          'checked_with_gaps',
+          'failed',
+        }.contains(value['status'])) {
+      return null;
+    }
+    return Json.from(value);
+  }
+
+  bool get automaticallyChecked =>
+      widget.data['confirmed'] == true &&
+      const {
+        'checked',
+        'checked_with_gaps',
+      }.contains(automaticReview?['status']);
+  Widget automaticReviewNotice() {
+    final review = automaticReview!;
+    final status = review['status'];
+    final title = switch (status) {
+      'checking' => 'Die KI gleicht Foto und Abschrift ab.',
+      'checked' => 'Foto und Abschrift automatisch abgeglichen.',
+      'checked_with_gaps' =>
+        'Automatisch abgeglichen · Lesestellen bleiben offen.',
+      _ => 'Der automatische Abgleich hat nicht geklappt.',
+    };
+    final message = review['message'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Notice(
+        '$title${message is String && message.trim().isNotEmpty ? '\n$message' : ''}',
+        warning: status == 'checked_with_gaps' || status == 'failed',
+        icon: status == 'checking'
+            ? Icons.hourglass_top_rounded
+            : Icons.info_outline_rounded,
+      ),
+    );
+  }
+
   DialogRoute<List<Json>>? taskPreviewRoute;
   final sourceToolRoutes = <DialogRoute<dynamic>, String>{};
   bool foreground = true;
@@ -1313,8 +1357,15 @@ class _MaterialReviewState extends State<MaterialReview>
       homework.text != (widget.data['homework'] as List).join('\n');
   void retainCorrection() {
     if (!current) return;
-    widget.state.collectionViews.remove(correctionKey);
-    if (!dirty || confirmedHere || widget.data['confirmed'] == true) return;
+    final preserveAutoConflict = automaticallyChecked && sourceConflict;
+    if (!preserveAutoConflict) {
+      widget.state.collectionViews.remove(correctionKey);
+    }
+    if (!dirty ||
+        confirmedHere ||
+        widget.data['confirmed'] == true && !preserveAutoConflict) {
+      return;
+    }
     if (content.text.runes.length > 24000 ||
         topic.text.runes.length > 160 ||
         homework.text.length > 12000) {
@@ -1378,7 +1429,7 @@ class _MaterialReviewState extends State<MaterialReview>
     correctionRevision = widget.data['revision'] as int?;
     widget.state.addListener(accountChanged);
     final saved = widget.state.collectionViews[correctionKey];
-    if (widget.data['confirmed'] != true &&
+    if ((widget.data['confirmed'] != true || automaticallyChecked) &&
         saved != null &&
         identical(saved['account'], account)) {
       subject.text = saved['subject'];
@@ -1804,7 +1855,9 @@ class _MaterialReviewState extends State<MaterialReview>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Notice(
-              'Diese Heftseite wurde inzwischen geändert. Deine Korrektur steht noch hier; lade die neue Fassung, bevor du sie bestätigst.',
+              automaticallyChecked
+                  ? 'Die KI hat die gespeicherte Abschrift inzwischen abgeglichen. Deine Korrektur bleibt hier erhalten und wird nicht automatisch übernommen.'
+                  : 'Diese Heftseite wurde inzwischen geändert. Deine Korrektur steht noch hier; lade die neue Fassung, bevor du sie bestätigst.',
               warning: true,
             ),
             Text(
@@ -1815,8 +1868,13 @@ class _MaterialReviewState extends State<MaterialReview>
             LearningContent(content.text),
             if (homework.text.isNotEmpty) Text(homework.text),
             OutlinedButton(
-              onPressed: () {
-                if (current) setState(resetSource);
+              onPressed: () async {
+                if (!current) return;
+                if (automaticallyChecked) {
+                  await discardCorrection();
+                } else {
+                  setState(resetSource);
+                }
               },
               child: Text('Gespeicherte Seite laden'),
             ),
@@ -1848,7 +1906,13 @@ class _MaterialReviewState extends State<MaterialReview>
                   : 'Deine Heftseite',
             ),
             Tag(
-              d['confirmed']
+              automaticReview != null
+                  ? (automaticallyChecked
+                        ? 'Automatisch abgeglichen'
+                        : automaticReview!['status'] == 'checking'
+                        ? 'KI-Abgleich läuft'
+                        : 'Abgleich offen')
+                  : d['confirmed']
                   ? (d['purpose'] == 'exam'
                         ? 'Originaltext bestätigt'
                         : 'Abschrift bestätigt')
@@ -1859,6 +1923,7 @@ class _MaterialReviewState extends State<MaterialReview>
         SizedBox(height: 12),
         if (d['purpose'] == 'exam') examReturn(d),
         pageActions(maintenance: d['purpose'] != 'exam'),
+        if (automaticReview != null) automaticReviewNotice(),
         if (dirty && !confirmedHere)
           Semantics(
             liveRegion: true,
@@ -2312,6 +2377,7 @@ class _MaterialReviewState extends State<MaterialReview>
       children: [
         if (d['purpose'] == 'exam') examReturn(d),
         pageActions(maintenance: false),
+        if (automaticReview != null) automaticReviewNotice(),
         if (dirty && !confirmedHere)
           Semantics(
             liveRegion: true,
@@ -2512,8 +2578,14 @@ class _MaterialReviewState extends State<MaterialReview>
                 ] else if (confirmed) ...[
                   SizedBox(height: 14),
                   Tooltip(
-                    message: 'Du hast die Abschrift übernommen. Das bestätigt den Wortlaut, nicht die fachliche Richtigkeit jeder Aussage.',
-                    child: Tag('Text übernommen'),
+                    message: automaticallyChecked
+                        ? 'Ein zweiter KI-Durchgang hat Foto und Abschrift abgeglichen. Das ist keine fachliche Richtigkeitsgarantie.'
+                        : 'Du hast die Abschrift übernommen. Das bestätigt den Wortlaut, nicht die fachliche Richtigkeit jeder Aussage.',
+                    child: Tag(
+                      automaticallyChecked
+                          ? 'Automatisch abgeglichen'
+                          : 'Text übernommen',
+                    ),
                   ),
                   if (readingUncertainties.isNotEmpty)
                     ExpansionTile(
@@ -2530,8 +2602,10 @@ class _MaterialReviewState extends State<MaterialReview>
                       tilePadding: EdgeInsets.zero,
                       title: const Text('Abschrift und Quellenprüfung'),
                       children: [
-                        const Text(
-                          '„Text übernommen“ bestätigt den gelesenen Wortlaut. Schülerlösungen und Korrekturen bleiben im Original erhalten und werden getrennt vom geprüften Lernstoff behandelt.',
+                        Text(
+                          automaticallyChecked
+                              ? 'Foto und Abschrift wurden automatisch abgeglichen. Das bestätigt nicht die fachliche Richtigkeit. Schülerlösungen und Korrekturen bleiben im Original erhalten und werden getrennt vom geprüften Lernstoff behandelt.'
+                              : '„Text übernommen“ bestätigt den gelesenen Wortlaut. Schülerlösungen und Korrekturen bleiben im Original erhalten und werden getrennt vom geprüften Lernstoff behandelt.',
                         ),
                         if (d['source_learning']['factual_status'] ==
                             'not_assessed')

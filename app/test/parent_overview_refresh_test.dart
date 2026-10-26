@@ -174,7 +174,7 @@ void main() {
       home.data['practice_summary']['practiced_tasks'] = 3;
       home.pending.single.complete(home.reply());
       await tester.pumpAndSettle();
-      expect(find.text('3 Aufgaben geübt'), findsOneWidget);
+      expect(find.text('3 Aufgaben mit Antwort'), findsOneWidget);
       expect(identical(tester.element(overview), element), isTrue);
       expect(scroll.pixels, closeTo(offset, .01));
       expect(
@@ -291,12 +291,12 @@ void main() {
       home.data['practice_summary']['practiced_tasks'] = 9;
       home.pending.first.complete(home.reply());
       await tester.pumpAndSettle();
-      expect(find.text('9 Aufgaben geübt'), findsNothing);
+      expect(find.text('9 Aufgaben mit Antwort'), findsNothing);
       expect(home.overviewRequests, hasLength(3));
       home.data['practice_summary']['practiced_tasks'] = 4;
       home.pending.last.complete(home.reply());
       await tester.pumpAndSettle();
-      expect(find.text('4 Aufgaben geübt'), findsOneWidget);
+      expect(find.text('4 Aufgaben mit Antwort'), findsOneWidget);
     },
   );
 
@@ -316,7 +316,7 @@ void main() {
       home.data['practice_summary']['practiced_tasks'] = 9;
       home.pending.first.complete(home.reply());
       await tester.pumpAndSettle();
-      expect(find.text('9 Aufgaben geübt'), findsNothing);
+      expect(find.text('9 Aufgaben mit Antwort'), findsNothing);
       expect(
         identical(tester.element(find.byType(ParentOverview)), element),
         isTrue,
@@ -325,7 +325,7 @@ void main() {
       home.data['practice_summary']['practiced_tasks'] = 4;
       home.pending.last.complete(home.reply());
       await tester.pumpAndSettle();
-      expect(find.text('4 Aufgaben geübt'), findsOneWidget);
+      expect(find.text('4 Aufgaben mit Antwort'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -339,7 +339,7 @@ void main() {
     home.data['practice_summary']['practiced_tasks'] = 9;
     home.pending.single.complete(home.reply());
     await tester.pumpAndSettle();
-    expect(find.text('9 Aufgaben geübt'), findsNothing);
+    expect(find.text('9 Aufgaben mit Antwort'), findsNothing);
     await tick(tester, 20);
     expect(home.overviewRequests, hasLength(2));
   });

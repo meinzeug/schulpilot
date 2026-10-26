@@ -87,14 +87,17 @@ void main() {
     testWidgets(
       'read failure still opens the authorized target from ${bell ? 'bell' : 'page'}',
       (tester) async {
-        var posts = 0;
+        final reads = <List<String>>[];
         final state =
             AppState(
                 api: Api(
                   base: 'https://example.invalid/api',
                   client: MockClient((r) async {
                     if (r.method == 'POST') {
-                      posts++;
+                      expect(r.url.path, '/api/notifications/inbox/read');
+                      reads.add(
+                        (jsonDecode(r.body)['ids'] as List).cast<String>(),
+                      );
                       return reply({'detail': 'Synthetic failure'}, 503);
                     }
                     if (r.url.path.endsWith('/inbox')) {
@@ -131,11 +134,20 @@ void main() {
         await tester.ensureVisible(target);
         await tester.pumpAndSettle();
         expect(target.hitTestable(), findsOneWidget);
+        expect(reads, [
+          ['message:synthetic'],
+        ]);
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
+        expect(reads.length, 1); // No automatic retry after the failed receipt.
         await tester.tap(target);
         await tester.pumpAndSettle();
         expect(router.routeInformationProvider.value.uri.path, '/target');
         expect(state.inbox.unread, 1);
-        expect(posts, 1);
+        expect(reads, [
+          ['message:synthetic'],
+          ['message:synthetic'], // A deliberate click retries only this event.
+        ]);
         expect(find.textContaining('bleibt ungelesen'), findsOneWidget);
         state.inbox.clear();
       },

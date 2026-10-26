@@ -139,11 +139,20 @@ def recent_events(db, user, current=None, *, direct_messages=False, direct_exams
                 continue
             subjects = sorted({r.subject for r in source_rows if r.subject})
             prefix = f"{count} Heftseite{'n' if count != 1 else ''}" + (" · " + ", ".join(subjects[:2]) + (" …" if len(subjects) > 2 else "") if subjects else "")
+            from .ready_notifications import day_route
+
+            route = day_route(db, day, children[row.child_id]) or route
             current_status = (day.preparation or {}).get("status")
             suffix = {"needs_review":"Bitte prüfen", "needs_photo":"Ein Foto neu aufnehmen", "processing":"Wird vorbereitet",
                       "ready":"Lernpaket bereit", "saved":"Für später gespeichert", "failed":"Vorbereitung noch offen", "blocked":"Vorbereitung noch offen"}.get(current_status, "Heftseiten öffnen")
             title = f"{prefix} · {suffix}"
         add("message:" + row.id, row.child_id, row.created, title, route, row.kind)
+
+    from .ready_notifications import events_for_child as round_events
+
+    for child in children.values():
+        for event in round_events(db, child, current, retention=RETENTION_DAYS*86400):
+            add(event["id"], child.id, event["created"], event["title"], event["route"], event["kind"])
 
     for model, kind, title in (
         (LanguageProject, "language_ready", "Deine Sprachübung ist bereit"),

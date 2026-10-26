@@ -248,6 +248,9 @@ def source_snapshot(material):
 
 def extraction_receipt(db, job, config, image_bytes, result=None):
     from .extraction import OCR_SYSTEM, TranscriptionOutput
+    from .material_review import CHECK_SYSTEM
+
+    prompt = CHECK_SYSTEM if job.payload.get("material_check") else OCR_SYSTEM
 
     width = height = None
     if image_bytes:
@@ -277,7 +280,7 @@ def extraction_receipt(db, job, config, image_bytes, result=None):
         "preprocessing_version": origin.normalization_version if origin else "historical_unknown",
         "upload_geometry": origin.geometry if origin else None,
         "client_preprocessing": "not_reported",
-        "base_prompt_digest": hashlib.sha256(OCR_SYSTEM.encode()).hexdigest(),
+        "base_prompt_digest": hashlib.sha256(prompt.encode()).hexdigest(),
         "base_schema_digest": digest(TranscriptionOutput.model_json_schema()),
         "provider": config["provider"],
         "model": config["model"],
@@ -289,9 +292,9 @@ def extraction_receipt(db, job, config, image_bytes, result=None):
     }
 
 
-def save_snapshot(db, material, cause, receipt=None):
+def save_snapshot(db, material, cause, receipt=None, *, allow_empty=False):
     """Immutable (including unconfirmed retry snapshots); caller owns transaction."""
-    if not material.content or not material.content.strip():
+    if not allow_empty and (not material.content or not material.content.strip()):
         return None
     snapshot = source_snapshot(material)
     latest = db.scalar(

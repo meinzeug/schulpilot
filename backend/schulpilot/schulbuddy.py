@@ -233,19 +233,29 @@ def scope_context(db, p, scope):
 
         safe = learning_source(db, m)
         current_guard.append(["source_safety", m.id, safe["policy_version"], safe["factual_status"], fingerprint(safe)])
+        reading = None
+        from .schulbuddy_reading import is_page, projection
+
+        if is_page(normalized, m):
+            reading = projection(m, safe)
+            current_guard.append(["literal_notebook_reading", m.id, fingerprint(reading)])
         if m.purpose == "exam":
             content = m.content  # Literal review evidence, explicitly not a solution.
+        elif reading is not None:
+            content = reading["content"]
         else:
             content = safe["content"]
-            if safe["exclusions"]:
-                payload.setdefault("source_exclusions", []).append({"source": f"p{index+1}", "reasons": sorted({row["reason"] for row in safe["exclusions"]})})
+        if safe["exclusions"] and m.purpose != "exam":
+            payload.setdefault("source_exclusions", []).append({"source": f"p{index+1}", "reasons": sorted({row["reason"] for row in safe["exclusions"]})})
         if not content.strip():
             if payload.get("material_page"):
                 payload["source_review"] = {"confirmation_required": True,
                     "notice": "Diese Quellenfassung enthält ungeklärte Lesestellen oder Korrekturen. Bitte zuerst das Original prüfen."}
             continue
-        refs.append({"id": m.id, "revision": m.revision, "ref": f"p{index+1}", "label": f"{m.subject} · {m.topic}"})
+        refs.append({"id": m.id, "revision": m.revision, "ref": f"p{index+1}", "label": f"{m.subject} · {m.topic}",
+            **({"reading_fingerprint": fingerprint(reading)} if reading is not None else {})})
         payload["sources"].append({"ref": f"p{index+1}", "label": refs[-1]["label"], "content": content,
+            **({key: value for key, value in reading.items() if key != "content"} if reading is not None else {}),
             **({"evidence_kind": "written_work_original", "authoritative_solution": False} if m.purpose == "exam" else {})})
     if unit or materials or scope.page_kind in ("today", "learn", "words", "homework", "notebooks", "progress", "plan"):
         from .learning_knowledge import buddy_context
@@ -278,11 +288,18 @@ def source_changed(db, turn):
         except (HTTPException, ValueError, KeyError):
             return True
     pages = {}
+    from .schulbuddy_reading import is_page, projection
+
     for ref in turn.source_revisions:
         material = db.get(Material, ref["id"])
         if not material or material.child_id != turn.child_id or material.revision != ref["revision"] or not material.confirmed:
             return True
-        pages[material.id] = material.content if material.purpose == "exam" else learning_source(db, material)["content"]
+        if ref.get("reading_fingerprint"):
+            if not is_page(turn.scope, material) or not material.content.strip():
+                return True
+            if fingerprint(projection(material, learning_source(db, material))) != ref["reading_fingerprint"]:
+                return True
+        pages[material.id] = material.content if material.purpose == "exam" or is_page(turn.scope, material) else learning_source(db, material)["content"]
     for citation in (turn.reply or {}).get("sources", []):
         if citation.get("material_id") not in pages or citation.get("quote", "") not in pages[citation["material_id"]]:
             return True

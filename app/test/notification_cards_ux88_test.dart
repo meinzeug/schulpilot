@@ -119,11 +119,15 @@ void main() {
   );
 
   scenario(
-    'RR012 unread filter narrows cards without a write and restores read history',
+    'RR012 unread filter keeps visible receipts stable and restores read history',
     (tester) async {
       final writes = <http.Request>[];
+      final pending = Completer<http.Response>();
       await display(tester, (request) async {
-        if (request.method != 'GET') writes.add(request);
+        if (request.method == 'POST') {
+          writes.add(request);
+          return pending.future;
+        }
         return reply({
           'items': [notice('new'), notice('old', read: true)],
           'unread': 1,
@@ -133,10 +137,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Künstliche Meldung new'), findsOneWidget);
       expect(find.text('Künstliche Meldung old'), findsNothing);
+      expect(writes.length, 1);
+      expect(jsonDecode(writes.single.body), {
+        'ids': ['new'],
+      });
+      pending.complete(reply({}));
+      await tester.pumpAndSettle();
+      expect(find.text('Künstliche Meldung new'), findsOneWidget);
       await tester.tap(find.text('Alle Neuigkeiten'));
       await tester.pumpAndSettle();
       expect(find.text('Künstliche Meldung old'), findsOneWidget);
-      expect(writes, isEmpty);
+      expect(writes.length, 1);
     },
   );
 
@@ -313,12 +324,13 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('notification-bell')));
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('4 von 6 geladenen Neuigkeiten'),
-        findsOneWidget,
+      expect(find.textContaining('6 geladene Neuigkeiten'), findsOneWidget);
+      final list = tester.widget<ListView>(
+        find.byKey(const ValueKey('notification-preview-scroll')),
       );
-      expect(find.text('Künstliche Meldung 3'), findsOneWidget);
-      expect(find.text('Künstliche Meldung 4'), findsNothing);
+      expect(list.semanticChildCount, 6);
+      expect(find.text('Künstliche Meldung 0').hitTestable(), findsOneWidget);
+      expect(find.text('Künstliche Meldung 5').hitTestable(), findsNothing);
     },
   );
   scenario(
@@ -352,19 +364,16 @@ void main() {
       expect(find.text('Künstliche Meldung alpha'), findsNothing);
       expect(find.text('Künstliche Meldung beta'), findsOneWidget);
       expect(gets, 1);
-      expect(writes, isEmpty);
-      await tester.ensureVisible(find.text('Angezeigte als gelesen markieren'));
-      await tester.tap(find.text('Angezeigte als gelesen markieren'));
-      await tester.pumpAndSettle();
-      expect(writes, [
-        {
-          'ids': ['beta'],
-        },
-      ]);
+      expect(writes.expand((write) => write['ids'] as List).toSet(), {
+        'alpha',
+        'beta',
+      });
+      final visibleWrites = writes.length;
       await tester.ensureVisible(find.text('Suche und Zusatzfilter leeren'));
       await tester.tap(find.text('Suche und Zusatzfilter leeren'));
       await tester.pumpAndSettle();
       expect(find.text('Künstliche Meldung alpha'), findsOneWidget);
+      expect(writes.length, visibleWrites);
     },
   );
 

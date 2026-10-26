@@ -158,12 +158,17 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final requests = <String>[];
+        var acknowledged = false;
         final state =
             AppState(
                 api: Api(
                   base: 'https://example.invalid/api',
                   client: MockClient((r) async {
                     requests.add('${r.method} ${r.url.path}');
+                    if (r.method == 'POST' &&
+                        r.url.path.endsWith('/inbox/read')) {
+                      acknowledged = true;
+                    }
                     dynamic body = switch (r.url.path) {
                       '/api/notifications/inbox' => {
                         'items': [
@@ -175,10 +180,10 @@ void main() {
                             'title': 'Deine Eltern haben geantwortet',
                             'kind': 'reply',
                             'route': '/settings',
-                            'read': false,
+                            'read': acknowledged,
                           },
                         ],
-                        'unread': 1,
+                        'unread': acknowledged ? 0 : 1,
                       },
                       '/api/notifications/config' => {
                         'available': false,
@@ -240,11 +245,15 @@ void main() {
         expect(find.text('Deine Eltern haben geantwortet'), findsOneWidget);
         expect(router.routeInformationProvider.value.uri.path, '/app');
         expect(find.text('Alle anzeigen'), findsOneWidget);
-        expect(requests.every((r) => r.startsWith('GET')), isTrue);
+        expect(requests.where((r) => r.startsWith('POST')), [
+          'POST /api/notifications/inbox/read',
+        ]);
         await tester.tap(find.byKey(const ValueKey('notifications-all')));
         await tester.pumpAndSettle();
         expect(find.textContaining('Deine Eltern können'), findsOneWidget);
-        expect(requests.every((r) => r.startsWith('GET')), isTrue);
+        expect(requests.where((r) => r.startsWith('POST')), [
+          'POST /api/notifications/inbox/read',
+        ]);
         await tester.tap(find.text('Deine Eltern haben geantwortet'));
         await tester.pumpAndSettle();
         expect(find.text('Antwort ansehen'), findsOneWidget);

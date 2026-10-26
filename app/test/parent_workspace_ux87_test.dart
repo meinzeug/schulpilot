@@ -828,10 +828,11 @@ void main() {
       f.summary['assignments'] = [
         {...f.summary['assignments'][0], 'source_status': 'needs_review'},
       ];
+      f.summary['day_summary']['help_requests'] = 0;
       await f.mount(tester, path: '/overview');
       expect(find.text('Offene Pflichtaufträge: 0'), findsOneWidget);
-      expect(find.text('1 Auftragsquelle prüfen'), findsOneWidget);
-      await click(tester, 'Aufträge im Lernplan prüfen');
+      expect(find.text('1 Auftragsquelle zu prüfen'), findsOneWidget);
+      await click(tester, 'Auftragsquellen ansehen');
       expect(find.byType(ParentPlanScreen), findsOneWidget);
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);
       await tester.pumpWidget(const SizedBox());
@@ -893,6 +894,13 @@ void main() {
       expect(find.text('Gespeicherte Seiten & Tagespakete'), findsOneWidget);
       expect(find.text('31 gespeicherte Seiten insgesamt'), findsOneWidget);
       expect(find.text('Heutige Heftseiten & Vorbereitung'), findsNothing);
+      expect(
+        find.text('Gespeicherte Übungsbelege im Detail ansehen'),
+        findsNothing,
+      );
+      final before = f.requests.length;
+      await openParentDetails103(tester, 'Antworten genauer ansehen');
+      expect(f.requests.length, before);
       await click(tester, 'Gespeicherte Übungsbelege im Detail ansehen');
       expect(find.text('Belege alle · alle'), findsOneWidget);
       expect(f.requests.where((r) => r.method != 'GET'), isEmpty);

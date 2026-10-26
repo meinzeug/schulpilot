@@ -274,12 +274,20 @@ def _legacy_part_migration(db, day, state):
         and usage.cost_micros is not None and usage.cost_micros > 0)
 
 
-def _prepare_parts(db, day, child, state, source_pages):
+def _prepare_parts(db, day, child, state, source_pages, *, automatic=False):
     """Only conscious submit can bind a plan; small new packages remain legacy."""
     from .package_partitions import build_plan
     from .school_day import package_plan
 
-    if not _parts_enabled(source_pages):
+    allowed = _parts_enabled(source_pages)
+    if automatic:
+        from .material_review import authority as review_authority
+        from .material_review import pipeline_ready
+
+        review_authority(db, child.id, state.get("review_origin"))
+        _check_sources(db, day, state)
+        allowed = bool(source_pages) and all(not m.synthetic for m in source_pages) and pipeline_ready(db, day, source_pages)
+    if not allowed:
         return {}
     if _current_plan(db, day, child, state):
         _part_outputs(state, state["package_plan"])
@@ -320,7 +328,7 @@ def preparation_data(db, day, child=None):
     )
     job = db.get(Job, state.get("job_id")) if state.get("job_id") else None
     status, error = state.get("status", "idle"), state.get("error")
-    if status == "processing" and job and job.status == "failed":
+    if status == "processing" and job and job.status == "failed" and not job.payload.get("material_check"):
         status, error = "failed", job.error
     current = [{"id": m.id, "revision": m.revision} for m in source_pages]
     can_retry = status in ("failed", "blocked") and bool(source_pages)
@@ -426,6 +434,10 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
     previous = next((r for r in requests if r["key"] == key_hash), None)
     if previous and previous["fingerprint"] != fingerprint:
         raise HTTPException(409, "Dieser Anfrageschlüssel gehört zu einem anderen Stand der Heftseiten.")
+    from .material_review import origin
+
+    review_origin = origin(db, p, child)
+    policy_changed = bool(review_origin and state.get("review_origin") != review_origin)
     same = state.get("sources") == snapshot and state.get("day_revision") == day.revision
     old_job = db.get(Job, state.get("job_id")) if state.get("job_id") else None
     status = "failed" if state.get("status") == "processing" and old_job and old_job.status == "failed" else state.get("status")
@@ -433,6 +445,7 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
     if previous or (
         same
         and not completed_review
+        and not policy_changed
         and status in ("processing", "needs_review", "needs_photo", "ready", "saved")
     ):
         return
@@ -472,6 +485,7 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
         "learning_entry_enabled": bool(learning_entry_enabled),
         "labs_enabled": "labs-v1" in getattr(p.session, "request_capabilities", ()),
         "family_id": child.family_id,
+        "review_origin": review_origin,
         "sources": snapshot,
         "day_revision": day.revision,
         "error": None,
@@ -613,6 +627,8 @@ def _queue(db, day, child, family, state, kind, payload):
             + (":part:" + str(payload["package_partition"]) + ":" + str(starts)
                if payload.get("package_partition") is not None else ""),
     )
+    if kind == "extract" and state.get("review_origin"):
+        job.payload = {**job.payload, "auto_review_origin": state["review_origin"]}
     db.add(job)
     db.flush()
     reserve(
@@ -680,9 +696,14 @@ def _advance(db, day):
     if job:
         if job.status in ACTIVE:
             return
-        if job.status == "failed":
-            _write(day, state, status="failed", error=job.error)
-            return
+        if job.status == "failed" and not job.payload.get("material_check"):
+            if state.get("review_origin") and job.kind == "extract":
+                from .material_review import hold_first_failure
+
+                hold_first_failure(db, day, state, job)
+            else:
+                _write(day, state, status="failed", error=job.error)
+                return
         if job.kind == "package" and job.status == "completed" and state.get("package_plan"):
             _advance_parts(db, day, child, family, state, job)
             return
@@ -695,11 +716,16 @@ def _advance(db, day):
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(ACTIVE))):
         raise ProviderError("Für dieses Kind läuft bereits ein anderer Auftrag. Bitte später erneut versuchen.")
     source_pages = _pages(db, day)
-    waiting = next((m for m in source_pages if m.status == "uploaded" and not m.confirmed), None)
+    from .material_review import advance_day, held, pipeline_ready
+
+    if state.get("review_origin") and advance_day(db, day, child, family, state, source_pages):
+        return
+    waiting = next((m for m in source_pages if m.status == "uploaded" and not m.confirmed
+                    and not (state.get("review_origin") and held(db, m))), None)
     if waiting:
         _queue(db, day, child, family, state, "extract", {"material_id": waiting.id})
         return
-    if any(not m.confirmed for m in source_pages):
+    if not pipeline_ready(db, day, source_pages):
         status = "needs_photo" if any(m.status == "unreadable" for m in source_pages) else "needs_review"
         _notify(db, day, state, status)
         _write(day, state, status=status, phase="review", job_id=None, error=None)
@@ -708,6 +734,16 @@ def _advance(db, day):
     from .source_lineage import usable_source
 
     if not any(usable_source(db, material) for material in source_pages):
+        if state.get("review_origin"):
+            # Photos remain in the collection even when none is a safe learning
+            # source. This completes storage, never an invented learning path.
+            if day.stage != "ready":
+                day.stage = "ready"
+                day.revision += 1
+            _write(day, state, status="saved", phase="complete", job_id=None,
+                   day_revision=day.revision, error=None)
+            _notify(db, day, state, "saved")
+            return
         raise ProviderError("Die Heftseiten enthalten noch keine verwendbare Lehrgrundlage. Bitte unsichere oder fehlerhafte Stellen zuerst prüfen.")
 
     if sum(len(m.content) for m in source_pages) > MAX_CONTENT:
@@ -719,6 +755,13 @@ def _advance(db, day):
             raise ProviderError("Die neuen Heftquellen sind noch ungeklärt. Bitte zuerst die markierten Stellen prüfen.")
         _saved(db, day, state)
         return
+    if state.get("review_origin") and not state.get("package_plan"):
+        # The explicit automatic submission already authorized finite package
+        # preparation. Bind the same existing part plan only after all image
+        # checks have settled; never fall back to one giant legacy request.
+        part_state = _prepare_parts(db, day, child, state, source_pages, automatic=True)
+        if part_state:
+            state.update(part_state)
     if state.get("package_plan"):
         _advance_parts(db, day, child, family, state, job)
         return
@@ -751,7 +794,9 @@ def advance(day_id):
             if not db.execute(update(Child).where(Child.id == day.child_id).values(grade=Child.grade)).rowcount:
                 return
             db.refresh(day)
+            before = _state(day)
             _advance(db, day)
+            return before != _state(day)
     except Exception as error:
         # Provider/API exceptions contain controlled messages only; no raw data.
         message = (
@@ -789,5 +834,7 @@ def advance_one():
                 .limit(100)
             )
         )
+    changed = False
     for day_id in ids:
-        advance(day_id)
+        changed = advance(day_id) or changed
+    return changed

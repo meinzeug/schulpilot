@@ -972,7 +972,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if not image_bytes:
             raise ProviderError("Für die Materialerkennung fehlt das Foto.")
         catalog_context = payload.get("catalog_context")
+        has_check = "transcription_check" in payload
+        check = payload.get("transcription_check")
         payload = request_payload()
+        if has_check:
+            from .material_review import check_request
+
+            payload = check_request(check)
         if catalog_context:
             payload["catalog_context"] = catalog_context
     model_type = {
@@ -1280,6 +1286,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         schema["properties"].pop("next_unit")
         schema["required"].remove("next_unit")
     instructions = system_text(function, review_only=review_only)
+    if function == "extract" and payload.get("transcription_check"):
+        from .material_review import CHECK_SYSTEM
+
+        instructions = CHECK_SYSTEM
     if function == "unit" and payload.get("parent_topic"):
         instructions += ("\nDies ist ein ausdrücklich bestätigtes Elternthema ohne Heftfoto. goal benennt den erlaubten Stoff. "
                          "Führe die dazu nötigen fachlichen Grundlagen knapp und altersgerecht ein, bevor du sie üben lässt. "
@@ -1670,8 +1680,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         try:
             from .notebook_fraction_expansions import bind_schema as bind_notebook_expansion
+            from .review_fraction_plan import bind_schema as bind_review_fraction_plan
 
-            unit_composition = bind_notebook_expansion(schema, payload)
+            unit_composition = bind_review_fraction_plan(schema, payload)
+            if unit_composition is None:
+                unit_composition = bind_notebook_expansion(schema, payload)
             if unit_composition is None:
                 from .material_fraction_expansions import bind_schema as bind_material_expansion
 
@@ -1849,10 +1862,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .material_fraction_expansions import HISTORY as MATERIAL_EXPANSION_HISTORY
         from .notebook_fraction_compositions import HISTORY_KEY as NOTEBOOK_COMPOSITION_HISTORY
         from .notebook_fraction_expansions import HISTORY_KEY as NOTEBOOK_EXPANSION_HISTORY
+        from .review_fraction_plan import HISTORY as REVIEW_FRACTION_HISTORY
         from .unit_multiples_common import HISTORY_KEY as MULTIPLES_HISTORY
 
         outgoing_payload = {key: value for key, value in outgoing_payload.items()
-            if key not in (COACH_EXPANSION_HISTORY, MATERIAL_EXPANSION_HISTORY, NOTEBOOK_COMPOSITION_HISTORY,
+            if key not in (REVIEW_FRACTION_HISTORY, COACH_EXPANSION_HISTORY, MATERIAL_EXPANSION_HISTORY, NOTEBOOK_COMPOSITION_HISTORY,
                 NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY)}
     from .explanation_guidance import rules as explanation_rules
 
@@ -2315,6 +2329,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             from .unit_multiples_common import validate_output as validate_multiples_output
 
             validate_multiples_output(payload, data)
+            from .review_fraction_plan import validate_output as validate_review_fraction_plan
+
+            validate_review_fraction_plan(payload, data)
         if payload.get("learning_entry"):
             from .learning_entry import validate_entry_output
 

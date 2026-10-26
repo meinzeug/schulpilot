@@ -484,6 +484,8 @@ void main() {
       final h = Harness();
       h.state.user = {'id': 'synthetic-parent', 'role': 'parent'};
       await h.open(t);
+      expect(find.text('Der fertige Rückblick bleibt da.'), findsNothing);
+      await click(t, 'Vollständigen Rückblick ansehen');
       expect(find.text('Der fertige Rückblick bleibt da.'), findsOneWidget);
       expect(find.text(retry), findsNothing);
       expect(find.text(rounds), findsNothing);

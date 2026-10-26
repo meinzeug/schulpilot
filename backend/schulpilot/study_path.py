@@ -103,7 +103,9 @@ def task_briefs(items, previous_prompts, phase, count, *, contents=None):
 
 
 def sources(db, day):
-    items = pages(db, day)
+    from .material_review import held
+
+    items = [m for m in pages(db, day) if not held(db, m)]
     if not items or any(not m.confirmed or not m.content.strip() for m in items):
         raise ProviderError("Bitte zuerst alle Heftseiten prüfen und bestätigen.")
     from .learning_sources import UnusableSources, project
@@ -270,7 +272,9 @@ def plan_sources_current(db, day):
 
 def path_data(db, day, child):
     value = day.learning_plan or {}
-    pending_review = [m for m in pages(db, day) if not m.confirmed or not m.content.strip()]
+    from .material_review import held
+
+    pending_review = [m for m in pages(db, day) if not held(db, m) and (not m.confirmed or not m.content.strip())]
     result = {
         "available": bool(value),
         "id": day.id,
@@ -451,6 +455,7 @@ def generate(
             "source_hash": value["source_hash"],
             "planning": planning_fingerprint(db, child),
             "study_authority": authority,
+            "completion_origin": authority,
         },
     )
     db.add(job)

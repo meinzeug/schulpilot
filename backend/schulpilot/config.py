@@ -49,6 +49,7 @@ class Settings:
     codex_web_search: bool = os.getenv(
         "CODEX_WEB_SEARCH", "false" if os.getenv("CODEX_AUTH_MODE", "api_key") == "account" else "true"
     ) == "true"
+    material_review_mode: str = "manual"
     default_plan: str = "Pilot"
     default_child_limit: int = 4
     default_call_limit: int = 100
@@ -64,6 +65,7 @@ settings = Settings()
 # Paths, database credentials, encryption key and worker privileges stay local.
 RUNTIME_FIELDS = frozenset(
     {
+        "material_review_mode",
         "smtp_host",
         "smtp_port",
         "smtp_user",

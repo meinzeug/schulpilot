@@ -174,7 +174,7 @@ class CoachingPanel extends StatelessWidget {
         onQuestionExplanation: onQuestionExplanation,
       );
     }
-    return Column(
+    final completeReport = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SavedAttemptTools(
@@ -349,6 +349,48 @@ class CoachingPanel extends StatelessWidget {
         ],
       ],
     );
+    if (coach?['status'] != 'ready') return completeReport;
+    final questions = unit['questions'] as List? ?? [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Panel(
+          color: context.palette.mint,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              heading('Deine Lernbegleitung'),
+              const SizedBox(height: 12),
+              Text(
+                '${_RoundFacts(questions).answered} von ${questions.length} Aufgaben bearbeitet',
+              ),
+              const SizedBox(height: 12),
+              _roundResultScope(
+                state,
+                unit,
+                RoundResultCounts(questions: questions),
+              ),
+              if (coach?['next_review'] != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Später wiederholen: ${_reviewDate(coach!['next_review'])}',
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _roundResultScope(
+          state,
+          unit,
+          RoundQuestionCards(questions: questions),
+        ),
+        ExpansionTile(
+          title: const Text('Vollständigen Rückblick ansehen'),
+          children: [completeReport],
+        ),
+      ],
+    );
   }
 }
 
@@ -455,10 +497,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                     state.api.token,
                     jsonEncode(questions),
                   ),
-                  builder: (_) => RoundAnswerExplorer(
-                    questions: questions,
-                    key: ValueKey(unit['id']),
-                  ),
+                  builder: (_) => RoundResultCounts(questions: questions),
                 ),
                 SizedBox(height: 18),
               ] else ...[
@@ -487,8 +526,11 @@ class _ChildCoachingPanel extends StatelessWidget {
                 Text(
                   'Danke für deinen eigenen Beitrag. Du kannst jetzt eine Pause machen.',
                 ),
-                for (final question in questions)
-                  _SavedQuestionResult(Json.from(question)),
+                _roundResultScope(
+                  state,
+                  unit,
+                  RoundQuestionCards(questions: questions),
+                ),
               ] else if (!ready) ...[
                 Text('Dein Ergebnis ist gespeichert.'),
                 SizedBox(height: 8),
@@ -496,8 +538,11 @@ class _ChildCoachingPanel extends StatelessWidget {
                   'Die zusätzliche KI-Erklärung fehlt gerade. Das zeigen deine Antworten:',
                 ),
                 SizedBox(height: 12),
-                for (final question in unit['questions'] as List? ?? [])
-                  _SavedQuestionResult(Json.from(question)),
+                _roundResultScope(
+                  state,
+                  unit,
+                  RoundQuestionCards(questions: questions),
+                ),
                 if (coach?['can_retry'] == true) ...[
                   SizedBox(height: 18),
                   ActionButton(
@@ -659,6 +704,14 @@ class _ChildCoachingPanel extends StatelessWidget {
             ],
           ),
         ),
+        if (ready && questions.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _roundResultScope(
+            state,
+            unit,
+            RoundQuestionCards(questions: questions),
+          ),
+        ],
         if (!pending && !practicePending)
           Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
@@ -677,6 +730,17 @@ class _ChildCoachingPanel extends StatelessWidget {
             showGoal: false,
           ),
         ],
+        if (questions.isNotEmpty)
+          ExpansionTile(
+            title: const Text('Aufgaben nach Ergebnis ansehen'),
+            children: [
+              _roundResultScope(
+                state,
+                unit,
+                RoundAnswerExplorer(questions: questions),
+              ),
+            ],
+          ),
         if (ready && (report['explanation'] as String? ?? '').isNotEmpty)
           ExpansionTile(
             tilePadding: EdgeInsets.symmetric(horizontal: 8),
@@ -985,6 +1049,198 @@ class _RoundFacts {
   }
 }
 
+Widget _roundResultScope(AppState state, Json unit, Widget child) =>
+    LearningToolScope(
+      state: state,
+      sourceKey: (
+        unit['id'],
+        ObjectKey(state.user),
+        state.familyId,
+        state.api.token,
+        jsonEncode(unit['questions']),
+      ),
+      builder: (_) => child,
+    );
+
+(String, IconData, PanelTone, String) _roundStatus(
+  String category,
+) => switch (category) {
+  'independent' => (
+    'Selbstständig richtig',
+    Icons.check_circle_outline_rounded,
+    PanelTone.success,
+    'Beim ersten Versuch ohne Hilfe richtig.',
+  ),
+  'assisted' => (
+    'Mit Hilfe oder erneut richtig',
+    Icons.lightbulb_outline_rounded,
+    PanelTone.accent,
+    'Mit Hilfe oder nach einem weiteren Versuch richtig.',
+  ),
+  'practice' => (
+    'Weiter üben',
+    Icons.replay_rounded,
+    PanelTone.warning,
+    'Die letzte Antwort war noch nicht richtig. Diesen Schritt übst du weiter.',
+  ),
+  'uncertain' => (
+    'Bewertung offen',
+    Icons.help_outline_rounded,
+    PanelTone.info,
+    'Die Antwort ist gespeichert. Ihre Bewertung ist noch offen.',
+  ),
+  'none' => (
+    'Noch nicht beantwortet',
+    Icons.radio_button_unchecked_rounded,
+    PanelTone.subtle,
+    'Hier wurde noch keine Antwort gespeichert.',
+  ),
+  'contribution' => (
+    'Eigener Beitrag',
+    Icons.chat_bubble_outline_rounded,
+    PanelTone.accent,
+    'Dein Beitrag ist gespeichert. Er wird nicht als richtig oder falsch bewertet.',
+  ),
+  _ => (
+    'Richtig · Hilfe nicht erfasst',
+    Icons.check_rounded,
+    PanelTone.neutral,
+    'Die Antwort ist richtig. Ob Hilfe genutzt wurde, ist nicht erfasst.',
+  ),
+};
+
+/// The same saved question categories for both roles. No AI opinion can change
+/// these counts, and a missing answer is separate from an open evaluation.
+class RoundResultCounts extends StatelessWidget {
+  final List questions;
+  const RoundResultCounts({super.key, required this.questions});
+  @override
+  Widget build(BuildContext context) {
+    final facts = _RoundFacts(questions);
+    final entries = [
+      ('independent', facts.independent, 'selbstständig'),
+      ('assisted', facts.assisted, 'unterstützt / erneut'),
+      ('practice', facts.practice, 'weiter üben'),
+      ('uncertain', facts.uncertain, 'noch unklar'),
+      ('none', questions.length - facts.answered, 'noch nicht beantwortet'),
+      ('unclassified', facts.unclassified, 'richtig gelöst'),
+      ('contribution', facts.contributions, 'eigene Beiträge'),
+    ].where((entry) => entry.$2 > 0).toList();
+    return LayoutBuilder(
+      builder: (context, bounds) {
+        final columns =
+            bounds.maxWidth >= 300 &&
+                MediaQuery.textScalerOf(context).scale(14) < 20
+            ? 2
+            : 1;
+        final width = (bounds.maxWidth - (columns - 1) * 10) / columns;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final entry in entries)
+              SizedBox(
+                width: width,
+                child: SurfaceInset(
+                  tone: _roundStatus(entry.$1).$3,
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(_roundStatus(entry.$1).$2, size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${entry.$2} ${entry.$1 == 'contribution' && entry.$2 == 1 ? 'eigener Beitrag' : entry.$3}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// One or two factual sentences per question, without extracting or truncating
+/// paragraphs from the coach report. Full original question/answer data remain
+/// behind an explicit local disclosure; opening it never sends a request.
+class RoundQuestionCards extends StatelessWidget {
+  final List questions;
+  const RoundQuestionCards({super.key, required this.questions});
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (final (index, raw) in questions.indexed)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Builder(
+            builder: (context) {
+              final question = Json.from(raw),
+                  category = storedQuestionCategory(raw);
+              final status = _roundStatus(category);
+              return SurfaceInset(
+                tone: status.$3,
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(status.$2, size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Aufgabe ${index + 1} · ${status.$1}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      status.$4,
+                      key: ValueKey<Object>((
+                        'round-question-note',
+                        question['id'],
+                      )),
+                    ),
+                    ExpansionTile(
+                      key: ValueKey<Object>((
+                        'round-question-detail',
+                        question['id'],
+                      )),
+                      tilePadding: EdgeInsets.zero,
+                      title: const Text('Aufgabe und Antwort ansehen'),
+                      children: [
+                        if (category == 'none')
+                          MathText(question['prompt'] ?? 'Gespeicherte Aufgabe')
+                        else
+                          _SavedQuestionResult(question),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+    ],
+  );
+}
+
 /// Local inspection of stored answers; selecting a category never grades,
 /// changes an attempt or asks a provider for a new explanation.
 class RoundAnswerExplorer extends StatefulWidget {
@@ -1144,26 +1400,23 @@ class _SavedQuestionResult extends StatelessWidget {
     final attempts = question['attempts'] as List? ?? [];
     if (attempts.isEmpty) return SizedBox.shrink();
     final last = attempts.last;
-    final outcome = last['outcome'];
+    final category = storedQuestionCategory(question);
     final reasons = (last['evaluation']?['support_reasons'] as List? ?? []);
     final retryOnly =
         reasons.isNotEmpty && reasons.every((r) => r == 'another_attempt');
-    final assisted =
-        attempts.any((a) => a['assisted'] == true) ||
-        (question['hints_used'] as num? ?? 0) > 0;
-    final label = last['evaluation']?['method'] == 'open_learning_v1'
-        ? 'Eigener Beitrag · ohne Richtig/Falsch-Wertung'
-        : outcome == 'uncertain'
-        ? 'Prüfung offen'
-        : outcome == 'incorrect'
-        ? 'Weiter üben'
-        : retryOnly
-        ? 'Im weiteren Versuch gelöst'
-        : assisted
-        ? 'Mit Hilfe gelöst'
-        : attempts.length > 1
-        ? 'Im erneuten Versuch gelöst'
-        : 'Selbstständig gelöst';
+    final label = switch (category) {
+      'contribution' => 'Eigener Beitrag · ohne Richtig/Falsch-Wertung',
+      'uncertain' => 'Prüfung offen',
+      'practice' => 'Weiter üben',
+      'independent' => 'Selbstständig gelöst',
+      'unclassified' => 'Richtig gelöst · Hilfe nicht erfasst',
+      _ =>
+        retryOnly
+            ? 'Im weiteren Versuch gelöst'
+            : attempts.any((a) => a['assisted'] == true)
+            ? 'Mit Hilfe gelöst'
+            : 'Im erneuten Versuch gelöst',
+    };
     return Padding(
       padding: EdgeInsets.only(bottom: 12),
       child: Column(

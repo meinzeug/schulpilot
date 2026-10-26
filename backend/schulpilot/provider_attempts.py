@@ -22,6 +22,8 @@ def counts(db, child_id, kind, sources, stored, *, partition=None):
         job.payload.get("material_id") == sources[0]["id"]
         and job.payload.get("material_revision") == sources[0]["revision"]
     )] if kind == "extract" else [job for job in jobs if job.payload.get("sources") == sources]
+    if kind == "extract":
+        matching = [job for job in matching if not job.payload.get("material_check")]
     if kind == "package":
         # A deliberate new finite contract does not erase legacy starts. Each
         # source/config-bound part has its own normal two-attempt allowance.

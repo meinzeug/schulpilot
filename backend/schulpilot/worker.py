@@ -89,9 +89,35 @@ def claim(db):
 
 
 def process(job_id):
+    _process(job_id)
+    # A notice failure cannot roll back an already committed learning round.
+    try:
+        from .ready_notifications import ROUND_KINDS, remember
+
+        with DB.begin() as db:
+            job = db.get(Job, job_id)
+            if job and job.status == "completed":
+                db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
+                db.refresh(job)
+                remember(db, job)
+                if job.kind == "unit_visuals" and job.payload.get("unit_id"):
+                    creator = db.scalar(select(Job).where(Job.child_id == job.child_id,
+                        Job.kind.in_(ROUND_KINDS), Job.status == "completed", Job.result["unit_id"].as_string() == job.payload["unit_id"])
+                        .order_by(Job.finished.desc(), Job.id).limit(1))
+                    remember(db, creator)
+    except Exception as error:
+        log.warning("ready_notice_failed type=%s", type(error).__name__)
+
+
+def _process(job_id):
     with DB() as db:
         candidate = db.get(Job, job_id)
         kind = candidate.kind if candidate else None
+    if candidate and "material_check" in candidate.payload:
+        from .material_review import process as process_material_check
+
+        process_material_check(job_id)
+        return
     if kind == "learning_asset":
         from .learning_assets import process as process_asset
 
@@ -137,6 +163,7 @@ def process(job_id):
         return
     result = None
     provider_requested = False
+    review_composition = None
     try:
         with DB() as db:
             job = db.get(Job, job_id)
@@ -145,6 +172,9 @@ def process(job_id):
             from .school_preparation import defer_package, validate_job
 
             validate_job(db, job)
+            from .material_review import validate_first
+
+            validate_first(db, job)
             from .material_actions import validate_reprocess_job
 
             validate_reprocess_job(db, job)
@@ -386,6 +416,18 @@ def process(job_id):
                 payload = with_learning_entry(db, child, payload, source_pages, groups=job.payload.get("groups"),
                     enabled=bool(job.payload.get("learning_entry_enabled")) and not synthetic)
                 payload = with_foundation_context(db, payload)
+                from .review_fraction_compositions import prepare as prepare_review_composition
+
+                try:
+                    payload, review_composition = prepare_review_composition(
+                        db, job, child, material, source_pages, config, route_snapshot, payload)
+                except ValueError as error:
+                    from .fraction_practice_plan import ERROR as REVIEW_POOL_ERROR
+                    from .fraction_practice_plan import INVALID as REVIEW_PLAN_ERROR
+
+                    if error.args not in ((REVIEW_POOL_ERROR,), (REVIEW_PLAN_ERROR,)):
+                        raise
+                    raise ProviderError(error.args[0], code="invalid_output") from None
                 if job.kind == "unit" and config.provider == "openrouter" and route_snapshot.get("reason") == "material_graphic_teaching":
                     from .material_fraction_expansions import eligible as material_expansion_eligible
                     from .material_fraction_expansions import prepare as prepare_material_expansion
@@ -458,6 +500,7 @@ def process(job_id):
             if not db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade)).rowcount:
                 return
             validate_job(db, job)
+            validate_first(db, job)
             from .material_actions import validate_reprocess_job
 
             validate_reprocess_job(db, job)
@@ -553,7 +596,7 @@ def process(job_id):
                 material.status = "unreadable" if data["legibility"] == "unreadable" else "review"
                 material.extraction_provider = config_values["provider"]
                 material.extraction_model = config_values["model"]
-                source_version = save_snapshot(db, material, "extraction", extraction_receipt(db, job, config_values, image_bytes, result))
+                source_version = save_snapshot(db, material, "extraction", extraction_receipt(db, job, config_values, image_bytes, result), allow_empty=True)
                 job.result = {"material_id": material.id, "source_snapshot_id": source_version.id if source_version else None}
                 record(db, job.child_id, "material_extracted", {"uncertainty_count": len(data["uncertainties"])})
             else:
@@ -589,6 +632,17 @@ def process(job_id):
                     if MULTIPLES_PLAN in payload:
                         validate_multiples_history(payload, data,
                             unit_novelty.previous_prompts(db, job.child_id, source_pages))
+                if review_composition is not None:
+                    from .fraction_practice_plan import CURRENT_ERROR as REVIEW_HISTORY_CHANGED
+                    from .review_fraction_compositions import validate as validate_review_composition
+
+                    try:
+                        validate_review_composition(db, job, db.get(Child, job.child_id), material, source_pages,
+                            request_config, route_snapshot, payload, data, review_composition)
+                    except ValueError as error:
+                        if error.args != (REVIEW_HISTORY_CHANGED,):
+                            raise
+                        raise ProviderError(error.args[0], code="source_changed") from None
                 if job.payload.get("review_of"):
                     from .coaching import validate_new_round
 
@@ -918,6 +972,10 @@ def maintenance():
         from .family_calls import maintenance as expire_family_calls
 
         expire_family_calls(db)
+    from .ready_notifications import advance_one as recover_ready_notices
+
+    recover_ready_notices()
+    with DB.begin() as db:
         prepare_notifications(db)
 
 
@@ -950,7 +1008,12 @@ def main():
             deliver_one(DB)
             from .school_preparation import advance_one
 
-            advance_one()
+            if advance_one():
+                with DB.begin() as db:
+                    prepare_notifications(db)
+            from .material_review import advance_one as advance_material_review
+
+            advance_material_review()
             from .exam_review import advance_scan_one
 
             advance_scan_one()

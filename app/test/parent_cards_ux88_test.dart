@@ -208,14 +208,34 @@ void main() {
   for (final target in [
     ('1 offener Hilfewunsch', '/messages/child'),
     ('Offene Pflichtaufträge: 1', '/parent-plan/child'),
-    ('1 Auftragsquelle prüfen', '/parent-plan/child'),
+    ('1 Auftragsquelle zu prüfen', '/parent-plan/child'),
+    ('Auftragsquellen ansehen', '/parent-plan/child'),
+    ('4 Freiwillige Aufträge im Lernplan', '/parent-plan/child'),
     ('Aktuelle Runde · Mathematik', '/unit/saved-unit'),
   ]) {
-    testWidgets('PP001 whole need summary opens ${target.$2} without work', (
+    testWidgets('PP001 ${target.$1} opens ${target.$2} without work', (
       tester,
     ) async {
       final f = Fixture();
+      if (target.$1 == 'Auftragsquellen ansehen') {
+        f.overview['day_summary'] = {'help_requests': 0};
+      }
+      if (target.$1 == '4 Freiwillige Aufträge im Lernplan') {
+        f.overview['assignments'] = [
+          ...(f.overview['assignments'] as List),
+          for (var i = 0; i < 4; i++)
+            {'done': false, 'mandatory': false, 'source_status': 'confirmed'},
+        ];
+      }
       await f.mount(tester, '/overview');
+      if (target.$1 == 'Aktuelle Runde · Mathematik') {
+        expect(find.text('1 offener Hilfewunsch'), findsOneWidget);
+        expect(find.text(target.$1), findsNothing);
+        final before = f.requests.length;
+        await openParentDetails103(tester, 'Antworten genauer ansehen');
+        expect(find.text(target.$1), findsOneWidget);
+        expect(f.requests.length, before);
+      }
       await tapBody(tester, target.$1);
       if (target.$2 == '/parent-plan/child') {
         expect(find.byType(ParentPlanScreen), findsOneWidget);
@@ -374,6 +394,11 @@ void main() {
           target.$1: 1,
         };
         await f.mount(tester, '/overview');
+        expect(find.text('1 Aufgabe mit Antwort'), findsOneWidget);
+        expect(find.text('1 ${target.$2}'), findsNothing);
+        final before = f.requests.length;
+        await openParentDetails103(tester, 'Antworten genauer ansehen');
+        expect(f.requests.length, before);
         await tapBody(tester, '1 ${target.$2}');
         expect(
           find.text('Ziel /progress/child?ergebnis=${target.$3}'),
@@ -388,6 +413,11 @@ void main() {
   ) async {
     final f = Fixture();
     await f.mount(tester, '/overview');
+    expect(find.text('0 Aufgaben mit Antwort'), findsOneWidget);
+    expect(find.text('0 weiter üben'), findsNothing);
+    final before = f.requests.length;
+    await openParentDetails103(tester, 'Antworten genauer ansehen');
+    expect(f.requests.length, before);
     final card = find
         .ancestor(
           of: find.text('0 weiter üben'),

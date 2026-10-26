@@ -476,6 +476,9 @@ def due_kinds(db, device, current):
             from .preparation_notifications import events_for_child as preparation_events
 
             result.update(event["kind"] for event in preparation_events(db, child, current))
+            from .ready_notifications import events_for_child as round_events
+
+            result.update(event["kind"] for event in round_events(db, child, current))
             # New language jobs share the same queue. Only a currently valid
             # request/source may trigger a notice, never a generated answer.
             from .db import Job, LanguageProject, VocabularyImport
@@ -531,6 +534,25 @@ def prepare(db, current=None):
                         "dedup_key": delivery_key(device, event), "kind": kind,
                         "status": "queued", "created": current}, key="dedup_key")
                 continue
+            if kind == "exam_ready":
+                from .exam_notifications import delivery_key, events_for_child
+
+                for child in children_for(db, db.get(User, device.user_id)):
+                    for event in events_for_child(db, child, current, retention=86400):
+                        if event["kind"] == kind:
+                            insert_ignore(db, PushDelivery, {"id": uid(), "device_id": device.id,
+                                "dedup_key": delivery_key(device, event), "kind": kind,
+                                "status": "queued", "created": current}, key="dedup_key")
+                continue
+            if kind == "round_ready":
+                from .ready_notifications import delivery_key, events_for_child
+
+                for child in children_for(db, db.get(User, device.user_id)):
+                    for event in events_for_child(db, child, current):
+                        insert_ignore(db, PushDelivery, {"id": uid(), "device_id": device.id,
+                            "dedup_key": delivery_key(device, event), "kind": kind,
+                            "status": "queued", "created": current}, key="dedup_key")
+                continue
             if kind in ("preparation_ready", "preparation_review"):
                 from .preparation_notifications import delivery_key, events_for_child
 
@@ -561,15 +583,19 @@ class FcmError(Exception):
         self.code, self.unregistered = code, unregistered
 
 
-def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_data=None, exam_path=None, preparation_path=None):
+def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_data=None, exam_path=None, preparation_path=None, unit_path=None):
     from .exam_notifications import valid_exam_path
 
     if exam_path is not None and not valid_exam_path(exam_path):
         raise FcmError("INVALID_EXAM_PATH")
     from .preparation_notifications import valid_preparation_path
+    from .ready_notifications import valid_unit_path
 
-    if preparation_path is not None and (exam_path is not None or not valid_preparation_path(preparation_path)):
+    if preparation_path is not None and (exam_path is not None or not (valid_preparation_path(preparation_path) or valid_unit_path(preparation_path))):
         raise FcmError("INVALID_PREPARATION_PATH")
+
+    if unit_path is not None and (exam_path is not None or preparation_path is not None or not valid_unit_path(unit_path)):
+        raise FcmError("INVALID_UNIT_PATH")
     site = runtime_settings()
     config = public_config(testing=testing)
     if not config["available"]:
@@ -627,6 +653,9 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_da
         if preparation_path is not None:
             message["data"]["route"] = preparation_path
             message["webpush"]["fcm_options"]["link"] = site.public_url + preparation_path
+        if unit_path is not None:
+            message["data"]["route"] = unit_path
+            message["webpush"]["fcm_options"]["link"] = site.public_url + unit_path
         if call_data is not None:
             # Data-only: Android's own call notification owns the ringtone and
             # call-style actions. Never include a private name, subject or text.
@@ -672,7 +701,7 @@ def deliver_one(DB, *, call_id=None):
         db.commit()
         device = db.get(PushDevice, device_id)
         testing = kind in ("test_validate", "test_send")
-        call_data, exam_path, preparation_path, parent_goal = None, None, None, None
+        call_data, exam_path, preparation_path, parent_goal, unit_path = None, None, None, None, None
         if kind in ("family_call_incoming", "family_call_ended"):
             from .db import FamilyCall
 
@@ -710,11 +739,18 @@ def deliver_one(DB, *, call_id=None):
             candidates = [event for child in children_for(db, user)
                 for event in events_for_child(db, child, int(now()), retention=86400) if event["kind"] == kind]
             today = datetime.fromtimestamp(int(now()), ZoneInfo(device.timezone)).strftime("%Y-%m-%d")
-            if not candidates or delivery.dedup_key != device.id + ":" + kind + ":" + today:
+            if kind == "exam_ready":
+                from .exam_notifications import delivery_key
+
+                event = next((event for event in candidates if delivery_key(device, event) == delivery.dedup_key), None)
+            else:
+                event = (max(candidates, key=lambda event: (event["created"], event["id"]))
+                    if candidates and delivery.dedup_key == device.id + ":" + kind + ":" + today else None)
+            if event is None:
                 delivery.status = "suppressed"
                 db.commit()
                 return True
-            exam_path = max(candidates, key=lambda event: (event["created"], event["id"]))["route"]
+            exam_path = event["route"]
         if kind in ("preparation_ready", "preparation_review"):
             from .preparation_notifications import delivery_key, events_for_child
 
@@ -726,6 +762,17 @@ def deliver_one(DB, *, call_id=None):
                 db.commit()
                 return True
             preparation_path = event["route"]
+        if kind == "round_ready":
+            from .ready_notifications import delivery_key, events_for_child
+
+            event = next((event for child in children_for(db, db.get(User, device.user_id))
+                for event in events_for_child(db, child, int(now()))
+                if delivery_key(device, event) == delivery.dedup_key), None)
+            if not event:
+                delivery.status = "suppressed"
+                db.commit()
+                return True
+            unit_path = event["route"]
         token = decrypt(device.encrypted_token)
         maximum_ttl = 3600 if kind == "parent_goal" else 60
         ttl = min(maximum_ttl, seconds_before_quiet(int(now()), device.timezone, device.quiet_start, device.quiet_end))
@@ -763,6 +810,8 @@ def deliver_one(DB, *, call_id=None):
             send_fcm(token, kind, ttl, testing=testing, call_data=call_data)
         elif exam_path is not None:
             send_fcm(token, kind, ttl, exam_path=exam_path)
+        elif unit_path is not None:
+            send_fcm(token, kind, ttl, unit_path=unit_path)
         elif preparation_path is not None:
             send_fcm(token, kind, ttl, preparation_path=preparation_path)
         elif testing:

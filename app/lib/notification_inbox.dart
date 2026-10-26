@@ -11,6 +11,7 @@ class NotificationInbox extends ChangeNotifier {
   String? _account;
   int _generation = 0;
   int _readRevision = 0;
+  final _readsInFlight = <String, Future<void>>{};
   bool _foreground = true, _loading = false;
   bool _disposed = false;
   Timer? _timer;
@@ -24,6 +25,8 @@ class NotificationInbox extends ChangeNotifier {
   void activate(String? account) {
     if (_account == account) return;
     _generation++;
+    _readRevision = 0;
+    _readsInFlight.clear();
     _account = account;
     items = [];
     unread = 0;
@@ -83,16 +86,48 @@ class NotificationInbox extends ChangeNotifier {
   }
 
   Future<void> markRead(List<String> ids) async {
-    if (_account == null || ids.isEmpty) return;
+    if (_disposed || _account == null || ids.isEmpty) return;
     final generation = _generation;
-    await api.post('/notifications/inbox/read', {'ids': ids});
-    if (generation != _generation) return;
-    _readRevision++;
-    for (final item in items) {
-      if (ids.contains(item['id'])) item['read'] = true;
+    final ownUnread = items
+        .where((item) => item['read'] != true)
+        .map((item) => item['id'])
+        .whereType<String>()
+        .toSet();
+    final requested = ids.toSet().intersection(ownUnread);
+    if (requested.isEmpty) return;
+    final waiting = <Future<void>>{
+      for (final id in requested) ?_readsInFlight[id],
+    };
+    final fresh = requested
+        .where((id) => !_readsInFlight.containsKey(id))
+        .toList();
+    if (fresh.isNotEmpty) {
+      // An older GET may never undo a pending or successful acknowledgement.
+      _readRevision++;
+      Future<void> send() async {
+        await api.post('/notifications/inbox/read', {'ids': fresh});
+        if (_disposed || generation != _generation) return;
+        _readRevision++;
+        for (final item in items) {
+          if (fresh.contains(item['id'])) item['read'] = true;
+        }
+        unread = items.where((row) => row['read'] != true).length;
+        notifyListeners();
+      }
+
+      late final Future<void> pending;
+      pending = send().whenComplete(() {
+        if (generation != _generation) return;
+        for (final id in fresh) {
+          if (identical(_readsInFlight[id], pending)) _readsInFlight.remove(id);
+        }
+      });
+      for (final id in fresh) {
+        _readsInFlight[id] = pending;
+      }
+      waiting.add(pending);
     }
-    unread = items.where((row) => row['read'] != true).length;
-    notifyListeners();
+    await Future.wait(waiting);
   }
 
   void clear() => activate(null);

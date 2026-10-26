@@ -2989,3 +2989,73 @@ Vorbereitungsauftrag hat keine weitere Runde erzeugt und zählt nicht mit.
 Weitere Runden dieser Testserie werden nicht begonnen. Automatische Quellenprüfung, neue
 Elternübersicht, kompakte Einzelrückmeldungen und Schulbuddy-Lesekontext werden
 getrennt weiterentwickelt und sind durch diese 141-Nachweise nicht abgenommen.
+
+## 26.10.2026 – Vorbereitungswege, Quellenprüfung und sichtbare Neuigkeiten (142)
+
+Die live untersuchte Wiederholungsrunde verband zwei gespeicherte Ziele:
+unechte Brüche als gemischte Zahlen darstellen und einen Bruch mit Zähler und
+Nenner notieren. Der bisherige Ganzes-Rest-Compiler verlangte ausschließlich
+Umwandlungsziele; der allgemeine Rechenplan unterstützte diese Kombination
+ebenfalls nicht. Dadurch erzeugte das Modell Texte und Grafikparameter frei.
+Zwei untersuchte Fehlversuche scheiterten nach dem Anbieteraufruf am
+Zahlenvergleich zwischen Erklärtext und Grafik (`visual_parameters`).
+Die verworfenen ursprünglichen Grafikparameter waren nicht gespeichert.
+
+Der neue private Wiederholungsplan erhält beide tatsächlichen Aufgaben- und
+Lernzielkennungen. Er kombiniert einen vorab berechneten Ganzes-Rest-Kern mit
+dem bestehenden Bruchnotationsbeispiel aus `math.fractions.meaning`.
+Diese versionierte eigene Grundlagenquelle bleibt als Zusatzwissen erkennbar;
+sie wird weder zum Heftzitat noch zu einer weiteren Einstiegsdiagnose erklärt.
+Fragen, Lösungen, Referenzen, Erklärschritttexte und Grafikparameter sind vor
+dem Aufruf gemeinsam gebunden. Vollständige eigene Lernkette und Tagesfragen
+schließen alte Werte aus; Quellen, Ziele, Referenzen und Historie werden nach
+dem Aufruf erneut geprüft. Andere Verfahren behalten ihre bisherigen Verträge.
+Modell, Denkstufe, 8.000 Ausgabetokens und vorhandene Reservierung bleiben erhalten.
+Eine rein lesende Prüfung mit der freigegebenen aktuellen Quelle und Historie
+ergab zwei neue, vollständig gebundene Kerne für beide ursprünglichen Ziele;
+dabei wurde kein Anbieter aufgerufen und kein Lernnachweis verändert.
+
+Die Glocke besitzt einen eigenen begrenzten Scrollbereich für alle geladenen
+Neuigkeiten statt vier fester Vorschauen. Popup und Gesamtansicht bestätigen
+nur tatsächlich gezeichnete, ausreichend sichtbare, unverdeckte Karten im
+Vordergrund durch den bestehenden berechtigten POST. Vorgeladene und außerhalb
+des Ausschnitts liegende Einträge bleiben ungelesen. Parallele Bestätigungen
+werden geteilt, alte GET-Antworten können eine Lesemarkierung nicht zurücksetzen.
+Im Ungelesenfilter bleiben soeben gelesene Karten bis zur nächsten bewussten
+Filterwahl stehen; dadurch rutschen keine ungesehenen Einträge automatisch nach.
+Fehler werden angezeigt und lösen keine Wiederholungsschleife aus.
+
+Die automatische Heftprüfung verwendet einen getrennten persistenten zweiten
+Foto-Lesedurchgang mit eigener normaler Reservierung. Unsichere Stellen und
+sichtbare Schülerfehler bleiben erhalten; verwendbare Abschnitte können weiter
+genutzt werden. Betriebsadministratoren wählen manuell/automatisch über eine
+eigene revisionsgebundene Einstellung. Neue Installationen bleiben manuell.
+Die kompakte Elternübersicht erhält Entwürfe und Scrollposition; kurze
+Ergebniskarten beruhen auf gespeicherten Antworten statt einer neuen Bewertung.
+Schulbuddy erhält in der ausdrücklich geöffneten bestätigten Heftseite deren
+Wortlaut, vorhandene Markierungen und Unsicherheiten. Dies ist vom strengeren
+Lehr- und Bewertungsfilter getrennt; ein Zugriff auf Originalpixel wird nicht
+behauptet. Fertige Runden erhalten einen gespeicherten neutralen Hinweis mit
+geprüftem direktem Rundenverweis. Geräte-Push bleibt freiwillig und getrennt von
+In-App-Neuigkeiten; FCM-Annahme ist kein sichtbarer Android-Zustellbeleg.
+
+Integrierte Backendabnahme: dieselben 213 Fälle unter isoliertem PostgreSQL16
+vollständig erfolgreich; RAM-SQLite 209 erfolgreich und vier ausschließlich
+für PostgreSQL geeignete Fälle übersprungen. Darunter ein tatsächlicher
+API-/Reservierungs-/Worker-/Grafik-/Bereitschaftsmeldungsablauf mit künstlichen
+Quellen und ausschließlich gemocktem HTTP. Quellbestände blieben unverändert,
+Testdatenbanken wurden entfernt, externe Aufrufe waren gesperrt. Getrennte
+vorherige Gates für automatische Prüfung, Tutor und Benachrichtigungen werden
+nicht als zusätzliche Live-Lernrunden gezählt. Die beendete 100-Runden-Serie
+bleibt bei 29 abgeschlossenen Runden.
+
+Flutter: vollständige Analyse ohne Befund. Der gemeinsame Lauf umfasste 470
+Fälle; 463 bestanden, sieben bestehende Erwartungen an die alte Vierervorschau
+und ausschließlich klickbasierte Lesemarkierung passten nicht mehr zum neuen
+Auftrag. Ausschließlich diese beiden Testdateien wurden angepasst. Der gezielte
+Nachlauf aller betroffenen Header-/Downloadfälle zusammen mit Sichtbarkeit und
+Inbox bestand 47 von 47 Fällen; die Produktdateien blieben unverändert.
+Die neuen Fälle prüfen auch doppelte Schriftgröße, kleines Querformat,
+abgeschnittene Karten, Überlagerung, Hintergrund, Kontowechsel, Scrollen,
+Parallelität und fehlgeschlagene Lesemarkierungen. Lokale Tests ersetzen keine
+nachfolgende Live-Abnahme oder sichtbare native Push-Zustellung.

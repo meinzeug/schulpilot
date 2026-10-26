@@ -83,7 +83,7 @@ def events_for_child(db, child, current, *, retention=30 * 86400):
         except (ProviderError, HTTPException):
             continue
         result.append({"id": f"exam_ready:{row.id}:{job.id}", "child_id": child.id, "created": job.finished,
-            "title": "Deine Lernrunde ist bereit", "route": f"/exams/{child.id}?exam={exam.id}&session={session.id}",
+            "title": "Deine Lernrunde ist bereit", "route": f"/unit/{unit.id}",
             "kind": "exam_ready"})
     reviewed = db.execute(select(Exam, ExamReview, Job).join(ExamReview, ExamReview.exam_id == Exam.id)
         .join(Job, Job.id == ExamReview.job_id).where(Exam.child_id == child.id, Exam.archived.is_(False),
@@ -114,6 +114,10 @@ def events_for_child(db, child, current, *, retention=30 * 86400):
                 not valid_refs(db, child.id, job.payload.get("sources", []), exam.subject_id, exam.subject)):
             continue
         result.append({"id": f"exam_ready:{link.id}:{job.id}", "child_id": child.id, "created": job.finished,
-            "title": "Deine Anschlussübung ist bereit", "route": f"/exams/{child.id}?exam={exam.id}&tab=review",
+            "title": "Deine Anschlussübung ist bereit", "route": f"/unit/{unit.id}",
             "kind": "exam_ready"})
     return sorted(result, key=lambda row: (row["created"], row["id"]), reverse=True)[:100]
+
+
+def delivery_key(device, event):
+    return device.id + ":" + event["id"]

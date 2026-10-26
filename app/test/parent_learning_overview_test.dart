@@ -316,6 +316,9 @@ void main() {
           },
         ];
         await mountParent(tester, data, requests, width: width);
+        expect(find.text('4 Aufgaben mit Antwort'), findsOneWidget);
+        expect(find.byType(ParentPracticeSummary), findsNothing);
+        await tapText(tester, 'Antworten genauer ansehen');
         expect(find.text('5 Versuche · 1 Runde'), findsOneWidget);
         expect(
           find.textContaining('Nächste Wiederholung: 20.10.2026'),
@@ -332,10 +335,7 @@ void main() {
         expect(find.text('Tagesziel erfüllt'), findsNothing);
         expect(find.text('Offene Pflichtaufträge: 1'), findsOneWidget);
         expect(find.text('1 offener Hilfewunsch'), findsOneWidget);
-        expect(
-          find.text('Anliegen und Antworten findet ihr in den Nachrichten.'),
-          findsOneWidget,
-        );
+        expect(find.text('Nachrichten ansehen'), findsOneWidget);
         final progress = tester
             .widgetList<LinearProgressIndicator>(
               find.descendant(
@@ -384,9 +384,7 @@ void main() {
       expect(find.text('Tagesziel offen'), findsOneWidget);
       expect(find.text('Tagesziel erfüllt'), findsNothing);
       expect(
-        find.text(
-          'Das Mindestziel ist noch offen. Im Lernraum geht es mit weiteren Runden weiter.',
-        ),
+        find.textContaining('20 Min. Mindestziel · noch offen'),
         findsOneWidget,
       );
       expect(find.textContaining('später wiederkommen'), findsNothing);
@@ -408,7 +406,7 @@ void main() {
       await tester.pump();
       expect(requests.length, beforeResume + 1);
       final resumedAt = tester.binding.clock.now();
-      await openParentDetails103(tester, 'Zeit & Mindestziele');
+      // The time details opened during mount must survive the silent refresh.
       final before = requests.length;
       data['plan']['daily_active_seconds'] = 780;
       final untilFourteenSeconds =
@@ -453,8 +451,7 @@ void main() {
       }
       await tester.pumpAndSettle();
       expect(requests.length, before + 1);
-      await openParentDetails103(tester, 'Zeit & Mindestziele');
-      expect(requests.length, before + 1);
+      // No reopening: the original disclosure must remain open after resume.
       expect(find.text('14:00 / 20 Min.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
@@ -493,7 +490,7 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       await mountParent(tester, parentOverview(), requests, permission: 'view');
-      await tapText(tester, 'Plan ansehen');
+      await tapText(tester, 'Offene Pflichtaufträge: 1');
       await tapText(tester, 'Woche & Vorgaben');
       await openParentDetails103(tester, 'Vorgaben & Kalender');
       expect(find.text('Lernvorgaben anpassen'), findsNothing);
@@ -522,6 +519,9 @@ void main() {
           'ongoing_rounds': 2,
         };
         await mountParent(tester, data, requests, width: width, textScale: 2);
+        expect(find.text('11 Aufgaben mit Antwort'), findsOneWidget);
+        expect(find.byType(ParentPracticeSummary), findsNothing);
+        await tapText(tester, 'Antworten genauer ansehen');
         expect(find.text('11 Aufgaben geübt'), findsOneWidget);
         expect(find.text('3 alleine gelöst'), findsOneWidget);
         expect(find.text('2 mit Hilfe gelöst'), findsOneWidget);
@@ -531,7 +531,7 @@ void main() {
         expect(find.text('Im ersten Versuch'), findsOneWidget);
         expect(find.text('Oder nach erneutem Versuch'), findsOneWidget);
         expect(
-          tester.getTopLeft(find.text('Was jetzt wichtig ist')).dy,
+          tester.getTopLeft(find.text('Ein Anliegen gemeinsam ansehen')).dy,
           lessThan(tester.getTopLeft(find.byType(ParentPracticeSummary)).dy),
         );
         expect(find.text('Erledigte Aufträge anzeigen'), findsNothing);
@@ -565,7 +565,7 @@ void main() {
         },
     ];
     await mountParent(tester, data, requests, width: 320, textScale: 2);
-    await tapText(tester, 'Plan ansehen');
+    await tapText(tester, 'Offene Pflichtaufträge: 1');
     await tapText(tester, 'Woche & Vorgaben');
     expect(find.text('20 Minuten vorgeschlagen'), findsNWidgets(14));
     expect(requests.every((r) => r.method == 'GET'), isTrue);
@@ -594,10 +594,9 @@ void main() {
       };
       await mountParent(tester, data, requests);
       expect(find.text('Offene Pflichtaufträge: 1'), findsOneWidget);
-      expect(
-        find.textContaining('4 freiwillige Aufträge im Plan.'),
-        findsOneWidget,
-      );
+      expect(find.text('4 Freiwillige Aufträge im Lernplan'), findsOneWidget);
+      expect(find.byType(ParentPracticeSummary), findsNothing);
+      await tapText(tester, 'Antworten genauer ansehen');
       expect(
         find.text('Runden mit Antworten: 1 abgeschlossen · 1 noch offen'),
         findsOneWidget,
@@ -613,7 +612,7 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       await mountParent(tester, parentOverview(), requests);
-      await tapText(tester, 'Plan ansehen');
+      await tapText(tester, 'Offene Pflichtaufträge: 1');
       expect(find.byType(ParentPlanScreen), findsOneWidget);
       await tapText(tester, 'Meine Themen');
       expect(find.text('Mathematik · Brüche'), findsWidgets);

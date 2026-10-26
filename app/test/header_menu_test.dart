@@ -18,19 +18,19 @@ Json _user(String role, {String id = 'artificial-account'}) => {
   if (role == 'child') 'child_id': 'child',
 };
 
-Json _inbox() => {
+Json _inbox({int count = 5, Set<String> read = const {}}) => {
   'items': [
-    for (var i = 0; i < 5; i++)
+    for (var i = 0; i < count; i++)
       {
         'id': 'notice-$i',
         'title': 'Gespeicherte Neuigkeit $i',
         'child_name': 'Künstliches Kind',
         'created': 1792586453,
-        'read': false,
-        'route': '/target',
+        'read': read.contains('notice-$i'),
+        'route': '/target?notice=$i',
       },
   ],
-  'unread': 5,
+  'unread': count - read.length,
 };
 
 http.Response _response(Object body) => http.Response(
@@ -138,13 +138,22 @@ void main() {
         tester,
       ) async {
         final requests = <String>[];
+        final readIds = <String>{};
         final state = AppState(
           api: Api(
             base: 'https://example.invalid/api',
             client: MockClient((request) async {
               requests.add('${request.method} ${request.url.path}');
+              if (request.method == 'POST') {
+                expect(request.url.path, '/api/notifications/inbox/read');
+                readIds.addAll(
+                  (jsonDecode(request.body)['ids'] as List).cast<String>(),
+                );
+              }
               return _response(
-                request.url.path.endsWith('/inbox') ? _inbox() : {},
+                request.url.path.endsWith('/inbox')
+                    ? _inbox(read: readIds)
+                    : {},
               );
             }),
           ),
@@ -172,13 +181,32 @@ void main() {
             find.byKey(ValueKey('notice-preview-notice-0')),
             findsOneWidget,
           );
+          expect(readIds, isNotEmpty);
+          expect(readIds.length, lessThan(5));
+          expect(readIds, isNot(contains('notice-4')));
+          final list = find.byKey(
+            const ValueKey('notification-preview-scroll'),
+          );
+          expect(tester.widget<ListView>(list).semanticChildCount, 5);
+          await tester.scrollUntilVisible(
+            find.byKey(const ValueKey('notice-preview-notice-3')),
+            100,
+            scrollable: find.descendant(
+              of: list,
+              matching: find.byType(Scrollable),
+            ),
+          );
+          await tester.pumpAndSettle();
           expect(
-            find.byKey(ValueKey('notice-preview-notice-3')),
+            find.byKey(const ValueKey('notice-preview-notice-3')).hitTestable(),
             findsOneWidget,
           );
-          expect(find.byKey(ValueKey('notice-preview-notice-4')), findsNothing);
           expect(
-            requests.every((r) => r == 'GET /api/notifications/inbox'),
+            requests.every(
+              (r) =>
+                  r == 'GET /api/notifications/inbox' ||
+                  r == 'POST /api/notifications/inbox/read',
+            ),
             isTrue,
           );
           if (role == 'parent') {
@@ -193,7 +221,14 @@ void main() {
           router.routeInformationProvider.value.uri.path,
           role == 'admin' ? '/admin/push' : '/notifications',
         );
-        expect(requests.every((r) => r.startsWith('GET')), isTrue);
+        expect(
+          requests.every(
+            (r) =>
+                r.startsWith('GET') ||
+                r == 'POST /api/notifications/inbox/read',
+          ),
+          isTrue,
+        );
         expect(tester.takeException(), isNull);
         state.inbox.clear();
         await tester.pumpWidget(SizedBox());
@@ -202,31 +237,53 @@ void main() {
   }
 
   testWidgets(
-    'notice selection marks only the selected event before navigation',
+    'notice selection preserves visible receipts and never reads all 50 loaded events',
     (tester) async {
-      final reads = <dynamic>[];
+      final reads = <List<String>>[];
+      final readIds = <String>{};
       final state = AppState(
         api: Api(
           base: 'https://example.invalid/api',
           client: MockClient((request) async {
-            if (request.method == 'POST') reads.add(jsonDecode(request.body));
-            return _response(request.method == 'GET' ? _inbox() : {});
+            if (request.method == 'POST') {
+              expect(request.url.path, '/api/notifications/inbox/read');
+              final ids = (jsonDecode(request.body)['ids'] as List)
+                  .cast<String>();
+              reads.add(ids);
+              readIds.addAll(ids);
+            }
+            return _response(
+              request.method == 'GET' ? _inbox(count: 50, read: readIds) : {},
+            );
           }),
         ),
       )..user = _user('child');
       final router = await _open(tester, state);
+      expect(reads, isEmpty);
       await tester.tap(find.byKey(ValueKey('notification-bell')));
       await tester.pumpAndSettle();
-      expect(reads, isEmpty);
+      expect(readIds, contains('notice-0'));
+      expect(readIds.length, lessThan(50));
+      expect(readIds, isNot(contains('notice-49')));
+      expect(
+        tester
+            .widget<ListView>(
+              find.byKey(const ValueKey('notification-preview-scroll')),
+            )
+            .semanticChildCount,
+        50,
+      );
+      final visibleReads = readIds.toSet();
+      final visiblePosts = reads.length;
       await tester.tap(find.byKey(ValueKey('notice-preview-notice-0')));
       await tester.pumpAndSettle();
       expect(router.routeInformationProvider.value.uri.path, '/target');
-      expect(reads, [
-        {
-          'ids': ['notice-0'],
-        },
-      ]);
-      expect(state.inbox.unread, 4);
+      expect(router.routeInformationProvider.value.uri.queryParameters, {
+        'notice': '0',
+      });
+      expect(readIds, visibleReads);
+      expect(reads.length, visiblePosts);
+      expect(state.inbox.unread, 50 - visibleReads.length);
       state.inbox.clear();
       await tester.pumpWidget(SizedBox());
     },

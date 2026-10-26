@@ -10,6 +10,7 @@ import 'admin_workspace_ui.dart';
 import 'push_client.dart' show PushPermissionCancelled;
 import 'ui.dart';
 import 'page_tools.dart';
+import 'notification_visibility.dart';
 
 String noticeKindLabel(String kind) => switch (kind) {
   'family_call' => 'Live-Gespräche',
@@ -39,7 +40,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Json? account;
   bool onlyUnread = false;
   String? opening;
-  int openRevision = 0;
+  int openRevision = 0, readEpoch = 0;
+  Set<String> unreadSelection = {};
 
   @override
   void initState() {
@@ -55,6 +57,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() {
       account = widget.state.user;
       onlyUnread = false;
+      unreadSelection.clear();
+      readEpoch++;
       search.clear();
       selectedChild = selectedKind = null;
       opening = null;
@@ -70,6 +74,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       widget.state.addListener(accountChanged);
       account = widget.state.user;
       onlyUnread = false;
+      unreadSelection.clear();
+      readEpoch++;
       search.clear();
       selectedChild = selectedKind = null;
       opening = null;
@@ -116,411 +122,467 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (route?.isCurrent != false) context.go(item['route']);
   }
 
+  Future<void> refreshNotices() async {
+    final state = widget.state;
+    final owner = state.user, token = state.api.token, family = state.familyId;
+    await state.inbox.refresh();
+    if (!mounted ||
+        !identical(widget.state, state) ||
+        !identical(owner, state.user) ||
+        token != state.api.token ||
+        family != state.familyId) {
+      return;
+    }
+    setState(() {
+      readEpoch++;
+      if (onlyUnread) {
+        unreadSelection = state.inbox.items
+            .where((item) => item['read'] != true)
+            .map((item) => item['id'] as String)
+            .toSet();
+      }
+    });
+  }
+
   @override
-  Widget build(BuildContext context) => PageFrame(
-    state: widget.state,
-    title: 'Benachrichtigungen',
-    actions: [
-      OutlinedButton.icon(
-        onPressed: () {
-          final target = _devicePanel.currentContext;
-          if (target != null) {
-            Scrollable.ensureVisible(
-              target,
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
-              alignment: .05,
-            );
-          }
-        },
-        icon: Icon(Icons.tune_rounded),
-        label: Text('Gerät einstellen'),
-      ),
-    ],
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListenableBuilder(
-          listenable: widget.state.inbox,
-          builder: (context, _) {
-            final inbox = widget.state.inbox;
-            final owner = widget.state.user;
-            final query = search.text.trim().toLowerCase();
-            final filterSnapshot = (
-              onlyUnread,
-              query,
-              selectedChild,
-              selectedKind,
-            );
-            final filtered =
-                query.isNotEmpty ||
-                selectedChild != null ||
-                selectedKind != null;
-            final children = <String, String>{
-              for (final item in inbox.items)
-                if (item['child_id'] is String)
-                  item['child_id']: '${item['child_name'] ?? 'Kind'}',
-            };
-            if (selectedChild != null && !children.containsKey(selectedChild)) {
-              children[selectedChild!] = 'Ausgewähltes Kind (keine Meldung)';
+  Widget build(BuildContext context) {
+    final owner = widget.state.user;
+    final token = widget.state.api.token, family = widget.state.familyId;
+    return PageFrame(
+      state: widget.state,
+      title: 'Benachrichtigungen',
+      actions: [
+        OutlinedButton.icon(
+          onPressed: () {
+            final target = _devicePanel.currentContext;
+            if (target != null) {
+              Scrollable.ensureVisible(
+                target,
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 300),
+                alignment: .05,
+              );
             }
-            final kinds = <String>{
-              for (final item in inbox.items)
-                if (item['kind'] is String) item['kind'],
-              ?selectedKind,
-            }.toList()..sort();
-            final shown = inbox.items
-                .where((item) => !onlyUnread || item['read'] != true)
-                .where(
-                  (item) =>
-                      selectedChild == null ||
-                      item['child_id'] == selectedChild,
-                )
-                .where(
-                  (item) =>
-                      selectedKind == null || item['kind'] == selectedKind,
-                )
-                .where(
-                  (item) =>
-                      query.isEmpty ||
-                      '${item['title']} ${item['child_name'] ?? ''} ${notificationActionLabel(item)}'
-                          .toLowerCase()
-                          .contains(query),
-                )
-                .toList();
-            return Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
+          },
+          icon: Icon(Icons.tune_rounded),
+          label: Text('Gerät einstellen'),
+        ),
+      ],
+      child: NotificationReadScope(
+        inbox: widget.state.inbox,
+        scope: (
+          ObjectKey(owner),
+          family,
+          token,
+          onlyUnread,
+          search.text,
+          selectedChild,
+          selectedKind,
+          readEpoch,
+        ),
+        isCurrent: () =>
+            mounted &&
+            identical(widget.state.user, owner) &&
+            widget.state.api.token == token &&
+            widget.state.familyId == family &&
+            ModalRoute.of(context)?.isCurrent != false,
+        onError: () => toast(
+          context,
+          'Die Lesemarkierung konnte nicht gespeichert werden. Die Nachricht bleibt ungelesen.',
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListenableBuilder(
+              listenable: widget.state.inbox,
+              builder: (context, _) {
+                final inbox = widget.state.inbox;
+                final owner = widget.state.user;
+                final query = search.text.trim().toLowerCase();
+                final filtered =
+                    query.isNotEmpty ||
+                    selectedChild != null ||
+                    selectedKind != null;
+                final children = <String, String>{
+                  for (final item in inbox.items)
+                    if (item['child_id'] is String)
+                      item['child_id']: '${item['child_name'] ?? 'Kind'}',
+                };
+                if (selectedChild != null &&
+                    !children.containsKey(selectedChild)) {
+                  children[selectedChild!] =
+                      'Ausgewähltes Kind (keine Meldung)';
+                }
+                final kinds = <String>{
+                  for (final item in inbox.items)
+                    if (item['kind'] is String) item['kind'],
+                  ?selectedKind,
+                }.toList()..sort();
+                final shown = inbox.items
+                    .where(
+                      (item) =>
+                          !onlyUnread || unreadSelection.contains(item['id']),
+                    )
+                    .where(
+                      (item) =>
+                          selectedChild == null ||
+                          item['child_id'] == selectedChild,
+                    )
+                    .where(
+                      (item) =>
+                          selectedKind == null || item['kind'] == selectedKind,
+                    )
+                    .where(
+                      (item) =>
+                          query.isEmpty ||
+                          '${item['title']} ${item['child_name'] ?? ''} ${notificationActionLabel(item)}'
+                              .toLowerCase()
+                              .contains(query),
+                    )
+                    .toList();
+                return Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: heading('Deine Neuigkeiten')),
-                      IconButton(
-                        tooltip: 'Aktualisieren',
-                        onPressed: inbox.loading ? null : inbox.refresh,
-                        icon: Icon(Icons.refresh_rounded),
-                      ),
-                    ],
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Alle Neuigkeiten'),
-                        selected: !onlyUnread,
-                        onSelected: (_) => setState(() => onlyUnread = false),
-                      ),
-                      ChoiceChip(
-                        label: Text('Ungelesen (${inbox.unread})'),
-                        selected: onlyUnread,
-                        onSelected: (_) => setState(() => onlyUnread = true),
-                      ),
-                    ],
-                  ),
-                  if (inbox.items.isNotEmpty || filtered)
-                    if (filtered)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      Row(
                         children: [
-                          Text(
-                            [
-                              if (query.isNotEmpty) 'Suche: $query',
-                              if (selectedChild != null)
-                                children[selectedChild] ?? 'Ausgewähltes Kind',
-                              if (selectedKind != null)
-                                noticeKindLabel(selectedKind!),
-                            ].join(' · '),
-                          ),
-                          TextButton.icon(
-                            onPressed: () {
-                              if (!mounted ||
-                                  !identical(widget.state.user, owner)) {
-                                return;
-                              }
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              setState(() {
-                                search.clear();
-                                selectedChild = selectedKind = null;
-                              });
-                            },
-                            icon: const Icon(Icons.filter_alt_off_outlined),
-                            label: const Text('Suche und Zusatzfilter leeren'),
+                          Expanded(child: heading('Deine Neuigkeiten')),
+                          IconButton(
+                            tooltip: 'Aktualisieren',
+                            onPressed: inbox.loading ? null : refreshNotices,
+                            icon: Icon(Icons.refresh_rounded),
                           ),
                         ],
                       ),
-                  PageToolsGroup(
-                    key: const ValueKey('notification-list-filters'),
-                    id: 'notification-list-filters',
-                    title: 'Suche & Neuigkeitenfilter',
-                    scope: (
-                      'notification-filters',
-                      ObjectKey(owner),
-                      widget.state.familyId,
-                      widget.state.api.token,
-                    ),
-                    isCurrent: () =>
-                        mounted && identical(widget.state.user, owner),
-                    active: filtered,
-                    summary: [
-                      if (query.isNotEmpty) 'Suche: $query',
-                      if (selectedChild != null)
-                        children[selectedChild] ?? 'Ausgewähltes Kind',
-                      if (selectedKind != null) noticeKindLabel(selectedKind!),
-                    ].join(' · '),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: search,
-                          textInputAction: TextInputAction.search,
-                          decoration: InputDecoration(
-                            labelText: 'Geladene Neuigkeiten durchsuchen',
-                            prefixIcon: const Icon(Icons.search_rounded),
-                            suffixIcon: search.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Neuigkeitensuche leeren',
-                                    onPressed: () {
-                                      search.clear();
-                                      FocusManager.instance.primaryFocus
-                                          ?.unfocus();
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(Icons.close_rounded),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Alle Neuigkeiten'),
+                            selected: !onlyUnread,
+                            onSelected: (_) =>
+                                setState(() => onlyUnread = false),
+                          ),
+                          ChoiceChip(
+                            label: Text('Ungelesen (${inbox.unread})'),
+                            selected: onlyUnread,
+                            onSelected: inbox.hasLoaded
+                                ? (_) => setState(() {
+                                    onlyUnread = true;
+                                    unreadSelection = inbox.items
+                                        .where((item) => item['read'] != true)
+                                        .map((item) => item['id'] as String)
+                                        .toSet();
+                                  })
+                                : null,
+                          ),
+                        ],
+                      ),
+                      if (inbox.items.isNotEmpty || filtered)
+                        if (filtered)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                [
+                                  if (query.isNotEmpty) 'Suche: $query',
+                                  if (selectedChild != null)
+                                    children[selectedChild] ??
+                                        'Ausgewähltes Kind',
+                                  if (selectedKind != null)
+                                    noticeKindLabel(selectedKind!),
+                                ].join(' · '),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  if (!mounted ||
+                                      !identical(widget.state.user, owner)) {
+                                    return;
+                                  }
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(() {
+                                    search.clear();
+                                    selectedChild = selectedKind = null;
+                                  });
+                                },
+                                icon: const Icon(Icons.filter_alt_off_outlined),
+                                label: const Text(
+                                  'Suche und Zusatzfilter leeren',
+                                ),
+                              ),
+                            ],
+                          ),
+                      PageToolsGroup(
+                        key: const ValueKey('notification-list-filters'),
+                        id: 'notification-list-filters',
+                        title: 'Suche & Neuigkeitenfilter',
+                        scope: (
+                          'notification-filters',
+                          ObjectKey(owner),
+                          widget.state.familyId,
+                          widget.state.api.token,
+                        ),
+                        isCurrent: () =>
+                            mounted && identical(widget.state.user, owner),
+                        active: filtered,
+                        summary: [
+                          if (query.isNotEmpty) 'Suche: $query',
+                          if (selectedChild != null)
+                            children[selectedChild] ?? 'Ausgewähltes Kind',
+                          if (selectedKind != null)
+                            noticeKindLabel(selectedKind!),
+                        ].join(' · '),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: search,
+                              textInputAction: TextInputAction.search,
+                              decoration: InputDecoration(
+                                labelText: 'Geladene Neuigkeiten durchsuchen',
+                                prefixIcon: const Icon(Icons.search_rounded),
+                                suffixIcon: search.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Neuigkeitensuche leeren',
+                                        onPressed: () {
+                                          search.clear();
+                                          FocusManager.instance.primaryFocus
+                                              ?.unfocus();
+                                          setState(() {});
+                                        },
+                                        icon: const Icon(Icons.close_rounded),
+                                      ),
+                              ),
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                            ),
+                            if (widget.state.isParent &&
+                                (children.length > 1 ||
+                                    selectedChild != null)) ...[
+                              const SizedBox(height: 12),
+                              DropdownButtonFormField<String>(
+                                key: ValueKey(('notice-child', selectedChild)),
+                                initialValue: selectedChild ?? '',
+                                isExpanded: true,
+                                itemHeight: null,
+                                decoration: const InputDecoration(
+                                  labelText: 'Neuigkeiten für ein Kind',
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: '',
+                                    child: Text('Alle Kinder'),
                                   ),
-                          ),
-                          onChanged: (_) => setState(() {}),
-                          onSubmitted: (_) =>
-                              FocusManager.instance.primaryFocus?.unfocus(),
+                                  for (final entry in children.entries)
+                                    DropdownMenuItem(
+                                      value: entry.key,
+                                      child: Text(entry.value),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(
+                                    () => selectedChild = value == ''
+                                        ? null
+                                        : value,
+                                  );
+                                },
+                              ),
+                            ],
+                            if (kinds.length > 1 || selectedKind != null) ...[
+                              const SizedBox(height: 12),
+                              DropdownButtonFormField<String>(
+                                key: ValueKey(('notice-kind', selectedKind)),
+                                initialValue: selectedKind ?? '',
+                                isExpanded: true,
+                                itemHeight: null,
+                                decoration: const InputDecoration(
+                                  labelText: 'Art der Neuigkeit',
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: '',
+                                    child: Text('Alle Arten'),
+                                  ),
+                                  for (final kind in kinds)
+                                    DropdownMenuItem(
+                                      value: kind,
+                                      child: Text(noticeKindLabel(kind)),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(
+                                    () => selectedKind = value == ''
+                                        ? null
+                                        : value,
+                                  );
+                                },
+                              ),
+                            ],
+                          ],
                         ),
-                        if (widget.state.isParent &&
-                            (children.length > 1 || selectedChild != null)) ...[
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            key: ValueKey(('notice-child', selectedChild)),
-                            initialValue: selectedChild ?? '',
-                            isExpanded: true,
-                            itemHeight: null,
-                            decoration: const InputDecoration(
-                              labelText: 'Neuigkeiten für ein Kind',
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: '',
-                                child: Text('Alle Kinder'),
-                              ),
-                              for (final entry in children.entries)
-                                DropdownMenuItem(
-                                  value: entry.key,
-                                  child: Text(entry.value),
-                                ),
-                            ],
-                            onChanged: (value) {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              setState(
-                                () =>
-                                    selectedChild = value == '' ? null : value,
-                              );
-                            },
-                          ),
-                        ],
-                        if (kinds.length > 1 || selectedKind != null) ...[
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            key: ValueKey(('notice-kind', selectedKind)),
-                            initialValue: selectedKind ?? '',
-                            isExpanded: true,
-                            itemHeight: null,
-                            decoration: const InputDecoration(
-                              labelText: 'Art der Neuigkeit',
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: '',
-                                child: Text('Alle Arten'),
-                              ),
-                              for (final kind in kinds)
-                                DropdownMenuItem(
-                                  value: kind,
-                                  child: Text(noticeKindLabel(kind)),
-                                ),
-                            ],
-                            onChanged: (value) {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              setState(
-                                () => selectedKind = value == '' ? null : value,
-                              );
-                            },
-                          ),
-                        ],
+                      ),
+                      if (inbox.loading) ...[
+                        const LinearProgressIndicator(),
+                        Semantics(
+                          liveRegion: true,
+                          child: const Text('Neuigkeiten werden geladen …'),
+                        ),
                       ],
-                    ),
-                  ),
-                  if (inbox.loading) ...[
-                    const LinearProgressIndicator(),
-                    Semantics(
-                      liveRegion: true,
-                      child: const Text('Neuigkeiten werden geladen …'),
-                    ),
-                  ],
-                  if (inbox.error != null) ...[
-                    Notice(inbox.error!),
-                    ActionButton(
-                      label: 'Neuigkeiten erneut laden',
-                      secondary: true,
-                      onPressed: inbox.refresh,
-                    ),
-                  ],
-                  if (inbox.hasLoaded &&
-                      inbox.items.isEmpty &&
-                      inbox.error == null)
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Text(
-                        'Hier erscheint Neues zu deinen Lernrunden und deiner Familie.',
-                      ),
-                    ),
-                  if (shown.any((item) => item['read'] != true))
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ActionButton(
-                        key: ValueKey(('all-notices-read', ObjectKey(owner))),
-                        label: filtered
-                            ? 'Angezeigte als gelesen markieren'
-                            : 'Alle als gelesen markieren',
-                        enabled: opening == null,
-                        secondary: true,
-                        onPressed: () =>
-                            identical(widget.state.user, owner) &&
-                                filterSnapshot ==
-                                    (
-                                      onlyUnread,
-                                      search.text.trim().toLowerCase(),
-                                      selectedChild,
-                                      selectedKind,
-                                    )
-                            ? inbox.markRead(
-                                shown
-                                    .where((row) => row['read'] != true)
-                                    .map((row) => row['id'] as String)
-                                    .toList(),
-                              )
-                            : Future<void>.value(),
-                      ),
-                    ),
-                  if ((onlyUnread || filtered) &&
-                      inbox.hasLoaded &&
-                      shown.isEmpty &&
-                      inbox.error == null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            filtered
-                                ? 'Keine der geladenen Neuigkeiten passt zu deiner Auswahl.'
-                                : 'Alles gelesen. Deine bisherigen Neuigkeiten bleiben unter „Alle Neuigkeiten“ erreichbar.',
-                          ),
-                          if (!filtered)
-                            TextButton(
-                              onPressed: () =>
-                                  setState(() => onlyUnread = false),
-                              child: const Text(
-                                'Bisherige Neuigkeiten anzeigen',
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  for (final item in shown)
-                    Padding(
-                      padding: EdgeInsets.only(top: 12),
-                      child: Material(
-                        color: item['read'] == true
-                            ? context.palette.surfaceLow
-                            : context.palette.mint,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(
-                            color: item['read'] == true
-                                ? context.palette.surfaceBorder
-                                : context.palette.teal,
+                      if (inbox.error != null) ...[
+                        Notice(inbox.error!),
+                        ActionButton(
+                          label: 'Neuigkeiten erneut laden',
+                          secondary: true,
+                          onPressed: refreshNotices,
+                        ),
+                      ],
+                      if (inbox.hasLoaded &&
+                          inbox.items.isEmpty &&
+                          inbox.error == null)
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Text(
+                            'Hier erscheint Neues zu deinen Lernrunden und deiner Familie.',
                           ),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child: ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          leading: Icon(
-                            item['kind'] == 'failed'
-                                ? Icons.info_outline_rounded
-                                : item['read'] == true
-                                ? Icons.notifications_none_rounded
-                                : Icons.notifications_active_outlined,
-                            color: item['read'] == true
-                                ? context.palette.muted
-                                : context.palette.teal,
-                          ),
-                          title: Text(
-                            item['title'],
-                            style: TextStyle(
-                              fontWeight: item['read'] == true
-                                  ? FontWeight.w500
-                                  : FontWeight.w700,
-                            ),
-                          ),
-                          subtitle: Column(
+                      if ((onlyUnread || filtered) &&
+                          inbox.hasLoaded &&
+                          shown.isEmpty &&
+                          inbox.error == null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                                filtered
+                                    ? 'Keine der geladenen Neuigkeiten passt zu deiner Auswahl.'
+                                    : 'Alles gelesen. Deine bisherigen Neuigkeiten bleiben unter „Alle Neuigkeiten“ erreichbar.',
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                opening == item['id']
-                                    ? 'Wird geöffnet …'
-                                    : notificationActionLabel(item),
-                                style: TextStyle(
-                                  color: context.palette.teal,
-                                  decoration: TextDecoration.underline,
+                              if (!filtered)
+                                TextButton(
+                                  onPressed: () =>
+                                      setState(() => onlyUnread = false),
+                                  child: const Text(
+                                    'Bisherige Neuigkeiten anzeigen',
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
-                          trailing: Icon(Icons.chevron_right_rounded),
-                          onTap: opening == null
-                              ? () => openItem(item, owner)
-                              : null,
                         ),
-                      ),
-                    ),
-                  if (inbox.items.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(top: 12),
-                      child: Text(
-                        'Bis zu ${inbox.itemLimit} der neuesten Neuigkeiten aus ${inbox.retentionDays} Tagen. Der Ungelesen-Filter gilt für diese Liste.',
-                        style: TextStyle(
-                          color: context.palette.muted,
-                          fontSize: 12,
+                      for (final item in shown)
+                        NotificationExposure(
+                          key: ValueKey((
+                            'notification-card',
+                            ObjectKey(owner),
+                            item['id'],
+                          )),
+                          id: item['id'] as String,
+                          unread: item['read'] != true,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Material(
+                              color: item['read'] == true
+                                  ? context.palette.surfaceLow
+                                  : context.palette.mint,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                  color: item['read'] == true
+                                      ? context.palette.surfaceBorder
+                                      : context.palette.teal,
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                leading: Icon(
+                                  item['kind'] == 'failed'
+                                      ? Icons.info_outline_rounded
+                                      : item['read'] == true
+                                      ? Icons.notifications_none_rounded
+                                      : Icons.notifications_active_outlined,
+                                  color: item['read'] == true
+                                      ? context.palette.muted
+                                      : context.palette.teal,
+                                ),
+                                title: Text(
+                                  item['title'],
+                                  style: TextStyle(
+                                    fontWeight: item['read'] == true
+                                        ? FontWeight.w500
+                                        : FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      opening == item['id']
+                                          ? 'Wird geöffnet …'
+                                          : notificationActionLabel(item),
+                                      style: TextStyle(
+                                        color: context.palette.teal,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing: Icon(Icons.chevron_right_rounded),
+                                onTap: opening == null
+                                    ? () => openItem(item, owner)
+                                    : null,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
+                      if (onlyUnread && shown.isNotEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Text(
+                            'Gerade gelesene Meldungen bleiben bis zur nächsten Auswahl stehen.',
+                          ),
+                        ),
+                      if (inbox.items.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Text(
+                            'Bis zu ${inbox.itemLimit} der neuesten Neuigkeiten aus ${inbox.retentionDays} Tagen. Der Ungelesen-Filter gilt für diese Liste.',
+                            style: TextStyle(
+                              color: context.palette.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: 12),
+            KeyedSubtree(
+              key: _devicePanel,
+              child: NotificationPanel(widget.state),
+            ),
+          ],
         ),
-        SizedBox(height: 12),
-        KeyedSubtree(key: _devicePanel, child: NotificationPanel(widget.state)),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class NotificationPanel extends StatefulWidget {

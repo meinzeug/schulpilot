@@ -212,6 +212,8 @@ def day_data(db, day, child, p):
         ),
         None,
     )
+    from .material_review import public_status
+
     return {
         "id": day.id,
         "child_id": child.id,
@@ -222,7 +224,7 @@ def day_data(db, day, child, p):
         "allow_uploads": day.school_date == local_day(child).isoformat(),
         "preparation": preparation_data(db, day, child),
         "max_pages": MAX_PAGES,
-        "pages": [material_data(m) for m in material_list],
+        "pages": [material_data(m) | {"material_review": public_status(db, m)} for m in material_list],
         "confirmed_count": sum(m.confirmed for m in material_list),
         "units": [unit_data(db, u, include_answers=p.user.role == "parent") for u in units],
         "plan": package_plan(db, day, child),
@@ -523,6 +525,8 @@ def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depe
 
 
 def validate_package_sources(db, job):
+    from .material_review import pipeline_ready
+
     day = db.get(SchoolDay, job.payload["school_day_id"])
     child = db.get(Child, job.child_id)
     source_pages = pages(db, day) if day else []
@@ -533,7 +537,7 @@ def validate_package_sources(db, job):
         or day.stage != "review"
         or day.revision != job.payload["day_revision"]
         or actual != job.payload["sources"]
-        or not all(m.confirmed for m in source_pages)
+        or not pipeline_ready(db, day, source_pages)
     ):
         raise ProviderError("Seiten wurden inzwischen geändert oder gelöscht. Bitte das Tagespaket erneut prüfen.")
     if planning_fingerprint(db, child) != job.payload["planning_fingerprint"]:

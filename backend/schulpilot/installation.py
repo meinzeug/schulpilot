@@ -21,6 +21,7 @@ SECRET_FIELDS = {"smtp_password", "fcm_service_account_json", "google_oauth_clie
 
 
 class SiteUpdate(s.Strict):
+    material_review_mode: Literal["manual", "automatic"] = "manual"
     smtp_host: str = Field(default="", max_length=253, pattern=r"^[A-Za-z0-9.-]*$")
     smtp_port: int = Field(default=587, ge=1, le=65535)
     smtp_user: str = Field(default="", max_length=254)
@@ -222,6 +223,9 @@ def configuration(db):
 
 
 def save_site(data, actor, db):
+    if ("material_review_mode" in data.model_fields_set
+            and data.material_review_mode != runtime_settings(db).material_review_mode):
+        raise HTTPException(409, "Die Seitenprüfung bitte über ihre eigene revisionsgebundene Einstellung ändern.")
     db.execute(update(Installation).where(Installation.id == 1).values(revision=Installation.revision + 1))
     item = db.get(Installation, 1)
     from .security import decrypt
@@ -263,6 +267,50 @@ def get_setup(actor=Depends(setup_operator), db=Depends(get_db)):
 @router.put("/setup/site")
 def update_setup(data: SiteUpdate, actor=Depends(setup_operator), db=Depends(get_db)):
     return save_site(data, actor, db)
+
+
+class MaterialReviewUpdate(s.Strict):
+    mode: Literal["manual", "automatic"]
+    expected_revision: int = Field(ge=1, strict=True)
+
+
+def material_review_settings(db):
+    row = db.get(Installation, 1, populate_existing=True)
+    if not row or not row.completed:
+        raise HTTPException(409, "Bitte zuerst die Einrichtung abschließen.")
+    return {"mode": runtime_settings(db).material_review_mode, "revision": row.revision}
+
+
+@router.get("/admin/installation/material-review")
+def get_material_review(p=Depends(admin), db=Depends(get_db)):
+    result = material_review_settings(db)
+    audit(db, p.user.id, "installation.material_review_read", str(result["revision"]))
+    db.commit()
+    return result
+
+
+@router.put("/admin/installation/material-review")
+def update_material_review(data: MaterialReviewUpdate, p=Depends(admin), db=Depends(get_db)):
+    from .security import decrypt
+
+    # Lock/CAS the common installation row before reading retained secrets.
+    changed = db.execute(update(Installation).where(
+        Installation.id == 1, Installation.completed.is_(True),
+        Installation.revision == data.expected_revision).values(revision=Installation.revision))
+    if not changed.rowcount:
+        raise HTTPException(409, "Die Einstellungen wurden geändert. Bitte den aktuellen Stand abgleichen.")
+    item = db.get(Installation, 1, populate_existing=True)
+    current = runtime_settings(db).material_review_mode
+    if current != data.mode:
+        values = json.loads(decrypt(item.encrypted_settings)) if item.encrypted_settings else {}
+        values["material_review_mode"] = data.mode
+        item.encrypted_settings = encrypt(json.dumps(values))
+        item.revision += 1
+        audit(db, p.user.id, "installation.material_review_update",
+              str(data.expected_revision) + ":" + str(item.revision) + ":" + data.mode)
+    result = {"mode": data.mode, "revision": item.revision}
+    db.commit()
+    return result
 
 
 @router.get("/admin/installation")

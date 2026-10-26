@@ -1,7 +1,8 @@
 # Benachrichtigungen
 
-Die Glocke im mobilen App-Kopf und im Browser-Kontokopf öffnet eine kleine
-Vorschau; „Alle anzeigen“ führt zu `/notifications`.
+Die Glocke im mobilen App-Kopf und im Browser-Kontokopf öffnet eine begrenzte,
+inline scrollbar nutzbare Liste aller bereits geladenen Neuigkeiten;
+„Alle anzeigen“ führt zur großen gefilterten Ansicht unter `/notifications`.
 Kinder und berechtigte Eltern sehen bis zu 50 gespeicherte Neuigkeiten aus den
 letzten 30 Tagen. Beim Betriebsadmin öffnet sie ausschließlich `/admin/push`.
 Die Übersicht funktioniert ohne Geräte-Push und ohne Firebase-Initialisierung.
@@ -68,7 +69,9 @@ keine Umgehung von Android-Berechtigungen, Geräteeinstellungen, erzwungenem
 Beenden oder fehlenden Play-Diensten. Die App initialisiert weder Analytics noch
 einen neuen Sprach-/Audio-/Firebase-Dienst.
 
-Klicks öffnen die angemeldete Neuigkeitenansicht. Systemtexte enthalten weiterhin
+Klicks öffnen standardmäßig die angemeldete Neuigkeitenansicht; geprüfte
+Fertigmeldungen können gezielt ihre gespeicherte Runde öffnen (siehe142 unten).
+Systemtexte enthalten weiterhin
 keine Namen, Fächer, Noten, Antworten oder privaten Chattexte. Empfangene Daten
 werden nicht als beliebige URL ausgeführt. Logout löscht die eigene sichtbare
 Android-Meldung und lokale FCM-Registrierung; das Backend widerruft die Sitzung
@@ -98,8 +101,9 @@ die eigenen Markierungen des exportierenden Elternteils, keine anderer Eltern.
 Fertige Sprachprojekte und Wortimporte sind nun zusätzliche gebündelte
 Push-Anlässe. Vor Einreihen und Versand werden Quellsitzung, Familienrechte,
 aktuelle Quellen, Elternfreigabe, Kategorien und beide Ruhezeiten geprüft.
-Weiterhin höchstens ein Tagesbündel je Gerät/Kategorie und kein Hinweis pro
-falscher Antwort. Die Warteschlange wird zusätzlich unmittelbar nach Abschluss
+Für allgemeine Tageskategorien bleibt es bei höchstens einem Tagesbündel je
+Gerät/Kategorie. Auftragsgebundene Fertigmeldungen verwenden die unten
+beschriebene Ereignis-Deduplizierung; es gibt keinen Hinweis pro falscher Antwort. Die Warteschlange wird zusätzlich unmittelbar nach Abschluss
 eines Workerauftrags geprüft; keine zusätzliche KI-Reservierung.
 
 `/admin/push` zeigt nur Betriebsmetadaten, Geräteanzahlen je Plattform und
@@ -108,13 +112,28 @@ kein Zustellbeleg. Private Tokens und Nachrichten sind dort nicht zugänglich.
 
 ## Prüfung und Betrieb
 
-Ab1.18.4 öffnet die gemeinsame Headerglocke ein Klappmenü mit maximal vier
-vorhandenen Neuigkeiten und „Alle anzeigen“ zur vollständigen bisherigen Seite.
-Öffnen/Neuladen liest ausschließlich den vorhandenen Posteingang. Erst der
-bewusste Klick auf einen Eintrag setzt dessen kontogebundene Lesemarkierung und
-öffnet das bereits serverseitig geprüfte Ziel. Leere und fehlgeschlagene Abrufe
-haben eigene Zustände. Betreiber sehen ausschließlich den Push-Betrieb, keinen
-privaten Familienposteingang. Das Kontomenü enthält Einstellungen und Abmelden.
+Die gemeinsame Headerglocke zeigt alle bereits geladenen Neuigkeiten in einem
+höhenbegrenzten eigenen Scrollbereich; die bestehende Servergrenze bleibt50.
+„Alle anzeigen“ öffnet weiterhin die große Ansicht mit Suche und Filtern.
+Nach dem Öffnen bzw. Scrollen werden nur tatsächlich sichtbar gerenderte
+Einträge über das bestehende ausdrückliche POST als gelesen markiert.
+Die große Ansicht verwendet dieselbe Sichtbarkeitsprüfung. Vorgeladene oder
+außerhalb des Viewports liegende Karten zählen nicht; ein verdeckender Dialog,
+anderes Konto oder Hintergrundzustand verhindert neue Lesebelege. Eine teilweise
+sichtbare Karte benötigt konservativ mindestens die halbe Fläche und48Pixel Höhe.
+
+Die Markierung folgt erst auf eine erfolgreiche Serverantwort; Fehler lassen
+den Eintrag ungelesen. Gleichzeitiges Anzeigen und Anklicken teilen denselben
+laufenden Leseschreibauftrag. Ein neuer bewusster Ansichtsaufruf, Filterwechsel
+oder Abgleich kann einen fehlgeschlagenen Beleg erneut versuchen; ein Rebuild
+startet keine automatische Wiederholungsschleife. Im Ungelesenfilter bleiben
+soeben gelesene Karten bis zur nächsten bewussten Auswahl stehen, damit keine
+unsichtbaren Nachfolger automatisch nachrutschen und ebenfalls gelesen werden.
+GETs und Backendprojektionen bleiben schreibfrei; keine KI, Lernzeit oder
+Kompetenz entsteht aus Sichtbarkeit oder einer Lesemarkierung. Ein Klick öffnet
+das bereits serverseitig geprüfte Ziel. Leere und fehlgeschlagene Abrufe haben
+eigene Zustände. Betreiber sehen ausschließlich den Push-Betrieb, keinen privaten
+Familienposteingang. Das Kontomenü enthält Einstellungen und Abmelden.
 Verzögerte Abmeldeantworten dürfen eine inzwischen neu angemeldete Sitzung nicht
 löschen; Identitätsprüfung gilt auch bei erneuter Anmeldung desselben Kontos.
 
@@ -228,3 +247,64 @@ aktiviert sie nicht wieder. Bereits gespeicherte Prüfereignisse und
 Speicherversuchsbelege werden dabei nicht umgeschrieben. Ereignisse werden nach30Tagen entfernt. API-,
 Worker-, Transport- und Oberflächentests verwenden künstliche Konten; eine
 sichtbare Android-Hintergrundzustellung ist erst mit beobachtetem Endgerät belegt.
+
+
+## Bereite Lernrunden ab 1.36.30+142
+
+Neue ausdrücklich angeforderte Materialrunden, Anschlussübungen und Lernetappen
+können nach ihrem gespeicherten Abschluss ein neutrales `round_ready`-Ereignis
+erhalten. Der bestehende Worker legt den Hinweis erst nach dem Commit der Runde
+an; ein fehlgeschlagener Hinweis verliert weder die Runde noch ihre Antworten.
+Die lokale Wiederaufnahme kann einen fehlenden Hinweis zu einem neuen,
+herkunftsgebundenen Auftrag ergänzen, ohne einen Modellaufruf zu wiederholen.
+Alte Aufträge ohne `completion_origin` werden nicht nachträglich aufgefüllt.
+Klassenarbeits- und Tagespaketaufträge behalten ihre bestehenden getrennten
+Fertigmeldewege und erzeugen dadurch keinen zweiten Rundeneintrag.
+
+Die Glocke zeigt „Deine Lernrunde ist bereit“ auch ohne Firebase- oder
+Geräte-Opt-in. Berechtigte Kinder und Eltern erhalten nur gültige Verweise auf
+das eigene Kind. Ziel ist die tatsächlich gespeicherte, noch nicht gestartete
+Runde unter `/unit/<Unit-ID>`; aktuelle Quellenrevisionen, Nutzbarkeit und
+gegebenenfalls vollständige Erklärgrafiken werden geprüft. Ein geänderter oder
+entzogener Verweis, eine gelöschte Quelle oder bereits gestartete Runde wird
+nicht weiter als bereit angeboten. Lesen der Glocke erzeugt weder Hinweise,
+KI-Aufträge noch Lernnachweise. Lesemarkierungen bleiben ausdrücklich und
+kontogebunden.
+
+Auch die Fertigmeldung des Foto-Tages kann direkt die erste noch nicht
+gestartete, verwendbare Runde aus genau dessen abgeschlossenem Paket öffnen.
+Fehlt ein solches Ziel, bleibt der passende ursprüngliche Schultag erreichbar;
+„Fotos gespeichert“ wird nicht zu einer angeblich fertigen Lernrunde umgedeutet.
+
+Geräte-Push bleibt davon getrennt und freiwillig. Der Kinderzugang benötigt
+weiterhin die Elternfreigabe, das Geräte-Opt-in samt aktivierter Kategorie
+„Erinnerungen“, einen zulässigen Android-/Browserzustand und die bestehende
+Firebase-Betriebsfreigabe. Der allgemeine Schalter für planmäßige
+Tageserinnerungen ist keine zusätzliche Voraussetzung für eine bewusst
+angeforderte fertige Runde. Sitzung, Familienrechte, aktueller Auftrag,
+Quellen, Rundenzustand sowie Kinder- und Geräte-Ruhezeit werden vor Versand
+erneut geprüft. Die Lebensdauer beträgt höchstens 60 Sekunden und endet vor
+beiden Ruhezeiten.
+
+FCM erhält nur den vorhandenen neutralen Systemtext, keine Namen, Fächer,
+Aufgaben, Ergebnisse oder privaten Chattexte. Für diese Meldung enthält
+`data.route` den streng geprüften lokalen Pfad `/unit/<32-stellige Hex-ID>`;
+der Weblink verwendet denselben Pfad unter der eigenen öffentlichen App-URL.
+Es werden keine beliebigen Fremd-URLs ausgeführt. Die bereits vorhandenen
+Web-/Android-Routenprüfungen bleiben maßgeblich.
+
+Die In-App-Nachricht ist eindeutig an Auftrag und gespeicherte Runde gebunden.
+Die Push-Warteschlange dedupliziert je Gerät und Ereignis statt pauschal je Tag:
+zwei verschiedene neue Runden am selben Tag dürfen je einen Hinweis erhalten,
+das erneute Verarbeiten desselben Abschlusses keinen zweiten. Für die
+Foto-Tagesmeldung bleibt der konkrete Durchlauf/Status maßgeblich. Ein
+Sendetimeout wird nicht automatisch wiederholt, weil FCM die erste Sendung
+bereits angenommen haben könnte.
+
+Für 142 sind Inbox, Herkunfts-/Quellenkontrolle, Ereignis-Deduplizierung,
+Ruhezeiten und neutraler FCM-Transport bislang lokal mit künstlichen Daten und
+Transportattrappen geprüft (`backend/tests/test_round_ready_notifications.py`
+sowie die bestehenden Benachrichtigungstests). Das belegt weder ein bereits
+erfolgtes Deployment noch sichtbare Android-Hintergrundzustellung. FCM-Annahme,
+sichtbare Systemmeldung und korrektes Öffnen am realen Gerät sind getrennte
+Abnahmeschritte nach dem Release.

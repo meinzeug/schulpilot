@@ -15,6 +15,7 @@ import 'download_panel.dart';
 import 'legal_links.dart';
 import 'schulbuddy.dart';
 import 'schulpilot_icons.dart';
+import 'notification_visibility.dart';
 
 // Shared light-surface palette. Cyan is an accent on navy, not a text color
 // on white. Keep secondary text opaque so nested surfaces preserve contrast.
@@ -2742,6 +2743,7 @@ class NotificationBell extends StatefulWidget {
 
 class _NotificationBellState extends State<NotificationBell> {
   final _menu = MenuController();
+  final _previewScroll = ScrollController();
   Json? _snapshot;
   bool _opening = false;
   int _openRevision = 0;
@@ -2782,6 +2784,7 @@ class _NotificationBellState extends State<NotificationBell> {
   @override
   void dispose() {
     widget.state.removeListener(_changed);
+    _previewScroll.dispose();
     super.dispose();
   }
 
@@ -2828,17 +2831,39 @@ class _NotificationBellState extends State<NotificationBell> {
       final inbox = state.inbox;
       final account = state.user?['id'] as String?;
       final snapshot = state.user;
+      final family = state.familyId, token = state.api.token;
+      final menuHeight =
+          (MediaQuery.sizeOf(context).height -
+                  MediaQuery.viewInsetsOf(context).bottom -
+                  MediaQuery.paddingOf(context).vertical -
+                  24)
+              .clamp(120, 640)
+              .toDouble();
+      final height =
+          (menuHeight - 108 - MediaQuery.textScalerOf(context).scale(40))
+              .clamp(48, 440)
+              .toDouble();
       final width = (MediaQuery.sizeOf(context).width - 56)
           .clamp(0, 320)
           .toDouble();
       return MenuAnchor(
         controller: _menu,
         crossAxisUnconstrained: false,
-        style: _headerMenuStyle(context),
+        style: _headerMenuStyle(context).copyWith(
+          maximumSize: WidgetStatePropertyAll(Size(width + 24, menuHeight)),
+        ),
         onOpen: () {
           if (!state.isAdmin) {
             inbox.activate(account);
             inbox.refresh();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted &&
+                  _menu.isOpen &&
+                  _sameHeaderAccount(state, snapshot) &&
+                  _previewScroll.hasClients) {
+                _previewScroll.jumpTo(0);
+              }
+            });
           }
         },
         menuChildren: [
@@ -2846,7 +2871,9 @@ class _NotificationBellState extends State<NotificationBell> {
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
             child: Text(
               state.isAdmin ? 'Push-Betrieb' : 'Deine Neuigkeiten',
-              style: TextStyle(fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
           if (state.isAdmin)
@@ -2890,62 +2917,119 @@ class _NotificationBellState extends State<NotificationBell> {
                   ),
                 ),
               ),
-            for (final item in inbox.items.take(4))
-              MenuItemButton(
-                key: ValueKey('notice-preview-${item['id']}'),
-                leadingIcon: Icon(
-                  item['read'] == true
-                      ? Icons.notifications_none_rounded
-                      : Icons.notifications_active_outlined,
-                  color: item['read'] == true
-                      ? context.palette.muted
-                      : context.palette.teal,
-                ),
-                onPressed: _opening ? null : () => _openItem(item, snapshot),
+            if (inbox.items.isNotEmpty)
+              NotificationReadScope(
+                inbox: inbox,
+                scope: (ObjectKey(snapshot), family, token),
+                isCurrent: () =>
+                    mounted &&
+                    _menu.isOpen &&
+                    _sameHeaderAccount(state, snapshot) &&
+                    state.familyId == family &&
+                    state.api.token == token &&
+                    ModalRoute.of(context)?.isCurrent != false,
+                onError: () {
+                  if (!_opening) {
+                    toast(
+                      context,
+                      'Die Lesemarkierung konnte nicht gespeichert werden. Die Nachricht bleibt ungelesen.',
+                    );
+                  }
+                },
                 child: SizedBox(
-                  width: (width - 64).clamp(0, 256).toDouble(),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item['title'] as String,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: item['read'] == true
-                                ? FontWeight.w500
-                                : FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: context.palette.muted,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          notificationActionLabel(item),
-                          style: TextStyle(
-                            color: context.palette.teal,
-                            fontSize: 12,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ],
+                  width: width,
+                  child: SizedBox(
+                    height:
+                        (inbox.items.length *
+                                MediaQuery.textScalerOf(context).scale(140))
+                            .clamp(48, height)
+                            .toDouble(),
+                    child: Scrollbar(
+                      controller: _previewScroll,
+                      thumbVisibility: true,
+                      child: ListView.builder(
+                        key: const ValueKey('notification-preview-scroll'),
+                        controller: _previewScroll,
+                        primary: false,
+                        padding: EdgeInsets.zero,
+                        itemCount: inbox.items.length,
+                        itemBuilder: (context, index) {
+                          final item = inbox.items[index];
+                          return NotificationExposure(
+                            key: ValueKey((
+                              'preview-exposure',
+                              ObjectKey(snapshot),
+                              item['id'],
+                            )),
+                            id: item['id'] as String,
+                            unread: item['read'] != true,
+                            child: MenuItemButton(
+                              key: ValueKey('notice-preview-${item['id']}'),
+                              leadingIcon: Icon(
+                                item['read'] == true
+                                    ? Icons.notifications_none_rounded
+                                    : Icons.notifications_active_outlined,
+                                color: item['read'] == true
+                                    ? context.palette.muted
+                                    : context.palette.teal,
+                              ),
+                              onPressed: _opening
+                                  ? null
+                                  : () => _openItem(item, snapshot),
+                              child: SizedBox(
+                                width: (width - 64).clamp(0, 256).toDouble(),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item['title'] as String,
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: item['read'] == true
+                                              ? FontWeight.w500
+                                              : FontWeight.w700,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: context.palette.muted,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        notificationActionLabel(item),
+                                        style: TextStyle(
+                                          color: context.palette.teal,
+                                          fontSize: 12,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
               ),
-            if (inbox.items.length > 4)
+            if (inbox.items.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Text(
-                  '4 von ${inbox.items.length} geladenen Neuigkeiten. Die übrigen findest du unter „Alle anzeigen“.',
+                  '${inbox.items.length} geladene Neuigkeiten · Im Menü scrollen.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: context.palette.muted, fontSize: 12),
                 ),
               ),
@@ -2959,7 +3043,12 @@ class _NotificationBellState extends State<NotificationBell> {
                 context.go(state.isAdmin ? '/admin/push' : '/notifications');
               }
             },
-            child: Text('Alle anzeigen'),
+            child: Text(
+              'Alle anzeigen',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 14),
+            ),
           ),
         ],
         builder: (context, menu, _) => IconButton(

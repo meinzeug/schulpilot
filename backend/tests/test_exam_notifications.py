@@ -82,7 +82,7 @@ def test_ready_round_is_revision_bound_private_and_read_only(api, book):
     for _ in range(2):
         response = book["client"].get(route, headers={"X-Schulpilot-Capabilities": "exams-v1"})
         item = response.json()["items"][0]
-        assert item["kind"] == "exam_ready" and exam["id"] in item["route"]
+        assert item["kind"] == "exam_ready" and item["route"].startswith("/unit/")
         assert all(text not in response.text for text in ["PRIVATE ANTWORT", "PRIVATE ERKLÄRUNG", "Private Frage"])
     with DB.begin() as db:
         assert db.scalar(select(func.count()).select_from(Usage)) == 1
@@ -243,7 +243,7 @@ def test_ready_push_does_not_require_calendar_reminders(api, book, tmp_path, mon
     sent = []
     monkeypatch.setattr(n, "send_fcm", lambda *args, **kwargs: sent.append((args, kwargs)))
     assert n.deliver_one(DB) and len(sent) == 1
-    assert sent[0][0][1] == "exam_ready" and exam["id"] in sent[0][1]["exam_path"]
+    assert sent[0][0][1] == "exam_ready" and sent[0][1]["exam_path"].startswith("/unit/")
 
 
 def test_today_metadata_is_bounded_and_independent_of_reminder_and_time(api, book):
@@ -350,3 +350,22 @@ def test_append_ready_receipt_is_new_only_after_success_and_keeps_previous_draft
     with DB() as db:
         assert db.scalar(select(func.count()).select_from(Job)) == 3
         assert db.scalar(select(func.count()).select_from(Usage)) == 3
+
+
+def test_two_ready_round_events_on_same_day_are_not_silently_bundled(api, book, tmp_path, monkeypatch):
+    first = ready_round(api, book)
+    second = ready_round(api, book)
+    assert first["id"] != second["id"]
+    push_device(book, tmp_path)
+    with DB.begin() as db:
+        n.prepare(db)
+        n.prepare(db)
+    with DB() as db:
+        rows = list(db.scalars(select(PushDelivery)))
+        assert len(rows) == 2 and all(row.kind == "exam_ready" for row in rows)
+        assert len({row.dedup_key for row in rows}) == 2
+    sent = []
+    monkeypatch.setattr(n, "send_fcm", lambda *a, **kw: sent.append((a, kw)))
+    assert n.deliver_one(DB) and n.deliver_one(DB) and not n.deliver_one(DB)
+    assert len({kwargs["exam_path"] for _, kwargs in sent}) == 2
+    assert all(kwargs["exam_path"].startswith("/unit/") for _, kwargs in sent)

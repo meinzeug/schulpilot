@@ -212,8 +212,19 @@ void main() {
     };
     await overview.mountParent(tester, data, requests);
     final hero = find.text('Lernstand auf einen Blick');
+    final coreEvidence = find.text('0 Aufgaben mit Antwort');
     final evidence = find.byType(ParentPracticeSummary);
     final insights = find.byType(ParentInsightsPanel);
+    expect(evidence, findsNothing);
+    expect(
+      tester.getTopLeft(hero).dy,
+      lessThan(tester.getTopLeft(coreEvidence).dy),
+    );
+    expect(
+      tester.getTopLeft(coreEvidence).dy,
+      lessThan(tester.getTopLeft(insights).dy),
+    );
+    await overview.tapText(tester, 'Antworten genauer ansehen');
     expect(
       tester.getTopLeft(hero).dy,
       lessThan(tester.getTopLeft(evidence).dy),
