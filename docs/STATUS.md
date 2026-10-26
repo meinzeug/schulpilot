@@ -1,4 +1,16 @@
-# Zuletzt belegter Produktionsstand · 1.36.33+145
+# Zuletzt belegter Produktionsstand · 1.36.35+147
+
+Stand: 26.10.2026. Release `20261026T220259Z-670f1b0`, Produktcommit `670f1b09f5eea2056c2cf89bfbf456ec140ae8b3`, Schema `0042`. Fünf Dienste aktiv, 17 unmittelbar gesicherte Konfigurationen erhalten. Web, signierte Direct-APK und Play-AAB quellgebunden gebaut; Signaturen, Geheimnisscan und öffentliche Web-/APK-Bytes geprüft. Vorherige Version146 bleibt als Rückweg erhalten.
+
+Der neue Alltagstest wurde in einem eigenen regulären künstlichen Haushalt abgeschlossen: vier eigene Heftfotos, drei ausdrückliche Foto-Wiederholungen nach Lesefixes, normale Browserabgabe und echte KI-Verarbeitung. Vier Runden aus Englisch, Mathematik und Deutsch wurden beantwortet und abgeschlossen. Acht Aufgaben / neun Versuche: vier selbstständig, drei unterstützt/erneut, eine unklar. Der falsche deutsche Erstversuch bleibt erhalten; eine erst nach der richtigen Antwort gelesene Erklärung ändert deren Selbstständigkeit nicht. Quellenansicht und Erklärgrafiken wurden mobil betrachtet; Quellenansicht zusätzlich auf Tablet und Desktop. Echte In-App-Fertigmeldungen wurden gelesen und führten direkt zur passenden gespeicherten Runde.
+
+Die Fixes korrigieren veraltetes Buddy-Systembudget, Tintenklassifizierung, OCR-Annotationen, Zweitlese-Zusammenführung, Originalkorrektur-Anzeige, Fotoabgabe und stillen Quellenstatus sowie die Grafikbindung der Vorwissensfrage und deutscher Originalsatz-Aufgaben. Version147 stellt beim ausdrücklichen Einzelaufgaben-Erklärabruf auch dessen Hinweisgrafiken bereit. 79 betroffene RAM-SQLitefälle und 66 Unix-PostgreSQLfälle bestanden. Die pausierte Runde überstand das Deployment mit unveränderten Antworten und 548 Lernsekunden. Bekannte OpenRouter-Generierungsbelege: 0,540366 USD; zusätzliche konservative Reservierung 0,40 USD, freigegebenes Testbudget 15 USD.
+
+Kein eigenes Androidgerät verbunden: sichtbare Firebase-Hintergrundzustellung und echte Android-Tastatur bleiben nicht abgenommen. Die alte allgemeine 100-Runden-Serie bleibt bei 29 abgeschlossenen Runden beendet. Umfang, Quellen, Screenshots und Grenzen: [Alltagstest](EVERYDAY_TEST_2026_10_26.md). Die vollständige [Produkt-CI147](https://github.com/meinzeug/schulpilot/actions/runs/40399816000) für exakt den ausgelieferten Commit ist erfolgreich; ebenso die CIs145 und146.
+
+---
+
+# Vorheriger belegter Produktionsstand · 1.36.33+145
 
 Stand:26.10.2026. Release `20261026T211952Z-7d1f842`, Produktcommit `7d1f842e795dbb4a75608eef788f3db2b54d866e`, Schema0042. Fünf Dienste aktiv,17Konfigurationen erhalten, Signaturen/Geheimnisscan und öffentliche Web-/APK-Bytes geprüft. Die feste Bruch-Vorwissensfrage ist an ihr eigenes kuratiertes Grafikbeispiel gebunden. Der vorher lokal scheiternde Mathematikteil wurde live in22Sekunden erfolgreich vorbereitet und über die vorhandene kostenlose Teilfreigabe als Runde geöffnet. Kreis-/Balkenwechsel und Nennerfokus der tatsächlichen Grafik wurden bedient. Keine automatische Veröffentlichung oder Ersatzaufgabe.
 
