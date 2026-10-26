@@ -1,0 +1,85 @@
+{
+  "kind": "scene",
+  "title": "kgV verstehen",
+  "disclosure": "solution",
+  "labels": [
+    "Vielfache von 3: 3, 6, 9, 12",
+    "Vielfache von 4: 4, 8, 12",
+    "Kleinstes gemeinsames Vielfaches: 12"
+  ],
+  "numbers": [],
+  "connections": [],
+  "marks": [],
+  "unit": "",
+  "variant": "",
+  "scene": {
+    "version": 1,
+    "layout": "row",
+    "objects": [
+      {
+        "id": "left",
+        "label": "Vielfache von 3: 3, 6, 9, 12",
+        "shape": "box",
+        "tone": "neutral"
+      },
+      {
+        "id": "right",
+        "label": "Vielfache von 4: 4, 8, 12",
+        "shape": "box",
+        "tone": "neutral"
+      },
+      {
+        "id": "common",
+        "label": "Kleinstes gemeinsames Vielfaches: 12",
+        "shape": "box",
+        "tone": "accent"
+      }
+    ],
+    "steps": [
+      {
+        "caption": "Vergleiche die beiden Vielfachenreihen.",
+        "placements": [
+          {
+            "object_id": "left",
+            "slot": 0
+          },
+          {
+            "object_id": "right",
+            "slot": 1
+          },
+          {
+            "object_id": "common",
+            "slot": 2
+          }
+        ],
+        "highlight": [
+          "left",
+          "right"
+        ],
+        "edges": []
+      },
+      {
+        "caption": "Die kleinste gemeinsame Zahl ist 12.",
+        "placements": [
+          {
+            "object_id": "left",
+            "slot": 0
+          },
+          {
+            "object_id": "right",
+            "slot": 1
+          },
+          {
+            "object_id": "common",
+            "slot": 2
+          }
+        ],
+        "highlight": [
+          "common"
+        ],
+        "edges": []
+      }
+    ],
+    "transition_ms": 300
+  }
+}

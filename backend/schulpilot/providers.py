@@ -1032,6 +1032,18 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             raise
         raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
             telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+    from .unit_multiples_common import ERROR as MULTIPLES_ERROR
+    from .unit_multiples_common import EXHAUSTED as MULTIPLES_EXHAUSTED
+    from .unit_multiples_common import RULE_ERROR as MULTIPLES_RULE_ERROR
+    from .unit_multiples_common import prepare as prepare_multiples
+
+    try:
+        payload = prepare_multiples(payload) if function == "unit" else payload
+    except ValueError as error:
+        if error.args not in ((MULTIPLES_ERROR,), (MULTIPLES_EXHAUSTED,), (MULTIPLES_RULE_ERROR,)):
+            raise
+        raise ProviderError(error.args[0], code="invalid_output", billing_result=Result({}, 0, 0, 0,
+            telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
     math_examples = []
     homework_math_goals = {}
     if function == "unit" and (payload.get("study_block") or tasks or payload.get("homework_practice")):
@@ -1636,6 +1648,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     code="invalid_output", billing_result=Result({}, 0, 0, 0,
                         telemetry={"pre_dispatch": True}, cost_source="cancelled"),
                 ) from None
+        if unit_composition is None:
+            from .unit_multiples_common import bind_schema as bind_multiples
+
+            try:
+                unit_composition = bind_multiples(schema, payload)
+            except ValueError as error:
+                if error.args != (MULTIPLES_ERROR,):
+                    raise
+                raise ProviderError(MULTIPLES_ERROR, code="invalid_output", billing_result=Result({}, 0, 0, 0,
+                    telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
         if unit_composition is not None:
             payload = {**payload, "prepared_graphics": unit_composition.context}
             instructions += unit_composition.rules
@@ -1749,9 +1771,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         wire_schema = schema_projection(wire_schema)
     if function == "unit":
         from .notebook_fraction_expansions import HISTORY_KEY as NOTEBOOK_EXPANSION_HISTORY
+        from .unit_multiples_common import HISTORY_KEY as MULTIPLES_HISTORY
 
-        if NOTEBOOK_EXPANSION_HISTORY in outgoing_payload:
-            outgoing_payload = {key: value for key, value in outgoing_payload.items() if key != NOTEBOOK_EXPANSION_HISTORY}
+        outgoing_payload = {key: value for key, value in outgoing_payload.items()
+            if key not in (NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY)}
     from .explanation_guidance import rules as explanation_rules
 
     instructions += explanation_rules(function, payload)
@@ -2204,6 +2227,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
             validation_phase = "practice"
             validate_notebook_expansion(payload, data)
+            from .unit_multiples_common import validate_output as validate_multiples_output
+
+            validate_multiples_output(payload, data)
         if payload.get("learning_entry"):
             from .learning_entry import validate_entry_output
 

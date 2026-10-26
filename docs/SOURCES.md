@@ -2691,3 +2691,76 @@ Lokale Folgeabnahme:44 verbundene UI-/Entwurfsprüfungen bestanden, anschließen
 Flutter analyze ohne Hinweise. Die102 SQLite-/102 PostgreSQL-Prüfungen des
 unveränderten Backendcodes bleiben erhalten; die vollständige CI wird an den
 neuen Quellencommit gebunden, ebenso reale Web-/Direct-/Play-Buildartefakte.
+
+Live-Abnahme136: Quelle0225e55722f1c831bf6f45237b8cda6091236a96,
+Version1.36.24+136, Release20261026T113414Z-0225e55. Vollständige CI40306454827:
+4439 Backendtests bestanden/44 übersprungen,4035 Fluttertests bestanden/19
+übersprungen;297 Flutterdateien exakt einmal. Frische Web-/Direct-/Playartefakte,
+Signatur-/Quellenprüfung und Geheimnisprüfung ohne Treffer. Alle fünf Dienste
+aktiv;17 gesicherte Konfigurationsdateien unverändert, Schema0042 erhalten.
+Rückweg: Release135 behalten und Zeiger mit dem vorhandenen Aktivierungsweg
+zurücksetzen; keine Datenbank zurückspielen und keine Antworten löschen.
+
+Der zuvor zu große direkte Einseiten-Einstieg wurde tatsächlich im Kinderkonto
+wiederholt: Auswahlgenau1 bestätigte Deutschseite,2 Aufgaben; ein regulärer
+Anbieterauftrag erfolgreich gespeichert (40862µUSD tatsächliche Generationkosten).
+Vollständiger App-Neustart und Wiederöffnen derselben Seite zeigte den bekannten
+Auftrag an. Öffnen führte zu derselben Statusroute; zwei unabhängige Metadaten-
+Snapshots belegen identische Unit-Jobs und identischen Verbrauch. Anschließend
+wurden beide Aufgaben im Browser abgeschlossen: eine selbstständig, eine mit
+Hinweis und Erklärung; Hilfen waren im Ergebnis ausdrücklich ausgewiesen.
+19 vollständige allgemeine Heftrunden sind persönlich belegt,100 bleiben offen.
+Eine zusätzliche gespeicherte Englisch-Abrufrunde ist getrennt geprüft und nicht
+als neue allgemeine Runde in diesen Zähler übernommen worden.
+
+Eine weitere normale Mathe-Erstellung zum kgV scheiterte dagegen nach dem
+Anbieteraufruf an visual/scene_label_evidence (71020µUSD, kein Längen-/Limitfehler).
+Die bestehende Quellenprüfung bleibt bestehen. Der wörtliche Unterrichtsweg
+„Vielfachenmengen notieren, kleinste gemeinsame Zahl finden“ wurde anschließend
+im echten Heftfoto überprüft, ohne die Quelle zu ändern. Der konkrete fehlerhafte
+KI-Labeltext ist mangels gespeichertem Rohoutput unbekannt. Ein Vorversand-
+Grafikfehler darf nicht als behobene vollständige kgV-Lektion ausgegeben werden.
+
+137: Eine beim Live-Vergleich beobachtete reine Wortmarkierung wird
+für einzelne Wörter um exakte gemeinsame Graphem-Anfänge/-Enden ergänzt. Ganze
+Sätze behalten den bestehenden Wortvergleich, reine Zahlen ebenfalls. Original-
+zeichen und Screenreader-Text bleiben unverändert; diese lokale Lesehilfe trifft
+kein Grammatikurteil, sendet keine Anfrage und erzeugt keinen Lernbeleg.
+
+Der neue enge kgV-Binder verwendet die vorhandene Referenzdatenbank,
+Einheitenerstellung, reguläre Reservierung und denselben Flutter-Szenenspieler.
+Auf bestätigte positive Definitionen oder nachgerechnete Zweischritt-Verfahren
+folgen vorab gebundene kleine Fragen; Einstieg und Aufgabenlösungen haben
+getrennte Offenlegungsstufen. Quellenrevisionen, Regel- und Referenzdigests bleiben
+bis zur Ausgabe nachprüfbar. Vollständige bisherige Fragen werden vor Versand
+und Veröffentlichung ausgeschlossen; ein konkurrierender gleicher Auftrag,
+Quellenwechsel oder erschöpfter Zahlenpool führt nicht zu automatischen Retries.
+Andere Auftragsarten und bestehende Bruchpfade behalten ihre Prüfungen.
+
+Die kgV-Zahlenbewertung prüft zuerst die gespeicherte Hauptlösung selbst gegen
+`math.lcm`. Falsche größere gemeinsame Vielfache werden nicht über Textvarianten
+akzeptiert. Neue Reference-Seed-Zeile `math.multiples.common@1`, keine neue
+Datenbankmigration und keine Änderung an Modellrouten, Tokens oder Limits.
+Ein fehlender Lehrbeleg bricht vor dem Anbieteraufruf ab; die normale Reservierung
+wird dabei als abgebrochen und kostenfrei aufgelöst.
+
+Öffentliche künstliche Renderer-Vorlage `testdata/multiples_common_v1.json`,
+SHA256 `76182c1f185ef137a97a281a37f315f8b4ea0094c35940df78a7c317c6e30252`.
+Die lokale Sichtprüfung verwendet echte gebündelte Schrift und SDK-Icons bei
+320px/200%,390px,768px und1100px. Beobachtete Pfeilüberschneidungen wurden aus
+diesem neuen Rezept entfernt; ein kurzer Titel verhindert einen unnötigen
+Wortbruch. Diese künstliche Vorlage ist kein echter Modell- oder OCR-Beleg.
+50 gezielte Flutterfälle bestanden; der anschließende reine Titel-Nachlauf
+bestand mit7 Fällen, Analyse sauber. Der reale kgV-Test folgt erst nach Deploy.
+Die endgültige137-Backendfassung bestand dieselben398 gezielten Fälle sowohl
+mit RAM-SQLite als auch mit frischem Unix-Socket-PostgreSQL16, jeweils ohne
+Fehler/Skips. Ein unveränderlicher Hashmanifest vor/nach beiden Läufen belegt
+identische Quellen; Datenbanken und Testdateiverzeichnisse wurden entfernt.
+Die Läufe enthielten neue kgV-, Transport-, Quellenwechsel-, Parallelitäts- und
+Bewertungsfälle sowie bestehende Bruch-/Referenz-/Heft-/Antwortprüfungen.
+
+Ein zusätzlicher ausdrücklich gestarteter Live-Anschlussauftrag einer bereits
+fertigen Bruchrunde scheiterte weiterhin am bekannten Ausgabelängenfehler
+(Luna,4000Ausgabetokens,3670µUSD gemeldet). Alte Antworten und Rückblick blieben
+erreichbar. Dies ist ein getrennt beobachteter offener Anschlussroutingfehler,
+kein erfolgreicher neuer Durchlauf und noch kein Beleg für den neuen kgV-Pfad.

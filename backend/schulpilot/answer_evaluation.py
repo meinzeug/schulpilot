@@ -8,12 +8,13 @@ unknown prose stays uncertain rather than being accepted by similarity.
 import re
 import unicodedata
 from fractions import Fraction
-from math import gcd
+from math import gcd, lcm
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
 VERSION = "subject_rules_v5"
 FRACTION_COMPONENT_VERSION = "fraction_components_v1"
+LCM_VERSION = "lcm_numeric_v1"
 
 
 def fraction_addition_hint(question, answer):
@@ -97,6 +98,44 @@ def fraction_component(question, answer):
                   "Du hast die gefragte Zahl im Bruch richtig benannt." if supplied == expected else
                   "Der Zähler steht über dem Bruchstrich, der Nenner darunter. Schau noch einmal auf die gefragte Zahl.",
                   method=FRACTION_COMPONENT_VERSION)
+
+
+def lcm_short_answer(question, answer):
+    """Verify one explicit two-integer kgV question before exact aliases.
+
+    Only the complete numeric short-answer form is recognised. NFC preserves
+    unsupported superscripts and full-width digits; neither prose nor answer
+    variants can override the independently computed smallest common multiple.
+    """
+    if question.get("type") != "short" or question.get("language"):
+        return None
+    prompt = " ".join(unicodedata.normalize("NFC", question["prompt"]).casefold().split())
+    positive = r"[1-9][0-9]{0,3}"
+    match = re.fullmatch(
+        rf"was ist das kleinste gemeinsame vielfache(?: \(kgv\))? von ({positive}) und ({positive})\?",
+        prompt,
+    )
+    if match is None:
+        return None
+    expected = lcm(int(match[1]), int(match[2]))
+
+    def numeric(value):
+        if not isinstance(value, str) or not re.fullmatch(r"[0-9]{1,9}", value.strip()):
+            return None
+        return int(value.strip())
+
+    key = numeric(question.get("answer"))
+    if key is None or key != expected:
+        return result("uncertain", "Die gespeicherte Musterlösung passt nicht zum kleinsten gemeinsamen Vielfachen. Die Aufgabe muss geklärt werden.",
+                      method=LCM_VERSION)
+    supplied = numeric(answer)
+    if supplied is None:
+        return result("uncertain", "Gib eine einzelne ganze Zahl als kleinstes gemeinsames Vielfaches ein.",
+                      method=LCM_VERSION)
+    return result("correct" if supplied == expected else "incorrect",
+                  "Deine Zahl ist das kleinste gemeinsame Vielfache." if supplied == expected else
+                  "Suche die kleinste positive Zahl, die ein Vielfaches von beiden Zahlen ist.",
+                  method=LCM_VERSION)
 
 
 def arithmetic(question, answer):
@@ -311,6 +350,8 @@ def evaluate(question, answer):
         from .language_evaluation import evaluate as language_evaluate
 
         return language_evaluate(question, answer)
+    if checked := lcm_short_answer(question, answer):
+        return checked
     if checked := fraction_component(question, answer):
         return checked
     if hints := fraction_addition_hint(question, answer):

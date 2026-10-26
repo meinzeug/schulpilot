@@ -195,3 +195,35 @@ Planjob, gezeigter Erklärung und tatsächlichem Folge-Attempt abgeleitet. GETs
 zeigen diesen Stand ohne Schreibzugriff; erst bewusstes Fortsetzen, Quittieren
 oder Abschließen speichert ihn. Dabei entstehen weder ein zusätzlicher Attempt
 noch ein neuer KI-Plan. Der reguläre Abschlussrückblick bleibt einmalig reserviert.
+
+### Gebundene kgV-Heftübungen
+
+`unit_multiples_common.py` ergänzt den bestehenden Einheitenpfad für bewusst
+angeforderte Mathematik-Heftübungen. Die versionierte Referenz
+`math.multiples.common@1` wird ausschließlich über diesen Beweisbinder angeboten.
+Ein Themenwort allein genügt nicht. Die bestätigte Seite muss entweder eine
+eindeutige positive kgV-Definition enthalten oder den geordneten Zweischritt
+„Vielfachenmengen notieren / kleinste gemeinsame Zahl finden“ mit zwei wörtlichen,
+vollständigen Anfangsfolgen. Zahlenfolgen, gemeinsamer Wert und ein eventuell
+eingetragenes Ergebnis werden unabhängig rechnerisch geprüft. Quellenrevision,
+Regelzitat, Referenzversion und Digests bleiben an die Ausgabe gebunden.
+
+Vor dem Anbieteraufruf stehen zwei bis fünf kleine Aufgabenkerne fest; die KI
+ergänzt Hinweise zu denselben Rechnungen. Der Einstieg verwendet ein anderes
+gelöstes Beispiel, dessen gezeigte Werte keine ausstehende Antwort verraten.
+Lösungsgrafiken bleiben bis zur passenden Offenlegung verborgen. Reihen und
+kleinster gemeinsamer Wert stammen aus denselben geprüften Rechendaten; der
+vorhandene Szenenspieler hebt sie in zwei steuerbaren Phasen hervor.
+
+Die vollständige frühere Fragenhistorie der betroffenen Quellen und Tage wird
+vor der Planung und erneut vor dem Speichern geprüft. Erschöpfte Zahlenbeispiele,
+Quellenänderungen und gleichzeitig veröffentlichte gleiche Aufgaben führen zu
+einem begrenzten Abbruch; daraus folgt kein automatischer neuer Modellaufruf.
+Andere Bruchbinder behalten Vorrang, andere Fächer und Auftragsarten ihren Pfad.
+
+`lcm_numeric_v1` bewertet ausschließlich eine vollständige kurze kgV-Zahlenfrage
+mit zwei ausdrücklich genannten positiven ganzen Zahlen. Zuerst muss die
+gespeicherte Hauptlösung mit dem unabhängig berechneten kgV übereinstimmen.
+Unbekannte Schreibweisen oder widersprüchliche Hauptlösungen bleiben unklar;
+Antwortvarianten können keinen falschen gemeinsamen Wert richtig machen.
+Abspielen, Markieren und Zurücksetzen bleiben lokale Darstellung ohne Lernbeleg.

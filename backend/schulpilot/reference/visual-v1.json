@@ -399,6 +399,21 @@
       ],
       "interaction": "Originalbeispiele bewusst auswählen und gleiche oder unterschiedliche Wörter lokal fokussieren; keine Bewertung oder automatisch gestartete Animation.",
       "variant": "classification"
+    },
+    {
+      "id": "math.multiples.common",
+      "version": 1,
+      "kind": "scene",
+      "subjects": [
+        "Mathematik"
+      ],
+      "purpose": "Vorab rechnerisch geprüfte Vielfachenreihen und ihr kleinstes positives gemeinsames Element; ausschließlich an eine bestätigte kgV-Regel und unveränderte geplante Aufgaben gebunden.",
+      "terms": [
+        "kgV",
+        "kleinstes gemeinsames Vielfaches"
+      ],
+      "interaction": "Zwei endliche Vielfachenreihen bewusst vergleichen und den rechnerisch geprüften kleinsten gemeinsamen Wert hervorheben; keine frei veränderlichen Zahlen.",
+      "variant": null
     }
   ]
 }

@@ -54,7 +54,7 @@ def candidates(db, subject, text=""):
     result = []
     for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only")).order_by(VisualReference.id, VisualReference.version)):
         recipe = row.recipe
-        if row.id in ("math.fraction.wholes_remainder", "math.fraction.expansion"):
+        if row.id in ("math.fraction.wholes_remainder", "math.fraction.expansion", "math.multiples.common"):
             continue  # Only the dedicated Unit proof binder may offer this recipe.
         # AI exploration templates are NEVER a vetted source-bound recipe.
         if recipe.get("scope") == "exploration_only":
@@ -146,7 +146,10 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
     value = add_expansion_reference(db, value)
     from .notebook_fraction_expansions import add_reference as add_notebook_expansion
 
-    return add_notebook_expansion(db, value)
+    value = add_notebook_expansion(db, value)
+    from .unit_multiples_common import add_reference as add_multiples_reference
+
+    return add_multiples_reference(db, value)
 
 
 
@@ -299,6 +302,14 @@ def validate_steps(db, steps, subject, context, *, question=None, group_id=None,
                     and r.get("digest") == stored.digest == digest(stored.recipe) for r in context.get("references", [])):
                 raise ValueError("Ungültige vorabgeprüfte Ganzes-Rest-Komposition.")
             validate_step(step, compile_candidates(context), introduction=introduction, question=question)
+            checked.append(step.model_dump())
+            continue
+        if stored.id == "math.multiples.common":
+            from .unit_multiples_common import validate_step as validate_multiples_step
+
+            if subject != "Mathematik" or group_id is not None:
+                raise ValueError("Ungültiger vorabgeprüfter kgV-Beweis.")
+            validate_multiples_step(step, context, None if introduction else question)
             checked.append(step.model_dump())
             continue
         validate_question(step.presentation.model_dump(), fake, texts, PROFILES.get(subject, ()), structured=True, subject=subject)

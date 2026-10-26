@@ -164,8 +164,68 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
     super.dispose();
   }
 
+  TextStyle markedStyle() => TextStyle(
+    color: focus == LanguageComparisonFocus.commonWords
+        ? context.palette.cyanInk
+        : context.palette.teal,
+    backgroundColor: focus == LanguageComparisonFocus.commonWords
+        ? context.palette.cyanSurface
+        : context.palette.mint,
+    fontWeight: FontWeight.w700,
+    decoration: TextDecoration.underline,
+  );
+
+  bool singleWords(List<String> texts) => texts.every((text) {
+    final matches = words.allMatches(text).toList();
+    return RegExp(r'\p{L}', unicode: true).hasMatch(text) &&
+        matches.length == 1 &&
+        matches.single.start == 0 &&
+        matches.single.end == text.length;
+  });
+
+  /// Exact grapheme prefixes/suffixes only, never a grammatical stem claim.
+  (int, int) commonEdges(List<String> texts) {
+    final values = [for (final text in texts) text.characters.toList()];
+    final shortest = values
+        .map((v) => v.length)
+        .reduce((a, b) => a < b ? a : b);
+    int prefix = 0, suffix = 0;
+    while (prefix < shortest &&
+        values.every((v) => v[prefix] == values.first[prefix])) {
+      prefix++;
+    }
+    while (suffix < shortest - prefix &&
+        values.every(
+          (v) =>
+              v[v.length - 1 - suffix] ==
+              values.first[values.first.length - 1 - suffix],
+        )) {
+      suffix++;
+    }
+    return (prefix, suffix);
+  }
+
+  List<TextSpan> characterSpans(String original, (int, int) edges) {
+    final chars = original.characters.toList();
+    return [
+      for (final (index, character) in chars.indexed)
+        TextSpan(
+          text: character,
+          style:
+              switch (focus) {
+                LanguageComparisonFocus.commonWords =>
+                  index < edges.$1 || index >= chars.length - edges.$2,
+                LanguageComparisonFocus.differences =>
+                  index >= edges.$1 && index < chars.length - edges.$2,
+                LanguageComparisonFocus.none => false,
+              }
+              ? markedStyle()
+              : null,
+        ),
+    ];
+  }
+
   List<TextSpan> spans(String original, Set<String> common) {
-    final palette = context.palette;
     final result = <TextSpan>[];
     var offset = 0;
     for (final match in words.allMatches(original)) {
@@ -178,23 +238,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
         LanguageComparisonFocus.commonWords => common.contains(word),
         LanguageComparisonFocus.none => false,
       };
-      result.add(
-        TextSpan(
-          text: word,
-          style: marked
-              ? TextStyle(
-                  color: focus == LanguageComparisonFocus.commonWords
-                      ? palette.cyanInk
-                      : palette.teal,
-                  backgroundColor: focus == LanguageComparisonFocus.commonWords
-                      ? palette.cyanSurface
-                      : palette.mint,
-                  fontWeight: FontWeight.w700,
-                  decoration: TextDecoration.underline,
-                )
-              : null,
-        ),
-      );
+      result.add(TextSpan(text: word, style: marked ? markedStyle() : null));
       offset = match.end;
     }
     if (offset < original.length) {
@@ -203,9 +247,10 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
     return result;
   }
 
-  String label(LanguageComparisonFocus value) => switch (value) {
+  String label(LanguageComparisonFocus value, bool letters) => switch (value) {
     LanguageComparisonFocus.differences => 'Unterschiede',
-    LanguageComparisonFocus.commonWords => 'Gleiche Wörter',
+    LanguageComparisonFocus.commonWords =>
+      letters ? 'Gleiche Wortteile' : 'Gleiche Wörter',
     LanguageComparisonFocus.none => 'Ohne Markierung',
   };
 
@@ -226,6 +271,8 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
     if (texts == null) {
       return const Notice('Dieser Originalvergleich ist hier nicht verfügbar.');
     }
+    final letters = singleWords(texts);
+    final edges = letters ? commonEdges(texts) : null;
     final sets = [
       for (final text in texts)
         words.allMatches(text).map((match) => match.group(0)!).toSet(),
@@ -285,7 +332,7 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
                                   }
                                 : null,
                             child: Text(
-                              label(value),
+                              label(value, letters),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -299,8 +346,14 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
                 liveRegion: true,
                 child: Text(
                   switch (focus) {
-                    LanguageComparisonFocus.differences => 'Markiert und unterstrichen: Wörter, die nicht in allen Beispielen gleich vorkommen.',
-                    LanguageComparisonFocus.commonWords => 'Markiert und unterstrichen: Wörter mit gleicher Schreibweise in allen Beispielen.',
+                    LanguageComparisonFocus.differences =>
+                      letters
+                          ? 'Unterschiede sind markiert. Gleiche Wortanfänge und Wortenden bleiben ohne Markierung.'
+                          : 'Markiert und unterstrichen: Wörter, die nicht in allen Beispielen gleich vorkommen.',
+                    LanguageComparisonFocus.commonWords =>
+                      letters
+                          ? 'Markiert und unterstrichen: gleiche Wortanfänge und Wortenden. Das ist ein Vergleich der Schreibweise.'
+                          : 'Markiert und unterstrichen: Wörter mit gleicher Schreibweise in allen Beispielen.',
                     LanguageComparisonFocus.none =>
                       'Alle Originaltexte ohne Markierung.',
                   },
@@ -327,7 +380,11 @@ class _LanguageComparisonWidgetState extends State<LanguageComparisonWidget>
                       ),
                       const SizedBox(height: 6),
                       Text.rich(
-                        TextSpan(children: spans(text, common)),
+                        TextSpan(
+                          children: edges == null
+                              ? spans(text, common)
+                              : characterSpans(text, edges),
+                        ),
                         key: ValueKey('language-comparison-original-$index'),
                         semanticsLabel: text,
                         style: const TextStyle(fontSize: 17, height: 1.5),

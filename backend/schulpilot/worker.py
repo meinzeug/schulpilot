@@ -386,6 +386,18 @@ def process(job_id):
                     from .notebook_fraction_expansions import with_history
 
                     payload = with_history(payload, novelty_prompts)
+                    from .unit_multiples_common import ERROR as MULTIPLES_ERROR
+                    from .unit_multiples_common import EXHAUSTED as MULTIPLES_EXHAUSTED
+                    from .unit_multiples_common import RULE_ERROR as MULTIPLES_RULE_ERROR
+                    from .unit_multiples_common import prepare as prepare_multiples
+                    from .unit_multiples_common import with_history as with_multiples_history
+
+                    try:
+                        payload = prepare_multiples(with_multiples_history(payload, novelty_prompts))
+                    except ValueError as error:
+                        if error.args not in ((MULTIPLES_ERROR,), (MULTIPLES_EXHAUSTED,), (MULTIPLES_RULE_ERROR,)):
+                            raise
+                        raise ProviderError(error.args[0], code="invalid_output") from None
             payload = with_catalog_context(db, child, payload)
             if not synthetic or fixture:
                 from .commerce import usage_terms
@@ -524,6 +536,12 @@ def process(job_id):
                     validate_output(db, db.get(Child, job.child_id), job.payload, data)
                 if unit_novelty.applies(job, material):
                     unit_novelty.validate_output(db, job.child_id, source_pages, data)
+                    from .unit_multiples_common import KEY as MULTIPLES_PLAN
+                    from .unit_multiples_common import validate_history as validate_multiples_history
+
+                    if MULTIPLES_PLAN in payload:
+                        validate_multiples_history(payload, data,
+                            unit_novelty.previous_prompts(db, job.child_id, source_pages))
                 if job.payload.get("review_of"):
                     from .coaching import validate_new_round
 
