@@ -627,6 +627,8 @@ void main() {
         find.text('Der Nenner steht unter dem Bruchstrich.'),
         findsNothing,
       );
+      await tester.ensureVisible(find.text('Erklärung ansehen'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Erklärung ansehen'));
       await tester.pumpAndSettle();
       expect(

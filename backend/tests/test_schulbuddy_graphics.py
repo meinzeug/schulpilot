@@ -9,6 +9,7 @@ from schulpilot.db import DB, Activity, Attempt, Job, Material, Usage
 from schulpilot.schulbuddy import protocol_fields
 from schulpilot.schulbuddy_graphics import _phase
 from schulpilot.schulbuddy_schemas import BuddyScope
+from schulpilot.source_lineage import learning_source
 from schulpilot.visual_reference_models import UnitVisualSnapshot
 from sqlalchemy import func, select
 from test_schulbuddy import book as book_fixture
@@ -201,10 +202,19 @@ def test_unsafe_original_blocks_are_not_sent_as_learning_groundtruth(graphic_boo
     assert sent.status_code == 202, sent.text
     finish()
     payload = transport["calls"][0]
-    assert payload["sources"][0]["content"] == SOURCE
+    # Page reading preserves the literal pupil error, explicitly separated
+    # from the unchanged filtered learning/answer ground truth.
+    source = payload["sources"][0]
+    assert source["content"] == SOURCE + "\n\n2+2=5"
+    assert source["evidence_kind"] == "notebook_literal_reading"
+    assert source["authoritative_solution"] is False
+    assert source["learning_exclusions"][0]["reason"] == "false_equality"
     assert payload["source_exclusions"][0]["reasons"] == ["false_equality"]
     with DB() as db:
-        assert "2+2=5" in db.get(Material, graphic_book["material_id"]).content
+        material = db.get(Material, graphic_book["material_id"])
+        assert "2+2=5" in material.content
+        assert learning_source(db, material)["content"] == SOURCE
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
 
 
 @pytest.mark.parametrize("change", ["source", "graphic"])

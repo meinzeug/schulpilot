@@ -389,13 +389,19 @@ void main() {
           tester,
           (_) => SingleChildScrollView(child: ParentOverview(data: value)),
         );
-        await tap(tester, find.byTooltip('Über diesen Bereich'));
         expect(
-          find.text('0 beantwortete Aufgaben'),
+          find.text('0 Aufgaben mit Antwort'),
           available ? findsOneWidget : findsNothing,
         );
         expect(
-          find.text('Übungsstand nicht vollständig gemeldet'),
+          find.text('Nicht vollständig gemeldet'),
+          available ? findsNothing : findsOneWidget,
+        );
+        await tap(tester, find.text('Antworten genauer ansehen'));
+        expect(
+          find.textContaining(
+            'Die gespeicherten Übungsbelege wurden nicht vollständig gemeldet.',
+          ),
           available ? findsNothing : findsOneWidget,
         );
         expect(f.requests, isEmpty);

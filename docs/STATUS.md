@@ -1,4 +1,18 @@
-# Zuletzt belegter Produktionsstand · 1.36.29+141
+# Zuletzt belegter Produktionsstand · 1.36.30+142
+
+Stand: 26.10.2026. Release `20261026T184440Z-e9b6f11`, Produktcommit `e9b6f11b35e8af36bb8658ab7dc7f002afe89f3f`, PostgreSQL-Schema `0042`. Alle fünf Schulpilot-Dienste aktiv. Öffentliche signierte Direct-APK und Web-JavaScript stimmen bytegenau mit dem geprüften Build überein; Play-AAB separat geprüft. Die 17 unmittelbar vor Auslieferung gesicherten Konfigurationsdateien und vorhandenen Google-Nachweise blieben erhalten.
+
+Die Glocke besitzt einen eigenen Scrollbereich statt vier Vorschauen. Sichtbare Karten werden im Menü und in der Gesamtansicht kontogebunden als gelesen bestätigt; vorgeladene unsichtbare Einträge bleiben unverändert. Eine neue Wiederholungsrunde mit zwei vorhandenen Bruchlernzielen wurde nach dem Fix im freigegebenen Kinderzugang erfolgreich vorbereitet. Der neutrale Bereithinweis erschien, wechselte beim Anzeigen zu „Gelesen“ und öffnete direkt die richtige gespeicherte Runde. Die neue Grafik ließ sich zwischen einzelnen Vierteln und gebündelten Ganzen umschalten. Keine Antwort abgegeben; Runde anschließend pausiert. Desktopmenü, mobiles Menü und vollständige mobile Neuigkeitenliste wurden mit echten Screenshots geprüft.
+
+Die automatische Heftseiten-Zweitlesung ist auf ausdrücklichen Betreiberauftrag aktiviert: Installation Revision4→5, eigener Auditbeleg, nur `material_review_mode` geändert. Alle vorhandenen Providerzeilen und übrigen Einstellungen blieben unverändert. Kein nachträglicher Bestandlauf und kein Modellaufruf durch den Moduswechsel. Neue Installationen bleiben standardmäßig manuell.
+
+Lokale Abnahme: 213 gleiche Backendfälle unter PostgreSQL16 erfolgreich; RAM-SQLite 209 erfolgreich/vier PostgreSQLfälle übersprungen. Flutteranalyse ohne Befund; 470 Fälle im gemeinsamen Oberflächenlauf, dessen sieben veraltete Glockenerwartungen im gezielten 47/47-Nachlauf korrigiert geprüft wurden. Die vollständige [CI40370452856](https://github.com/meinzeug/schulpilot/actions/runs/40370452856) zeigte zusätzlich fünf veraltete UI-Erwartungen und einen bisherigen Tutor-Lesefiltertest. Die drei UI-Dateien bestanden nach gezielter Anpassung 46/46 Fälle; die beiden Tutor-Dateien anschließend jeweils 20/20 unter PostgreSQL16 und RAM-SQLite. Die Tutorprüfung erhält ausdrücklich den unveränderten strengen Bewertungsfilter. Diese Vertragsnachträge ändern keinen Produktcode. Den vollständigen CI-Erstlauf nicht als erfolgreich ausgeben; Detailnachweise in [SOURCES.md](SOURCES.md).
+
+Die auf Nutzerauftrag beendete 100-Runden-Serie bleibt bei **29 abgeschlossenen Heft-Lernrunden**. Der gezielte Vorbereitungs-/Grafiktest ist keine weitere abgeschlossene Lernrunde. Sichtbare Android-Hintergrundzustellung wurde nicht beobachtet; In-App-Nachweis, FCM-Annahme und native Zustellung bleiben getrennt.
+
+---
+
+# Vorheriger belegter Produktionsstand · 1.36.29+141
 
 Stand der hier aufgeführten Auslieferungsbelege: 26.10.2026. Release `20261026T164357Z-d71ab9a`, Quellcommit `d71ab9aa5078c735d167179ead2551afab30b8d2`, PostgreSQL-Schema `0042`. Alle fünf Schulpilot-Dienste aktiv; 17 gesicherte Betriebskonfigurationen unverändert. Öffentliche APK und Web-JavaScript stimmen bytegenau mit den geprüften Artefakten überein.
 

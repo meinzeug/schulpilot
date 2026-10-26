@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -238,7 +240,7 @@ void main() {
 
   for (final role in ['parent', 'child']) {
     testWidgets(
-      '102 $role inbox disclosure never marks messages read and retains search at 320px/200%',
+      '102 $role inbox disclosure retains search and only acknowledges visible messages at 320px/200%',
       (tester) async {
         final f = saved.Fixture();
         if (role == 'child') {
@@ -287,8 +289,19 @@ void main() {
           'Künstliche',
         );
         expect(f.requests.length, before);
-        expect(f.requests.every((r) => r.method == 'GET'), isTrue);
-        expect(f.state.inbox.unread, 1);
+        final reads = f.requests.where((r) => r.method == 'POST').toList();
+        expect(reads, hasLength(1));
+        expect(reads.single.url.path, '/api/notifications/inbox/read');
+        expect(jsonDecode(reads.single.body), {
+          'ids': ['new'],
+        });
+        expect(
+          f.requests.every(
+            (r) => r.method == 'GET' || identical(r, reads.single),
+          ),
+          isTrue,
+        );
+        expect(f.state.inbox.unread, 0);
         expect(tester.takeException(), isNull);
         // This test owns the AppState cache. End its foreground polling before
         // the binding checks pending timers; normal page disposal intentionally

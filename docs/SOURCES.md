@@ -3059,3 +3059,53 @@ Die neuen Fälle prüfen auch doppelte Schriftgröße, kleines Querformat,
 abgeschnittene Karten, Überlagerung, Hintergrund, Kontowechsel, Scrollen,
 Parallelität und fehlgeschlagene Lesemarkierungen. Lokale Tests ersetzen keine
 nachfolgende Live-Abnahme oder sichtbare native Push-Zustellung.
+
+Auslieferung142 tatsächlich erfolgt: Release `20261026T184440Z-e9b6f11`,
+Produktcommit `e9b6f11b35e8af36bb8658ab7dc7f002afe89f3f`, Version
+`1.36.30+142`, unverändertes Schema `0042`. Fünf Dienste aktiv; 17 frische
+Konfigurationskopien und Google-Dateien erhalten. Signierte Direct-APK:
+137178816 Bytes, SHA256
+`6b733b822a2fc3c77a5bd1730ca05c504f5999e2eaced583f606f350c1e3328c`;
+Play-AAB: 110873000 Bytes, SHA256
+`e02a568d461bb47f15b8ffb57e3b76c26a2cee8df347882c47968ef4e9481afe`.
+Öffentliche APK und Web-JavaScript wurden bytegenau abgeglichen. Die unmittelbar
+vorherige Version141 bleibt als dokumentierter Rückweg vorhanden.
+
+Nach dem Rollout wurde genau eine neue reguläre Wiederholungsrunde im konkret
+freigegebenen Kinderzugang angefordert. Die Vorbereitung wurde erfolgreich
+abgeschlossen; der neue In-App-Bereithinweis erschien. Öffnen der Glocke änderte
+ihn von ungelesen zu gelesen, Anklicken öffnete direkt die eigene fertige Runde.
+Das mobile Menü enthielt zwölf geladene Meldungen und ließ sich bis zu den
+ältesten Einträgen scrollen; „Alle anzeigen“ führte zur scrollbaren Gesamtseite.
+Nach dem Start ist die nicht-mehr-startbereite Runde erwartungsgemäß kein neuer
+Bereithinweis mehr. Das Desktopmenü wurde zusätzlich mit elf älteren Meldungen
+geprüft. Eine Ansicht mit neun einzelnen Vierteln ließ sich in zwei Ganze und
+ein Viertel umschalten und zurück. Screenshots wurden außerhalb von Git abgelegt.
+Es wurden keine Antworten abgegeben; die Einheit wurde pausiert. Die vorher
+abgebrochene allgemeine Testserie bleibt bei 29 abgeschlossenen Runden.
+
+Die automatische Heft-Gegenprüfung wurde danach mit einem ausschließlich lokal
+verfügbaren, quellversionsgebundenen Operatorhelfer aktiviert: geschützte
+Installation Revision4→5, nur der JSON-Wert `material_review_mode`, eigener
+Auditbeleg und sofortiger erneuter Abgleich. Beide vorhandenen Providerzeilen
+blieben im Datenbankvergleich unverändert, ebenso die übrigen Einstellungen.
+Der erste geschützte Versuch verweigerte die Änderung wegen einer zu engen
+Ein-Zeilen-Annahme und wurde vollständig zurückgerollt. Der minimale Nachtrag
+prüft genau eine primäre Konfiguration und die Unverändertheit sämtlicher
+vorhandener Zeilen. 25 lokale PostgreSQLfälle bestanden, darunter zusätzliche
+Konfiguration, fehlende Primärzeile und vollständiger Rollback bei Änderung einer
+Nebenzeile. SQLite: 16 erfolgreich/neun ausdrücklich PostgreSQL-exklusiv
+übersprungen. Keine Produktdatei geändert; kein Bestandslauf oder Anbieteraufruf
+durch Aktivierung.
+
+Die vollständige CI40370452856 des Produktcommits endete mit fünf weiteren alten
+UI-Erwartungen und einer alten Tutor-Erwartung als Fehlern. Die Nachträge ändern
+ausschließlich Tests und Dokumentation: verschobene Erklärung vor Klick sichtbar
+machen, sichtbare Inbox-Lesebestätigung zulassen und eng auf ihre IDs prüfen,
+unbekannte und tatsächliche Nullnachweise in der kompakten Elternansicht weiterhin
+unterscheiden sowie wörtliches Lesen strikt von Bewertungsgrundlagen trennen.
+Die drei Flutterdateien bestanden 46/46 Fälle mit Analyse ohne Befund. Beide
+Tutor-Dateien bestanden anschließend dieselben 20/20 Fälle jeweils unter
+RAM-SQLite und PostgreSQL16, ohne externe Verbindungen; die künstlichen
+Datenbanken wurden entfernt. Diese Nachläufe sind überlappende Regressionen und
+werden nicht zu einer angeblich vollständig grünen ersten CI addiert.
