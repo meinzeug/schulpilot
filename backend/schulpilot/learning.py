@@ -609,6 +609,9 @@ def plan(db, child, *, learning_paths=None, include_language=True):
     assignments_by_id = {a.id: a for a in assignments}
     minutes = min(prefs.session_minutes, max(5, available))
     candidates = []
+    from .learning_origins import round_days
+
+    origins = round_days(db, child.id)
     for unit in units:
         if unit.status != "completed":
             goal = assignments_by_id.get(unit.assignment_id)
@@ -625,7 +628,9 @@ def plan(db, child, *, learning_paths=None, include_language=True):
                     "scheduled_for": goal.scheduled_for if goal else None,
                     "due": goal.due if goal else None,
                     "not_before": unit.not_before,
-                    "source_date": source_dates.get(unit.school_day_id),
+                    "source_date": source_dates.get(unit.school_day_id or origins.get(unit.id)),
+                    "study_path_id": unit.school_day_id or origins.get(unit.id),
+                    "round_kind": unit.round_kind,
                     "_chain": chain[0] if chain else None,
                     "_sequence": chain[1] if chain else 0,
                 }
@@ -1036,7 +1041,10 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         material_count = None
     # Existing plan is authoritative. This small, read-only bridge neither
     # rebuilds a plan nor generates content during login or page navigation.
-    next_item = (current_plan["today"] or current_plan.get("voluntary", []))[:1]
+    from .learning_origins import next_item as select_next
+
+    selected_next = select_next(current_plan)
+    next_item = [selected_next] if selected_next else []
     guidance = None
     if next_item and next_item[0]["kind"] == "unit":
         from .learning_controller import projection
@@ -1060,6 +1068,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         ],
         "plan": current_plan,
         "learning_guidance": guidance,
+        "next_learning_item": selected_next,
         "daily_capture": capture,
         "feedback_resume": feedback_resume,
         "learning_preparation": {"id": preparing_unit.id, "status": preparing_unit.status} if preparing_unit else None,

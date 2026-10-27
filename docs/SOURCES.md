@@ -3183,3 +3183,6 @@ Abschlussbeleg:4Runden/8Aufgaben/9Versuche,4selbstständig,3unterstützt,1unklar
 
 
 Vollständige147-Produkt-CI [40399816000](https://github.com/meinzeug/schulpilot/actions/runs/40399816000) für exakt670f1b09f5eea2056c2cf89bfbf456ec140ae8b3 abgeschlossen und erfolgreich. Alle Backend-/Flutter-Shards, Analyse/Webbuild und aggregierten Gates grün. Der abschließende Dokumentationsnachtrag ändert ausschließlich README, Quellen-/Statusbericht und den neuen Alltagstestbericht; kein weiterer Laufzeitcode oder Buildartefakt wird dadurch verändert. Browsergröße auf den tatsächlichen Standard1101×884zurückgesetzt; der eigene künstliche Gesamtlernstand bleibt als Ergebnis geöffnet.
+
+
+27.10.2026 · Lernweg-Konsistenz148: auditierte, auf den ausdrücklich genannten Haushalt begrenzte Produktionsdiagnose. Beide alten Quellenhashes ließen sich exakt aus der heutigen vollständigen sicheren Projektion rekonstruieren, wenn ausschließlich `policy_version` auf `literal-safety-1` gesetzt wurde. Kein abweichender Inhalt oder alter Quarantänestand wurde übernommen. Ursache und neue Verträge: [STUDY_PATH_RELIABILITY.md](STUDY_PATH_RELIABILITY.md). Keine neuen Modellkennungen, Anbietergrenzen oder Preisannahmen.

@@ -123,7 +123,24 @@ def fingerprint(items, db=None):
     from .source_lineage import learning_source
 
     # Safe content/policy are part of a pending stage, not a retroactive score.
-    return hashlib.sha256(json.dumps([(m.id, m.revision, learning_source(db, m)) for m in items], sort_keys=True).encode()).hexdigest()
+    values = [(m.id, m.revision, {key: value for key, value in learning_source(db, m).items()
+                                if key != "policy_version"}) for m in items]
+    return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
+
+
+def compatible_fingerprints(items, db):
+    """Legacy compatibility requires byte-identical eligible text AND exclusions.
+
+    A policy label alone is not a changed source. Recompute historical hashes
+    against today's full safe projection; never accept an older quarantine.
+    """
+    from .source_lineage import learning_source
+
+    rows = [(m.id, m.revision, learning_source(db, m)) for m in items]
+    return {fingerprint(items, db), *(
+        hashlib.sha256(json.dumps([(mid, revision, {**value, "policy_version": policy})
+            for mid, revision, value in rows], sort_keys=True).encode()).hexdigest()
+        for policy in ("literal-safety-1", "literal-safety-2"))}
 
 
 def page_extent(material, *, content=None):
@@ -149,7 +166,8 @@ def bounded_extents(items, db=None):
 def ensure_plan(db, day):
     items = sources(db, day)
     source_hash = fingerprint(items, db)
-    if day.learning_plan and day.learning_plan.get("source_hash") == source_hash:
+    if day.learning_plan and day.learning_plan.get("source_hash") in compatible_fingerprints(items, db):
+        day.learning_plan = {**day.learning_plan, "source_hash": source_hash, "fingerprint_version": 2}
         return day.learning_plan
     material_ids = {m.id for m in items}
     revisions = {m.id: m.revision for m in items}
@@ -223,7 +241,7 @@ def ensure_plan(db, day):
             )
             count = max(0, count - take)
             remaining = max(0, remaining - take)
-    day.learning_plan = {"version": 1, "source_hash": source_hash, "extents": extents, "blocks": blocks}
+    day.learning_plan = {"version": 1, "fingerprint_version": 2, "source_hash": source_hash, "extents": extents, "blocks": blocks}
     return day.learning_plan
 
 
@@ -265,7 +283,7 @@ def plan_sources_current(db, day):
     if not value:
         return False
     try:
-        return value.get("source_hash") == fingerprint(sources(db, day), db)
+        return value.get("source_hash") in compatible_fingerprints(sources(db, day), db)
     except ProviderError:
         return False
 
@@ -294,6 +312,9 @@ def path_data(db, day, child):
     if not value:
         return result
     result["stale"] = not plan_sources_current(db, day)
+    from .learning_origins import open_rounds
+
+    result["related_rounds"] = open_rounds(db, child.id, day.id)
     for saved in source_backed_blocks(db, day):
         unit = db.get(LearningUnit, saved.get("unit_id")) if saved.get("unit_id") else None
         job = db.get(Job, saved.get("job_id")) if saved.get("job_id") else None
@@ -388,7 +409,7 @@ def create(day_id: str, p=Depends(child_user), db=Depends(get_db)):
     try:
         if (
             day.learning_plan
-            and day.learning_plan.get("source_hash") != fingerprint(sources(db, day), db)
+            and not plan_sources_current(db, day)
             and db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"])))
         ):
             raise HTTPException(409, "Bitte die laufende Vorbereitung zuerst beenden lassen.")
@@ -412,6 +433,10 @@ def generate(
         raise HTTPException(422, "Bitte einen eindeutigen Anfrageschlüssel verwenden.")
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     db.refresh(day)
+    # Upgrade only a proven metadata-compatible fingerprint; keep every block,
+    # failed attempt and saved round. A real source change still needs a replan.
+    if plan_sources_current(db, day):
+        ensure_plan(db, day)
     value = copy.deepcopy(day.learning_plan or {})
     block = next((b for b in value.get("blocks", []) if b["id"] == block_id), None)
     if not block:
@@ -491,8 +516,8 @@ def job_context(db, job):
         not block
         or block.get("job_id") != job.id
         or block.get("unit_id")
-        or fingerprint(items, db) != job.payload["source_hash"]
-        or value.get("source_hash") != job.payload["source_hash"]
+        or job.payload["source_hash"] not in compatible_fingerprints(items, db)
+        or value.get("source_hash") not in compatible_fingerprints(items, db)
     ):
         raise ProviderError("Die Heftseiten oder die Lernreise wurden verändert. Bitte neu planen.")
     if planning_fingerprint(db, child) != job.payload["planning"]:
@@ -562,6 +587,9 @@ def process(job_id):
             from .visual_references import with_visual_context
 
             payload = with_visual_context(db, child, payload, items)
+            from .unit_multiples_common import with_history
+
+            payload = with_history(payload, previous_prompts)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             route_snapshot = copy.deepcopy(selection(config))
             db.rollback()
@@ -648,7 +676,10 @@ def process(job_id):
         with DB.begin() as db:
             job = db.get(Job, job_id)
             if job:
+                from .job_failures import failure_code
+
                 job.status, job.error, job.finished = "failed", reason[:500], int(now())
+                job.error_code = failure_code(error)
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
                     settle(db, usage, failure_billing(result, error, provider_requested=provider_requested), failed=True)

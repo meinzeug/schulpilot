@@ -1675,6 +1675,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         bind_entry_schema(schema, payload)
         instructions += ENTRY_RULES
     unit_composition = None
+    if function == "unit" and payload.get("study_block"):
+        from .package_part_output import bind_schema as compact_study_schema
+
+        compact_study_schema(schema, question_count=payload["study_block"]["question_count"])
+        instructions += ("\nstudy-output-1: Eine vollständige kurze Runde im vereinbarten Umfang. "
+            "Genau eine passende Grafik je Erklärungsschritt, keine doppelte Aufgabenpräsentation. "
+            "Erkläre in kurzen Sätzen für die angegebene Klassenstufe. Keine weiteren Aufgaben erzeugen.")
     if function == "unit":
         from .unit_fraction_compositions import bind_schema as bind_unit_composition
 

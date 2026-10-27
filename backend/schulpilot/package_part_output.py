@@ -18,13 +18,15 @@ def enabled(payload):
     return payload.get("package_partition") is not None
 
 
-def bind_schema(schema, payload=None):
+def bind_schema(schema, payload=None, *, question_count=2):
+    if type(question_count) is not int or not 2 <= question_count <= 5:
+        raise ValueError("Ungültiger Umfang der kompakten Lernrunde.")
     def walk(node):
         if not isinstance(node, dict):
             return
         props = node.get("properties", {})
         if "questions" in props:
-            props["questions"].update(minItems=2, maxItems=2)
+            props["questions"].update(minItems=question_count, maxItems=question_count)
             props["explanation"]["maxLength"] = 900
         if "prompt" in props and "hints" in props:
             props["prompt"]["maxLength"] = 300

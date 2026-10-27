@@ -1143,6 +1143,14 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
         : mandatory
         ? 'Elternauftrag · '
         : '';
+    final originDate = DateTime.tryParse(
+      next?['source_date']?.toString() ?? '',
+    );
+    final origin = next?['round_kind'] == 'repair'
+        ? 'Gezielt festigen'
+        : next?['kind'] == 'review'
+        ? 'Wiederholung'
+        : 'Heftübung';
     final learnLabel = feedbackWaiting
         ? 'Rückmeldung ansehen'
         : optionalRound
@@ -1234,7 +1242,7 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             ? 'Deine letzte Antwort'
             : guidance?['title'] ?? next['topic'] ?? 'Mit deinem Stoff weiter',
         subtitle:
-            '$obligation${next['subject']}${guidance != null && next['topic'] != null ? ' · ${next['topic']}' : ''}${progress == null ? '' : ' · $progress'}${details['estimated_minutes'] is num ? ' · Etwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
+            '$obligation${next['subject']}${guidance != null && next['topic'] != null ? ' · ${next['topic']}' : ''} · $origin${originDate == null ? '' : ' · Heftpaket vom ${DateFormat('dd.MM.').format(originDate)}'}${progress == null ? '' : ' · $progress'}${details['estimated_minutes'] is num ? ' · Etwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
         action: ActionButton(
           label: learnLabel,
           icon: feedbackWaiting
@@ -1390,6 +1398,19 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
           ),
         ),
         hero,
+        if (canLearn && next['study_path_id'] is String) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => openSaved(
+                '/after-school/${child['id']}?day=${next['study_path_id']}',
+              ),
+              icon: const Icon(Icons.route_outlined, size: 18),
+              label: const Text('Zugehörigen Lernweg ansehen'),
+            ),
+          ),
+        ],
         for (final blocked in blockedStudyPaths) ...[
           const SizedBox(height: 12),
           ChildTodayTile(

@@ -24,6 +24,7 @@ Json? nextLearningItem(Json data, {String? excludeUnitId}) {
   final seen = <String>{};
   final items = <Json>[];
   for (final raw in [
+    if (data['next_learning_item'] is Map) data['next_learning_item'],
     ...plan['today'] as List? ?? [],
     if (plan['can_continue_voluntarily'] != false)
       ...plan['voluntary'] as List? ?? [],
@@ -48,6 +49,8 @@ Json? nextLearningItem(Json data, {String? excludeUnitId}) {
                 ['active', 'paused'].contains(item['status']),
           )
           .firstOrNull ??
+      items.where((item) => item['mandatory'] == true).firstOrNull ??
+      items.where((item) => item['kind'] == 'unit').firstOrNull ??
       items.firstOrNull;
 }
 

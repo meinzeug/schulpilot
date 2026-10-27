@@ -649,6 +649,32 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                 ),
               ],
             ] else if (data?['available'] == true) ...[
+              for (final round in data?['related_rounds'] as List? ?? []) ...[
+                const SizedBox(height: 12),
+                ActionPanel(
+                  actionLabel: 'Gespeicherte Runde öffnen',
+                  onPressed: () {
+                    if (active) openRoute(context, '/unit/${round['id']}');
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        round['round_kind'] == 'repair'
+                            ? 'Gezielt festigen'
+                            : 'Deine Heftübung',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(round['topic'] as String),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Gehört zu diesen Heftseiten. Bereits vorbereitet.',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               SizedBox(height: 14),
               if (total > 0) ...[
                 LinearProgressIndicator(value: (completed / total).clamp(0, 1)),

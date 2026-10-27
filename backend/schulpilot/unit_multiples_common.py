@@ -42,17 +42,29 @@ def _sources(context):
         and source.get("subject") == "Mathematik" and source.get("group_id") is None]
 
 
+def requested_count(payload):
+    from .notebook_practice import requested_count as notebook_count
+
+    stage = payload.get("study_block")
+    if stage is None:
+        return notebook_count(payload)
+    if (not isinstance(stage, dict) or stage.get("mode") not in ("understand", "apply", "recall")
+            or type(stage.get("question_count")) is not int or not 2 <= stage["question_count"] <= 5
+            or payload.get("notebook_practice")):
+        return None
+    return stage["question_count"]
+
+
 def applies(payload):
     """A topic selects this gate, never by itself a mathematical teaching rule."""
     from .math_tasks import _procedure_quote
-    from .notebook_practice import requested_count
     from .unit_fraction_compositions import eligible as composition_source
 
     context = payload.get("visual_context") or {}
     sources = _sources(context)
     return (requested_count(payload) is not None and payload.get("required_subject") == "Mathematik"
         and context.get("required") is True
-        and not any(payload.get(key) for key in ("goal", "review", "study_block", "selected_groups",
+        and not any(payload.get(key) for key in ("goal", "review", "selected_groups",
             "homework_practice", "exam_preparation", "exam_review_practice"))
         and not any(composition_source(source) for source in sources)
         and not any(_procedure_quote(sources, label) for label in ("Brüche erweitern", "Brüche kürzen", "Brüche addieren"))
@@ -201,7 +213,6 @@ def _core(identifier, pair):
 
 
 def prepare(payload):
-    from .notebook_practice import requested_count
 
     if not applies(payload):
         if KEY in payload or HISTORY_KEY in payload:
