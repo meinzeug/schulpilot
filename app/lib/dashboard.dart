@@ -1150,7 +1150,9 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
         ? 'Gezielt festigen'
         : next?['kind'] == 'review'
         ? 'Wiederholung'
-        : 'Heftübung';
+        : next?['study_path_id'] != null
+        ? 'Heftübung'
+        : null;
     final learnLabel = feedbackWaiting
         ? 'Rückmeldung ansehen'
         : optionalRound
@@ -1242,7 +1244,7 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             ? 'Deine letzte Antwort'
             : guidance?['title'] ?? next['topic'] ?? 'Mit deinem Stoff weiter',
         subtitle:
-            '$obligation${next['subject']}${guidance != null && next['topic'] != null ? ' · ${next['topic']}' : ''} · $origin${originDate == null ? '' : ' · Heftpaket vom ${DateFormat('dd.MM.').format(originDate)}'}${progress == null ? '' : ' · $progress'}${details['estimated_minutes'] is num ? ' · Etwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
+            '$obligation${next['subject']}${guidance != null && next['topic'] != null ? ' · ${next['topic']}' : ''}${origin == null ? '' : ' · $origin'}${originDate == null ? '' : ' · Heftpaket vom ${DateFormat('dd.MM.').format(originDate)}'}${progress == null ? '' : ' · $progress'}${details['estimated_minutes'] is num ? ' · Etwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
         action: ActionButton(
           label: learnLabel,
           icon: feedbackWaiting
