@@ -1,6 +1,6 @@
 # Konsistente Lernwege und gespeicherte Anschlussrunden
 
-Version1.36.36+148, 27.10.2026. Die technische Abnahme wird nach der Auslieferung in STATUS.md ergänzt.
+Version1.36.37+149, 27.10.2026. Die technische Abnahme wird nach der Auslieferung in STATUS.md ergänzt.
 
 ## Belegte Ursachen
 
@@ -17,6 +17,7 @@ Frühere Etappen hatten zusätzlich reale Ausgabelängen- und Grafikstrukturfehl
 - `learning_origins`: reine kontogebundene Projektion aus vorhandenen UnitSource-Verknüpfungen. Nur genau ein belegter Schultag gilt als Ursprung; gemischte Quellen bleiben eigenständige Runden. Keine Leistungs- oder Zeitänderung.
 - Heute: ungelesene Rückmeldung und begonnene Runde zuerst, verbindliche Aufträge erhalten, danach fertige Runden vor neuer Wiederholung. Die Anleitung wird für genau diese ausgewählte Runde geladen. Herkunft und direkter Link zum Lernweg sind sichtbar.
 - Lernweg: vorhandene zusätzliche Heft-/Anschlussrunden erscheinen separat mit direktem Einstieg. Ihre Aufgaben werden nicht als ursprünglich geplante Etappen ausgegeben.
+- Ein-Aufgaben-Klassenarbeitsrunden behalten ihren eigenen bisherigen Vertrag; die Kompaktregel greift ausdrücklich nur bei2–5Aufgaben.
 - `package_part_output.bind_schema(question_count=...)` beschränkt auch neue Lernweg-Etappen auf kurze vollständige Erklärungen und genau einen Grafikschritt. Der geplante Umfang2–5 bleibt unverändert; kein Abschneiden der Modellantwort, kein Anbieterwechsel oder automatischer Retry.
 - Die vorhandene kgV-Komposition wird auch für passende Verstehen-/Anwenden-/Erinnern-Etappen verwendet. Regelbeleg, neue Zahlenpaare, Hauptantworten und animierbare Grafikzustände werden vor dem Anbieteraufruf gebunden. Die KI ergänzt kurze Erklärungen und Hilfen. Frühere Fragen bleiben ausgeschlossen; eine erschöpfte Auswahl wird nicht wiederholt. Fehlerdetektiv und andere Fachverträge behalten ihre eigenen Regeln.
 - Etappenfehler speichern den gemeinsamen neutralen Fehlercode. Kosten, fehlgeschlagene Versuche und Wiederholungsgrenzen werden nicht zurückgesetzt.

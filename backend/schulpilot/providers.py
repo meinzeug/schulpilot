@@ -1675,7 +1675,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         bind_entry_schema(schema, payload)
         instructions += ENTRY_RULES
     unit_composition = None
-    if function == "unit" and payload.get("study_block"):
+    if (function == "unit" and payload.get("study_block")
+            and payload["study_block"].get("question_count") in (2, 3, 4, 5)):
         from .package_part_output import bind_schema as compact_study_schema
 
         compact_study_schema(schema, question_count=payload["study_block"]["question_count"])
