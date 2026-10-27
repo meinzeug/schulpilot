@@ -1,4 +1,18 @@
-# Zuletzt belegter Produktionsstand · 1.36.37+149
+# Zuletzt belegter Produktionsstand · 1.36.38+150
+
+Stand: 27.10.2026. Release `20261027T091631Z-01644af`, Produktcommit `01644af7608129f50374de52d248d83e86488c85`, Schema `0042`. Fünf Dienste aktiv.17 unmittelbar zuvor gesicherte Konfigurationen, vorhandene Tabellen und Google-Nachweise unverändert. Web, signierte Direct-APK und Play-AAB sind an denselben sauberen Quellstand gebunden. Signaturen, Geheimnisscan und tatsächliche öffentliche Web-/APK-Bytes geprüft. Vorheriger Release149 bleibt als Rückweg erhalten.
+
+**Produktionsfall technisch geprüft:** Beide vorher fälschlich gesperrten Lernwege sind aktuell und fortsetzbar; keine `blocked_study_paths` mehr. Heute wählt die bereits gespeicherte Bruch-Anschlussrunde mit belegter Heftzuordnung. Der Lernweg zeigt diese Runde gesondert. Bestehende Antworten und gespeicherte Lernsekunden sind unverändert. Die einmal regulär reservierte und auditierte kgV-Reparatur aus148 bleibt unter150 bereit: vier Aufgaben, vier Erklärgrafiken, Grafikstatus bereit und genau eine In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38Sekunden; OpenRouter meldet0,057676USD bei0,25USD Reservierung. Für149/150 kein zusätzlicher bezahlter Wiederholungsaufruf.
+
+**Ursachen gezielt korrigiert:** Die interne Richtliniennummer erzeugt bei vollständig identischer heutiger sicherer Quellenprojektion keine falsche Quellenänderung mehr. Gespeicherte Runden erhalten ihre belegte Herkunft und haben Vorrang vor neu zu erzeugenden Wiederholungen. Der vorhandene geprüfte kgV-Grafikvertrag wird auch für passende Lernweg-Etappen genutzt. Kompakte Grafik-Etappen geben der KI einen zum Schema passenden Darstellungskatalog; reine Rechenaufträge und Ein-Aufgaben-Klassenarbeitsrunden behalten ihren eigenen Vertrag. Vorwissensproben werden vor der neuen Zahlenplanung als Ausschlussbeispiele berücksichtigt, damit eine lokale Kollision nicht erst nach dem Anbieteraufruf die Runde verwirft. Die späte vollständige Wiederholungsprüfung bleibt streng. [Einzelheiten](STUDY_PATH_RELIABILITY.md).
+
+**Prüfstand:**290 betroffene RAM-SQLitefälle und101 isolierte PostgreSQLfälle bestehen auf dem endgültigen Backendstand. Darunter128gesteuerte Zahlenplanungen und die früheren CI-Fehler.69 passende Flutterfälle bestehen; deren UI-Code ist unverändert. Signierte Androidartefakte und Web wurden erneut gebaut. Die vollständige GitHub-Gesamtprüfung des Abschlussstands läuft noch; ihr Erfolg wird nicht vorweggenommen. [Aktuelle Prüfläufe](https://github.com/meinzeug/schulpilot/actions/workflows/checks.yml).
+
+**Offen:** Der In-App-Browser steht auf der regulären Anmeldung. Die ausdrücklich angefragte sichtbare Browser-Abnahme im echten Kinderkonto benötigt dessen Anmeldung und ist noch nicht abgeschlossen. Keine neuen Desktop-/Mobil-Screenshots dieses echten Kontos behauptet. Technische In-App-Fertigmeldung ist kein Nachweis einer sichtbaren Android-Firebase-Zustellung. Die alte100-Runden-Serie bleibt bei29 abgeschlossenen Runden beendet.
+
+---
+
+# Vorheriger belegter Produktionsstand · 1.36.37+149
 
 Stand: 27.10.2026. Release `20261027T084618Z-a287cb9`, Produktcommit `a287cb9b8462224ae2c7e9381967c6e886247dbb`, Schema `0042`. Fünf Dienste aktiv; die17 unmittelbar zuvor gesicherten Betriebskonfigurationen, Google-Nachweise und vorhandenen Tabellen blieben unverändert. Web, signierte Direct-APK und Play-AAB stammen aus demselben sauberen Quellstand. Signaturen, Geheimnisscan und tatsächliche öffentliche Web-/APK-Bytes sind geprüft. Vorheriger Release148 bleibt als Rückweg erhalten.
 
