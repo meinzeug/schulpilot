@@ -1,6 +1,6 @@
 # Konsistente Lernwege und gespeicherte Anschlussrunden
 
-Version1.36.38+150, 27.10.2026. Technischer Produktionsstand, Live-KI-Beleg und die noch offene Browser-Anmeldung sind in STATUS.md dokumentiert.
+Version1.36.38+150, 27.10.2026. Technischer Produktionsstand, erfolgreicher Gesamt-CI-Lauf, Live-KI-Beleg und tatsächliche Desktop-/Mobil-Abnahme sind in STATUS.md dokumentiert. Der zweite historische Deutsch-Auftrag benötigt für einen weiteren kostenpflichtigen Versuch noch eine ausdrückliche Freigabe; dessen erneuter Erfolg ist nicht behauptet.
 
 ## Belegte Ursachen
 
@@ -32,4 +32,4 @@ Eine weitere vollständige CI-Prüfung belegte eine zufällige Kollision zwische
 
 Die Änderung kann nicht jede mögliche fehlerhafte Modellantwort verhindern. Ungültige Ausgaben werden weiterhin verworfen. Keine Bestätigung ungelesener Quellen, keine erfundenen Ersatzaufgaben und keine Testantworten im Kindkonto. Für die Live-Abnahme ist ein regulär angemeldeter Kinderzugang erforderlich; ein Betriebsadministrator erhält dafür keinen privaten Inhaltszugang.
 
-Schema0042 bleibt unverändert. Keine Datenmigration oder geänderte Kostenkonfiguration erforderlich. Rückweg: vorheriger Release147 mit gesicherten Betriebskonfigurationen; neu erstellte Runden und Abrechnungsbelege erhalten.
+Schema0042 bleibt unverändert. Keine Datenmigration oder geänderte Kostenkonfiguration erforderlich. Rückweg für150: unmittelbar vorheriger Release149 mit gesicherten Betriebskonfigurationen; neu erstellte Runden und Abrechnungsbelege erhalten.
