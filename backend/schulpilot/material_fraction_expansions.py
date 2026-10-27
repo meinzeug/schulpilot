@@ -153,6 +153,9 @@ def prepare(payload):
     slots = notebook._slots(payload, count)
     practice = [slot for slot in slots if slot["role"] == "practice"]
     history, exclusions = _exclusions(payload)
+    # The prerequisite check is not prior learner evidence, but it already
+    # occupies this numerical example in the same forthcoming round.
+    exclusions.extend(slot["prompt"] for slot in slots if slot["role"] == "prior_check")
     example = introduction_example(payload)
     if example is None:
         raise ValueError(ERROR)

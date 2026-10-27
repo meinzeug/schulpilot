@@ -1676,10 +1676,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         instructions += ENTRY_RULES
     unit_composition = None
     if (function == "unit" and payload.get("study_block")
+            and (payload.get("visual_context") or {}).get("required") is True
             and payload["study_block"].get("question_count") in (2, 3, 4, 5)):
         from .package_part_output import bind_schema as compact_study_schema
 
         compact_study_schema(schema, question_count=payload["study_block"]["question_count"])
+        payload = {**payload, "content_context": subject_content.generation_context(
+            subjects, schema=schema, compact_matching=compact_openrouter)}
         instructions += ("\nstudy-output-1: Eine vollständige kurze Runde im vereinbarten Umfang. "
             "Genau eine passende Grafik je Erklärungsschritt, keine doppelte Aufgabenpräsentation. "
             "Erkläre in kurzen Sätzen für die angegebene Klassenstufe. Keine weiteren Aufgaben erzeugen.")

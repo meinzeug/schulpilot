@@ -10,6 +10,8 @@ Die reguläre signierte Direct-APK ist auf der Website vor und nach der Anmeldun
 
 [Aktueller Alltagstest mit eigenen Heftfotos](docs/EVERYDAY_TEST_2026_10_26.md): normaler Fotoimport, unscharfe und korrigierte Stellen, Hintergrundverarbeitung, In-App-Direkteinstieg und vier abgeschlossene Testrunden. Beim bewussten Öffnen einer Aufgabenerklärung erscheinen auch die zugehörigen Hinweisgrafiken. Hardwaregrenzen sind im Prüfbericht ausgewiesen.
 
+[Lernwege und Anschlussrunden](docs/STUDY_PATH_RELIABILITY.md): stabile Quellenversionen, eindeutig zugeordnete gespeicherte Runden und vorab geprüfte Aufgaben-/Grafikverträge. Der aktuelle Produktions- und Abnahmestand steht in [STATUS.md](docs/STATUS.md).
+
 ## Was die App unterstützt
 
 | Bereich | Funktionen |

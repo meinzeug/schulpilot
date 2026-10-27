@@ -119,5 +119,7 @@ def test_study_kgv_full_adapter_uses_fixed_graphics_once(household, monkeypatch,
     config.input_per_million_micros, config.output_per_million_micros = 2000000, 10000000
     result = providers.request_provider(config, 'unit', payload)
     assert len(calls) == 1
+    sent = json.loads(calls[0]['messages'][1]['content'][0]['text'])
+    assert sent['content_context']['max_blocks'] == 1
     assert len(result.data['questions']) == count
     assert all(q['explanation_steps'][0]['presentation']['blocks'][0]['scene'] for q in result.data['questions'])

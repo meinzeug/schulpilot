@@ -1,3 +1,17 @@
+# Zuletzt belegter Produktionsstand · 1.36.37+149
+
+Stand: 27.10.2026. Release `20261027T084618Z-a287cb9`, Produktcommit `a287cb9b8462224ae2c7e9381967c6e886247dbb`, Schema `0042`. Fünf Dienste aktiv; die17 unmittelbar zuvor gesicherten Betriebskonfigurationen, Google-Nachweise und vorhandenen Tabellen blieben unverändert. Web, signierte Direct-APK und Play-AAB stammen aus demselben sauberen Quellstand. Signaturen, Geheimnisscan und tatsächliche öffentliche Web-/APK-Bytes sind geprüft. Vorheriger Release148 bleibt als Rückweg erhalten.
+
+Zwei alte Heftpakete waren fälschlich als prüfbedürftig angezeigt worden: Ausschließlich die interne Quellenrichtliniennummer hatte ihren Hash geändert. Vollständige Gegenrechnung belegt identische heutige sichere Inhalte und Ausschlüsse. Die kompatible Projektion ist wieder nutzbar; echte Text-, Lesbarkeits- und Revisionsänderungen bleiben gesperrt. GETs verändern keine Pläne oder Antworten. Fertige Anschlussrunden werden über ihre eigenen Quellen dem Heftpaket zugeordnet, im Lernweg angezeigt und vor einer neu zu erzeugenden Wiederholung angeboten. Heute zeigt die Herkunft und einen direkten Lernweg-Link. [Verträge und Ursachen](STUDY_PATH_RELIABILITY.md).
+
+Ein ausdrücklich beauftragter, auditierter Produktions-Reparaturversuch über die normale Kinderberechtigung und Reservierung war erfolgreich: vier neue kgV-Aufgaben, vier Erklärgrafiken, Grafikstatus bereit und genau eine neutrale In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38Sekunden; tatsächlicher OpenRouter-Kostenbeleg0,057676USD bei0,25USD Reservierung. Keine Testantworten; vorhandene Antworten und gespeicherte Lernsekunden unverändert. Neue Grafiken und Antworten sind vor dem Modellaufruf an die vorhandene geprüfte kgV-Regel gebunden. Andere neue Etappen erhalten kurze vollständige Grafikerklärungen; keine automatische Wiederholung oder Anbietergrenzenänderung.
+
+Die Gesamt-CI fand zusätzlich einen Ein-Aufgaben-Klassenarbeitsfall, der in149 ausdrücklich seinen bisherigen Vertrag behält.120 betroffene RAM-SQLitefälle und95 isolierte PostgreSQLfälle bestehen auf dem endgültigen Backendstand.69 passende Flutterfälle bestehen; der UI-Code ist seit diesem Lauf unverändert. Der vollständige [CI-Lauf149](https://github.com/meinzeug/schulpilot/actions/runs/40468246037) hat zwei weitere Randfälle gefunden: Darstellungskatalog und eingeschränktes Schema wichen ab; außerdem konnte die neue Zahlenplanung eine feste Vorwissensprobe wiederholen. Der gezielte Fix150 wird vorbereitet; ein Erfolg der Gesamt-CI wird nicht vorweggenommen.
+
+**Offene Sichtprüfung:** Der In-App-Browser steht auf der regulären Anmeldung. Die angefragte Sichtabnahme im echten Kinderkonto benötigt dessen Anmeldung und ist noch nicht abgeschlossen. Keine neuen Desktop-/Mobil-Screenshots dieses echten Kontos behauptet. Die technische Produktionsprüfung und In-App-Fertigmeldung belegen keine sichtbare native Firebase-Zustellung. Die alte100-Runden-Serie bleibt bei29 abgeschlossenen Runden beendet.
+
+---
+
 # Zuletzt belegter Produktionsstand · 1.36.35+147
 
 Stand: 26.10.2026. Release `20261026T220259Z-670f1b0`, Produktcommit `670f1b09f5eea2056c2cf89bfbf456ec140ae8b3`, Schema `0042`. Fünf Dienste aktiv, 17 unmittelbar gesicherte Konfigurationen erhalten. Web, signierte Direct-APK und Play-AAB quellgebunden gebaut; Signaturen, Geheimnisscan und öffentliche Web-/APK-Bytes geprüft. Vorherige Version146 bleibt als Rückweg erhalten.

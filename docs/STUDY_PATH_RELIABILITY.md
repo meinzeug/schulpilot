@@ -1,6 +1,6 @@
 # Konsistente Lernwege und gespeicherte Anschlussrunden
 
-Version1.36.37+149, 27.10.2026. Die technische Abnahme wird nach der Auslieferung in STATUS.md ergänzt.
+Version1.36.38+150, 27.10.2026. Technischer Produktionsstand, Live-KI-Beleg und die noch offene Browser-Anmeldung sind in STATUS.md dokumentiert.
 
 ## Belegte Ursachen
 
@@ -10,6 +10,8 @@ Die Heute-Auswahl bot eine neu zu erzeugende Wiederholung vor einer bereits gesp
 
 Frühere Etappen hatten zusätzlich reale Ausgabelängen- und Grafikstrukturfehler. Der Etappenpfad verwendete die schon für Heft-Einzelrunden geprüfte kgV-Komposition bisher nicht.
 
+Eine weitere vollständige CI-Prüfung belegte eine zufällige Kollision zwischen einer festen Vorwissensprobe und einer anschließend geplanten Erweiterungsaufgabe. Beide benutzten denselben Bruch und Faktor; die Veröffentlichung verwarf die Runde nach dem Anbieteraufruf.150 schließt die bereits geplanten Proben vor der Aufgabenplanung aus. Die spätere vollständige Wiederholungsprüfung bleibt unverändert streng.
+
 ## Verträge
 
 - `study_path.fingerprint`: stabile Hashes über Quellen-ID, Revision und sämtliche sicheren Inhalte, Belege, Ausschlüsse und Statusfelder. Ausschließlich die Richtlinienbezeichnung wird ausgelassen. Jeder tatsächliche Quellen- oder Sicherheitsunterschied bleibt relevant.
@@ -17,7 +19,9 @@ Frühere Etappen hatten zusätzlich reale Ausgabelängen- und Grafikstrukturfehl
 - `learning_origins`: reine kontogebundene Projektion aus vorhandenen UnitSource-Verknüpfungen. Nur genau ein belegter Schultag gilt als Ursprung; gemischte Quellen bleiben eigenständige Runden. Keine Leistungs- oder Zeitänderung.
 - Heute: ungelesene Rückmeldung und begonnene Runde zuerst, verbindliche Aufträge erhalten, danach fertige Runden vor neuer Wiederholung. Die Anleitung wird für genau diese ausgewählte Runde geladen. Herkunft und direkter Link zum Lernweg sind sichtbar.
 - Lernweg: vorhandene zusätzliche Heft-/Anschlussrunden erscheinen separat mit direktem Einstieg. Ihre Aufgaben werden nicht als ursprünglich geplante Etappen ausgegeben.
+- Vorwissensproben sind ausschließlich Ausschlussbeispiele für die neue Zahlenplanung, keine fingierten früheren Antworten. Material- und Heftauswahlpfad verwenden diese Regel; Regressionen prüfen64gesteuerte Auswahl-Seeds je Pfad.
 - Ein-Aufgaben-Klassenarbeitsrunden behalten ihren eigenen bisherigen Vertrag; die Kompaktregel greift ausdrücklich nur bei2–5Aufgaben.
+- Der Grafik-Kompaktvertrag gilt nur bei ausdrücklich erforderlichen Erklärgrafiken. Der an die KI übergebene Darstellungskatalog wird danach aus dem eingeschränkten Schema aktualisiert; reine Rechenaufträge behalten ihre bisherigen Darstellungsgrenzen.
 - `package_part_output.bind_schema(question_count=...)` beschränkt auch neue Lernweg-Etappen auf kurze vollständige Erklärungen und genau einen Grafikschritt. Der geplante Umfang2–5 bleibt unverändert; kein Abschneiden der Modellantwort, kein Anbieterwechsel oder automatischer Retry.
 - Die vorhandene kgV-Komposition wird auch für passende Verstehen-/Anwenden-/Erinnern-Etappen verwendet. Regelbeleg, neue Zahlenpaare, Hauptantworten und animierbare Grafikzustände werden vor dem Anbieteraufruf gebunden. Die KI ergänzt kurze Erklärungen und Hilfen. Frühere Fragen bleiben ausgeschlossen; eine erschöpfte Auswahl wird nicht wiederholt. Fehlerdetektiv und andere Fachverträge behalten ihre eigenen Regeln.
 - Etappenfehler speichern den gemeinsamen neutralen Fehlercode. Kosten, fehlgeschlagene Versuche und Wiederholungsgrenzen werden nicht zurückgesetzt.

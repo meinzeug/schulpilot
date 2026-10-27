@@ -137,6 +137,8 @@ def prepare(payload):
     practice = [slot for slot in slots if slot["role"] == "practice"]
     previous = payload.get("previous_prompts") or []
     exclusions, excluded_prompts = _history(payload)
+    excluded_prompts = [*excluded_prompts,
+        *(slot["prompt"] for slot in slots if slot["role"] == "prior_check")]
     example = introduction_example(payload)
     if example is not None:
         # An introduction is teaching, not practice history. Keep its literal
