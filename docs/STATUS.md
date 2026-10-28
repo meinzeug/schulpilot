@@ -1,4 +1,18 @@
-# Zuletzt belegter Produktionsstand · 1.36.38+150
+# Zuletzt belegter Produktionsstand · 1.37.0+151
+
+Stand: 28.10.2026. Release `20261028T072845Z-d7ef7e3`, Produktcommit `d7ef7e3776036d04327d640c1340f10029c43301`, Schema `0042`. Web, signierte Direct-APK und Play-AAB stammen aus demselben sauberen Quellstand. Fünf Dienste aktiv; die 17 vorher gesicherten Betriebskonfigurationen, Google-Nachweise und geprüften Bestands-Tabellenschemata blieben unverändert. Vorheriger Release150 bleibt als Rückweg erhalten; kein Datenbankrestore erforderlich.
+
+**Lernen nach Fach und Thema:** Die Startansicht verwendet Fachzeilen und optionale Hefterkacheln im Stil von Hefte. Nach der Fachauswahl folgen dessen Themen mit den Reitern Offen, Später und Erledigt. Wiederholte Runden desselben Thementitels bilden eine Karte; sämtliche Einzelrunden bleiben über eine begrenzte Themenliste erreichbar. Suche, Ansichtswechsel und Sortierung bleiben hinter dem Dreipunktemenü. „Zufälliges Thema üben“ wählt im Kinderzugang gleichverteilt aus allen aktuell startbaren Themen des Fachs, unabhängig von Ergebnisgröße und Zahl gespeicherter Runden. Bestehende Runden öffnen regulär, neue Runden verwenden weiterhin die normale begrenzte Vorbereitung. Keine neuen Modelle, Kostenlimits, Quellenbestätigungen oder automatischen Folgeaufträge. [Ablauf, Endpunkte und Rechte](LEARNING_SUBJECTS.md).
+
+**Prüfungen:** 79 betroffene RAM-SQLitefälle, dieselben 79 isoliert mit PostgreSQL16 und 94 Flutterfälle bestanden. Analyse, Webbuild, signierte APK und Play-AAB erfolgreich; fünf vollständig belegte Buildstufen mit tatsächlichem Exitcode0. Die vollständige [Produkt-CI40642924278](https://github.com/meinzeug/schulpilot/actions/runs/40642924278) für exakt den ausgelieferten Commit ist erfolgreich abgeschlossen: alle drei Backend-Shards, drei Flutter-Shards, Analyse/Webbuild und aggregiertes Flutter-Gate. Der Geheimnisscan fand keine bekannten Schlüssel in Quellen oder Artefakten.
+
+**Browser:** Fachübersicht und Themenansicht tatsächlich im Desktop- und Smartphone-Web-Runner geprüft, einschließlich 390×844px, Rückwegen, markiertem Lernen-Reiter und erhaltenem Verlaufsfilter. Der Zufallsbutton wurde im ausschließlich künstlichen lokalen Kinderkonto tatsächlich bedient: vorhandene Runde geöffnet, ohne Antworten wieder pausiert, keine Jobs oder Usage-Einträge. Die eigene temporäre Datenbank und Zugangsdaten wurden anschließend entfernt. Auf der Produktionsseite wurden Fachauswahl, Themenkarten, abgeschlossene Themen und sämtliche Runden eines gewählten Themas zusätzlich lesend geprüft. Dabei keine KI-Aufträge, Antworten oder Rundenstarts im echten Konto. Screenshotbelege liegen ausschließlich lokal im ignorierten `artifacts/elements151/screenshots/`.
+
+**Öffentliche Artefakte:** Die komplette Direct-APK (137.277.228Bytes, SHA256 `379936164ecd2bb697ce9559a84d0c42360574bbd012d2b3006497190fde447c`) und Web-JavaScript wurden nach Auslieferung bytegenau gegen den signatur- und quellgebundenen Build geprüft. Play-AAB: 111.007.519Bytes, SHA256 `216845898a0b39cbddc4d88d8f1b8280bce10e9fc231476ccaa712b76606694d`, regulärer Signierer, nicht debuggbar und ohne APK-Installerberechtigung. Kein physischer Android-Gerätetest oder neuer echter Anbieter-Erzeugungstest wird aus dieser UI-Abnahme abgeleitet.
+
+---
+
+# Vorheriger belegter Produktionsstand · 1.36.38+150
 
 Stand: 27.10.2026. Release `20261027T091631Z-01644af`, Produktcommit `01644af7608129f50374de52d248d83e86488c85`, Schema `0042`. Fünf Dienste aktiv.17 unmittelbar zuvor gesicherte Konfigurationen, vorhandene Tabellen und Google-Nachweise unverändert. Web, signierte Direct-APK und Play-AAB sind an denselben sauberen Quellstand gebunden. Signaturen, Geheimnisscan und tatsächliche öffentliche Web-/APK-Bytes geprüft. Vorheriger Release149 bleibt als Rückweg erhalten.
 
