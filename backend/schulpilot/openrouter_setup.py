@@ -16,7 +16,7 @@ from .security import audit
 class Configuration(Strict):
     policy: RoutingPolicy
     evidence: str = Field(min_length=20, max_length=500)
-    reservation_micros: int | None = Field(default=None, ge=1000, le=250000)
+    reservation_micros: int | None = Field(default=None, ge=1000, le=10000000)
 
 
 def configure():

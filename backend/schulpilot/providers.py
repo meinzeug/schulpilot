@@ -765,7 +765,7 @@ def external_allowed(config, image=False, synthetic_fixture=False, *, operator_p
 def synthetic_evaluation_budget():
     """Explicitly bounded increase only in an isolated SQLite test environment."""
     if settings.environment == "test" and settings.database_url.startswith("sqlite:///"):
-        return max(250_000, min(settings.synthetic_test_budget_micros, 500_000))
+        return max(250_000, min(settings.synthetic_test_budget_micros, 2_000_000))
     return 250_000
 
 

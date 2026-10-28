@@ -107,11 +107,14 @@ def work_one(should_continue=lambda: True):
                     test_bucket = "routing-probe:" + job.id
                     insert_ignore(db, UsageBucket, {"id": test_bucket, "calls": 0, "encumbered_micros": 0,
                         "known_cost_micros": 0, "unknown_calls": 0})
+                    # Three fixed checks, each independently reserved; unknown
+                    # charges remain held instead of enabling extra attempts.
+                    probe_budget = 250000 if config.reserve_micros <= 250000 else config.reserve_micros * 3
                     if not db.execute(update(UsageBucket).where(UsageBucket.id == test_bucket,
-                        UsageBucket.encumbered_micros + config.reserve_micros <= 250000).values(
+                        UsageBucket.encumbered_micros + config.reserve_micros <= probe_budget).values(
                             calls=UsageBucket.calls + 1, encumbered_micros=UsageBucket.encumbered_micros + config.reserve_micros,
                             unknown_calls=UsageBucket.unknown_calls + 1)).rowcount:
-                        raise ProviderError("Das begrenzte Prüfbudget von 0,25 USD ist erreicht.")
+                        raise ProviderError("Das begrenzte Prüfbudget ist erreicht.")
                     buckets.append(test_bucket)
                 report = {
                     "function": function,

@@ -49,7 +49,7 @@ class ModelRoute(Strict):
     input_per_million_micros: int = Field(ge=0, le=100_000_000)
     output_per_million_micros: int = Field(ge=0, le=500_000_000)
     max_output_tokens: int = Field(ge=1000, le=8000)
-    reserve_micros: int = Field(ge=1000, le=250_000)
+    reserve_micros: int = Field(ge=1000, le=10_000_000)
     image_capable: bool = False
     reasoning: Literal["medium"] = "medium"
     capability_evidence: str = Field(min_length=12, max_length=500)

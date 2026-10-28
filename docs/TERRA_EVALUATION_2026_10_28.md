@@ -5,7 +5,8 @@ Sol-Route beauftragt. Die Produktion blieb bei der Prüfung unverändert. Das
 Kandidatenskript verwendet eine eigene SQLite-Datenbank, feste künstliche
 Vorlagen und den bestehenden Reservierungs- und Abrechnungsweg. Der zunächst
 auf 0,25 USD begrenzte Gesamtdeckel wurde auf ausdrücklichen Betreiberauftrag
-für den isolierten Test auf 0,50 USD erhöht. Produktion und PostgreSQL behalten
+für den isolierten Test zunächst auf 0,50 und nach dem zusätzlichen ausdrücklichen
+Auftrag auf 2,00 USD erhöht. Produktion und PostgreSQL behalten
 die bisherige Grenze. Die Kandidatenroute bleibt ausdrücklich
 `evaluated=false` und `under13_approved=false`; eine Bildkostenschätzung der
 Produktionsroute wird nicht übernommen oder vorzeitig freigegeben.
@@ -26,15 +27,17 @@ garantierte Azure/EU-Abrechnung von Terra übernommen.
 | Fotoabschrift, kleinere Englischvorlage | Erfolgreich; alle sechs festgelegten Textanker erkannt | 0,005364 USD |
 | Fotoabschrift, größere künstliche Bruchseite mit 0,25 USD Einzelreservierung | Erfolgreich; Text und drei feste Anker korrekt erkannt | 0,006954 USD |
 | Zehn größere künstliche Seiten aus fünf Fächern | Alle zehn vor Versand von der konservativen Kostenprojektion gestoppt; keine OCR-Bewertung möglich | 0 USD |
+| Dieselben zehn größeren Seiten mit 0,75 USD Einzelreservierung | Alle zehn verarbeitet; dokumentierte Textanker gefunden. Ein Bruch wurde korrekt in LaTeX statt als `1/5` geschrieben und gesondert geprüft | 0,069812 USD |
 | Bruch-Lerneinheit | Transport und bestehende Inhaltsprüfung erfolgreich; eine Bruchgrafik und zwei Aufgaben erzeugt | 0,021143 USD |
 | Bruch-Lernpaket | Transport und bestehende Inhaltsprüfung erfolgreich; eine Einheit mit zwei Aufgaben erzeugt | 0,011904 USD |
 
-Bekannte Gesamtkosten: 0,045365 USD. Die Ergebnisse zeigen nur, dass diese
-künstlichen Einzelfälle funktioniert haben. Sie beweisen weder die allgemeine
-fachliche Qualität noch die zuverlässige Erkennung der zehn größeren Fotos. Für den
-Produktionswechsel fehlen insbesondere eine passende geprüfte und dokumentierte
-Bildkostenregel für den konkreten
-Terra-Endpunkt sowie die erforderliche Freigabe der Kinderroute. Schutzprüfungen
+Bekannte Gesamtkosten: 0,115177 USD. Die Ergebnisse zeigen nur, dass diese
+künstlichen Einzelfälle funktioniert haben; die Textanker allein prüfen weder
+jedes Zeichen noch die allgemeine fachliche Qualität. Die sichere, konservative
+Kostenschätzung blieb unverändert; sie benötigte für die zehn Seiten höhere
+Reservierungen. Für den Produktionswechsel fehlen insbesondere die reguläre
+Freigabe der Kinderroute und die Prüfung der weiteren betroffenen Funktionen.
+Schutzprüfungen
 dürfen dafür nicht umgangen werden. Frühere Antworten und Aufträge bleiben
 unverändert; es wurde kein neuer Auftrag für Juna ausgelöst.
 

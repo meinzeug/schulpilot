@@ -1,7 +1,7 @@
 name: schulpilot
 description: SCHULPILOT – gemeinsam lernen, den Überblick behalten.
 publish_to: none
-version: 1.37.1+152
+version: 1.37.2+153
 environment:
   sdk: '>=3.13.5 <4.0.0'
 dependencies:
