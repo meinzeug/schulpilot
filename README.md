@@ -18,7 +18,7 @@ Die reguläre signierte Direct-APK ist auf der Website vor und nach der Anmeldun
 | --- | --- |
 | **Heute** | Nächste sinnvolle Lernaktion, heutige Fotos, gespeicherte Vorbereitung, verbindliche Aufträge, anstehende Wiederholungen und gemessene Mindestlernzeit. |
 | **Hefte** | Fachhefter mit echten privaten Fotos, Blättern, Zoom, Kacheln/Liste, Suche und Filtern. Aus einer oder mehreren ausgewählten bestätigten Seiten bewusst neue Übungen vorbereiten. |
-| **Lernen** | Gespeicherte offene, geplante und abgeschlossene Runden; Erklärungen, gestufte Hilfe, Antworten, Rückmeldungen und Rückblicke wiederaufnehmen. |
+| **Lernen** | Zuerst ein Fach wie unter Hefte öffnen, danach die eigenen Themen. „Zufälliges Thema üben“ startet eine verfügbare Runde dieses Fachs. Offene, spätere und erledigte Themen sowie alle zugehörigen Runden bleiben erreichbar. [Ablauf und Rechte](docs/LEARNING_SUBJECTS.md). |
 | **Hausaufgaben** | Buch-/Arbeitsblattfotos lesen, bestätigte Aufgaben gliedern, einen eigenen Ansatz versuchen und gezielte Hilfe anfordern. Entwurf und Originalaufgabe bleiben getrennt. |
 | **Klassenarbeiten / LK** | Vorbereitung mit optionalem Prüfungstermin, Themen aus eigenen Heftquellen, ausgewählten Lerntagen und individuell 1–50 Aufgaben je Thema/Lerntag; geschriebene Arbeiten importieren und Aufgaben daraus besprechen bzw. gezielt nacharbeiten. |
 | **Wörter und Sprachen** | Ausdrücklich ausgewählte Wortpaare übernehmen, Richtungen/Fähigkeiten getrennt üben und spätere Wiederholungen verwenden. Sprachprojekte haben einen eigenen begrenzten Vertrag. |

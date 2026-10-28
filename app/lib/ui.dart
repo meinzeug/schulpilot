@@ -1566,7 +1566,8 @@ class _WorkspaceShellState extends State<WorkspaceShell>
       return entries.indexWhere((entry) => entry.$2 == 'Wörter');
     }
     if (state.isChild &&
-        (path.startsWith('/unit/') ||
+        (path.startsWith('/learn/') ||
+            path.startsWith('/unit/') ||
             path.startsWith('/discover/') ||
             path.startsWith('/progress/') ||
             path.startsWith('/learning-preparation/'))) {

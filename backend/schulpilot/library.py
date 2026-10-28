@@ -1,5 +1,7 @@
 """Private, bounded reading lists. Browsing never starts a learning/AI job."""
 
+import hashlib
+import secrets
 from datetime import date, datetime, time
 from typing import Literal
 from zoneinfo import ZoneInfo
@@ -9,7 +11,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import load_only
 
 from . import schemas as s
-from .db import Assignment, Attempt, LearningUnit, Material, SchoolDay, UnitCoaching, get_db
+from .db import Assignment, Attempt, Job, LearningUnit, Material, SchoolDay, UnitCoaching, get_db
 from .security import authenticated, child_access
 from .subjects import owned_subject
 
@@ -184,6 +186,7 @@ def unit_summaries(db, ids):
         LearningUnit.id,
         LearningUnit.child_id,
         LearningUnit.subject,
+        LearningUnit.subject_id,
         LearningUnit.topic,
         LearningUnit.status,
         LearningUnit.created,
@@ -239,24 +242,10 @@ def group_learning_items(items):
     return [item["entries"][0] if item.get("group_count") == 1 else item for item in result]
 
 
-@router.get("/children/{child_id}/learning")
-def learning_list(
-    child_id: str,
-    q: str = Query("", max_length=120),
-    subject: str | None = Query(None, max_length=80),
-    section: Literal["ready", "later", "completed"] = "ready",
-    sort: Sort = "subject",
-    page: int = Query(1, ge=1, le=1000000),
-    page_size: int = Query(20, ge=1, le=50),
-    group_topics: bool = False,
-    p=Depends(authenticated),
-    db=Depends(get_db),
-    capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities"),
-):
+def learning_sections(db, child, capabilities):
     from .coaching import paths
     from .learning import language_supported, plan
 
-    child = child_access(db, p, child_id)
     learning_paths = paths(db, child.id)
     include_language = language_supported(capabilities)
     current = plan(db, child, learning_paths=learning_paths, include_language=include_language)
@@ -282,6 +271,168 @@ def learning_list(
                     "scheduled_for": path["next_review"],
                 }
             )
+    attach_subject_ids(db, child, [*ready, *later])
+    return current, ready, later, include_language
+
+
+def topic_key(value):
+    from .subject_registry import normalized
+
+    return hashlib.sha256(normalized(value or "").encode()).hexdigest()
+
+
+def attach_subject_ids(db, child, items):
+    """Use stored identities first; legacy labels resolve without creating subjects."""
+    from .subject_registry import resolve
+
+    saved, labels = {}, {}
+    for kinds, model in ((("unit", "review"), LearningUnit), (("assignment",), Assignment), (("material",), Material)):
+        ids = {item["id"] for item in items if item["kind"] in kinds}
+        if ids:
+            for identifier, subject_id in db.execute(select(model.id, model.subject_id)
+                    .where(model.child_id == child.id, model.id.in_(ids))):
+                for kind in kinds:
+                    saved[kind, identifier] = subject_id
+    for item in items:
+        label = item.get("subject") or ""
+        if label not in labels:
+            row = resolve(db, label, child.family_id)
+            labels[label] = row.id if row else None
+        item["subject_id"] = saved.get((item["kind"], item["id"])) or labels[label]
+
+
+def subject_filter(db, child, subject_id, viewer):
+    if subject_id != "unassigned":
+        owned_subject(db, child, subject_id, viewer)
+    return lambda item: (item.get("subject_id") or "unassigned") == subject_id
+
+
+def topic_cards(items):
+    groups = {}
+    for item in items:
+        key = topic_key(item["topic"])
+        group = groups.setdefault(key, {**item, "kind": "topic_group", "topic_key": key,
+            "entries": [], "group_count": 0, "topic_card": True})
+        group["entries"].append(dict(item))
+        group["group_count"] += 1
+    for group in groups.values():
+        # Existing work first within a topic; the rest has its own bounded list.
+        group["entries"].sort(key=lambda item: (
+            item.get("status") not in ("active", "paused"), not item.get("mandatory"), item["kind"] != "unit"))
+        group["entries"] = group["entries"][:1]
+    return list(groups.values())
+
+
+def preparing_round(db, child):
+    row = db.execute(select(Job.id, Job.status).where(Job.child_id == child.id,
+        Job.kind.in_(("unit", "controller_check", "decision", "study_block", "package")),
+        Job.status.in_(("queued", "running"))).order_by(Job.created, Job.id).limit(1)).first()
+    return {"id": row.id, "status": row.status} if row else None
+
+
+def startable_topics(items, current, db=None, child=None):
+    groups = {}
+    for item in items:
+        if (item["kind"] not in ("unit", "review", "material", "assignment", "study_path")
+                or item.get("status") == "completed"
+                or (item.get("scheduled_for") or current["date"]) > current["date"]):
+            continue
+        if item["kind"] == "study_path":
+            if not item.get("block_id") or db is None or child is None:
+                continue
+            jobs = list(db.execute(select(Job.status).where(Job.child_id == child.id, Job.kind == "study_block",
+                Job.payload["day_id"].as_string() == item["id"],
+                Job.payload["block_id"].as_string() == item["block_id"]).order_by(Job.created.desc(), Job.id.desc())))
+            if len(jobs) >= 3 and jobs[0].status == "failed":
+                continue
+        groups.setdefault(topic_key(item["topic"]), []).append(item)
+    for entries in groups.values():
+        entries.sort(key=lambda item: (item.get("status") not in ("active", "paused"),
+            not item.get("mandatory"), item["kind"] != "unit"))
+    return groups
+
+
+@router.get("/children/{child_id}/learning/subjects")
+def learning_subjects(child_id: str, p=Depends(authenticated), db=Depends(get_db),
+        capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
+    from .subject_registry import resolve
+    from .subjects import child_subjects
+
+    child = child_access(db, p, child_id)
+    current, ready, later, include_language = learning_sections(db, child, capabilities)
+    items = child_subjects(child_id, p, db)["items"]
+    indexed = {row["id"]: row for row in items}
+    indexed["unassigned"] = {"id": "unassigned", "title": "Weitere Fächer", "cover_key": None, "selected": False}
+    topics = {sid: set() for sid in indexed}
+    for row in indexed.values():
+        row.update(ready_count=0, later_count=0, completed_count=0)
+    for section, entries in (("ready", ready), ("later", later)):
+        for entry in entries:
+            sid = entry.get("subject_id") or "unassigned"
+            if sid in indexed:
+                topics[sid].add(topic_key(entry["topic"]))
+                indexed[sid][section + "_count"] += 1
+    conditions = [LearningUnit.child_id == child.id, LearningUnit.status == "completed"]
+    if not include_language:
+        conditions.append(LearningUnit.round_kind != "vocabulary")
+    for sid, label, topic, count in db.execute(select(LearningUnit.subject_id, LearningUnit.subject,
+            LearningUnit.topic, func.count()).where(*conditions)
+            .group_by(LearningUnit.subject_id, LearningUnit.subject, LearningUnit.topic)):
+        if not sid:
+            resolved = resolve(db, label, child.family_id)
+            sid = resolved.id if resolved else "unassigned"
+        if sid in indexed:
+            topics[sid].add(topic_key(topic))
+            indexed[sid]["completed_count"] += count
+    for sid, row in indexed.items():
+        row["topic_count"] = len(topics[sid])
+    if indexed["unassigned"]["topic_count"]:
+        items.append(indexed["unassigned"])
+    return {"child_id": child.id, "items": items}
+
+
+@router.get("/children/{child_id}/learning/subjects/{subject_id}/random")
+def random_learning_topic(child_id: str, subject_id: str,
+        p=Depends(authenticated), db=Depends(get_db),
+        capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
+    child = child_access(db, p, child_id)
+    matches = subject_filter(db, child, subject_id, p)
+    current, ready, _, _ = learning_sections(db, child, capabilities)
+    if preparing_round(db, child):
+        raise HTTPException(409, "Eine Lernrunde wird schon vorbereitet. Du kannst gespeicherte Runden weiter nutzen.")
+    groups = startable_topics([row for row in ready if matches(row)], current, db, child)
+    if not groups:
+        raise HTTPException(409, "Für dieses Fach ist gerade keine Runde startbereit. Deine Themen bleiben verfügbar.")
+    # Uniform across all eligible topics, never just the first page or weighted
+    # by a topic's number of stored rounds. This GET reserves/starts nothing.
+    item = dict(secrets.choice(list(groups.values()))[0])
+    if item["kind"] == "unit":
+        item |= unit_summaries(db, [item["id"]]).get(item["id"], {})
+    return {"item": item, "date": current["date"]}
+
+
+@router.get("/children/{child_id}/learning")
+def learning_list(
+    child_id: str,
+    q: str = Query("", max_length=120),
+    subject: str | None = Query(None, max_length=80),
+    section: Literal["ready", "later", "completed"] = "ready",
+    sort: Sort = "subject",
+    page: int = Query(1, ge=1, le=1000000),
+    page_size: int = Query(20, ge=1, le=50),
+    group_topics: bool = False,
+    subject_id: str | None = Query(None, pattern=r"^(?:[a-f0-9]{32}|unassigned)$"),
+    topic: str | None = Query(None, pattern=r"^[a-f0-9]{64}$"),
+    topic_view: bool = False,
+    p=Depends(authenticated),
+    db=Depends(get_db),
+    capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities"),
+):
+    child = child_access(db, p, child_id)
+    current, ready, later, include_language = learning_sections(db, child, capabilities)
+    matches = subject_filter(db, child, subject_id, p) if subject_id else None
+    if topic_view and not subject_id:
+        raise HTTPException(422, "Bitte zuerst ein Fach wählen.")
     counts = {
         "ready": len(ready),
         "later": len(later),
@@ -298,6 +449,20 @@ def learning_list(
             conditions.append(LearningUnit.round_kind != "vocabulary")
         if q.strip():
             conditions.append(or_(contains(LearningUnit.topic, q.strip()), contains(LearningUnit.subject, q.strip())))
+        if subject_id or topic:
+            metadata = list(db.execute(select(LearningUnit.id, LearningUnit.subject_id, LearningUnit.subject,
+                LearningUnit.topic).where(*conditions)).mappings())
+            selected = []
+            for row in metadata:
+                item = dict(row) | {"kind": "unit"}
+                if not item["subject_id"]:
+                    from .subject_registry import resolve
+
+                    resolved = resolve(db, item["subject"], child.family_id)
+                    item["subject_id"] = resolved.id if resolved else None
+                if (matches is None or matches(item)) and (not topic or topic_key(item["topic"]) == topic):
+                    selected.append(item["id"])
+            conditions.append(LearningUnit.id.in_(selected))
         facet = subject_value(LearningUnit.subject)
         subjects = [
             {"value": value, "count": count}
@@ -313,19 +478,36 @@ def learning_list(
         order = [stamp.asc(), LearningUnit.id.asc()] if sort == "oldest" else [stamp.desc(), LearningUnit.id.desc()]
         if sort == "subject":
             order = [func.lower(facet), facet, *order]
-        ids = list(
-            db.scalars(
-                select(LearningUnit.id)
-                .where(*conditions)
-                .order_by(*order)
-                .offset((pagination["page"] - 1) * page_size)
-                .limit(page_size)
+        if topic_view:
+            metadata = [dict(row) | {"kind": "unit", "status": "completed"} for row in db.execute(
+                select(LearningUnit.id, LearningUnit.subject, LearningUnit.subject_id, LearningUnit.topic,
+                    stamp.label("created")).where(*conditions).order_by(*order)).mappings()]
+            grouped = topic_cards(metadata)
+            if sort == "subject":
+                grouped.sort(key=lambda row: (row["topic"].strip().casefold(), row["id"]))
+            pagination = bounds(len(grouped), page, page_size)
+            offset = (pagination["page"] - 1) * page_size
+            items = grouped[offset:offset + page_size]
+            summaries = unit_summaries(db, [row["entries"][0]["id"] for row in items])
+            items = [{**row, "entries": [summaries[row["entries"][0]["id"]]]} for row in items]
+        else:
+            ids = list(
+                db.scalars(
+                    select(LearningUnit.id)
+                    .where(*conditions)
+                    .order_by(*order)
+                    .offset((pagination["page"] - 1) * page_size)
+                    .limit(page_size)
+                )
             )
-        )
-        summaries = unit_summaries(db, ids)
-        items = [summaries[id] for id in ids]
+            summaries = unit_summaries(db, ids)
+            items = [summaries[id] for id in ids]
     else:
         items = [dict(item) for item in (ready if section == "ready" else later)]
+        if matches:
+            items = [item for item in items if matches(item)]
+        if topic:
+            items = [item for item in items if topic_key(item["topic"]) == topic]
         needle = q.strip().casefold()
         if needle:
             items = [item for item in items if needle in (item["topic"] + " " + item["subject"]).casefold()]
@@ -352,12 +534,15 @@ def learning_list(
                         stamps[(kind, id)] = created
         for item in items:
             item["created"] = stamps.get((item["kind"], item["id"]), 0)
-        if group_topics:
+        if topic_view:
+            items = topic_cards(items)
+        elif group_topics:
             items = group_learning_items(items)
         # Display sorting never changes the plan or its primary next action.
         if sort == "subject":
             items.sort(
-                key=lambda item: (item["subject"].strip().casefold(), -item["created"], item["kind"], item["id"])
+                key=lambda item: (item["subject"].strip().casefold(), item["topic"].strip().casefold() if topic_view else "",
+                    -item["created"], item["kind"], item["id"])
             )
         else:
             items.sort(key=lambda item: (item["created"], item["kind"], item["id"]), reverse=sort == "newest")
@@ -376,6 +561,8 @@ def learning_list(
         "subjects": subjects,
         "sections": counts,
         "date": current["date"],
+        "learning_preparation": preparing_round(db, child) if subject_id else None,
+        "random_available": bool(startable_topics([row for row in ready if matches(row)], current, db, child)) if matches else False,
         "paused": current["paused"],
         "free_day": current["free_day"],
         "available_minutes": current["available_minutes"],

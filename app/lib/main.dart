@@ -13,6 +13,7 @@ import 'account_deletion_screen.dart';
 import 'auth_screens.dart';
 import 'dashboard.dart';
 import 'collection_screen.dart';
+import 'learning_subjects.dart';
 import 'notebook_screen.dart';
 import 'material_screen.dart';
 import 'homework_screen.dart';
@@ -463,10 +464,39 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       ),
       GoRoute(
         path: '/learn/:id',
-        builder: (context, s) => CollectionScreen(
+        builder: (context, s) => LearningSubjectsScreen(
           widget.state,
+          key: ValueKey((
+            'learn-subjects',
+            widget.state.user,
+            s.pathParameters['id'],
+          )),
           childId: s.pathParameters['id']!,
-          learning: true,
+        ),
+      ),
+      GoRoute(
+        path: '/learn/:id/subject/:subjectId',
+        builder: (context, s) => LearningSubjectsScreen(
+          widget.state,
+          key: ValueKey((
+            'learn-topics',
+            widget.state.user,
+            s.pathParameters['id'],
+            s.pathParameters['subjectId'],
+            s.uri.queryParameters['topic'],
+            s.uri.queryParameters['section'],
+          )),
+          childId: s.pathParameters['id']!,
+          subjectId: s.pathParameters['subjectId']!,
+          topicKey: s.uri.queryParameters['topic'],
+          initialSection:
+              [
+                'ready',
+                'later',
+                'completed',
+              ].contains(s.uri.queryParameters['section'])
+              ? s.uri.queryParameters['section']!
+              : 'ready',
         ),
       ),
       GoRoute(

@@ -138,6 +138,8 @@ class CollectionScreen extends StatelessWidget {
 class PagedCollection extends StatelessWidget {
   final AppState state;
   final String childId;
+  final String? subjectId, topicKey;
+  final ValueChanged<Json>? onLoaded;
   final bool learning;
   final ValueChanged<Json>? onSelect;
   final String initialSection;
@@ -145,6 +147,9 @@ class PagedCollection extends StatelessWidget {
     this.state, {
     super.key,
     required this.childId,
+    this.subjectId,
+    this.topicKey,
+    this.onLoaded,
     this.learning = false,
     this.onSelect,
     this.initialSection = 'ready',
@@ -152,8 +157,19 @@ class PagedCollection extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _PagedCollectionBody(
     state,
-    key: ValueKey((state, childId, learning, onSelect != null, initialSection)),
+    key: ValueKey((
+      state,
+      childId,
+      learning,
+      onSelect != null,
+      initialSection,
+      subjectId,
+      topicKey,
+    )),
     childId: childId,
+    subjectId: subjectId,
+    topicKey: topicKey,
+    onLoaded: onLoaded,
     learning: learning,
     onSelect: onSelect,
     initialSection: initialSection,
@@ -164,12 +180,17 @@ class PagedCollection extends StatelessWidget {
 class _PagedCollectionBody extends StatefulWidget {
   final AppState state;
   final String childId, initialSection;
+  final String? subjectId, topicKey;
+  final ValueChanged<Json>? onLoaded;
   final bool learning;
   final ValueChanged<Json>? onSelect;
   const _PagedCollectionBody(
     this.state, {
     super.key,
     required this.childId,
+    this.subjectId,
+    this.topicKey,
+    this.onLoaded,
     required this.learning,
     required this.onSelect,
     required this.initialSection,
@@ -194,7 +215,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
   final selectedPages = <String>{};
   String status = 'all', sort = 'subject', section = 'ready';
   DateTimeRange? dates;
-  int page = 1, pageSize = 20, generation = 0;
+  int page = 1, pageSize = 20, generation = 0, liveRevision = 0;
   bool loading = true;
   final toolsKey = GlobalKey();
   bool get simpleLearning =>
@@ -202,7 +223,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
   late Json? owner;
   final ownedRoutes = <ModalRoute<dynamic>>{};
   String get cacheKey =>
-      '${widget.learning ? 'learning' : 'materials'}:${widget.childId}';
+      '${widget.learning ? 'learning' : 'materials'}:${widget.childId}${widget.subjectId == null ? '' : ':${widget.subjectId}:${widget.topicKey ?? 'topics'}:${widget.initialSection}'}';
   bool get active =>
       mounted &&
       owner != null &&
@@ -222,6 +243,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
     family = widget.state.familyId;
     session = widget.state.api.token;
     widget.state.addListener(identityChanged);
+    liveRevision = widget.state.revision;
     section = widget.initialSection;
     final saved = widget.onSelect == null
         ? widget.state.collectionViews[cacheKey]
@@ -241,6 +263,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
         );
       }
     }
+    if (widget.subjectId != null) subject = null;
     if (widget.onSelect != null) status = 'confirmed';
     load();
   }
@@ -273,6 +296,11 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
         rememberedRounds.clear();
         comparedRounds.clear();
       });
+    } else if (active &&
+        widget.subjectId != null &&
+        liveRevision != widget.state.revision) {
+      liveRevision = widget.state.revision;
+      load();
     }
   }
 
@@ -321,6 +349,10 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
       'page': '$page',
       'page_size': '$pageSize',
       'subject': ?subject,
+      'subject_id': ?widget.subjectId,
+      'topic': ?widget.topicKey,
+      if (widget.subjectId != null && widget.topicKey == null)
+        'topic_view': 'true',
       if (widget.learning) 'section': section else 'status': status,
       if (!widget.learning && dates != null)
         'since': DateFormat('yyyy-MM-dd').format(dates!.start),
@@ -347,6 +379,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
         }
       });
       remember();
+      widget.onLoaded?.call(result);
       if (scroll) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final context = top.currentContext;
@@ -984,7 +1017,15 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
     final resultSummary = Text(
       total == 0
           ? 'Keine Ergebnisse'
-          : '$first–$last von ${counted(total, widget.learning ? 'Eintrag' : 'Seite', widget.learning ? 'Einträgen' : 'Seiten')}',
+          : '$first–$last von ${counted(total, widget.subjectId != null && widget.topicKey == null
+                ? 'Thema'
+                : widget.learning
+                ? 'Eintrag'
+                : 'Seite', widget.subjectId != null && widget.topicKey == null
+                ? 'Themen'
+                : widget.learning
+                ? 'Einträgen'
+                : 'Seiten')}',
       style: TextStyle(color: context.palette.muted, fontSize: 13),
     );
     return CallbackShortcuts(
@@ -1105,33 +1146,36 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          key: ValueKey(subject),
-                          initialValue: subject,
-                          isExpanded: true,
-                          hint: const Text('Alle Fächer'),
-                          decoration: const InputDecoration(labelText: 'Fach'),
-                          items: [
-                            const DropdownMenuItem<String>(
-                              value: null,
-                              child: Text('Alle Fächer'),
+                      if (widget.subjectId == null)
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            key: ValueKey(subject),
+                            initialValue: subject,
+                            isExpanded: true,
+                            hint: const Text('Alle Fächer'),
+                            decoration: const InputDecoration(
+                              labelText: 'Fach',
                             ),
-                            for (final value in choices)
-                              DropdownMenuItem(
-                                value: value,
-                                child: Text(
-                                  value.isEmpty ? 'Fach noch offen' : value,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('Alle Fächer'),
                               ),
-                          ],
-                          onChanged: (value) {
-                            FocusManager.instance.primaryFocus?.unfocus();
-                            change(() => subject = value);
-                          },
+                              for (final value in choices)
+                                DropdownMenuItem(
+                                  value: value,
+                                  child: Text(
+                                    value.isEmpty ? 'Fach noch offen' : value,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              change(() => subject = value);
+                            },
+                          ),
                         ),
-                      ),
                       const SizedBox(width: 8),
                       IconButton.filledTonal(
                         tooltip: 'Filter und Sortierung',
@@ -1404,7 +1448,9 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
     String? previousSubject;
     for (final item in items) {
       final subject = item['subject']?.toString().trim() ?? '';
-      if (sort == 'subject' && subject != previousSubject) {
+      if (widget.subjectId == null &&
+          sort == 'subject' &&
+          subject != previousSubject) {
         previousSubject = subject;
         widgets.add(
           Padding(
@@ -1420,7 +1466,26 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
           ),
         );
       }
-      if (item['kind'] == 'topic_group') {
+      if (item['topic_card'] == true) {
+        final entries = (item['entries'] as List).cast<Json>();
+        if (entries.isNotEmpty) widgets.add(_topicTile(entries.first));
+        final count = (item['group_count'] as num?)?.toInt() ?? 1;
+        if (count > 1) {
+          widgets.add(
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => openRoute(
+                  context,
+                  '/learn/${widget.childId}/subject/${widget.subjectId}?topic=${item['topic_key']}&section=$section',
+                ),
+                icon: const Icon(Icons.list_alt_rounded),
+                label: Text('Alle $count Runden zu diesem Thema'),
+              ),
+            ),
+          );
+        }
+      } else if (item['kind'] == 'topic_group') {
         final entries = (item['entries'] as List).cast<Json>();
         widgets.add(
           Padding(
@@ -1584,6 +1649,69 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
             if (canDeleteRound(shown)) deleteRound(shown);
         }
       },
+    );
+  }
+
+  Widget _topicTile(Json item) {
+    final count = (item['question_count'] as num? ?? 0).toInt();
+    final closed = (item['closed_questions'] as num? ?? 0).toInt();
+    final due = item['scheduled_for']?.toString();
+    final future =
+        due != null && due.compareTo(data?['date'] ?? '9999-01-01') > 0;
+    final resume = ['active', 'paused'].contains(item['status']);
+    final label = item['status'] == 'completed'
+        ? 'Rückblick ansehen'
+        : future
+        ? 'Ab ${DateFormat('dd.MM.').format(DateTime.parse(due))}'
+        : resume
+        ? 'Fortsetzen'
+        : item['kind'] == 'unit'
+        ? 'Runde starten'
+        : 'Runde vorbereiten';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: context.palette.panelSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: context.palette.surfaceBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          minTileHeight: 72,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 6,
+          ),
+          leading: Icon(
+            resume
+                ? Icons.play_circle_outline_rounded
+                : Icons.auto_stories_outlined,
+            color: context.palette.teal,
+          ),
+          title: Ideas100Highlight(
+            item['topic'] ?? 'Dein Thema',
+            search.text,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            [
+              if (count > 0)
+                resume ? '$closed von $count Aufgaben' : '$count Aufgaben',
+              label,
+            ].join(' · '),
+          ),
+          trailing: opening == item['id'] || deletingMaterial == item['id']
+              ? const SizedBox.square(
+                  dimension: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : roundActions(item),
+          onTap: future || opening != null || deletingMaterial != null
+              ? null
+              : () => open(item),
+        ),
+      ),
     );
   }
 
