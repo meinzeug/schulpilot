@@ -71,3 +71,21 @@ in der lesenden Verfügbarkeitsprüfung als aufgebrauchtes Kontingent behandelt,
 obwohl die tatsächlichen Aufruf- und Kostengrenzen noch Spielraum hatten. Die
 Prüfung erkennt diesen Zustand jetzt und behält die bestehenden Grenzprüfungen.
 Weder die öffentliche Testphase noch die Bestellfunktion wurden freigeschaltet.
+
+Nach Veröffentlichung von 1.38.1 war die reguläre Wiederholung im Testkonto
+verfügbar. Ein bewusst gestarteter weiterer Paketauftrag scheiterte erneut:
+Diesmal zeigt die geschlossene Diagnose `visual_fraction_parameters`, dass im
+Erklärschritt genannte Brüche nicht mit den Bruchgrafikparametern übereinstimmen.
+Der verworfene Modelltext wird nicht gespeichert; die konkrete Formulierung und
+ob sie fachlich falsch oder lediglich von der Grafik abweichend war, lassen sich
+nicht nachträglich belegen. Die zusätzlichen Anweisungen haben diesen Fall somit
+nicht zuverlässig behoben. Es erfolgte kein dritter Versuch.
+
+Die gespeicherten Aufträge verwendeten keinen Teilplan. Kleine neue Pakete mit
+nur einem geplanten Teil bleiben derzeit bewusst auf dem bisherigen Paketpfad;
+die für Teilpakete vorbereiteten quellgebundenen Grafik-IDs werden dort nicht
+gebunden. Ein möglicher Wechsel auf diesen Weg benötigt eigene Prüfungen für
+Aufgabenanzahl, Wiederholungsgrenzen, bestehende Aufträge und Quellenbindung;
+er ist nicht durch ein bloßes Freischalten einer weiteren Wiederholung erledigt.
+Der vollständige Durchlauf von Aufgaben, adaptiver Weiterübung und
+Fertigstellungsbenachrichtigung bleibt bis zu einem erzeugten Paket offen.
