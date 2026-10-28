@@ -50,3 +50,24 @@ kompakte Hinweis wird nicht in den Produktionsprompt übernommen. Sol bleibt
 aktiv, weil die ausdrücklich verlangte Bedingung erfolgreicher Tests für den
 Modellwechsel nicht erfüllt ist. Die Diagnostik erhält nur geschlossene
 Fehlerkennungen und protokolliert keine Inhalte.
+# Zweiter Live-Durchlauf: zwei künstliche Mathematikseiten
+
+Ein isolierter interner Testhaushalt hat zwei künstliche Fotos über den regulären
+Fotoablauf abgegeben. Die beiden Erkennungen und der jeweilige automatische
+Gegencheck wurden beendet. Auf der zweiten Seite wurden unleserliche Stellen
+ausdrücklich als unsicher geführt. Die anschließende Paketerzeugung scheiterte
+bei der Prüfung von Grafikparametern; ein Lernpaket wurde nicht veröffentlicht.
+Der damalige inhaltsfreie Diagnosecode fasste drei unterschiedliche Grafikarten
+zusammen, sodass sich die konkrete Abweichung nachträglich nicht bestimmen lässt.
+
+Die Erzeugungsanweisung nennt nun die bestehenden Konsistenzregeln ausdrücklich;
+die Regeln selbst bleiben unverändert. Künftige Diagnosen unterscheiden Bruch-,
+Dreieck- und Spiegelparameter, ohne Modellantworten zu protokollieren. Ein
+erneuter KI-Auftrag ist ein eigenständiger Test und kein Nachweis für die Ursache
+des alten Modelloutputs.
+
+Ein zweiter Fehler betraf die Statusanzeige: Ein aktiver Testphasenzugang wurde
+in der lesenden Verfügbarkeitsprüfung als aufgebrauchtes Kontingent behandelt,
+obwohl die tatsächlichen Aufruf- und Kostengrenzen noch Spielraum hatten. Die
+Prüfung erkennt diesen Zustand jetzt und behält die bestehenden Grenzprüfungen.
+Weder die öffentliche Testphase noch die Bestellfunktion wurden freigeschaltet.

@@ -94,7 +94,7 @@ def generation_availability(db, family, function, *, child_id=None, job_id=None,
         return child_blocker
     summary = usage_summary(db, family)
     if (
-        summary["access"]["state"] not in ("existing", "active")
+        summary["access"]["state"] not in ("existing", "active", "trial")
         or (not configured_child and (not summary["calls_remaining"]
             or summary["budget_remaining_micros_usd"] < config.reserve_micros))
     ):

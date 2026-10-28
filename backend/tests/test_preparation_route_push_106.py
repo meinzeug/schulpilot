@@ -12,6 +12,7 @@ from schulpilot.db import (
     DB,
     Child,
     Family,
+    FamilyTrial,
     Job,
     Material,
     ProviderConfig,
@@ -71,6 +72,33 @@ def test_route_preflight_matches_actual150k_reservation_despite_base500k(api, ho
         assert db.get(ProviderConfig, 1).reserve_micros == 500000
         assert family.budget_micros == 2000000 and family.call_limit == 10000
         db.rollback()
+
+
+@pytest.mark.parametrize("remaining,expected", [(150000, None), (149999, "quota_exhausted")])
+def test_trial_preflight_uses_trial_access_and_real_remaining_budget(api, household, remaining, expected):
+    parent, child = household
+    fid, _, job_id = route_case(parent, child)
+    with DB.begin() as db:
+        family = db.get(Family, fid)
+        family.commerce_required = True
+        starts = int(now()) - 60
+        db.add(FamilyTrial(family_id=fid, owner_user_id=parent["id"], starts=starts,
+            ends=starts + 30 * 86400, child_limit=1, call_limit=10, budget_micros=2_000_000,
+            version="synthetic-test"))
+        db.add(UsageBucket(id=f"{fid}:trial", calls=1, encumbered_micros=2_000_000 - remaining,
+            known_cost_micros=2_000_000 - remaining, unknown_calls=0))
+    with DB() as db:
+        family = db.get(Family, fid)
+        blocker = generation_availability(db, family, "extract", child_id=child["id"], job_id=job_id)
+        assert (blocker["code"] if blocker else None) == expected
+        assert not db.new and not db.dirty
+        if expected is None:
+            assert reserve(db, family, child["id"], job_id, "extract").reserved_micros == 150000
+            db.rollback()
+        else:
+            with pytest.raises(HTTPException) as error:
+                reserve(db, family, child["id"], job_id, "extract")
+            assert error.value.status_code == 429
 
 
 @pytest.mark.parametrize("remaining,calls", [(149999, 190), (402879, 10000)])

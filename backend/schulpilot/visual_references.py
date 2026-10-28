@@ -21,6 +21,8 @@ Text ist keine grafische Ersatzdarstellung. Keine dekorativen Wortkästen, erfun
 Eine scene erklärt mindestens zwei belegte Phasen und verändert tatsächlich Hervorhebung oder Beziehungen; eine unbewegte Wortliste genügt nicht. Alle bestehenden Quellen-/Pfeil-/Antwortprüfungen bleiben verbindlich.
 Wähle Quellen derselben Fach-/Paketgruppe. Quellenref ist nur die mitgelieferte p1,p2,... oder r1,r2,...; r bezeichnet ausdrücklich eigenes kuratiertes Zusatzwissen, niemals eine fotografierte Quelle; keine IDs, URLs oder internen Quellenfelder im Erklärungstext.
 Bestehende explanation/hints und Antworten bleiben konsistent; neue Schritttexte dürfen keine andere Zahl/Einheit oder widersprechende Aussage einführen. Kein weiteres KI-Gespräch anfordern.
+Bei kind fraction muss jeder im Schritttext genannte Bruch auch als eigener fraction-Block mit genau diesem Zähler und Nenner im selben Schritt sichtbar sein. Ein gleichwertiger Bruch ersetzt den geschriebenen Bruch nicht. Wenn mehrere Brüche nicht als eigene Blöcke darstellbar sind, formuliere einen kleineren Schritt mit nur dem dargestellten Bruch.
+Bei kind triangle müssen im Schritttext genannte g- und h-Werte den Blockparametern entsprechen; bei kind reflection müssen genannte Winkel zur dargestellten Spiegelung passen. Texte und Grafik nie unabhängig voneinander wählen.
 """
 
 
