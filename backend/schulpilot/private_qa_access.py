@@ -11,7 +11,7 @@ import sys
 from sqlalchemy import select
 
 from .commerce import DAY, store
-from .db import BankOrder, Child, DB, Family, FamilyTrial, Job, LearningUnit, Material, Membership, User, now
+from .db import DB, BankOrder, Child, Family, FamilyTrial, Job, LearningUnit, Material, Membership, User, now
 from .security import audit
 
 VERSION = "private-photo-qa-20261028-1"

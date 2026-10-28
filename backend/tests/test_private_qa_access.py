@@ -10,11 +10,10 @@ os.environ.setdefault("MASTER_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
-
 from schulpilot import private_qa_access as access
 from schulpilot.db import Audit, Base, Child, Family, FamilyTrial, Material, Membership, User
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
 
 def test_private_qa_grant_is_scoped_and_idempotent():
