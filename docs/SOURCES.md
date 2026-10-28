@@ -1,3 +1,13 @@
+## 28.10.2026 · Terra als Routenkandidat
+
+[OpenRouter: Terra](https://openrouter.ai/openai/gpt-6.1-terra) und der
+[Endpunktkatalog](https://openrouter.ai/api/v1/models/openai/gpt-6.1-terra/endpoints)
+weisen `azure/eu` aus. Der authentifizierte ZDR-Katalog führte den Endpunkt;
+das ersetzt keine separate Produktionsfreigabe. Zwei künstliche Aufgabenproben
+und eine kleine Fotoprobe gelangen. Eine größere Bildprobe wurde vor Versand
+durch die bestehende Kostenprüfung gestoppt.
+[Prüfergebnis und Grenzen](TERRA_EVALUATION_2026_10_28.md).
+
 ## 28.10.2026 · Auslieferung152 und tatsächlicher Sol-Ausfall
 
 Ausgeliefert und öffentlich bytegeprüft: `20261028T144255Z-6bf8784`, Quellstand `6bf87846fdc174104dda321556d44a35aca95c50`, Schema0042.210SQLite-/210PostgreSQL- und43Flutterfälle bestanden. Der Gesamt-CI-Lauf40697583737 fand einen veralteten künstlichen Inline-Grafiktest; dessen Anpassung besteht danach in allen32Fällen mit RAM-SQLite und Unix-PostgreSQL und ändert keinen ausgelieferten Laufzeitcode.

@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--key-file", type=Path, default=Path.home() / "or.txt")
     parser.add_argument("--directory", type=Path, default=Path.home() / ".local/share/schulpilot-evaluation")
     parser.add_argument("--full", action="store_true", help="Two OCR variants and two model tiers in five subjects")
+    parser.add_argument("--terra-candidate", action="store_true", help="Evaluate Terra on Azure/EU using only fixed synthetic fixtures")
     args = parser.parse_args()
     args.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     args.directory.chmod(0o700)
@@ -53,19 +54,21 @@ def main():
         zdr = client.get("https://openrouter.ai/api/v1/endpoints/zdr", headers=headers)
         zdr.raise_for_status()
         eligible = {(e["model_id"], e["tag"]) for e in zdr.json()["data"]}
-        for tier, model in {"luna": "openai/gpt-6-luna", "sol": "openai/gpt-6.1-sol", "astra": "openai/gpt-6-astra"}.items():
+        candidate_models = {"luna": "openai/gpt-6-luna", "sol": "openai/gpt-6.1-terra" if args.terra_candidate else "openai/gpt-6.1-sol", "astra": "openai/gpt-6-astra"}
+        for tier, model in candidate_models.items():
+            upstream = "azure/eu" if args.terra_candidate and tier == "sol" else "azure"
             response = client.get("https://openrouter.ai/api/v1/models/" + model + "/endpoints")
             response.raise_for_status()
             data = response.json()["data"]
-            endpoint = next(e for e in data["endpoints"] if e["tag"] == "azure" and (model, e["tag"]) in eligible)
+            endpoint = next(e for e in data["endpoints"] if e["tag"] == upstream and (model, e["tag"]) in eligible and e["status"] == 0)
             supported = endpoint["supported_parameters"]
             if not {"reasoning", "response_format", "structured_outputs"} <= set(supported):
                 raise SystemExit("Required parameters not available; no fallback used")
-            metadata.append({"model": model, "upstream": "azure", "pricing": endpoint["pricing"], "zdr_listed": True})
+            metadata.append({"model": model, "upstream": upstream, "pricing": endpoint["pricing"], "zdr_listed": True})
             rates = [int((Decimal(endpoint["pricing"][kind]) * 10**12).to_integral_value()) for kind in ("prompt", "completion")]
-            routes[tier] = {"model": model, "upstreams": ["azure"], "input_per_million_micros": rates[0],
-                "output_per_million_micros": rates[1], "max_output_tokens": 4000 if tier != "astra" else 2000,
-                "reserve_micros": 50000 if tier == "luna" else 80000 if tier == "sol" else 250000, "image_capable": "image" in data["architecture"]["input_modalities"],
+            routes[tier] = {"model": model, "upstreams": [upstream], "input_per_million_micros": rates[0],
+                "output_per_million_micros": rates[1], "max_output_tokens": 8000 if args.terra_candidate and tier == "sol" else 4000 if tier != "astra" else 2000,
+                "reserve_micros": 150000 if args.terra_candidate and tier == "sol" else 50000 if tier == "luna" else 80000 if tier == "sol" else 250000, "image_capable": "image" in data["architecture"]["input_modalities"],
                 "capability_evidence": "OpenRouter endpoint metadata; synthetic acceptance pending",
                 "pricing_evidence": "https://openrouter.ai/api/v1/models/" + model + "/endpoints",
                 "verified_at": int(now()), "evaluated": False, "under13_approved": False}
@@ -96,7 +99,7 @@ def main():
         config = db.get(ProviderConfig, 1)
         config.provider, config.model, config.routing_policy = "openrouter", routes["sol"]["model"], policy
         config.emergency_stop, config.production_block_reason = False, "Synthetic evaluation only"
-        config.reserve_micros, config.max_output_tokens = 250000, 4000
+        config.reserve_micros, config.max_output_tokens = 250000, 8000 if args.terra_candidate else 4000
         config.revision += 1
     if args.full:
         prepare_audit(Path.home() / "Downloads/Schulpilot_Testbilder_48_2026-10-19.zip")
@@ -104,8 +107,10 @@ def main():
     reconcile_one()  # Metadata only; never re-run a failed generation.
     reports, blocked = [], False
     for fixture in cases:
-        for function, tier in [("extract", "luna"), ("unit", "luna"), ("unit", "sol")]:
-            identity = "mix-1:" + fixture + ":" + function + ":" + tier
+        operations = [("extract", "sol"), ("unit", "sol"), ("package", "sol")] if args.terra_candidate else [("extract", "luna"), ("unit", "luna"), ("unit", "sol")]
+        for function, tier in operations:
+            probe_fixture = "eval-english-v1" if args.terra_candidate and function == "extract" else fixture
+            identity = ("terra-eu-1:" if args.terra_candidate else "mix-1:") + probe_fixture + ":" + function + ":" + tier
             with DB.begin() as db:
                 previous = db.scalar(select(Job).where(Job.idempotency == identity))
                 if previous:
@@ -129,7 +134,7 @@ def main():
                 job_id = job.id
             result, error = None, None
             try:
-                result = request_provider(config, function, {}, synthetic_fixture=fixture, private_probe=True)
+                result = request_provider(config, function, {}, synthetic_fixture=probe_fixture, private_probe=True)
             except ProviderError as exc:
                 result, error = exc.billing_result, str(exc)
             with DB.begin() as db:
@@ -140,7 +145,7 @@ def main():
                     "telemetry": usage.telemetry, "error": error}
                 if result and not error:
                     if function == "extract":
-                        expected = CASES.get(fixture, {}).get("anchors", ["Nenner", "Zähler", "1/4"])
+                        expected = CASES.get(probe_fixture, {}).get("anchors", ["Nenner", "Zähler", "1/4"])
                         item["ocr_anchor_checks"] = {anchor: anchor.casefold() in result.data["content"].casefold() for anchor in expected}
                     item["synthetic_output"] = result.data
                 job = db.get(Job, job_id)
