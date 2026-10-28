@@ -241,7 +241,10 @@ def test_native_round_trip_does_not_accept_wire_arrays_or_change_billing(monkeyp
 
     def stale_response(self, data):
         result = actual_wire(self, data)
-        result["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0]["numbers"] = [1, 4]
+        block = result["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0]
+        if isinstance(block, str):
+            block = next(row["graphic"] for row in result["graphic_catalog"] if row["id"] == block)
+        block["numbers"] = [1, 4]
         return result
 
     monkeypatch.setattr(PackageOutputCapture, "wire", stale_response)

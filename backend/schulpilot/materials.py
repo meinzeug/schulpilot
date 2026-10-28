@@ -737,6 +737,13 @@ def job_view(job_id: str, p=Depends(authenticated), db=Depends(get_db)):
     if not job:
         raise HTTPException(404, "Auftrag nicht gefunden.")
     child_access(db, p, job.child_id)
+    # A deliberate, audited repair may replace a failed preparation. Reading
+    # the old link only discovers that existing job; it never starts another.
+    recovery = None
+    if job.kind == "unit" and job.status == "failed":
+        recovery = db.scalar(select(Job.id).where(Job.child_id == job.child_id, Job.kind == job.kind,
+            Job.payload["repairs_failed_job_id"].as_string() == job.id)
+            .order_by(Job.created.desc(), Job.id).limit(1))
     return {
         "id": job.id,
         "kind": job.kind,
@@ -746,6 +753,7 @@ def job_view(job_id: str, p=Depends(authenticated), db=Depends(get_db)):
         "error": job.error,
         "error_code": job.error_code,
         "attempts": job.attempts,
+        "recovery_job_id": recovery,
     }
 
 

@@ -123,7 +123,16 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
     if (readingJob == id || !sameOwner) return;
     readingJob = id;
     try {
-      final result = await widget.state.api.get('/jobs/$id');
+      var result = await widget.state.api.get('/jobs/$id');
+      final recovery = result['recovery_job_id'];
+      if (result['kind'] == 'unit' &&
+          result['status'] == 'failed' &&
+          recovery is String &&
+          recovery != id &&
+          RegExp(r'^[a-f0-9]{32}$').hasMatch(recovery) &&
+          sameOwner) {
+        result = await widget.state.api.get('/jobs/$recovery');
+      }
       if (!['unit', 'controller_check', 'decision'].contains(result['kind'])) {
         throw ApiError('Diese Vorbereitung gehört zu einem anderen Schritt.');
       }

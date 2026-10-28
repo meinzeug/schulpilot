@@ -1,3 +1,13 @@
+## 28.10.2026 · Grafiktransport und fehlgeschlagene Lernrunden (152)
+
+Die konkrete private Diagnose wurde ausschließlich auf den beauftragten Haushalt und Fehlerauftrag begrenzt und auditierbar gelesen. Kein Foto, Prompt, Rohfehler oder Antwortinhalt wurde in Git übernommen. Lokale Rekonstruktion mit gesperrtem Anbietertransport: ursprüngliche Struktur13, neue Struktur9 JSON-Container. Die genaue ursprüngliche Anbieterbegründung ist wegen der historischen neutralen Fehlerhülle und eines nachträglichen404 nicht beweisbar; unbekannte Kosten bleiben reserviert.
+
+- [Umsetzung, Befund und Grenzen](GRAPHIC_TRANSPORT_RELIABILITY.md)
+- [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs): Grenze der Verschachtelung und native Schemas, gelesen28.10.2026.
+- [OpenRouter Structured Outputs](https://openrouter.ai/docs/guides/features/structured-outputs): Endpunktunterstützung, strenger Vertrag und Fehlerbehandlung, gelesen28.10.2026.
+
+Quellen-/Fach-/Antwortprüfungen, Providerroute und Budgets bleiben erhalten. Die gezielte Reparatur eines konkreten Fehlerauftrags bleibt eine einzelne bewusste und regulär reservierte Handlung. Technische und produktive Abnahmebelege werden nach Auslieferung ergänzt.
+
 Interaktiver Ausbau23.10.2026 · veröffentlicht als1.26.0+97:
 Die öffentliche und ausdrücklich bereitgestellte angemeldete simpleclub-App
 wurde im Browser auf Desktop und bei390×844px untersucht. Anfangs waren

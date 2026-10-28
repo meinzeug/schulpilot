@@ -58,6 +58,25 @@ def openrouter_failure_code(error):
     return "provider_unavailable"
 
 
+def annotate_openrouter_error(result, error):
+    """Retain only closed categories, never echoed prompts or raw bodies."""
+    if result is None or not isinstance(error, dict):
+        return
+    metadata = error.get("metadata")
+    metadata = metadata if isinstance(metadata, dict) else {}
+    category = metadata.get("error_type")
+    allowed = {"invalid_request", "invalid_schema", "authentication", "permission_denied", "payment_required",
+        "rate_limit_exceeded", "provider_overloaded", "timeout", "server"}
+    if isinstance(category, str) and category in allowed:
+        result.telemetry["error_type"] = category
+    if any(isinstance(value, str) and "invalid schema" in value.lower()
+            for value in (error.get("message"), metadata.get("raw"))):
+        result.telemetry["error_type"] = "invalid_schema"
+    code = error.get("code")
+    if type(code) is int and code in {400, 401, 402, 403, 404, 408, 422, 429, 500, 502, 503, 504}:
+        result.telemetry["provider_error_code"] = code
+
+
 @dataclass
 class Result:
     data: dict
@@ -887,7 +906,14 @@ def settle(db, usage, result=None, failed=False):
         usage.settlement_version = 1
     known = result is not None and result.cost_micros is not None
     if persistent and result:
-        usage.telemetry = result.telemetry or {}
+        telemetry = dict(result.telemetry or {})
+        receipt = getattr(result, "request_receipt", None) or {}
+        schema_hash = receipt.get("schema_sha256")
+        if isinstance(schema_hash, str) and re.fullmatch(r"[a-f0-9]{64}", schema_hash):
+            telemetry["request_schema_sha256"] = schema_hash
+        if receipt.get("graphic_transport") == "graphic-table-1":
+            telemetry["graphic_transport"] = "graphic-table-1"
+        usage.telemetry = telemetry
         usage.cost_source = result.cost_source
     # Token estimates are kept apart from billed amounts, including operator
     # probes which have no child Usage row.
@@ -1847,6 +1873,21 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if unit_graphics is not None:
             wire_schema = unit_graphics.wire_schema
             instructions += unit_graphics.rules
+    graphic_table = None
+    if function == "unit" and config.provider == "openrouter":
+        from .graphic_table_transport import bind as bind_graphic_table
+
+        try:
+            graphic_table = bind_graphic_table(wire_schema)
+        except ValueError:
+            raise ProviderError(
+                "Die Grafikstruktur dieser Runde muss technisch geprüft werden. Deine Heftseiten bleiben erhalten.",
+                code="invalid_output", billing_result=Result({}, 0, 0, 0,
+                    telemetry={"pre_dispatch": True}, cost_source="cancelled"),
+            ) from None
+        if graphic_table is not None:
+            wire_schema = graphic_table.wire_schema
+            instructions += graphic_table.rules
     extended_unit_wire = False
     study_wire = False
     if function == "unit" and config.provider == "openrouter":
@@ -2034,6 +2075,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         from .provider_receipts import request_receipt as build_request_receipt
 
         receipt = build_request_receipt(config.provider, body, wire_schema)
+        if graphic_table is not None:
+            from .graphic_table_transport import REVISION as graphic_transport_revision
+
+            receipt["graphic_transport"] = graphic_transport_revision
         if preflight:
             receipt["cost_preflight"] = preflight
         try:
@@ -2065,19 +2110,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     diagnostic = Result({}, **response_metrics(raw_error,
                         (time.monotonic() - started) * 1000, response.headers.get("x-request-id")))
                     error = raw_error.get("error")
-                    metadata = error.get("metadata") if isinstance(error, dict) else None
-                    category = metadata.get("error_type") if isinstance(metadata, dict) else None
-                    if category in {"invalid_request", "authentication", "permission_denied", "payment_required",
-                        "rate_limit_exceeded", "provider_overloaded", "timeout", "server"}:
-                        diagnostic.telemetry["error_type"] = category
-                    message = error.get("message") if isinstance(error, dict) else None
-                    raw_detail = metadata.get("raw") if isinstance(metadata, dict) else None
-                    if any(isinstance(value, str) and "invalid schema" in value.lower()
-                        for value in (message, raw_detail)):
-                        diagnostic.telemetry["error_type"] = "invalid_schema"
+                    annotate_openrouter_error(diagnostic, error)
             except ValueError:
                 pass
         # Provider error bodies can contain secrets or private echoed content.
+        if diagnostic is not None:
+            diagnostic.request_receipt = receipt
         raise ProviderError(
             f"KI-Anbieter meldet HTTP {response.status_code}. Schlüssel, Modell, Freigabe oder Kontingent prüfen.",
             billing_result=diagnostic,
@@ -2103,6 +2141,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # OpenRouter can return HTTP 200 with only an error after generation
         # has started. An HTTP success is not a completed learning response.
         if config.provider == "openrouter" and raw.get("error") is not None:
+            annotate_openrouter_error(billing_result, raw["error"])
             raise ProviderError(openrouter_failure(raw["error"]), code=openrouter_failure_code(raw["error"]))
         usage = raw.get("usage", {})
         if config.provider == "openai":
@@ -2122,6 +2161,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 raise ProviderError("Die KI hat keine Lernantwort geliefert. Bitte später erneut versuchen.")
             choice = choices[0]
             if choice.get("error") is not None:
+                annotate_openrouter_error(billing_result, choice["error"])
                 raise ProviderError(openrouter_failure(choice["error"]), code=openrouter_failure_code(choice["error"]))
             if choice.get("finish_reason") != "stop":
                 if choice.get("finish_reason") == "length":
@@ -2144,7 +2184,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         indexed_excerpts = config.provider == "openrouter" and excerpt_candidates is not None
-        if package_output is not None or unit_graphics is not None or unit_composition is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
+        if graphic_table is not None or package_output is not None or unit_graphics is not None or unit_composition is not None or indexed_choices or omit_review_unit or indexed_excerpts or homework_quotes is not None:
             validation_phase = "json"
             decoded = json.loads(text)
             if package_output is not None:
@@ -2161,6 +2201,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             if prepared_graphics is not None:
                 validation_phase = "prepared_graphics"
                 decoded = prepared_graphics.hydrate(decoded)
+            if graphic_table is not None:
+                validation_phase = "transport"
+                decoded = graphic_table.decode(decoded)
             if unit_graphics is not None:
                 validation_phase = "transport"
                 decoded = unit_graphics.decode(decoded)

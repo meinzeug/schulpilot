@@ -8,7 +8,7 @@ import copy
 import json
 import math
 
-from schulpilot import graphic_transport, package_output_transport
+from schulpilot import graphic_table_transport, graphic_transport, package_output_transport
 from schulpilot.schemas import PackageOutput
 
 
@@ -16,6 +16,12 @@ class PackageOutputCapture:
     def __init__(self, monkeypatch):
         self.binding = None
         self.graphic_binding = None
+        self.table_binding = None
+        original_tables = graphic_table_transport.bind
+        def capture_tables(schema):
+            self.table_binding = original_tables(schema)
+            return self.table_binding
+        monkeypatch.setattr(graphic_table_transport, "bind", capture_tables)
         original_graphics = graphic_transport.bind
 
         def capture_graphics(schema):
@@ -30,6 +36,8 @@ class PackageOutputCapture:
         monkeypatch.setattr(package_output_transport, "bind", capture)
 
     def schema(self, actual):
+        if self.table_binding is not None:
+            actual = self.table_binding.canonical_schema
         if self.binding is None:
             if self.graphic_binding is not None:
                 assert actual == self.graphic_binding.wire_schema
@@ -60,6 +68,8 @@ class PackageOutputCapture:
                         for child in item:
                             native(child)
                 native(result)
+            if self.table_binding is not None:
+                result = self.table_binding.encode(result)
             return result
         root = PackageOutput.model_json_schema()
         def defaults(schema, item):
