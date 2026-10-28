@@ -123,14 +123,14 @@ def test_evaluation_does_not_mutate_question_or_existing_metadata():
 
 
 @pytest.mark.parametrize("q,answer,outcome,method", [
-    ({"type": "short", "prompt": "Wie viel ist 81 - 35?", "answer": "46"}, "0", "incorrect", "subject_rules_v5"),
-    ({"type": "short", "prompt": "Wie viel ist 81 - 35?", "answer": "0"}, "0", "uncertain", "subject_rules_v5"),
+    ({"type": "short", "prompt": "Wie viel ist 81 - 35?", "answer": "46"}, "0", "incorrect", "subject_rules_v6"),
+    ({"type": "short", "prompt": "Wie viel ist 81 - 35?", "answer": "0"}, "0", "uncertain", "subject_rules_v6"),
     ({"type": "short", "prompt": "Beim Bruch 6/7: Welche Zahl ist der Nenner?", "answer": "7"},
      "6", "incorrect", "fraction_components_v1"),
     ({"type": "short", "prompt": "Beim Bruch 6/7: Welche Zahl ist der Zähler?", "answer": "6"},
      "6", "correct", "fraction_components_v1"),
     ({"type": "short", "prompt": "Erweitere 2/3 mit 4.", "answer": "8/12"},
-     "2/3", "incorrect", "subject_rules_v5"),
+     "2/3", "incorrect", "subject_rules_v6"),
 ])
 def test_existing_arithmetic_and_fraction_guards_keep_their_verdicts(q, answer, outcome, method):
     verdict = evaluate(q, answer)

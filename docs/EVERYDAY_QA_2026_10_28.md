@@ -106,3 +106,21 @@ Isolierte Tests decken neue und alte Einzelpakete, gebundene Grafikdaten,
 automatische Nachprüfung, Ausschluss unsicherer Quellen und den Abschluss ab.
 Der reale KI-Durchlauf muss gesondert erfolgen; ein erfolgreiches Mock-Ergebnis
 ist kein Nachweis für die Qualität oder Verfügbarkeit des Modells.
+
+## Live-Durchlauf mit zusätzlichem Arbeitsblatt
+
+Auf Version 1.38.2 wurde im isolierten Testkonto ein weiteres künstliches
+Arbeitsblatt mit einer falschen Schülerlösung und rotem Kreuz abgegeben. Die
+Erkennung übernahm die falsche Lösung als Schülerarbeit und erfasste das rote
+Kreuz als Korrektur; das fertige Lernpaket enthält einen Grundlagencheck und
+verweist auf eine geprüfte Bruchdarstellung. Die In-App-Benachrichtigung führt
+zur zugehörigen Runde. Eine Zustellung durch Firebase auf einem realen Gerät
+wurde damit nicht nachgewiesen.
+
+Eine absichtlich vertauschte Antwort auf den Grundlagencheck wurde zunächst als
+unklar statt als falsch bewertet. Version `subject_rules_v6` ergänzt dafür eine
+eng begrenzte Regel für die bestehende Frageform: Sie berechnet den Anteil aus
+den angegebenen Teilzahlen, prüft zuerst die gespeicherte Musterlösung und lässt
+nicht eindeutig auswertbare Eingaben offen. Eine ausdrückliche Nachprüfung
+behält die eingegebene Antwort, Unterstützung und den früheren Bewertungsstand
+in der bestehenden Bewertungshistorie; sie erstellt keinen weiteren KI-Auftrag.

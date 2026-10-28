@@ -12,8 +12,9 @@ from math import gcd, lcm
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
-VERSION = "subject_rules_v5"
+VERSION = "subject_rules_v6"
 FRACTION_COMPONENT_VERSION = "fraction_components_v1"
+FRACTION_MEANING_VERSION = "fraction_meaning_v1"
 LCM_VERSION = "lcm_numeric_v1"
 
 
@@ -98,6 +99,40 @@ def fraction_component(question, answer):
                   "Du hast die gefragte Zahl im Bruch richtig benannt." if supplied == expected else
                   "Der Zähler steht über dem Bruchstrich, der Nenner darunter. Schau noch einmal auf die gefragte Zahl.",
                   method=FRACTION_COMPONENT_VERSION)
+
+
+def fraction_meaning(question, answer):
+    """Check the exact curated parts-of-a-whole probe from its visible counts.
+
+    Unknown formulations and prose remain uncertain. Validate the stored key
+    against the independently parsed question before judging any response.
+    """
+    if question.get("type") != "short" or question.get("language"):
+        return None
+    prompt = " ".join(unicodedata.normalize("NFC", question.get("prompt", "")).casefold().split())
+    match = re.fullmatch(
+        r"ein ganzes ist in ([1-9][0-9]{0,3}) gleich grosse teile geteilt\. "
+        r"([1-9][0-9]{0,3}) teil(?:e)? (?:ist|sind) ausgewählt\. "
+        r"welchen bruch beschreibt das\? schreibe zähler/nenner\.", prompt,
+    )
+    if not match:
+        return None
+    denominator, numerator = map(int, match.groups())
+    if numerator > denominator:
+        return result("uncertain", "Die Angaben zur Einteilung passen nicht zusammen. Die Aufgabe muss geklärt werden.",
+                      method=FRACTION_MEANING_VERSION)
+    expected = (numerator, denominator)
+    if fraction_parts(question.get("answer", "")) != expected:
+        return result("uncertain", "Die gespeicherte Musterlösung passt nicht zu den Teilen. Die Aufgabe muss geklärt werden.",
+                      method=FRACTION_MEANING_VERSION)
+    if not re.fullmatch(r"\s*-?[0-9]{1,9}\s*/\s*[1-9][0-9]{0,8}\s*", answer):
+        return None
+    supplied = fraction_parts(answer)
+    equal = Fraction(*supplied) == Fraction(*expected)
+    return result("correct" if equal else "incorrect",
+                  "Der Bruch beschreibt den ausgewählten Anteil." if equal else
+                  "Unten steht, in wie viele Teile das Ganze geteilt ist. Oben stehen die ausgewählten Teile.",
+                  method=FRACTION_MEANING_VERSION)
 
 
 def lcm_short_answer(question, answer):
@@ -353,6 +388,8 @@ def evaluate(question, answer):
     if checked := lcm_short_answer(question, answer):
         return checked
     if checked := fraction_component(question, answer):
+        return checked
+    if checked := fraction_meaning(question, answer):
         return checked
     if hints := fraction_addition_hint(question, answer):
         return result("incorrect", hints[0])
