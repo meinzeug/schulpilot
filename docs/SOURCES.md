@@ -4,7 +4,7 @@
 [Endpunktkatalog](https://openrouter.ai/api/v1/models/openai/gpt-6.1-terra/endpoints)
 weisen `azure/eu` aus. Der authentifizierte ZDR-Katalog führte den Endpunkt;
 das ersetzt keine separate Produktionsfreigabe. Zwei künstliche Aufgabenproben
-und eine kleine Fotoprobe gelangen. Eine größere Bildprobe wurde vor Versand
+und zwei Fotoproben gelangen. Zehn weitere größere Bildproben wurden vor Versand
 durch die bestehende Kostenprüfung gestoppt.
 [Prüfergebnis und Grenzen](TERRA_EVALUATION_2026_10_28.md).
 

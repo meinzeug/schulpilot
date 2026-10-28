@@ -762,6 +762,13 @@ def external_allowed(config, image=False, synthetic_fixture=False, *, operator_p
         raise ProviderError("Kein Provider-Schlüssel eingerichtet.")
 
 
+def synthetic_evaluation_budget():
+    """Explicitly bounded increase only in an isolated SQLite test environment."""
+    if settings.environment == "test" and settings.database_url.startswith("sqlite:///"):
+        return max(250_000, min(settings.synthetic_test_budget_micros, 500_000))
+    return 250_000
+
+
 def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, probe_tier=None, operator_evaluation=None):
     from .commerce import usage_terms
     from .model_routing import enabled, features_for, policy_hash, select_route, selection
@@ -829,7 +836,7 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
     ]
     if synthetic_fixture and settings.synthetic_paid_probe and config.provider == "openrouter" and not config.model.endswith(":free"):
         ids.append("openrouter-evaluation-20261019")
-        limits.append((ids[-1], 1000, 250_000))
+        limits.append((ids[-1], 1000, synthetic_evaluation_budget()))
     for name, calls, budget in limits:
         insert_ignore(
             db,

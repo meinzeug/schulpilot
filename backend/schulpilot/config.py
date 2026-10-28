@@ -25,6 +25,8 @@ class Settings:
     synthetic_ai_enabled: bool = os.getenv("SYNTHETIC_AI_ENABLED", "false") == "true"
     synthetic_ai_daily_limit: int = int(os.getenv("SYNTHETIC_AI_DAILY_LIMIT", "40"))
     synthetic_paid_probe: bool = os.getenv("SYNTHETIC_PAID_PROBE", "false") == "true"
+    # Isolated test databases only; production synthetic budget remains fixed.
+    synthetic_test_budget_micros: int = int(os.getenv("SYNTHETIC_TEST_BUDGET_MICROS", "250000"))
     fcm_service_account_file: str = os.getenv("FCM_SERVICE_ACCOUNT_FILE", "")
     fcm_service_account_json: str = ""
     fcm_public_config: str = os.getenv("FCM_PUBLIC_CONFIG", "")
