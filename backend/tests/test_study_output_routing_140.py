@@ -189,6 +189,9 @@ def test_actual_worker_keeps_reserved_reason_exact_stage_count_native_graphics_a
         snapshot = copy.deepcopy(db.scalar(select(Usage).where(Usage.job_id == job_id)).route_snapshot)
         session_id = db.get(Job, job_id).payload["study_authority"]["session_id"]
     actual, decisions, calls, callback_errors = providers.request_provider, [], [], []
+    from package_output_helpers import PackageOutputCapture
+
+    transport = PackageOutputCapture(monkeypatch)
 
     def request(config, function, payload):
         assert function == "unit" and selection(config) == snapshot
@@ -219,7 +222,7 @@ def test_actual_worker_keeps_reserved_reason_exact_stage_count_native_graphics_a
         elif race == "configuration":
             with DB.begin() as db:
                 db.get(ProviderConfig, 1).revision += 1
-        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(output(payload))}}],
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(transport.wire(output(payload)))}}],
             "usage": {"prompt_tokens": 1000, "completion_tokens": 1000, "cost": .001}})
 
     def checked_handler(request):

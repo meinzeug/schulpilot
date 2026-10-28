@@ -8,6 +8,14 @@ Ein gemeldeter normaler Heft-Rundenauftrag wurde nach etwa zwei Sekunden mit ein
 
 Der rein lokale Wiederaufbau genau dieser Anfrage zeigte unabhängig davon eine konkrete Kompatibilitätslücke: Das Schema erlaubte13 verschachtelte JSON-Container, unter anderem über Aufgabe → Erklärschritt → Darstellung → Grafik → Szene → Phase → Platzierung. Auch Sprachbausteine können tiefe Pfade bilden. Die Dokumentation nennt höchstens zehn Verschachtelungsebenen. Die bisherige Regression zählte nur Objekte und übersah die zusätzlichen Arrays. Eine erfolgreiche frühere spezialisierte Runde hatte einen deutlich flacheren Grafikvertrag. Die Tiefe ist ein belegter Vertragsfehler und eine plausible Ursache für den frühen Abbruch; der fehlende ursprüngliche Anbieterfehler erlaubt keine stärkere Kausalbehauptung.
 
+## Zusätzlicher echter Produktionsbefund
+
+Der einzelne regulär reservierte Reparaturaufruf mit dem flacheren Schema brach ebenfalls nach etwa einer Sekunde ab. Die ergänzte Diagnose erfasste diesmal den Anbieterfehler502 und die tatsächliche Grafiktransportversion. Damit ist belegt, dass die Schemaabflachung allein diesen konkreten Produktionsfehler **nicht** löst.
+
+Die anschließend gelesenen offiziellen Modell- und ZDR-Endpunktkataloge meldeten für den fest gebundenen Sol-Endpunkt `azure` Status−5 und0% Verfügbarkeit in den letzten5/30Minuten. `azure/eu` war dagegen im ZDR-Katalog mit Status0 und100% verfügbar. Luna auf `azure` war ebenfalls verfügbar; betroffen ist diese konkrete Sol-Route. Die EU-Tokenpreise liegen10% über den bisherigen Sol-Preisobergrenzen. Eine reine OpenAI-Route war in der gelesenen ZDR-Liste nicht für diese Konstellation enthalten; sie wurde nicht als Ersatz aktiviert.
+
+Der Betrieb wurde nicht stillschweigend umgeschaltet. Ein konkreter Freigabevorschlag umfasst ausschließlich Sol auf Azure/EU, gleiche Denkstufe, gleiche8000Ausgabetokens und0,25USD Reservierung je Auftrag, drei feste künstliche Funktionstests und genau eine weitere Vorbereitung aus den bereits bestätigten Quellen. Zusätzliche Gesamtkosten höchstens1USD. Diese zusätzliche Freigabe steht noch aus. Historische Fehler und unbekannte Kosten bleiben erhalten. Eine erfolgreiche neue Runde oder sichtbare Pushzustellung ist nicht belegt.
+
 ## Umsetzung
 
 `graphic_table_transport.py` zählt die tatsächlich erreichbaren Objekt- **und Arraycontainer**, löst lokale `$ref` auf und zählt Alternativen nicht als zusätzliche Datenebene. Nur zu tiefe neue OpenRouter-Einzelrunden erhalten `graphic-table-1`:

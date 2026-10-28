@@ -1,3 +1,15 @@
+## 28.10.2026 · Auslieferung152 und tatsächlicher Sol-Ausfall
+
+Ausgeliefert und öffentlich bytegeprüft: `20261028T144255Z-6bf8784`, Quellstand `6bf87846fdc174104dda321556d44a35aca95c50`, Schema0042.210SQLite-/210PostgreSQL- und43Flutterfälle bestanden. Der Gesamt-CI-Lauf40697583737 fand einen veralteten künstlichen Inline-Grafiktest; dessen Anpassung besteht danach in allen32Fällen mit RAM-SQLite und Unix-PostgreSQL und ändert keinen ausgelieferten Laufzeitcode.
+
+Ein einzelner auditierter realer Reparaturaufruf mit neuer Grafiktransportversion wurde normal mit0,25USD reserviert und scheiterte erneut mit Anbieterfehler502. Ursprünglicher Fehler und unbekannte Kosten bleiben erhalten. Keine neue Grafik, Runde, Antwort oder sichtbare Firebase-Zustellung als erfolgreich behauptet.
+
+- [Offizieller Modell-Endpunktkatalog](https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol/endpoints): für `azure` Status−5/0% und für `azure/eu` Status0/100% in den gelesenen Zeitfenstern, geprüft28.10.2026.
+- [ZDR-Katalogdokumentation](https://openrouter.ai/docs/api/api-reference/endpoints/list-endpoints-zdr): authentifizierter GET bestätigte Azure/EU für dasselbe Modell; reine OpenAI-Route nicht unter den gelesenen passenden ZDR-Einträgen. Kein genereller Datenschutzvergleich daraus abgeleitet.
+- Beobachtete Sol-Tokenpreise Azure2/10USD pro Million Eingabe/Ausgabe, Azure/EU2,2/11USD. Bisherige maximale Reservierung0,25USD und8000Ausgabetokens unverändert. Kein freigegebener automatischer Fallback.
+
+Die Betreiberentscheidung für einen geprüften Sol-Wechsel und höchstens1USD zusätzliche Tests/eine weitere reale Vorbereitung ist angefragt und noch offen. [Details und Rückweg](GRAPHIC_TRANSPORT_RELIABILITY.md).
+
 ## 28.10.2026 · Grafiktransport und fehlgeschlagene Lernrunden (152)
 
 Die konkrete private Diagnose wurde ausschließlich auf den beauftragten Haushalt und Fehlerauftrag begrenzt und auditierbar gelesen. Kein Foto, Prompt, Rohfehler oder Antwortinhalt wurde in Git übernommen. Lokale Rekonstruktion mit gesperrtem Anbietertransport: ursprüngliche Struktur13, neue Struktur9 JSON-Container. Die genaue ursprüngliche Anbieterbegründung ist wegen der historischen neutralen Fehlerhülle und eines nachträglichen404 nicht beweisbar; unbekannte Kosten bleiben reserviert.
