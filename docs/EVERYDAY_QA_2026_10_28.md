@@ -124,3 +124,17 @@ den angegebenen Teilzahlen, prüft zuerst die gespeicherte Musterlösung und lä
 nicht eindeutig auswertbare Eingaben offen. Eine ausdrückliche Nachprüfung
 behält die eingegebene Antwort, Unterstützung und den früheren Bewertungsstand
 in der bestehenden Bewertungshistorie; sie erstellt keinen weiteren KI-Auftrag.
+
+Nach Veröffentlichung von 1.38.3 wurde die künstliche Antwort ausdrücklich neu
+geprüft und als falsch bewertet; die vorherige Bewertung blieb in der Historie.
+Der Hinweis fragte nach allen und ausgewählten Teilen. Die danach richtige
+Antwort zählte als unterstützt, die zweite Frage bei der ersten Antwort als
+selbstständig richtig. Der gespeicherte Rückblick nennt zwei bearbeitete
+Aufgaben, drei Versuche und einen Hinweis. Er beschreibt die Verwechslung in
+Worten richtig und schlägt gezieltes Weiterüben vor.
+
+Offene fachliche Abweichung: Der Modellrückblick ordnete die Frage zur
+Bruchbedeutung dem quellbezogenen Ziel zum Addieren zu. Diese Zielzuordnung ist
+für eine gezielte Anschlussübung nicht belegt. Eine solche Übung wurde im Test
+deshalb noch nicht angefordert. Die erfolgreiche Einführungsrunde belegt nicht,
+dass Anpassung, weitere Themen oder der vollständige Alltagstest funktionieren.
