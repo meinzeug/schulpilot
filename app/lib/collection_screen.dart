@@ -97,14 +97,14 @@ class CollectionScreen extends StatelessWidget {
           ChildSectionHero(
             eyebrow: 'Hefte',
             title: 'Dein Stoff. Gut sortiert.',
-            description: 'Öffne einen Hefter oder finde eine Seite. Hier bleibt dein Schulstoff zusammen.',
+            description: 'Hier findest du Seiten aus Heften, Arbeitsblättern, Arbeitsheften und Büchern.',
             icon: Icons.folder_copy_outlined,
             action: Align(
               alignment: Alignment.centerLeft,
               child: FilledButton.icon(
                 onPressed: () => addPhoto(context),
                 icon: const Icon(Icons.add_a_photo_outlined),
-                label: const Text('Neue Heftfotos'),
+                label: const Text('Seiten hinzufügen'),
               ),
             ),
           ),

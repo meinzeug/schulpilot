@@ -34,9 +34,27 @@ def main():
     parser.add_argument("--full", action="store_true", help="Two OCR variants and two model tiers in five subjects")
     parser.add_argument("--terra-candidate", action="store_true", help="Evaluate Terra on Azure/EU using only fixed synthetic fixtures")
     parser.add_argument("--terra-full-photo", action="store_true", help="Test larger synthetic photos with a 2 USD total test ceiling")
+    parser.add_argument("--terra-subjects", action="store_true", help="Generate fixed artificial lessons in five subjects")
+    parser.add_argument("--terra-graphic-diagnosis", action="store_true", help="Run one artificial graphics-transport diagnostic")
+    parser.add_argument("--capture-artificial-response", action="store_true", help="Privately retain one fixed artificial German response for diagnosis")
+    parser.add_argument("--capture-english", action="store_true", help="Diagnose the fixed artificial English fixture instead")
+    parser.add_argument("--test-compact-response", action="store_true", help="Evaluate the compact-output instruction once on the fixed German fixture")
+    parser.add_argument("--test-compact-subjects", action="store_true", help="Evaluate compact output on five artificial subject fixtures")
     args = parser.parse_args()
-    if args.terra_full_photo and not args.terra_candidate:
-        parser.error("--terra-full-photo requires --terra-candidate")
+    if (args.terra_full_photo or args.terra_subjects or args.terra_graphic_diagnosis) and not args.terra_candidate:
+        parser.error("Terra test options require --terra-candidate")
+    if args.terra_full_photo and args.terra_subjects:
+        parser.error("Choose either the photo or subject test")
+    if args.terra_graphic_diagnosis and not args.terra_subjects:
+        parser.error("--terra-graphic-diagnosis requires --terra-subjects")
+    if args.capture_artificial_response and not args.terra_graphic_diagnosis:
+        parser.error("--capture-artificial-response requires the fixed graphics diagnostic")
+    if args.capture_english and not args.capture_artificial_response:
+        parser.error("--capture-english requires --capture-artificial-response")
+    if args.test_compact_response and not args.capture_artificial_response:
+        parser.error("--test-compact-response requires the artificial-response diagnostic")
+    if args.test_compact_subjects and (not args.terra_subjects or args.terra_graphic_diagnosis):
+        parser.error("--test-compact-subjects requires the full subject test")
     args.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     args.directory.chmod(0o700)
     from cryptography.fernet import Fernet
@@ -49,9 +67,23 @@ def main():
         DATA_DIR=str(args.directory / "data"), MASTER_KEY=master.read_text().strip(),
         OPENROUTER_API_KEY=args.key_file.expanduser().read_text().strip(), ENVIRONMENT="test",
         SYNTHETIC_AI_ENABLED="true", SYNTHETIC_PAID_PROBE="true",
-        SYNTHETIC_TEST_BUDGET_MICROS="2000000" if args.terra_full_photo else "250000")
+        SYNTHETIC_TEST_BUDGET_MICROS="2000000" if (args.terra_full_photo or args.terra_subjects) else "250000")
     sys.path.insert(0, str(ROOT / "backend"))
     import httpx
+    if args.capture_artificial_response:
+        original_post = httpx.Client.post
+        def synthetic_post(client, url, *positional, **kwargs):
+            response = original_post(client, url, *positional, **kwargs)
+            if url == "https://openrouter.ai/api/v1/chat/completions" and response.status_code == 200:
+                body = response.json()
+                choices = body.get("choices") or []
+                content = choices[0].get("message", {}).get("content") if choices else None
+                if isinstance(content, str):
+                    target = args.directory / ("artificial-english-output.txt" if args.capture_english else "artificial-german-output.txt")
+                    target.write_text(content, encoding="utf-8")
+                    target.chmod(0o600)
+            return response
+        httpx.Client.post = synthetic_post
     from fastapi import HTTPException
     from schulpilot.ai_accounting import reconcile_one
     from schulpilot.audit_fixtures import prepare as prepare_audit
@@ -61,6 +93,13 @@ def main():
     from schulpilot.providers import ProviderError, request_provider, reserve, settle
     from schulpilot.security import password_hash
     from sqlalchemy import select
+
+    if args.test_compact_response or args.test_compact_subjects:
+        # Synthetic evaluation only; this must not alter the production prompt.
+        from schulpilot.graphic_table_transport import Binding
+        base_rules = Binding.rules.fget
+        Binding.rules = property(lambda self: base_rules(self) +
+            " Gib die JSON-Antwort kompakt aus: keine Einrückungen und keine wiederholten Leerzeichen oder Zeilenumbrüche zwischen den Werten.")
 
     init_db()
     routes, metadata = {}, []
@@ -84,7 +123,7 @@ def main():
             rates = [int((Decimal(endpoint["pricing"][kind]) * 10**12).to_integral_value()) for kind in ("prompt", "completion")]
             routes[tier] = {"model": model, "upstreams": [upstream], "input_per_million_micros": rates[0],
                 "output_per_million_micros": rates[1], "max_output_tokens": 8000 if args.terra_candidate and tier == "sol" else 4000 if tier != "astra" else 2000,
-                "reserve_micros": 750000 if args.terra_full_photo and tier == "sol" else 150000 if args.terra_candidate and tier == "sol" else 50000 if tier == "luna" else 80000 if tier == "sol" else 250000, "image_capable": "image" in data["architecture"]["input_modalities"],
+                "reserve_micros": 750000 if (args.terra_full_photo or args.terra_subjects) and tier == "sol" else 150000 if args.terra_candidate and tier == "sol" else 50000 if tier == "luna" else 80000 if tier == "sol" else 250000, "image_capable": "image" in data["architecture"]["input_modalities"],
                 "capability_evidence": "OpenRouter endpoint metadata; synthetic acceptance pending",
                 "pricing_evidence": "https://openrouter.ai/api/v1/models/" + model + "/endpoints",
                 "verified_at": int(now()), "evaluated": False, "under13_approved": False}
@@ -115,18 +154,21 @@ def main():
         config = db.get(ProviderConfig, 1)
         config.provider, config.model, config.routing_policy = "openrouter", routes["sol"]["model"], policy
         config.emergency_stop, config.production_block_reason = False, "Synthetic evaluation only"
-        config.reserve_micros, config.max_output_tokens = 750000 if args.terra_full_photo else 250000, 8000 if args.terra_candidate else 4000
+        config.reserve_micros, config.max_output_tokens = 750000 if (args.terra_full_photo or args.terra_subjects) else 250000, 8000 if args.terra_candidate else 4000
         config.revision += 1
     if args.full:
         prepare_audit(Path.home() / "Downloads/Schulpilot_Testbilder_48_2026-10-19.zip")
-    cases = ["audit-" + key.lower() + "-v1" for key in ("MAT01", "MAT02", "DEU01", "DEU02", "ENG01", "ENG02", "BIO01", "BIO02", "GEO01", "GEO02")] if args.full else ["fractions-v1"]
+    cases = ["audit-" + key.lower() + "-v1" for key in (("MAT01", "DEU01", "ENG01", "BIO01", "GEO01") if args.terra_subjects else ("MAT01", "MAT02", "DEU01", "DEU02", "ENG01", "ENG02", "BIO01", "BIO02", "GEO01", "GEO02"))] if (args.full or args.terra_subjects) else ["fractions-v1"]
     reconcile_one()  # Metadata only; never re-run a failed generation.
     reports, blocked = [], False
     for fixture in cases:
-        operations = [("extract", "sol")] if args.terra_full_photo else [("extract", "sol"), ("unit", "sol"), ("package", "sol")] if args.terra_candidate else [("extract", "luna"), ("unit", "luna"), ("unit", "sol")]
+        operations = [("unit", "sol")] if args.terra_subjects else [("extract", "sol")] if args.terra_full_photo else [("extract", "sol"), ("unit", "sol"), ("package", "sol")] if args.terra_candidate else [("extract", "luna"), ("unit", "luna"), ("unit", "sol")]
         for function, tier in operations:
+            allowed_diagnostics = (("audit-eng01-v1",) if args.capture_english else ("audit-deu01-v1",)) if args.capture_artificial_response else ("audit-mat01-v1", "audit-deu01-v1")
+            if args.terra_graphic_diagnosis and fixture not in allowed_diagnostics:
+                continue
             probe_fixture = "eval-english-v1" if args.terra_candidate and function == "extract" and not args.terra_full_photo else fixture
-            identity = ("terra-eu-full-photo-2:" if args.terra_full_photo else "terra-eu-1:" if args.terra_candidate else "mix-1:") + probe_fixture + ":" + function + ":" + tier
+            identity = ("terra-eu-english-capture-1:" if args.capture_english else "terra-eu-compact-subjects-1:" if args.test_compact_subjects else "terra-eu-compact-output-1:" if args.test_compact_response else "terra-eu-artificial-capture-1:" if args.capture_artificial_response else "terra-eu-graphic-diagnosis-1:" if args.terra_graphic_diagnosis else "terra-eu-subjects-1:" if args.terra_subjects else "terra-eu-full-photo-2:" if args.terra_full_photo else "terra-eu-1:" if args.terra_candidate else "mix-1:") + probe_fixture + ":" + function + ":" + tier
             with DB.begin() as db:
                 previous = db.scalar(select(Job).where(Job.idempotency == identity))
                 if previous:
@@ -168,7 +210,7 @@ def main():
                 job.status, job.finished, job.result = item["status"], int(now()), item
                 reports.append(item)
             print(json.dumps({k: v for k, v in item.items() if k not in ("synthetic_output", "telemetry")}), flush=True)
-    output = {"synthetic_only": True, "budget_cap_usd": "2.00" if args.terra_full_photo else "0.25", "budget_blocked": blocked, "metadata": metadata, "calls": reports,
+    output = {"synthetic_only": True, "budget_cap_usd": "2.00" if (args.terra_full_photo or args.terra_subjects) else "0.25", "budget_blocked": blocked, "metadata": metadata, "calls": reports,
         "cost_micros_usd": sum(r["billed_micros_usd"] or 0 for r in reports),
         "unknown_cost_calls": sum(r["billed_micros_usd"] is None and r["status"] != "not_started_budget" for r in reports),
         "limits": "Schema/OCR anchors are technical checks, not a learning-effectiveness trial or complete delivery test."}

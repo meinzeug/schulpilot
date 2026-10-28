@@ -359,8 +359,10 @@ def test_never_enabled_store_and_trial_are_fail_closed_for_new_password_accounts
         family = db.get(Family, fid)
         assert family.commerce_required and family.plan == 'Noch kein Tarif' and family.call_limit == 0
         assert not db.get(FamilyTrial, fid) and family.expires is None
-        with pytest.raises(HTTPException):
+        with pytest.raises(HTTPException) as blocked:
             commerce.usage_terms(db, family, enforce=True)
+        assert 'Fotos bleiben gespeichert' in blocked.value.detail
+        assert 'derzeit noch nicht bestellt' in blocked.value.detail
     user = register(api, mailbox, email='explicit-current-signup@example.org', historical_pilot=False)
     with DB() as db:
         assert db.get(Family, user['families'][0]['id']).commerce_required

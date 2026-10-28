@@ -57,11 +57,6 @@ Future<void> importMaterial(
       'Der Import echter Materialien ist bis zur dokumentierten Datenschutzfreigabe gesperrt.',
     );
   }
-  if (status['ai_available'] != true) {
-    throw ApiError(
-      status['ai_block_reason'] ?? 'Zurzeit ist kein geeigneter KI-Dienst verfügbar. Bitte später erneut versuchen.',
-    );
-  }
   if (!context.mounted) return;
   final source = await showModalBottomSheet<ImageSource>(
     context: context,
@@ -71,7 +66,7 @@ Future<void> importMaterial(
         children: [
           ListTile(
             leading: Icon(Icons.photo_camera_outlined),
-            title: Text('Hefteintrag fotografieren'),
+            title: Text('Schulmaterial fotografieren'),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(

@@ -79,6 +79,21 @@ def test_empty_table_supports_old_no_scene_envelopes_but_not_unchecked_scenes():
     assert binding.decode(binding.encode(value)) == value
 
 
+def test_graphic_transport_reports_only_closed_diagnostic_codes():
+    from schulpilot.provider_validation import annotate
+    from schulpilot.providers import Result
+
+    binding = graphic_table_transport.bind(schema())
+    value = {"presentation": {"blocks": ["g0"]}, "graphic_catalog": []}
+    with pytest.raises(ValueError) as raised:
+        binding.decode(value)
+    result = Result({}, 0, 0, 0, telemetry={})
+    annotate(result, raised.value, phase="transport")
+    assert result.telemetry["validation"]["errors"] == [
+        {"location": "field", "reason": "graphic_table_reference"}
+    ]
+
+
 def test_decoding_does_not_bypass_canonical_scene_validation():
     binding = graphic_table_transport.bind(schema())
     value = _scene_unit()

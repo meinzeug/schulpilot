@@ -185,6 +185,62 @@ void main() {
     },
   );
   testWidgets(
+    'Photo import stays available when AI is offline and does not start recognition',
+    (t) async {
+      final requests = <http.Request>[];
+      final s = src.account((r) async {
+        requests.add(r);
+        return src.reply({'real_data_enabled': true, 'ai_available': false});
+      });
+      s.user = {'id': 'own', 'role': 'parent'};
+      await t.pumpWidget(
+        src.home(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => importMaterial(context, s, 'child'),
+              child: const Text('Importieren'),
+            ),
+          ),
+        ),
+      );
+      await tap(t, find.text('Importieren'));
+      expect(find.text('Schulmaterial fotografieren'), findsOneWidget);
+      expect(find.text('Bild auswählen'), findsOneWidget);
+      expect(requests.map((r) => '${r.method} ${r.url.path}').toList(), [
+        'GET /api/status',
+      ]);
+      await t.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets('Photo import still requires the material privacy approval', (
+    t,
+  ) async {
+    final s = src.account(
+      (_) async =>
+          src.reply({'real_data_enabled': false, 'ai_available': false}),
+    );
+    Object? failure;
+    await t.pumpWidget(
+      src.home(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              try {
+                await importMaterial(context, s, 'child');
+              } catch (error) {
+                failure = error;
+              }
+            },
+            child: const Text('Importieren'),
+          ),
+        ),
+      ),
+    );
+    await tap(t, find.text('Importieren'));
+    expect(failure, isA<ApiError>());
+    expect(find.text('Bild auswählen'), findsNothing);
+  });
+  testWidgets(
     'K026 saved explanation can reopen at its own prior step without affecting the answer',
     (t) async {
       final server = rounds.SavedRound();

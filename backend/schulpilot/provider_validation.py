@@ -35,6 +35,13 @@ json envelope transport prepared_graphics source choice schema part_bounds norma
 subject practice counts factual coaching entry asset visual billing
 """.split())
 _VALUE_REASONS = {
+    "Grafiktransport entspricht nicht dem gebundenen Anfrageformat.": "graphic_pair_transport",
+    "Grafiktransport: ungültige Tabelle.": "graphic_table_catalog",
+    "Grafiktransport: ungültiger Eintrag.": "graphic_table_row",
+    "Grafiktransport: doppelte Kennung.": "graphic_table_duplicate",
+    "Grafiktransport: unbekannter Verweis.": "graphic_table_reference",
+    "Grafiktransport: mehrfach verwendeter Verweis.": "graphic_table_reused",
+    "Grafiktransport: nicht verwendeter Eintrag.": "graphic_table_unused",
     "Satzmarkierung hat keinen eindeutigen Rollenbeleg.": "sentence_role_evidence",
     "Der Originalfokus benötigt eine unveränderte vollständige Original-Liste ohne erfundene Beziehungen.": "original_focus_shape",
     "Der Originalfokus benötigt den exakt bestätigten Quellenbeleg.": "original_focus_source",

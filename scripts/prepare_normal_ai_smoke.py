@@ -7,6 +7,7 @@ on success; --cleanup can remove this same test family after a failed run.
 
 import argparse
 import email
+import hashlib
 import imaplib
 import json
 import re
@@ -94,7 +95,17 @@ def images():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cleanup", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="Resume this script's own partially created account")
+    parser.add_argument("--paid-synthetic-approved", action="store_true", help="Use only artificial material on the explicitly approved paid OpenRouter route")
+    parser.add_argument("--generated-photographs", action="store_true", help="Use the locally inspected artificial notebook photographs")
     args = parser.parse_args()
+    photo_paths = [ROOT / "artifacts/everyday-qa/math-addition.png", ROOT / "artifacts/everyday-qa/math-equivalence.png"]
+    if args.generated_photographs:
+        expected = ["88d93c263fa3e45390932fbe33d4484163b9fb8e8a863b1b07f9d7efe24557ae",
+                    "f674b1c53c997f5e50f0d6e2ccc2cf82c89e4255825372909d727f6b67affed2"]
+        if any(not path.is_file() or hashlib.file_digest(path.open("rb"), "sha256").hexdigest() != digest
+               for path, digest in zip(photo_paths, expected)):
+            raise RuntimeError("The two inspected synthetic photographs must match before starting")
     with httpx.Client(base_url=BASE, headers=HEADERS, timeout=30) as parent:
         if args.cleanup:
             data = json.loads(PRIVATE.read_text())
@@ -116,14 +127,43 @@ def main():
             PRIVATE.unlink()
             print('{"own_regular_test_family_deleted":true}')
             return
+        if args.resume:
+            if not PRIVATE.is_file():
+                raise RuntimeError("No private QA account to resume")
+            data = json.loads(PRIVATE.read_text())
+            credentials = data["credentials"]
+            if not data.get("normal_account") or not re.search(r"\+schulpilot-normal-qa-[a-f0-9]{12}@", credentials["parent_username"]):
+                raise RuntimeError("Only the script's own artificial account may be resumed")
+            if not data.get("verified"):
+                token_path = PRIVATE.parent / ".qa-verification-token"
+                if not token_path.is_file():
+                    raise RuntimeError("The test mailbox verification token is not available")
+                expect(parent.post("/auth/verify", json={"token": token_path.read_text().strip()}))
+                data["verified"] = True
+                save(data)
+                token_path.unlink()
+            login = expect(parent.post("/auth/login", json={"username": credentials["parent_username"], "password": credentials["parent_password"]}))
+            parent.headers["Authorization"] = "Bearer " + login["token"]
+            user = login["user"]
+            if not data.get("child_id"):
+                child = expect(parent.post(f"/families/{user['families'][0]['id']}/children", json={
+                    "display_name": "Künstliches Testkind", "username": credentials["child_username"],
+                    "password": credentials["child_password"], "grade": 6, "subjects": ["Mathematik"]}), 201)
+                data["child_id"] = child["id"]
+                save(data)
+            data["user"] = user
+            data["image_paths"] = [str(path) for path in photo_paths] if args.generated_photographs else images()
+            save(data)
+            print('{"regular_parent_verified_via_real_email":true,"independent_child_created":true,"original_artificial_images":2,"demo_api_used":false}')
+            return
         if PRIVATE.exists():
             raise RuntimeError("Resume or clean up the existing private QA account first")
         status = expect(parent.get("/status"))
         if not status["real_data_enabled"] or not status["ai_available"]:
             raise RuntimeError("The approved AI route must have passed its actual operator probe")
         if status["ai_provider"] == "openrouter":
-            if not status["ai_free_only"] or status["ai_data_collection"] != "deny":
-                raise RuntimeError("The OpenRouter test requires its approved free, data-collection-denied route")
+            if status["ai_data_collection"] != "deny" or (not status["ai_free_only"] and not args.paid_synthetic_approved):
+                raise RuntimeError("OpenRouter requires data-collection deny and an explicit paid synthetic-test approval")
         elif status["ai_provider"] != "codex":
             raise RuntimeError("Only the explicitly configured Codex or OpenRouter Free route may be tested")
         config = mail_config()
@@ -175,7 +215,11 @@ def main():
             ),
             201,
         )
-        data.update({"user": user, "child_id": child["id"], "image_paths": images()})
+        if args.generated_photographs:
+            image_paths = [str(path) for path in photo_paths]
+        else:
+            image_paths = images()
+        data.update({"user": user, "child_id": child["id"], "image_paths": image_paths})
         save(data)
         print(
             '{"regular_parent_verified_via_real_email":true,"independent_child_created":true,"original_artificial_images":2,"demo_api_used":false}'

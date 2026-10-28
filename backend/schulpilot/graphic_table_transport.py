@@ -10,6 +10,12 @@ from dataclasses import dataclass
 REVISION = "graphic-table-1"
 TABLE = "graphic_catalog"
 ERROR = "Der Grafiktransport entspricht nicht dem angeforderten Grafikformat."
+CATALOG_ERROR = "Grafiktransport: ungültige Tabelle."
+ROW_ERROR = "Grafiktransport: ungültiger Eintrag."
+DUPLICATE_ERROR = "Grafiktransport: doppelte Kennung."
+REFERENCE_ERROR = "Grafiktransport: unbekannter Verweis."
+REUSED_ERROR = "Grafiktransport: mehrfach verwendeter Verweis."
+UNUSED_ERROR = "Grafiktransport: nicht verwendeter Eintrag."
 MAX_GRAPHICS = 256
 
 
@@ -79,24 +85,28 @@ class Binding:
         result = copy.deepcopy(wire)
         catalog = result.pop(TABLE, [])
         if not isinstance(catalog, list) or len(catalog) > MAX_GRAPHICS:
-            raise ValueError(ERROR)
+            raise ValueError(CATALOG_ERROR)
         graphics = {}
         for row in catalog:
             if (not isinstance(row, dict) or set(row) != {"id", "graphic"}
                     or not isinstance(row["id"], str) or not re.fullmatch(r"g[0-9]{1,3}", row["id"])
-                    or row["id"] in graphics or not isinstance(row["graphic"], dict)):
-                raise ValueError(ERROR)
+                    or not isinstance(row["graphic"], dict)):
+                raise ValueError(ROW_ERROR)
+            if row["id"] in graphics:
+                raise ValueError(DUPLICATE_ERROR)
             graphics[row["id"]] = row["graphic"]
         used = set()
         def decode_block(block):
             key = block
-            if not isinstance(key, str) or key not in graphics or key in used:
-                raise ValueError(ERROR)
+            if not isinstance(key, str) or key not in graphics:
+                raise ValueError(REFERENCE_ERROR)
+            if key in used:
+                raise ValueError(REUSED_ERROR)
             used.add(key)
             return copy.deepcopy(graphics[key])
         _graphics(result, decode_block)
         if used != set(graphics):
-            raise ValueError(ERROR)
+            raise ValueError(UNUSED_ERROR)
         return result
 
 

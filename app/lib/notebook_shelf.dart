@@ -285,7 +285,7 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
             child: TextButton.icon(
               onPressed: current ? widget.onAddPhoto : null,
               icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Neue Heftfotos'),
+              label: const Text('Seiten hinzufügen'),
             ),
           ),
         PageToolsGroup(

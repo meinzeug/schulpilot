@@ -434,9 +434,20 @@ def usage_terms(db, family, *, enforce=False):
         if trial:
             return f"{family.id}:trial", trial.call_limit, trial.budget_micros
         if enforce:
+            config, _ = store(db)
+            if config.enabled and not prerequisites(db, config):
+                message = (
+                    "Der KI-Lernzugang ist für dieses Konto noch nicht freigeschaltet. "
+                    "Deine Fotos bleiben gespeichert. Ein Elternteil kann den Tarif prüfen."
+                )
+            else:
+                message = (
+                    "Der KI-Lernzugang ist für dieses Konto noch nicht freigeschaltet. "
+                    "Deine Fotos bleiben gespeichert. Ein Tarif kann derzeit noch nicht bestellt werden."
+                )
             raise HTTPException(
                 403,
-                "Neue KI-Lerneinheiten sind gerade nicht freigeschaltet. Deine gespeicherten Inhalte bleiben da. Bitte sprich mit deinen Eltern.",
+                message,
             )
         return f"{family.id}:inactive", 0, 0
     return f"{family.id}:paid:{order.id}", order.offer["calls"], order.offer["budget_micros"]
