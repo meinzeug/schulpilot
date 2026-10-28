@@ -30,7 +30,7 @@ void main() {
           .backgroundColor,
       brandStartupBackground,
     );
-    expect(find.text('SCHULPILOT'), findsOneWidget);
+    expect(find.text('SchuleSchlau'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1100));
     expect(mounted, 0);
     expect(

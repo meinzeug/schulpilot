@@ -125,7 +125,7 @@ class _PrivacyReadingPanelState extends State<PrivacyReadingPanel> {
           ? 'Verantwortlicher Betreiber: ${legal['operator']}\n${legal['address']}\nSupport: ${legal['support_email']}'
           : 'Betreiber- und Kontaktangaben sind in der öffentlichen Antwort noch nicht vollständig.';
       final text =
-          'SCHULPILOT – Datenschutz & Transparenz\nTextstand der App: $appVersion\nÖffentliche Quelle: ${Uri.tryParse(widget.publicOrigin)?.origin ?? 'nicht verfügbar'}/privacy\n\n$contact\n\n${widget.text}\n';
+          'SchuleSchlau – Datenschutz & Transparenz\nTextstand der App: $appVersion\nÖffentliche Quelle: ${Uri.tryParse(widget.publicOrigin)?.origin ?? 'nicht verfügbar'}/privacy\n\n$contact\n\n${widget.text}\n';
       final bytes = Uint8List.fromList(utf8.encode(text));
       final save = widget.save;
       if (save != null) {

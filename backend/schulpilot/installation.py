@@ -355,7 +355,7 @@ def test_mail(data, actor, db):
         if not required(db):
             raise HTTPException(409, "Die Ersteinrichtung ist bereits abgeschlossen.")
     send_message(
-        str(data.email), "SCHULPILOT: E-Mail-Test", "Der E-Mail-Test deiner SCHULPILOT-Installation war erfolgreich."
+        str(data.email), "SchuleSchlau: E-Mail-Test", "Der E-Mail-Test deiner SchuleSchlau-Installation war erfolgreich."
     )
     audit(db, actor, "installation.mail_test", "smtp")
     db.commit()

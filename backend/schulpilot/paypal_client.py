@@ -141,7 +141,7 @@ def create_order(connection, order, request_id):
                     "invoice_id": order.payment_reference,
                     "payee": {"merchant_id": connection.merchant_id},
                     "amount": {"currency_code": order.currency, "value": money(order.amount_cents)},
-                    "description": "SCHULPILOT · " + order.offer["name"] + " · 30 Tage",
+                    "description": "SchuleSchlau · " + order.offer["name"] + " · 30 Tage",
                 }
             ],
         },

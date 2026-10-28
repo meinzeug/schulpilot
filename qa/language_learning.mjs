@@ -195,7 +195,7 @@ try {
       await type(page.getByRole('textbox',{name:/^Deine Antwort/}),answer);
       if(!disconnected) {
         await child.setOffline(true); await tap(button('Antwort prüfen'));
-        await page.getByText(/Keine Verbindung zu SCHULPILOT/).waitFor();
+        await page.getByText(/Keine Verbindung zu SchuleSchlau/).waitFor();
         await child.setOffline(false); disconnected=true; state.offline_checked=true;
       }
       const answered=await tapResponse(button('Antwort prüfen'),'/units/'+unit.id+'/questions/'+q.id+'/answer','POST',200);

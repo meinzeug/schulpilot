@@ -465,6 +465,7 @@ void main() {
     final data = _overview();
     await _openHome(tester, data, requests: requests);
     expect(find.byType(Dialog), findsNothing);
+    expect(find.text('Vor und nach der Schule'), findsOneWidget);
     await tester.ensureVisible(find.text('Mein Plan'));
     await tester.tap(find.text('Mein Plan'));
     await tester.pumpAndSettle();

@@ -145,7 +145,7 @@
     return approved;
   }
   function googleError() {
-    return { transactionState: 'ERROR', error: { intent: 'PAYMENT_AUTHORIZATION', reason: 'PAYMENT_DATA_INVALID', message: 'Zahlung nicht bestätigt. Bitte den gespeicherten Status in Schulpilot prüfen.' } };
+    return { transactionState: 'ERROR', error: { intent: 'PAYMENT_AUTHORIZATION', reason: 'PAYMENT_DATA_INVALID', message: 'Zahlung nicht bestätigt. Bitte den gespeicherten Status in SchuleSchlau prüfen.' } };
   }
   async function prepare() {
     if (busy || !active || !payment || (payment.can_start !== true && payment.can_open !== true)) return;

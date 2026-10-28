@@ -44,7 +44,7 @@ class AndroidDownload extends StatelessWidget {
             Expanded(
               child: Text(
                 [
-                  'Schulpilot für Android',
+                  'SchuleSchlau für Android',
                   if (release['version'] is String)
                     'Version ${release['version']}',
                   if (release['size_bytes'] is num && release['size_bytes'] > 0)

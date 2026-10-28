@@ -11,8 +11,8 @@ router = APIRouter()
 PARAGRAPHS = (
     ("Verantwortlicher und Kontakt", None),
     (
-        "Wofür SCHULPILOT Daten verarbeitet",
-        "SCHULPILOT begleitet Familien beim Lernen. Wir speichern Elternzugänge, zugeordnete Kinderzugänge, "
+        "Wofür SchuleSchlau Daten verarbeitet",
+        "SchuleSchlau begleitet Familien beim Lernen. Wir speichern Elternzugänge, zugeordnete Kinderzugänge, "
         "notwendige Lernvorgaben und die innerhalb der App ausgeführten Aktivitäten. Kinder benötigen keine eigene E-Mail-Adresse. "
         "Eltern sehen ausschließlich in ihrer berechtigten Familie Materialien, Aufgaben, Antworten, Hinweise, Erklärungen, "
         "Hilfewünsche und die näherungsweise aktive Lernzeit. Eltern können freiwillig Schulnoten mit Fach, Datum und optionaler "
@@ -39,7 +39,7 @@ PARAGRAPHS = (
         "Zugriffs- und Erneuerungstokens werden nicht gespeichert. Gleiche E-Mail-Adressen führen nicht automatisch Konten zusammen. "
         "Bestehende Elternkonten bestätigen eine Verknüpfung mit ihrem bisherigen Passwort. Die Verknüpfung lässt sich unter "
         "Zugänge & Einstellungen trennen und wird bei Kontolöschung entfernt. Kinder verwenden ihre unabhängigen "
-        "SCHULPILOT-Zugänge ohne Google. Unvollständige Anmeldevorgänge sind zehn Minuten gültig und werden spätestens "
+        "SchuleSchlau-Zugänge ohne Google. Unvollständige Anmeldevorgänge sind zehn Minuten gültig und werden spätestens "
         "beim nächsten täglichen Bereinigungslauf entfernt. Firebase Authentication wird nicht eingesetzt.",
     ),
     (
@@ -49,7 +49,7 @@ PARAGRAPHS = (
         "Persönliche Zuordnungen, Rückmeldungen und Linkaufrufe sind nur für das eigene Kind und die berechtigten Eltern "
         "sichtbar und werden höchstens 365 Tage aufbewahrt; sie gehören zum Export und zur Kontolöschung. Erst beim eigenen "
         "Klick wird Sofatutor im Browser oder einer vom Betriebssystem gewählten App geöffnet. Wir übermitteln dabei keine "
-        "Hefttexte, Fotos oder SCHULPILOT-Zugänge. Der externe Anbieter verarbeitet den Seitenaufruf nach seinen eigenen "
+        "Hefttexte, Fotos oder SchuleSchlau-Zugänge. Der externe Anbieter verarbeitet den Seitenaufruf nach seinen eigenen "
         "Datenschutzregeln; eine Anmeldung und ein Abo können nötig sein. Ein Linkaufruf belegt weder Wiedergabe noch "
         "Verständnis und wird nicht als gelöste Übung oder Lernzeit gebucht. Eine eigene Rückmeldung wie „angesehen“ "
         "bleibt eine Selbstauskunft; danach angebotene neue Übungen prüfen den bestätigten Unterrichtsstoff. "
@@ -96,7 +96,7 @@ PARAGRAPHS = (
         "Auswahldialog des Geräts oder Browsers; der gewählte Bereich kann auch eigene noch nicht abgeschickte Eingaben enthalten. "
         "Nur passende App-Fenster oder Tabs auswählen. Freigabe, Kamera und Anruf können jederzeit beendet werden. "
         "Ton, Video und Bildschirm werden über verschlüsseltes WebRTC direkt oder über den eigenen authentifizierten "
-        "SCHULPILOT-Relay bei Hetzner übertragen. SCHULPILOT zeichnet diese Inhalte nicht auf und übermittelt sie weder "
+        "SchuleSchlau-Relay bei Hetzner übertragen. SchuleSchlau zeichnet diese Inhalte nicht auf und übermittelt sie weder "
         "an die Lern-KI noch als Medieninhalt an Firebase. Kurzlebige Verbindungsbeschreibungen liegen nur begrenzt im "
         "Arbeitsspeicher und werden nach Gesprächsende beziehungsweise Ablauf entfernt. Anrufstatus, beteiligte Zugänge, "
         "Zeitpunkte und ein optionaler Lernbezug bleiben höchstens30Tage gespeichert und gehören zu Export und Kontolöschung. "
@@ -107,7 +107,7 @@ PARAGRAPHS = (
     ),
     (
         "Speicherung, Sicherheit und Aufbewahrung",
-        "Konto-, Lern- und Familiendaten liegen in der eigenen Datenbank auf dem SCHULPILOT-Server bei Hetzner. "
+        "Konto-, Lern- und Familiendaten liegen in der eigenen Datenbank auf dem SchuleSchlau-Server bei Hetzner. "
         "Private Materialien und Datenbank sind nicht öffentlich zugänglich. Sitzungen sind widerrufbar und Passwörter "
         "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten, Heftfragen, Wortlisten, Wiederholungsstände, "
         "Sprachprojekte, Lernposition, eigene Antwortentwürfe, begründete nächste Schritte, Schulnoteneinträge und Nachrichten werden höchstens "
@@ -120,7 +120,7 @@ PARAGRAPHS = (
         "Heftfragen, Antworten und Quellenbelege gehören zum privaten Lernverlauf und sind für berechtigte Eltern sichtbar. "
         "Die freigegebene Lern-KI erhält die Frage, bestätigte Hefttexte und bei einer Nachfrage wenige vorherige Antworten. "
         "Mikrofon und Vorlesen starten ausschließlich auf Wunsch. Spracheingabe verwendet den Sprachdienst des Geräts "
-        "oder Browsers, der Sprache auch online verarbeiten kann. Ein Hinweis erscheint vor der Aufnahme. SCHULPILOT "
+        "oder Browsers, der Sprache auch online verarbeiten kann. Ein Hinweis erscheint vor der Aufnahme. SchuleSchlau "
         "speichert keine Audiodateien und lädt selbst keine Audiodateien hoch. Der erkannte Text ist vor dem Senden "
         "bearbeitbar. Auch Vorlesestimmen können einen Gerätedienst verwenden; eine Offlineverarbeitung ist nicht "
         "auf jedem Gerät verfügbar. Tippen und Lesen bleiben ohne diese Funktionen möglich.",
@@ -178,9 +178,9 @@ def privacy():
     )
     return HTMLResponse(
         """<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SCHULPILOT – Datenschutz</title><style>body{margin:0;background:#f5f7fc;color:#17243c;font:17px/1.7 system-ui,sans-serif}main{max-width:820px;margin:auto;padding:32px 22px}a{color:#5732bd}header{display:flex;align-items:center;gap:16px}header img{width:64px;height:64px}h1{font-size:32px}h2{font-size:22px;margin-top:32px}p{white-space:pre-line}nav{display:flex;gap:20px;flex-wrap:wrap}section{border-bottom:1px solid #dce1ec;padding-bottom:12px}</style>
-<main><header><img src="/icons/icon-192.png" alt=""><strong>SCHULPILOT</strong></header><h1>Datenschutz</h1>
-<p>Stand: 22. Oktober 2026. Für die Web-App und die Android-App.</p><nav><a href="/">Startseite</a><a href="/settings">Einstellungen</a><a href="/account-deletion">Konto löschen</a><a href="/impressum">Impressum</a><a href="/widerrufen">Vertrag widerrufen</a></nav>"""
+<title>SchuleSchlau – Datenschutz</title><style>body{margin:0;background:#f5f7fc;color:#17243c;font:17px/1.7 system-ui,sans-serif}main{max-width:820px;margin:auto;padding:32px 22px}a{color:#5732bd}header{display:flex;align-items:center;gap:16px}header img{width:64px;height:64px}h1{font-size:32px}h2{font-size:22px;margin-top:32px}p{white-space:pre-line}nav{display:flex;gap:20px;flex-wrap:wrap}section{border-bottom:1px solid #dce1ec;padding-bottom:12px}</style>
+<main><header><img src="/icons/icon-192.png" alt=""><strong>SchuleSchlau</strong></header><h1>Datenschutz</h1>
+<p>Stand: 28. Oktober 2026. Für die Web-App und die Android-App.</p><nav><a href="/">Startseite</a><a href="/settings">Einstellungen</a><a href="/account-deletion">Konto löschen</a><a href="/impressum">Impressum</a><a href="/widerrufen">Vertrag widerrufen</a></nav>"""
         + sections
         + """
 <p>Weitere Informationen der eingesetzten Dienste: <a href="https://policies.google.com/privacy">Google-Datenschutz</a>,
@@ -201,5 +201,5 @@ def imprint():
     details = "".join(f"<dt>{escape(title)}</dt><dd>{escape(value) if value else 'Noch nicht hinterlegt'}</dd>" for title, value in rows)
     notice = "" if complete else "<p role=\"status\">Die Anbieterangaben sind noch unvollständig. Der Verkauf ist bis zur vollständigen Konfiguration gesperrt.</p>"
     return HTMLResponse("""<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Impressum · SCHULPILOT</title><style>body{margin:0;background:#f5f7fc;color:#17243c;font:17px/1.7 system-ui,sans-serif}main{max-width:760px;margin:auto;padding:28px 20px}a{color:#5732bd}nav{display:flex;flex-wrap:wrap;gap:18px}dt{font-weight:700;margin-top:20px}dd{margin:0;white-space:pre-line;overflow-wrap:anywhere}</style>
-<main><strong>SCHULPILOT</strong><h1>Impressum</h1>""" + notice + "<dl>" + details + "</dl>" + """<nav><a href="/">Startseite</a><a href="/privacy">Datenschutz</a><a href="/bedingungen">Vertragsbedingungen</a><a href="/widerrufen">Vertrag widerrufen</a></nav></main></html>""")
+<title>Impressum · SchuleSchlau</title><style>body{margin:0;background:#f5f7fc;color:#17243c;font:17px/1.7 system-ui,sans-serif}main{max-width:760px;margin:auto;padding:28px 20px}a{color:#5732bd}nav{display:flex;flex-wrap:wrap;gap:18px}dt{font-weight:700;margin-top:20px}dd{margin:0;white-space:pre-line;overflow-wrap:anywhere}</style>
+<main><strong>SchuleSchlau</strong><h1>Impressum</h1>""" + notice + "<dl>" + details + "</dl>" + """<nav><a href="/">Startseite</a><a href="/privacy">Datenschutz</a><a href="/bedingungen">Vertragsbedingungen</a><a href="/widerrufen">Vertrag widerrufen</a></nav></main></html>""")

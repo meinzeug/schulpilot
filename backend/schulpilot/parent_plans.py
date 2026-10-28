@@ -418,7 +418,7 @@ def export_deadlines(child_id: str, start: date | None = None, end: date | None 
             "DTSTART;VALUE=DATE:" + due.strftime("%Y%m%d"),
             "DTEND;VALUE=DATE:" + (due + timedelta(days=1)).strftime("%Y%m%d"),
             "SUMMARY:" + calendar_text(row.subject + ": " + row.topic),
-            "DESCRIPTION:" + calendar_text(label + ". Statische private Kopie, keine automatische Synchronisierung mit Schulpilot."),
+            "DESCRIPTION:" + calendar_text(label + ". Statische private Kopie, keine automatische Synchronisierung mit SchuleSchlau."),
             "TRANSP:TRANSPARENT", "END:VEVENT"])
     lines.append("END:VCALENDAR")
     return Response(fold_calendar(lines), media_type="text/calendar; charset=utf-8",

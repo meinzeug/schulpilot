@@ -150,7 +150,7 @@ try {
   phase = 'offline_and_explicit_retry';
   await context.setOffline(true);
   await tap(button('Seiten aktualisieren'));
-  await page.getByText('Keine Verbindung zu SCHULPILOT. Bitte prüfe deine Internetverbindung und versuche es erneut.', {exact: true}).waitFor();
+  await page.getByText('Keine Verbindung zu SchuleSchlau. Bitte prüfe deine Internetverbindung und versuche es erneut.', {exact: true}).waitFor();
   await shot('offline');
   await context.setOffline(false);
   await tap(button('Erneut laden'));

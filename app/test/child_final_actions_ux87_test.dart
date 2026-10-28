@@ -60,7 +60,7 @@ void main() {
       await hc.flush(t);
       expect(find.textContaining('PRIVATE_TRANSPORT_MARKER'), findsNothing);
       expect(
-        find.textContaining('Keine Verbindung zu SCHULPILOT'),
+        find.textContaining('Keine Verbindung zu SchuleSchlau'),
         findsOneWidget,
       );
     },

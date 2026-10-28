@@ -895,7 +895,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
         "free_day": free_day,
         "paused": paused,
         "forecast_notice": "Vorschlag für sieben Tage: Neue Seiten, Antworten und Elternvorgaben passen ihn an. Zeiten sind Schätzungen; weitere Hilfen und Wiederholungen kommen nach Bedarf hinzu.",
-        "notice": "Versäumte Tage vergrößern das Tagesziel nicht. Eltern sehen ausschließlich Aktivitäten innerhalb von SCHULPILOT.",
+        "notice": "Versäumte Tage vergrößern das Tagesziel nicht. Eltern sehen ausschließlich Aktivitäten innerhalb von SchuleSchlau.",
     }
 
 

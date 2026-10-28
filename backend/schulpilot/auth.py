@@ -186,7 +186,7 @@ def register(data: s.Register, request: Request, db=Depends(get_db)):
     token = new_token(db, "verify", user.id, ttl=86400)
     send_link(
         email,
-        "SCHULPILOT: Elternkonto bestätigen",
+        "SchuleSchlau: Elternkonto bestätigen",
         "Bestätige deine E-Mail-Adresse für deinen Elternzugang.",
         "verify",
         token,
@@ -217,7 +217,7 @@ def resend(data: s.EmailRequest, request: Request, db=Depends(get_db)):
     user = db.scalar(select(User).where(User.email == str(data.email).lower(), User.verified.is_(False)))
     if user:
         token = new_token(db, "verify", user.id, ttl=86400)
-        send_link(user.email, "SCHULPILOT: E-Mail bestätigen", "Bestätige deinen Elternzugang.", "verify", token)
+        send_link(user.email, "SchuleSchlau: E-Mail bestätigen", "Bestätige deinen Elternzugang.", "verify", token)
         db.commit()
     return {"message": "Falls ein unbestätigtes Konto existiert, wurde ein neuer Link versandt."}
 
@@ -317,7 +317,7 @@ def recovery(data: s.EmailRequest, request: Request, db=Depends(get_db)):
         token = new_token(db, "recovery", user.id)
         send_link(
             user.email,
-            "SCHULPILOT: Passwort zurücksetzen",
+            "SchuleSchlau: Passwort zurücksetzen",
             "Setze dein Elternpasswort über diesen einmaligen Link zurück.",
             "reset",
             token,

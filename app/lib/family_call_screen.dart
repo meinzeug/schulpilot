@@ -421,7 +421,7 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
             content: SingleChildScrollView(
               child: Text(
                 calls.webPlatform
-                    ? 'Teile möglichst nur den Schulpilot-Tab. Deine Eltern sehen alles im ausgewählten Bereich. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet. Auf dem Smartphone kann die Android-App nötig sein.'
+                    ? 'Teile möglichst nur den SchuleSchlau-Tab. Deine Eltern sehen alles im ausgewählten Bereich. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet. Auf dem Smartphone kann die Android-App nötig sein.'
                     : 'Deine Eltern sehen den freigegebenen Bildschirm live. Wähle nur den Bereich aus, den du zeigen möchtest, und öffne dabei keine privaten Inhalte. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet.',
               ),
             ),
@@ -1348,7 +1348,7 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Text(
-                          'Teile möglichst nur den Schulpilot-Tab. Deine Eltern sehen alles im ausgewählten Bereich. Du kannst die Freigabe jederzeit stoppen. Auf dem Smartphone kann die Android-App nötig sein.',
+                          'Teile möglichst nur den SchuleSchlau-Tab. Deine Eltern sehen alles im ausgewählten Bereich. Du kannst die Freigabe jederzeit stoppen. Auf dem Smartphone kann die Android-App nötig sein.',
                         ),
                         const SizedBox(height: 12),
                         FilledButton.icon(

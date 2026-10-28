@@ -135,7 +135,7 @@ Future<bool> openSofatutor(
                       Navigator.pop(ctx, false);
                     }
                   },
-                  child: Text('Zurück zu Schulpilot'),
+                  child: Text('Zurück zu SchuleSchlau'),
                 ),
               ],
             ),

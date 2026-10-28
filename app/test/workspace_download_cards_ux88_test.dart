@@ -48,9 +48,9 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.textContaining('Schulpilot für Android'));
+        await tester.tap(find.textContaining('SchuleSchlau für Android'));
         await tester.pump();
-        await tester.tap(find.textContaining('Schulpilot für Android'));
+        await tester.tap(find.textContaining('SchuleSchlau für Android'));
         await tester.pump();
         expect(launches, hasLength(1));
         expect(find.textContaining('Bitte warten'), findsOneWidget);

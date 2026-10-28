@@ -14,7 +14,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="SCHULPILOT"
+        android:label="SchuleSchlau"
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:name="${applicationName}"

@@ -478,7 +478,7 @@ Widget brand({
         foregroundColor: light ? Colors.white : context.palette.ink,
       ),
       child: Semantics(
-        label: 'SCHULPILOT – zur Startseite',
+        label: 'SchuleSchlau – zur Startseite',
         excludeSemantics: true,
         child: FittedBox(
           fit: BoxFit.scaleDown,
@@ -495,7 +495,7 @@ Widget brand({
               if (!compact) ...[
                 const SizedBox(width: 8),
                 Text(
-                  'SCHULPILOT',
+                  'SchuleSchlau',
                   style: TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 19,
@@ -1930,7 +1930,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                                                             '/about',
                                                           ),
                                                       child: Text(
-                                                        'Über SCHULPILOT',
+                                                        'Über SchuleSchlau',
                                                       ),
                                                     ),
                                                     PublicLegalLinks(
@@ -2119,7 +2119,7 @@ class _WorkspaceIconRail extends StatelessWidget {
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text(
-                          'SCHULPILOT',
+                          'SchuleSchlau',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -2438,7 +2438,7 @@ class _WorkspaceHeader extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
                       child: const Text(
-                        'SCHULPILOT',
+                        'SchuleSchlau',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

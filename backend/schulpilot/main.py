@@ -76,7 +76,7 @@ async def lifespan(app):
 
 
 app = FastAPI(
-    title="SCHULPILOT API",
+    title="SchuleSchlau API",
     version=__version__,
     lifespan=lifespan,
     docs_url=None if settings.environment == "production" else "/api/docs",
@@ -235,7 +235,7 @@ def status():
             else reason
         ),
         "notice": (
-            "SCHULPILOT ist bereit."
+            "SchuleSchlau ist bereit."
             if site.real_data_approved and site.privacy_evidence and ai
             else "Der KI-Dienst ist vorübergehend nicht verfügbar. Gespeicherte Lerninhalte bleiben nutzbar."
             if site.real_data_approved and site.privacy_evidence

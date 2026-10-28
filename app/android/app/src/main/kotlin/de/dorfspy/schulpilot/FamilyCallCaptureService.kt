@@ -105,7 +105,7 @@ class FamilyCallCaptureService : Service() {
             val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(this, CHANNEL)
                 else Notification.Builder(this)
             val notification = builder.setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("SCHULPILOT · Live-Hilfe aktiv")
+                .setContentTitle("SchuleSchlau · Live-Hilfe aktiv")
                 .setContentText("Zur Übertragung zurückkehren oder sie in der App beenden.")
                 .setContentIntent(open).setCategory(Notification.CATEGORY_CALL)
                 .setVisibility(Notification.VISIBILITY_PRIVATE).setOngoing(true).build()

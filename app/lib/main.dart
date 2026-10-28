@@ -110,7 +110,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       final target = widget.state.push.foregroundTarget ?? '/notifications';
       messenger.currentState?.showSnackBar(
         SnackBar(
-          content: const Text('Es gibt Neuigkeiten in SCHULPILOT.'),
+          content: const Text('Es gibt Neuigkeiten in SchuleSchlau.'),
           action: SnackBarAction(
             label: 'Öffnen',
             onPressed: () {
@@ -665,7 +665,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
     listenable: widget.state,
     builder: (context, _) => MaterialApp.router(
       scaffoldMessengerKey: messenger,
-      title: 'SCHULPILOT',
+      title: 'SchuleSchlau',
       debugShowCheckedModeBanner: false,
       theme: appTheme(),
       darkTheme: appTheme(brightness: Brightness.dark),

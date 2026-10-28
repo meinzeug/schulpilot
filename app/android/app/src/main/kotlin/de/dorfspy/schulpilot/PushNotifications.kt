@@ -65,8 +65,8 @@ class PushNotifications(private val activity: MainActivity) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) builder.setTimeoutAfter(60_000)
                         manager.notify("schulpilot", 7041, builder
                             .setSmallIcon(R.drawable.ic_notification)
-                            .setContentTitle("SCHULPILOT")
-                            .setContentText("Es gibt Neuigkeiten in SCHULPILOT. Öffne deinen Lernraum.")
+                            .setContentTitle("SchuleSchlau")
+                            .setContentText("Es gibt Neuigkeiten in SchuleSchlau. Öffne deinen Lernraum.")
                             .setVisibility(Notification.VISIBILITY_PRIVATE)
                             .setContentIntent(pending).setAutoCancel(true).setOnlyAlertOnce(true).build())
                     }

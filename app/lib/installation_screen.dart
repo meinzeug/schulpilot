@@ -858,7 +858,7 @@ class _InstallationScreenState extends State<InstallationScreen>
       return Panel(
         child: Column(
           children: [
-            heading('SCHULPILOT wird eingerichtet'),
+            heading('SchuleSchlau wird eingerichtet'),
             const Text('Bitte die Ersteinrichtung im Browser abschließen.'),
             const SizedBox(height: 12),
             ActionButton(
@@ -899,7 +899,7 @@ class _InstallationScreenState extends State<InstallationScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            heading('Willkommen bei SCHULPILOT'),
+            heading('Willkommen bei SchuleSchlau'),
             const Text(
               'Öffne die Ersteinrichtung mit dem Installationscode deines Servers.',
             ),

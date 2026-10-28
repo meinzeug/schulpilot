@@ -190,7 +190,7 @@ class _CompactAdminHeaderState extends State<_CompactAdminHeader> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'SCHULPILOT · BETRIEB',
+                  'SchuleSchlau · BETRIEB',
                   style: TextStyle(
                     color: context.palette.cyanInk,
                     fontSize: 12,

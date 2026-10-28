@@ -740,7 +740,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       builder: (ctx) => AlertDialog(
         title: const Text('Mit dem Mikrofon schreiben?'),
         content: const Text(
-          'Dein Gerät oder Browser kann deine Stimme an seinen Sprachdienst senden. Schulpilot speichert keine Audiodatei. Prüfe danach den Text.',
+          'Dein Gerät oder Browser kann deine Stimme an seinen Sprachdienst senden. SchuleSchlau speichert keine Audiodatei. Prüfe danach den Text.',
         ),
         actions: [
           TextButton(

@@ -127,7 +127,7 @@ try {
       report.own_device_validation=await ownTest('validate');
       assert.equal(report.own_device_validation,'validated');
       if(send) {
-        const foreground=page.getByText('Es gibt Neuigkeiten in SCHULPILOT.',{exact:true}).waitFor({timeout:25000});
+        const foreground=page.getByText('Es gibt Neuigkeiten in SchuleSchlau.',{exact:true}).waitFor({timeout:25000});
         foreground.catch(()=>{});
         report.own_device_send=await ownTest('send');
         assert.equal(report.own_device_send,'accepted');

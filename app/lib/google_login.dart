@@ -944,11 +944,11 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                       ),
                     ] else if (returnToApp) ...[
                       const Text(
-                        'Google ist bestätigt. Öffne SCHULPILOT, um fortzufahren.',
+                        'Google ist bestätigt. Öffne SchuleSchlau, um fortzufahren.',
                       ),
                       const SizedBox(height: 16),
                       ActionButton(
-                        label: 'SCHULPILOT öffnen',
+                        label: 'SchuleSchlau öffnen',
                         enabled: !cancelling,
                         onPressed: () async {
                           final opened = await launchUrl(
@@ -965,7 +965,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                           );
                           if (!opened) {
                             throw ApiError(
-                              'Die App konnte nicht geöffnet werden. Öffne SCHULPILOT auf diesem Gerät und kehre zur Anmeldung zurück.',
+                              'Die App konnte nicht geöffnet werden. Öffne SchuleSchlau auf diesem Gerät und kehre zur Anmeldung zurück.',
                             );
                           }
                         },
@@ -982,7 +982,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                               title: const Text('Sicher zur App zurückkehren'),
                               scrollable: true,
                               content: const Text(
-                                '1. Zum Browser wechseln, in dem du Google bestätigt hast.\n2. Dort „SCHULPILOT öffnen“ wählen.\n3. Den Wechsel in diese App erlauben.\nWenn der Browser geschlossen wurde oder der Link abgelaufen ist, diesen Anmeldeschritt beenden und bewusst neu starten. Es werden weder Codes noch Zugangsdaten kopiert oder versendet.',
+                                '1. Zum Browser wechseln, in dem du Google bestätigt hast.\n2. Dort „SchuleSchlau öffnen“ wählen.\n3. Den Wechsel in diese App erlauben.\nWenn der Browser geschlossen wurde oder der Link abgelaufen ist, diesen Anmeldeschritt beenden und bewusst neu starten. Es werden weder Codes noch Zugangsdaten kopiert oder versendet.',
                               ),
                               actions: [
                                 TextButton(

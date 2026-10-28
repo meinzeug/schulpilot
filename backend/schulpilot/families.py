@@ -288,7 +288,7 @@ def invite(family_id: str, data: s.InviteCreate, p=Depends(parent), db=Depends(g
     token = new_token(db, "invite", family_id=family.id, email=email, permission=data.permission, ttl=2 * 86400)
     send_link(
         email,
-        "SCHULPILOT: Einladung zur Familie",
+        "SchuleSchlau: Einladung zur Familie",
         "Du wurdest als berechtigtes Elternteil eingeladen. Der Link gilt zwei Tage.",
         "invite",
         token,

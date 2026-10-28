@@ -359,7 +359,7 @@ class _ChildAccountState extends State<ChildAccount> {
                   eyebrow: 'Konto',
                   title:
                       state.user?['display_name'] ??
-                      'Dein Platz bei Schulpilot',
+                      'Dein Platz bei SchuleSchlau',
                   description: 'Dein Zugang, deine Geräte. Du entscheidest, welche Mitteilungen du hier bekommen möchtest.',
                   icon: Icons.face_rounded,
                   facts: [
@@ -829,7 +829,7 @@ class _ChildAccountState extends State<ChildAccount> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Lies nach, wie Schulpilot mit deinen Daten umgeht. Deine Lerninhalte werden nicht öffentlich geteilt.',
+                          'Lies nach, wie SchuleSchlau mit deinen Daten umgeht. Deine Lerninhalte werden nicht öffentlich geteilt.',
                         ),
                       ],
                     ),
@@ -864,13 +864,13 @@ class _ChildAccountState extends State<ChildAccount> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Schulpilot · $appVersion',
+                          'SchuleSchlau · $appVersion',
                           style: TextStyle(color: context.palette.muted),
                         ),
                         TextButton(
                           onPressed: () => showLicensePage(
                             context: context,
-                            applicationName: 'SCHULPILOT',
+                            applicationName: 'SchuleSchlau',
                             applicationVersion: appVersion,
                           ),
                           child: const Text('Open-Source-Lizenzen'),

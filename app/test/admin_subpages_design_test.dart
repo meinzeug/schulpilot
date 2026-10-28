@@ -138,7 +138,7 @@ void main() {
               find.byKey(const ValueKey('compact-admin-heading')),
               findsOneWidget,
             );
-            expect(find.text('SCHULPILOT · BETRIEB'), findsNothing);
+            expect(find.text('SchuleSchlau · BETRIEB'), findsNothing);
             if (path == '/admin/verkauf') {
               expect(
                 find.descendant(
@@ -149,7 +149,7 @@ void main() {
               );
             }
             await press(tester, find.byTooltip('Über diesen Bereich'));
-            expect(find.text('SCHULPILOT · BETRIEB'), findsOneWidget);
+            expect(find.text('SchuleSchlau · BETRIEB'), findsOneWidget);
             if (path == '/admin/verkauf') {
               expect(
                 find.textContaining(

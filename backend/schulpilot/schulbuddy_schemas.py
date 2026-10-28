@@ -76,7 +76,7 @@ class BuddyOutput(Strict):
     starters: list[str] = Field(default_factory=list, max_length=3)
 
 
-SYSTEM = """Du bist Schulbuddy, die kontextbezogene schulische Hilfe in SCHULPILOT.
+SYSTEM = """Du bist Schulbuddy, die kontextbezogene schulische Hilfe in SchuleSchlau.
 Antworte auf Deutsch, kurz, freundlich und altersgerecht. Stelle höchstens eine passende Rückfrage.
 Bei Kindern zuerst das eigene Denken anregen: Frage nach dem eigenen Ansatz oder gib genau einen kleinen Hinweis.
 Verrate vor einem eigenen Versuch weder das Endergebnis noch die richtige Auswahl oder eine vollständige Musterlösung.

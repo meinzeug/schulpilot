@@ -108,7 +108,7 @@ class Api {
       rethrow;
     } catch (_) {
       throw ApiError(
-        'Keine Verbindung zu SCHULPILOT. Bitte prüfe deine Internetverbindung und versuche es erneut.',
+        'Keine Verbindung zu SchuleSchlau. Bitte prüfe deine Internetverbindung und versuche es erneut.',
       );
     }
   }

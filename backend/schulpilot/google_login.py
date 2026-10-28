@@ -438,7 +438,7 @@ def result(data: Result, request: Request, response: Response, db=Depends(get_db
         token = auth.new_token(db, "verify", user.id, ttl=86400)
         auth.send_link(
             email,
-            "SCHULPILOT: Elternkonto bestätigen",
+            "SchuleSchlau: Elternkonto bestätigen",
             "Bestätige deine E-Mail-Adresse für deinen Elternzugang.",
             "verify",
             token,

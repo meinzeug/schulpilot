@@ -73,7 +73,7 @@ def public_config(*, testing=False):
         "available": ready,
         "test_mode": bool(ready and not site.push_approved),
         "firebase": allowed if ready else {},
-        "notice": "Push enthält nur neutrale Hinweise. Inhalte öffnest du nach Anmeldung in SCHULPILOT."
+        "notice": "Push enthält nur neutrale Hinweise. Inhalte öffnest du nach Anmeldung in SchuleSchlau."
         if ready
         else "Push ist vorbereitet. Firebase-Projekt, Dienstkonto und dokumentierte Datenschutzfreigabe sind noch erforderlich.",
     }
@@ -623,15 +623,15 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_da
 
         credentials.refresh(TimedRequest())
         body = (
-            "Es gibt Neuigkeiten in SCHULPILOT. Öffne deinen Lernraum."
+            "Es gibt Neuigkeiten in SchuleSchlau. Öffne deinen Lernraum."
             if kind != "reminder"
             else "Dein Lernplan ist bereit. Öffne ihn, wenn es für dich passt."
         )
         if kind == "parent_goal":
-            body = "Ein geplanter Tagescheck ist da. Öffne SCHULPILOT."
+            body = "Ein geplanter Tagescheck ist da. Öffne SchuleSchlau."
         message = {
             "token": token,
-            "notification": {"title": "SCHULPILOT", "body": body},
+            "notification": {"title": "SchuleSchlau", "body": body},
             "data": {"route": "/app"},
             "android": {
                 # User-visible, already bundled notifications should arrive

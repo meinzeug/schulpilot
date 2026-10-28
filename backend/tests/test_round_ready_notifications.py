@@ -337,8 +337,8 @@ def test_actual_fcm_adapter_contains_only_neutral_text_and_allowlisted_unit_rout
     message = captured[0]["message"]
     assert message["data"] == {"route": target}
     assert message["notification"] == {
-        "title": "SCHULPILOT",
-        "body": "Es gibt Neuigkeiten in SCHULPILOT. Öffne deinen Lernraum.",
+        "title": "SchuleSchlau",
+        "body": "Es gibt Neuigkeiten in SchuleSchlau. Öffne deinen Lernraum.",
     }
     assert message["webpush"]["fcm_options"]["link"] == settings.public_url + target
     assert message["android"]["priority"] == "high"

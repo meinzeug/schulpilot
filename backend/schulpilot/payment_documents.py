@@ -73,7 +73,7 @@ def document_access(request, db, check_role):
             raise
         return HTMLResponse(
             '<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            '<title>Zugang prüfen · SCHULPILOT</title><h1>Bitte den passenden Zugang verwenden</h1>'
+            '<title>Zugang prüfen · SchuleSchlau</title><h1>Bitte den passenden Zugang verwenden</h1>'
             '<p>Diese Vertragsseite gehört zum berechtigten Eltern- beziehungsweise Betreiberkonto.</p><a href="/app">Zur Übersicht</a></html>',
             status_code=403, headers={"Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"},
         )

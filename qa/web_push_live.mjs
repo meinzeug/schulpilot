@@ -120,7 +120,7 @@ try {
   report.phase = 'validate';
   report.validation = await ownTest('validate');
   assert.equal(report.validation, 'validated');
-  const visible = page.getByText('Es gibt Neuigkeiten in SCHULPILOT.', {exact:true})
+  const visible = page.getByText('Es gibt Neuigkeiten in SchuleSchlau.', {exact:true})
     .waitFor({timeout:35000}).then(async () => {
       report.foreground_banner_visible = true;
       await page.screenshot({path:path.join(output,'web-foreground.png')});
@@ -157,8 +157,8 @@ try {
   for (let i=0; i<35; i++) {
     report.background_notification_registered = await worker.evaluate(async () =>
       (await self.registration.getNotifications()).some(notification =>
-        notification.title === 'SCHULPILOT' &&
-        notification.body === 'Es gibt Neuigkeiten in SCHULPILOT. Öffne deinen Lernraum.'));
+        notification.title === 'SchuleSchlau' &&
+        notification.body === 'Es gibt Neuigkeiten in SchuleSchlau. Öffne deinen Lernraum.'));
     if (report.background_notification_registered) break;
     await new Promise(resolve => setTimeout(resolve,1000));
   }

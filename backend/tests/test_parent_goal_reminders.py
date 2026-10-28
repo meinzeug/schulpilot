@@ -620,7 +620,7 @@ def test_parent_kind_uses_neutral_http_payload_and_bounded_transport_ttl(api, tm
     push.send_fcm("SYNTHETIC_TOKEN", "parent_goal", 3600)
     message = sent[0]["message"]
     assert message["data"] == {"route": "/app"}
-    assert message["notification"] == {"title": "SCHULPILOT", "body": "Ein geplanter Tagescheck ist da. Öffne SCHULPILOT."}
+    assert message["notification"] == {"title": "SchuleSchlau", "body": "Ein geplanter Tagescheck ist da. Öffne SchuleSchlau."}
     assert message["android"]["ttl"] == "3600s"
     assert message["webpush"]["headers"]["TTL"] == "3600"
     assert message["webpush"]["fcm_options"]["link"] == "http://testserver/app"

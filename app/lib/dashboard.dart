@@ -1289,7 +1289,7 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
     } else if (firstPreparation != null) {
       final status = firstPreparation['status'];
       hero = ChildTodayHero(
-        eyebrow: 'Nach der Schule',
+        eyebrow: 'Dein Schulstoff',
         title: status == 'processing'
             ? 'Deine Fotos sind abgegeben.'
             : status == 'needs_review'
@@ -1335,7 +1335,7 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
         title: photosWaiting
             ? 'Deine Heftfotos warten.'
             : 'Was entdecken wir heute?',
-        subtitle: photosWaiting ? 'Schau kurz nach, ob alles stimmt.' : 'Bring deine Heftseiten mit. Dann geht’s Schritt für Schritt los.',
+        subtitle: photosWaiting ? 'Schau kurz nach, ob alles stimmt.' : 'Fotografiere eine Seite, damit du damit lernen kannst.',
         learning: false,
         action: ActionButton(
           label: photosWaiting
@@ -1659,7 +1659,7 @@ Future<void> _showChildLearningInfo(
       scrollable: true,
       title: Text('Was sehen meine Eltern?'),
       content: Text(
-        'Deine berechtigten Eltern sehen deine Heftseiten, Aufgaben, Antworten, genutzten Hilfen, Lernzeit und Hilfewünsche in Schulpilot.',
+        'Deine berechtigten Eltern sehen deine Heftseiten, Aufgaben, Antworten, genutzten Hilfen, Lernzeit und Hilfewünsche in SchuleSchlau.',
       ),
       actions: [
         TextButton(
@@ -2482,7 +2482,7 @@ class _ParentMessagesState extends State<_ParentMessages> {
     _ => 'Nachricht',
   };
   String sender(Json m) => m['sender_role'] == 'system'
-      ? 'Von Schulpilot'
+      ? 'Von SchuleSchlau'
       : m['sender_role'] == 'child'
       ? 'Von deinem Kind'
       : 'Von einem Elternteil';
@@ -2717,7 +2717,7 @@ class _ParentMessagesState extends State<_ParentMessages> {
                   'interest' => 'Interessen',
                   'plan_change' => 'Planvorschläge',
                   'reply' => 'Antworten',
-                  'system' => 'Von Schulpilot',
+                  'system' => 'Von SchuleSchlau',
                   _ => kindFilter,
                 }}',
                 () => changeView(() => kindFilter = 'all'),
@@ -2755,7 +2755,7 @@ class _ParentMessagesState extends State<_ParentMessages> {
                   ('interest', 'Interessen'),
                   ('plan_change', 'Planvorschläge'),
                   ('reply', 'Antworten'),
-                  ('system', 'Von Schulpilot'),
+                  ('system', 'Von SchuleSchlau'),
                 ],
                 onChanged: (value) => changeView(() {
                   kindFilter = value;
@@ -3021,7 +3021,7 @@ Widget messages(
                             : m['kind'] == 'reminder'
                             ? 'Dein Lernplan'
                             : m['sender_role'] == 'system'
-                            ? 'Von Schulpilot'
+                            ? 'Von SchuleSchlau'
                             : m['sender_role'] == 'child'
                             ? (state.isChild ? 'Von dir' : 'Von deinem Kind')
                             : (state.isChild

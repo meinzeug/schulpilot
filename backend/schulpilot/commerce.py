@@ -18,7 +18,7 @@ from .db import BankOrder, Child, Family, FamilyTrial, Membership, StoreConfigur
 from .security import admin, audit, decrypt, digest, encrypt, family_access, insert_ignore, parent, rate_limit
 
 router = APIRouter(tags=["Verkauf"])
-TERMS_VERSION = "2026-10-22.2"
+TERMS_VERSION = "2026-10-28.1"
 DAY = 86400
 DEFAULT_PLANS = [
     {"id": "start", "name": "Start", "price_cents": 990, "children": 1, "calls": 300},
@@ -234,7 +234,7 @@ def contract_text(seller, payment_method="bank_transfer"):
         if payment_method == "bank_transfer"
         else "Der Zugang wird erst nach serverseitig bestätigter vollständiger Zahlung an den gebundenen Händler freigeschaltet. Eine Freigabe im Zahlungsfenster allein genügt nicht."
     )
-    return f"""SCHULPILOT – Vertragsbedingungen {TERMS_VERSION}
+    return f"""SchuleSchlau – Vertragsbedingungen {TERMS_VERSION}
 Anbieter: {seller["name"]}
 Anschrift: {seller["address"]}
 Kontakt: {seller["email"]}
@@ -242,7 +242,7 @@ Telefon: {seller["phone"]}
 {seller["legal_info"]}
 Beschwerdeanschrift: {seller["complaints_address"] or seller["address"]}
 
-Leistung: Nutzung der SCHULPILOT-Lernplattform für die im bestellten Tarif angegebene Kinderanzahl und die enthaltenen KI-Schritte. Ein KI-Schritt ist ein einzelner Erkennungs-, Aufgaben- oder Lernhilfe-Aufruf, einschließlich ausdrücklich erneut angeforderter Versuche. Bei fehlgeschlagenen Aufrufen mit unbekanntem Verbrauch bleibt die Reservierung angerechnet. Gespeicherte Lerninhalte bleiben nach Ende der Laufzeit im Konto erreichbar. Uploads, Antworten und vorhandene Erklärungen sind keine zusätzlichen KI-Schritte. KI-Ausgaben können Fehler enthalten und werden nicht als Noten- oder Lernerfolgsgarantie verkauft. Die Verfügbarkeit externer KI-Anbieter kann schwanken; es gibt keinen heimlichen Modellwechsel.
+Leistung: Nutzung der SchuleSchlau-Lernplattform für die im bestellten Tarif angegebene Kinderanzahl und die enthaltenen KI-Schritte. Ein KI-Schritt ist ein einzelner Erkennungs-, Aufgaben- oder Lernhilfe-Aufruf, einschließlich ausdrücklich erneut angeforderter Versuche. Bei fehlgeschlagenen Aufrufen mit unbekanntem Verbrauch bleibt die Reservierung angerechnet. Gespeicherte Lerninhalte bleiben nach Ende der Laufzeit im Konto erreichbar. Uploads, Antworten und vorhandene Erklärungen sind keine zusätzlichen KI-Schritte. KI-Ausgaben können Fehler enthalten und werden nicht als Noten- oder Lernerfolgsgarantie verkauft. Die Verfügbarkeit externer KI-Anbieter kann schwanken; es gibt keinen heimlichen Modellwechsel.
 
 Der Gesamtpreis und der Leistungsumfang werden vor der Bestellung angezeigt. Zahlung per {methods[payment_method]}. Die Bestellung wird mit der gespeicherten Bestellbestätigung angenommen. {payment_terms} Die Laufzeit beträgt 30 Tage ab Beginn; keine automatische Verlängerung, keine wiederkehrende Abbuchung. Bei Verlängerung desselben Tarifs beginnt der neue Zeitraum nach dem bisherigen. Ein Tarifwechsel während einer laufenden oder vorgemerkten Laufzeit erfolgt erst nach deren Ende. Die enthaltenen KI-Schritte gelten pro bezahltem Zeitraum und werden nicht angesammelt.
 
@@ -250,7 +250,7 @@ Ohne ausdrücklichen Wunsch nach vorzeitigem Beginn startet die Leistung frühes
 
 Widerrufsbelehrung: Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsabschlusses. Um Ihr Widerrufsrecht auszuüben, müssen Sie uns unter den oben genannten Kontaktdaten mittels einer eindeutigen Erklärung, etwa per E-Mail oder Brief, über Ihren Entschluss informieren. Zur Wahrung der Frist genügt die rechtzeitige Absendung. Bei Widerruf erstatten wir erhaltene Zahlungen unverzüglich, spätestens binnen vierzehn Tagen nach Eingang der Erklärung, mit demselben Zahlungsmittel, sofern nichts anderes ausdrücklich vereinbart wurde; es entstehen keine Erstattungsgebühren. Haben Sie einen Beginn während der Widerrufsfrist verlangt, ist für bis zum Widerruf auf Ihren Wunsch erbrachte Leistungen ein angemessener anteiliger Betrag zu zahlen. Eine Erstattung wird vom Anbieter geprüft und ausgeführt; die App löst keine Banküberweisung aus.
 
-Muster-Widerrufsformular: An {seller["name"]}, {seller["address"]}, {seller["email"]}: Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Nutzung von SCHULPILOT. Bestellt am: __. Bestellnummer: __. Name: __. Anschrift: __. Datum: __. Unterschrift (nur bei Papier): __.
+Muster-Widerrufsformular: An {seller["name"]}, {seller["address"]}, {seller["email"]}: Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Nutzung von SchuleSchlau. Bestellt am: __. Bestellnummer: __. Name: __. Anschrift: __. Datum: __. Unterschrift (nur bei Papier): __.
 """
 
 
@@ -591,7 +591,7 @@ def receipt(row):
     else:
         label = "Google Pay über PayPal" if row.payment_method == "google_pay" else "PayPal"
         payment_text = f"Zahlungsmittel: {label}\nKeine Banküberweisung für diese Bestellung senden. Erst eine vom Zahlungsanbieter bestätigte vollständige Zahlung schaltet die gespeicherte Laufzeit frei."
-    return f"""SCHULPILOT – Bestellbestätigung
+    return f"""SchuleSchlau – Bestellbestätigung
 Bestellnummer / Verwendungszweck: {row.payment_reference}
 Bestellt am: {datetime.fromtimestamp(row.created, timezone.utc).isoformat()}
 Tarif: {row.offer["name"]} · {row.offer["children"]} Kinderzugänge · {row.offer["calls"]} KI-Schritte
@@ -610,7 +610,7 @@ def send_confirmation(db, row, email):
     from .mail import send_message
 
     try:
-        send_message(email, "SCHULPILOT: Bestellbestätigung " + row.payment_reference, receipt(row))
+        send_message(email, "SchuleSchlau: Bestellbestätigung " + row.payment_reference, receipt(row))
         row.mail_status = "accepted"
     except HTTPException:
         row.mail_status = "failed"

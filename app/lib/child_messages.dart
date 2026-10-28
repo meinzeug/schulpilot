@@ -134,7 +134,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
               ? 'Deine Nachricht'
               : message['sender_role'] == 'parent'
               ? 'Nachricht von deinen Eltern'
-              : 'Nachricht von Schulpilot',
+              : 'Nachricht von SchuleSchlau',
         ),
         scrollable: true,
         content: Column(
@@ -414,7 +414,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
                           ('all', 'Alle Nachrichten'),
                           ('parent', 'Von meinen Eltern'),
                           ('child', 'Von mir'),
-                          ('system', 'Von Schulpilot'),
+                          ('system', 'Von SchuleSchlau'),
                         ])
                           DropdownMenuItem(
                             value: item.$1,
@@ -506,7 +506,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
                   label: Text(switch (sender) {
                     'parent' => 'Von meinen Eltern',
                     'child' => 'Von mir',
-                    _ => 'Von Schulpilot',
+                    _ => 'Von SchuleSchlau',
                   }),
                 ),
               if (order != 'newest') const Chip(label: Text('Älteste zuerst')),
@@ -614,7 +614,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
                                 : message['kind'] == 'reminder'
                                 ? 'Dein Lernplan'
                                 : message['sender_role'] == 'system'
-                                ? 'Von Schulpilot'
+                                ? 'Von SchuleSchlau'
                                 : message['sender_role'] == 'child'
                                 ? 'Von dir'
                                 : 'Von deinen Eltern',

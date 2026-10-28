@@ -461,7 +461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextButton(
               onPressed: () => showLicensePage(
                 context: context,
-                applicationName: 'SCHULPILOT',
+                applicationName: 'SchuleSchlau',
                 applicationVersion: appVersion,
               ),
               child: Text('Open-Source-Lizenzen'),

@@ -29,8 +29,8 @@ PRIVATE = Path(os.environ.get(
 )).expanduser()
 REPORT = ROOT / "artifacts/android-push-result.json"
 CHECKPOINT = ROOT / "artifacts/.android-push-send-checkpoint.json"
-NEUTRAL = "Es gibt Neuigkeiten in SCHULPILOT."
-BACKGROUND_BODY = "Es gibt Neuigkeiten in SCHULPILOT. Öffne deinen Lernraum."
+NEUTRAL = "Es gibt Neuigkeiten in SchuleSchlau."
+BACKGROUND_BODY = "Es gibt Neuigkeiten in SchuleSchlau. Öffne deinen Lernraum."
 ACCEPTED = "Testnachricht: Von FCM angenommen"
 
 
@@ -353,7 +353,7 @@ def main():
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             values = labels(nodes())
-            if "SCHULPILOT" in values and BACKGROUND_BODY in values:
+            if "SchuleSchlau" in values and BACKGROUND_BODY in values:
                 report["background_android_notification_visible"] = True
                 break
         if report["background_android_notification_visible"]:

@@ -71,7 +71,7 @@ class _BrandStartupState extends State<BrandStartup>
       return widget.application(_pendingPlatformLocation);
     }
     return MaterialApp(
-      title: 'SCHULPILOT',
+      title: 'SchuleSchlau',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -206,7 +206,7 @@ class _BrandIntroState extends State<_BrandIntro>
                               fixedSize: Size.square(size),
                             ),
                             child: Semantics(
-                              label: 'SCHULPILOT öffnen',
+                              label: 'SchuleSchlau öffnen',
                               excludeSemantics: true,
                               child: _StartupFrames(size: size, frame: frame),
                             ),
@@ -220,7 +220,7 @@ class _BrandIntroState extends State<_BrandIntro>
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: const Text(
-                                'SCHULPILOT',
+                                'SchuleSchlau',
                                 key: ValueKey('brand-startup-wordmark'),
                                 style: TextStyle(
                                   color: Colors.white,

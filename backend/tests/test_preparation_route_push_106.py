@@ -270,8 +270,8 @@ def test_preparation_fcm_transports_neutral_exact_route_and_same_origin_link(api
     n.send_fcm("SYNTHETIC-TOKEN", "preparation_ready", preparation_path=route)
     assert sent[0]["data"] == {"route": route}
     assert sent[0]["webpush"]["fcm_options"]["link"] == settings.public_url + route
-    assert sent[0]["notification"] == {"title": "SCHULPILOT",
-        "body": "Es gibt Neuigkeiten in SCHULPILOT. Öffne deinen Lernraum."}
+    assert sent[0]["notification"] == {"title": "SchuleSchlau",
+        "body": "Es gibt Neuigkeiten in SchuleSchlau. Öffne deinen Lernraum."}
     assert all(secret not in str(sent) for secret in ("PRIVATE SYNTHETIC TITLE", "PRIVATE SYNTHETIC TEXT"))
     assert sent[0]["android"]["ttl"] == "60s" and sent[0]["android"]["notification"]["visibility"] == "PRIVATE"
 

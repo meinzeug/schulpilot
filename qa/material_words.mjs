@@ -198,7 +198,7 @@ try {
       if (!state.offline_checked) {
         await child.setOffline(true);
         await tap(button('Antwort prüfen'));
-        await page.getByText(/Keine Verbindung zu SCHULPILOT/).waitFor();
+        await page.getByText(/Keine Verbindung zu SchuleSchlau/).waitFor();
         await child.setOffline(false);
         state.offline_checked = true;
       }

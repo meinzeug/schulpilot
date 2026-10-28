@@ -122,14 +122,14 @@ class FamilyCallNotifications(private val context: Context) {
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             Notification.Builder(context, CHANNEL) else Notification.Builder(context)
         builder.setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("SCHULPILOT · Live-Hilfe")
+            .setContentTitle("SchuleSchlau · Live-Hilfe")
             .setContentText("Ein Familienanruf wartet auf dich.")
             .setVisibility(Notification.VISIBILITY_PRIVATE).setCategory(Notification.CATEGORY_CALL)
             .setContentIntent(open).setOnlyAlertOnce(true).setOngoing(true)
             .setPriority(Notification.PRIORITY_MAX)
         if (styled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setStyle(Notification.CallStyle.forIncomingCall(
-                Person.Builder().setName("SCHULPILOT · Familie").setImportant(true).build(), decline, answer))
+                Person.Builder().setName("SchuleSchlau · Familie").setImportant(true).build(), decline, answer))
         } else {
             builder.addAction(Notification.Action.Builder(null, "Ablehnen", decline).build())
                 .addAction(Notification.Action.Builder(null, "Annehmen", answer).build())

@@ -336,7 +336,7 @@ def main():
         until = time.monotonic() + 15
         while time.monotonic() < until:
             values = labels(nodes())
-            if "SCHULPILOT" in values and BACKGROUND_BODY in values:
+            if "SchuleSchlau" in values and BACKGROUND_BODY in values:
                 report["android_notification_visible"] = True
                 break
         if not report["android_notification_visible"]:
@@ -363,7 +363,7 @@ def main():
             until = time.monotonic() + 35
             while time.monotonic() < until:
                 values = labels(nodes())
-                report["foreground_in_app_visible"] |= "Es gibt Neuigkeiten in SCHULPILOT." in values
+                report["foreground_in_app_visible"] |= "Es gibt Neuigkeiten in SchuleSchlau." in values
                 if own_notifications() != before:
                     break
                 time.sleep(.3)

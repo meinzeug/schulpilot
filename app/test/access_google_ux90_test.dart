@@ -270,7 +270,7 @@ void main() {
         find.textContaining('App-Rückkehrlink ist unvollständig'),
         findsOneWidget,
       );
-      expect(find.text('SCHULPILOT öffnen'), findsNothing);
+      expect(find.text('SchuleSchlau öffnen'), findsNothing);
       await f.close(t);
     },
   );

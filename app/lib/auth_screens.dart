@@ -352,7 +352,7 @@ class _LandingScreenState extends State<LandingScreen> {
                               ),
                               TextButton(
                                 onPressed: () => openRoute(context, '/about'),
-                                child: Text('Über SCHULPILOT'),
+                                child: Text('Über SchuleSchlau'),
                               ),
                               if (kIsWeb)
                                 TextButton(
@@ -874,7 +874,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     final mode = widget.mode;
     final revision = formRevision;
     final title = switch (mode) {
-      'register' => 'Euer Start mit Schulpilot',
+      'register' => 'Euer Start mit SchuleSchlau',
       'recovery' => 'Passwort vergessen?',
       'resend' => 'Bestätigungslink fehlt?',
       'reset' => 'Neues Elternpasswort',
@@ -1503,7 +1503,7 @@ class InformationScreen extends StatelessWidget {
                   Text(
                     kind == 'privacy'
                         ? 'Datenschutz & Transparenz'
-                        : 'Über Schulpilot',
+                        : 'Über SchuleSchlau',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   LoadView<Json>(
@@ -1566,13 +1566,13 @@ class InformationScreen extends StatelessWidget {
                       initialSection: section,
                       publicOrigin: (api ?? Api()).base,
                       legalApi: api,
-                      text: '''Eltern und Kinder haben eigene Zugänge. Eltern sehen innerhalb ihrer berechtigten Familie Materialien, Lernaufträge, gestellte Aufgaben, Antworten, Hinweise, Erklärungen, Hilfewünsche und eine ungefähre aktive Lernzeit. Andere Apps, Webseiten außerhalb von SCHULPILOT und das übrige Gerät werden nicht überwacht.
+                      text: '''Eltern und Kinder haben eigene Zugänge. Eltern sehen innerhalb ihrer berechtigten Familie Materialien, Lernaufträge, gestellte Aufgaben, Antworten, Hinweise, Erklärungen, Hilfewünsche und eine ungefähre aktive Lernzeit. Andere Apps, Webseiten außerhalb von SchuleSchlau und das übrige Gerät werden nicht überwacht.
 
 Im öffentlichen Testraum werden ausschließlich synthetische Inhalte verarbeitet. Bitte dort keine echten Namen, Fotos oder Kinderantworten eingeben. Jeder Testraum ist getrennt und wird nach 24 Stunden gelöscht. Die feste Demo benötigt keine KI. Der ausdrücklich gekennzeichnete KI-Test sendet ausschließlich ein vom Server erzeugtes künstliches Testblatt bzw. festen Beispielstoff an den dafür freigegebenen Lernanbieter. Freie Kontoeingaben werden dabei nicht übertragen.
 
 Echte Lerninhalte werden nur über ausdrücklich freigegebene und technisch geeignete Anbieter verarbeitet. Ist kein passender geschützter Endpunkt verfügbar, wird die Verarbeitung mit einer verständlichen Meldung angehalten. Nach einer abgeschlossenen Einheit wertet der freigegebene KI-Dienst auch die gespeicherten Aufgaben, Antworten, Fehlversuche und genutzten Hinweise aus und erstellt passende Anschlussübungen. Namen, Zugangsdaten und Familienkennungen werden dafür nicht benötigt. Die Gesamtbewertung und Wiederholungsplanung werden aus den gespeicherten Aktivitäten berechnet.
 
-Fragen zum Heft und ihre Antworten gehören zum privaten Lernverlauf und sind für berechtigte Eltern sichtbar. Die freigegebene Lern-KI erhält dafür die Frage und die bestätigten Hefttexte sowie bei Nachfragen wenige vorherige Antworten. Spracheingabe und Vorlesen sind freiwillig. Der Sprachdienst des Geräts oder Browsers kann Sprache online verarbeiten; vor einer Aufnahme erscheint ein Hinweis. SCHULPILOT speichert keine Audiodateien und lädt selbst keine hoch. Der erkannte Text bleibt vor dem Senden bearbeitbar. Auch Vorlesestimmen können einen Gerätedienst verwenden. Tippen und Lesen bleiben möglich.
+Fragen zum Heft und ihre Antworten gehören zum privaten Lernverlauf und sind für berechtigte Eltern sichtbar. Die freigegebene Lern-KI erhält dafür die Frage und die bestätigten Hefttexte sowie bei Nachfragen wenige vorherige Antworten. Spracheingabe und Vorlesen sind freiwillig. Der Sprachdienst des Geräts oder Browsers kann Sprache online verarbeiten; vor einer Aufnahme erscheint ein Hinweis. SchuleSchlau speichert keine Audiodateien und lädt selbst keine hoch. Der erkannte Text bleibt vor dem Senden bearbeitbar. Auch Vorlesestimmen können einen Gerätedienst verwenden. Tippen und Lesen bleiben möglich.
 
 Fotos werden vor dem Upload zum Drehen und Zuschneiden angezeigt. Ausstehende zugeschnittene Fotos sind auf diesem Gerät 24 Stunden fortsetzbar (höchstens 8 Seiten / 3 MB). Ältere Einträge werden beim nächsten Appstart oder Öffnen des Assistenten bereinigt; Abmelden oder Entfernen löscht diese lokale Warteschlange. Der Server entfernt Metadaten und gibt private Bilder ausschließlich nach Berechtigungsprüfung aus. Eine Verkleinerung ersetzt nicht das Entfernen persönlicher Angaben im Bild.
 
@@ -1582,7 +1582,7 @@ Sitzungen sind widerrufbar. Eltern können Kinderkonten und ihr eigenes Konto l�
 
 Eltern können freiwillig Schulnoten mit Fach, Datum und optionaler Notiz verwalten und deren Gewichtung im Lernplan ausschalten. Noten und Notennotizen werden nicht automatisch an die Lern-KI übermittelt; nur eine abgeleitete Unterstützungsstrategie wird ergänzt. Die Einträge gehören zum Familienexport und werden mit dem Kinderkonto gelöscht.
 
-Freiwillige Lerntipps verweisen auf Sofatutor. Nur dein eigener Klick öffnet den Anbieter; Anmeldung und Abo können nötig sein. Hefttexte, Fotos und SCHULPILOT-Zugänge werden dabei nicht übertragen. Persönliche Zuordnungen, Rückmeldungen und Linkaufrufe sehen nur das eigene Kind und berechtigte Eltern. Ein Linkaufruf beweist kein angesehenes Video und zählt nicht als gelöste Übung oder Lernzeit. Andere Webseiten werden nicht überwacht.
+Freiwillige Lerntipps verweisen auf Sofatutor. Nur dein eigener Klick öffnet den Anbieter; Anmeldung und Abo können nötig sein. Hefttexte, Fotos und SchuleSchlau-Zugänge werden dabei nicht übertragen. Persönliche Zuordnungen, Rückmeldungen und Linkaufrufe sehen nur das eigene Kind und berechtigte Eltern. Ein Linkaufruf beweist kein angesehenes Video und zählt nicht als gelöste Übung oder Lernzeit. Andere Webseiten werden nicht überwacht.
 
 Aufbewahrung: Materialien, Einheiten, Antworten, Heftfragen, Schulnoteneinträge, persönliche Lerntippzuordnungen und Linkaufrufe, Aktivitäten und Nachrichten höchstens 365 Tage; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere 7 Tage; tägliche Backups 14 Tage. Backups müssen vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen werden. Abrechnung und Betriebsprotokolle enthalten keine Fotos oder vollständigen Kinderantworten.
 
@@ -1594,7 +1594,7 @@ Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame In
                     )
                   else
                     Text(
-                      '''Schulpilot begleitet deinen Lernalltag: vom Foto deiner Heftseiten über Erklärungen und Übungen bis zur passenden Wiederholung.
+                      '''SchuleSchlau begleitet deinen Lernalltag: vom Foto deiner Heftseiten über Erklärungen und Übungen bis zur passenden Wiederholung.
 
 Kinder lernen in ihrem eigenen Lernraum. Eltern sehen, was schon gelingt, und können helfen, wenn es hakt.
 

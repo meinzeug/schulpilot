@@ -422,14 +422,14 @@ void main() {
           tester,
           (_) async => reply({'status': 'return_to_app'}),
           (state, router) async {
-            await press(tester, 'SCHULPILOT öffnen');
+            await press(tester, 'SchuleSchlau öffnen');
             expect(
               find.text(
-                'Die App konnte nicht geöffnet werden. Öffne SCHULPILOT auf diesem Gerät und kehre zur Anmeldung zurück.',
+                'Die App konnte nicht geöffnet werden. Öffne SchuleSchlau auf diesem Gerät und kehre zur Anmeldung zurück.',
               ),
               findsOneWidget,
             );
-            expect(find.text('SCHULPILOT öffnen'), findsOneWidget);
+            expect(find.text('SchuleSchlau öffnen'), findsOneWidget);
             expect(state.user, isNull);
           },
           ticket: 'T' * 64,

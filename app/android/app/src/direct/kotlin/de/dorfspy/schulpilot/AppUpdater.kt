@@ -80,7 +80,7 @@ class AppUpdater(private val activity: Activity) {
                     ui {
                         progress = ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100 }
                         dialog?.dismiss()
-                        dialog = AlertDialog.Builder(activity).setTitle("SCHULPILOT wird aktualisiert")
+                        dialog = AlertDialog.Builder(activity).setTitle("SchuleSchlau wird aktualisiert")
                             .setMessage("Version ${release.version} wird sicher geladen. Deine Lerndaten bleiben erhalten. Android bestätigt anschließend die Installation.")
                             .setView(progress).setNegativeButton("Später") { _, _ -> cancelled.set(true) }
                             .setOnCancelListener { cancelled.set(true) }.show()
@@ -140,7 +140,7 @@ class AppUpdater(private val activity: Activity) {
     private fun install(file: File, release: Release) {
         if (Build.VERSION.SDK_INT >= 26 && !activity.packageManager.canRequestPackageInstalls()) {
             dialog = AlertDialog.Builder(activity).setTitle("Update-Installation erlauben")
-                .setMessage("Erlaube Android einmalig, Updates aus SCHULPILOT zu installieren. Anschließend bestätigst du das Update. Andere Apps werden nicht installiert.")
+                .setMessage("Erlaube Android einmalig, Updates aus SchuleSchlau zu installieren. Anschließend bestätigst du das Update. Andere Apps werden nicht installiert.")
                 .setPositiveButton("Android-Einstellungen öffnen") { _, _ ->
                     try {
                         activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}")))

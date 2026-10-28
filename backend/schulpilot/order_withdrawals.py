@@ -23,7 +23,7 @@ from .security import admin, audit, decrypt, digest, encrypt, insert_ignore, par
 
 router = APIRouter(tags=["Widerruf"])
 DAY = 86400
-DECLARATION = "Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Nutzung von SCHULPILOT."
+DECLARATION = "Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Nutzung von SchuleSchlau."
 BERLIN = ZoneInfo("Europe/Berlin")
 
 
@@ -66,7 +66,7 @@ def snapshot(identifier, received, buyer_name, email, reference):
 
 
 def receipt_text(value):
-    return ("SCHULPILOT – Eingangsbestätigung Ihrer Widerrufserklärung\n"
+    return ("SchuleSchlau – Eingangsbestätigung Ihrer Widerrufserklärung\n"
             f"Belegnummer: {value['receipt_id']}\n"
             f"Eingegangen am: {value['received_at_iso']} (UTC)\n"
             f"Name: {value['buyer_name']}\nBestellreferenz: {value['order_reference']}\n"
@@ -183,7 +183,7 @@ def send_receipt(db, model, identifier):
         return
     value = decoded(row)
     try:
-        send_message(value["contact_email"], "SCHULPILOT: Eingang Ihrer Widerrufserklärung", receipt_text(value))
+        send_message(value["contact_email"], "SchuleSchlau: Eingang Ihrer Widerrufserklärung", receipt_text(value))
         status = "accepted"
     except (HTTPException, OSError):
         status = "failed"

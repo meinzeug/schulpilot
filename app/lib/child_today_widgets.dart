@@ -523,7 +523,7 @@ class ChildTodayTools extends StatelessWidget {
               final tiles = [
                 _TodayTool(
                   title: 'Mein Plan',
-                  subtitle: 'Was als Nächstes ansteht',
+                  subtitle: 'Vor und nach der Schule',
                   icon: Icons.route_rounded,
                   color: palette.teal,
                   onTap: onPlan,

@@ -197,7 +197,7 @@ void main() {
                 find.text(
                   role == 'parent'
                       ? 'Gespeicherte Planung'
-                      : 'SCHULPILOT · BETRIEB',
+                      : 'SchuleSchlau · BETRIEB',
                 ),
                 findsOneWidget,
               );
@@ -231,7 +231,7 @@ void main() {
       expect(find.byTooltip('Über diesen Bereich'), findsOneWidget);
       expect(
         find.text(
-          role == 'parent' ? 'FAMILIENBEREICH' : 'SCHULPILOT · BETRIEB',
+          role == 'parent' ? 'FAMILIENBEREICH' : 'SchuleSchlau · BETRIEB',
         ),
         findsNothing,
       );
@@ -239,7 +239,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.text(
-          role == 'parent' ? 'FAMILIENBEREICH' : 'SCHULPILOT · BETRIEB',
+          role == 'parent' ? 'FAMILIENBEREICH' : 'SchuleSchlau · BETRIEB',
         ),
         findsOneWidget,
       );

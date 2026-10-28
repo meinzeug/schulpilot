@@ -662,7 +662,7 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
       await Clipboard.setData(
         ClipboardData(
           text:
-              'SCHULPILOT Push-Betriebsstand\nLokaler Abruf: ${loadedAt?.toIso8601String() ?? 'unbekannt'}\nBetreiberfreigabe: ${flag(data['production_approved'])}\nTechnisch verfügbar: ${flag(data['production_available'])}\nDienstkonto konfiguriert: ${flag(data['credential_configured'])}\nGerätezahlen: ${entries(data['device_counts'], {'android', 'web'})}\nTechnische Zustände (24 Stunden): ${entries(data['delivery_counts_24h'], {'queued', 'sending', 'accepted', 'validated', 'suppressed', 'failed'})}\nKeine Aussage über sichtbare Zustellung; keine Gerätekennungen, Tokens oder privaten Inhalte enthalten.',
+              'SchuleSchlau Push-Betriebsstand\nLokaler Abruf: ${loadedAt?.toIso8601String() ?? 'unbekannt'}\nBetreiberfreigabe: ${flag(data['production_approved'])}\nTechnisch verfügbar: ${flag(data['production_available'])}\nDienstkonto konfiguriert: ${flag(data['credential_configured'])}\nGerätezahlen: ${entries(data['device_counts'], {'android', 'web'})}\nTechnische Zustände (24 Stunden): ${entries(data['delivery_counts_24h'], {'queued', 'sending', 'accepted', 'validated', 'suppressed', 'failed'})}\nKeine Aussage über sichtbare Zustellung; keine Gerätekennungen, Tokens oder privaten Inhalte enthalten.',
         ),
       );
       if (own) {

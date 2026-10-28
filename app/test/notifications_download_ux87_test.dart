@@ -277,7 +277,7 @@ void main() {
         MaterialApp(home: Scaffold(body: AndroidDownload(api))),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Schulpilot für Android'), findsOneWidget);
+      expect(find.text('SchuleSchlau für Android'), findsOneWidget);
       expect(find.textContaining('Version'), findsNothing);
       available = false;
       await tester.pumpWidget(const SizedBox());
@@ -285,7 +285,7 @@ void main() {
         MaterialApp(home: Scaffold(body: AndroidDownload(api))),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Schulpilot für Android'), findsNothing);
+      expect(find.text('SchuleSchlau für Android'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );

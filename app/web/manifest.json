@@ -1,6 +1,6 @@
 {
-  "name": "SCHULPILOT",
-  "short_name": "SCHULPILOT",
+  "name": "SchuleSchlau",
+  "short_name": "SchuleSchlau",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#101E24",

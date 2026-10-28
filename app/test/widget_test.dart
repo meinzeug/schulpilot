@@ -12,7 +12,7 @@ void main() {
   testWidgets('Landing offers the demo and a separate login', (tester) async {
     await tester.pumpWidget(SchulpilotApp(AppState()));
     await tester.pumpAndSettle();
-    expect(find.text('SCHULPILOT'), findsOneWidget);
+    expect(find.text('SchuleSchlau'), findsOneWidget);
     expect(find.text('Demo ausprobieren'), findsOneWidget);
     expect(find.text('Anmelden'), findsOneWidget);
     expect(tester.takeException(), isNull);
