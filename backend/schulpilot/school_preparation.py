@@ -275,7 +275,7 @@ def _legacy_part_migration(db, day, state):
 
 
 def _prepare_parts(db, day, child, state, source_pages, *, automatic=False):
-    """Only conscious submit can bind a plan; small new packages remain legacy."""
+    """Bind finite plans without reopening a previously attempted legacy package."""
     from .package_partitions import build_plan
     from .school_day import package_plan
 
@@ -298,7 +298,15 @@ def _prepare_parts(db, day, child, state, source_pages, *, automatic=False):
     if plan["status"] != "ready":
         raise HTTPException(409, "Die Heftseiten sind für die Teilplanung noch nicht verwendbar. Bitte zuerst die markierten Quellen prüfen.")
     if len(plan["parts"]) <= 1 and not state.get("package_plan") and not _legacy_part_migration(db, day, state):
-        return {}
+        # This opt-in is set only when a new conscious submission starts. It is
+        # carried through automatic OCR; old failed requests never acquire it.
+        # Check the persisted job history as well as the state counter so a
+        # restart, missing state or resubmission cannot reset legacy attempts.
+        sources = _sources(db, day)
+        stored = state.get("package_attempts", {}).get(_fingerprint(sources), 0)
+        starts, _ = _attempt_counts(db, day.child_id, "package", sources, stored)
+        if state.get("single_part_contract") is not True or starts:
+            return {}
     return {"package_plan": plan, "package_config_revision": plan["config_revision"], "package_outputs": {}}
 
 
@@ -452,7 +460,10 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(ACTIVE))):
         raise HTTPException(409, "Für dich wird gerade noch etwas vorbereitet. Bitte kurz warten.")
     repair = None
-    part_state = _prepare_parts(db, day, child, state, source_pages) if _parts_enabled(source_pages) else {}
+    planning_state = dict(state)
+    if status in (None, "idle", "needs_review") or (not same and status in ("failed", "blocked")):
+        planning_state["single_part_contract"] = True
+    part_state = _prepare_parts(db, day, child, planning_state, source_pages) if _parts_enabled(source_pages) else {}
     new_part_contract = bool(part_state) and not _current_plan(db, day, child, state)
     if same and status in ("failed", "blocked", "processing"):
         blocker = preparation_data(db, day, child).get("retry_blocker")
@@ -494,6 +505,7 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
         "package_attempts": state.get("package_attempts", {}),
         "package_part_attempts": state.get("package_part_attempts", {}),
         "package_parts_version": 1,
+        "single_part_contract": planning_state.get("single_part_contract") is True,
         "package_publish_requests": state.get("package_publish_requests", []),
         **part_state,
     }

@@ -404,16 +404,16 @@ def test_empty_first_and_second_reading_persist_without_fabricated_text(pipeline
 def test_day_after_check_failure_creates_only_safe_sources_package_and_path(pipeline, monkeypatch):
     from schulpilot.db import LearningUnit, UnitSource
     from schulpilot.study_path import sources
-    from test_school_day import unit_for
+    from test_package_parts_worker import CASE, bounded_output
 
     api = pipeline["api"]
     day = api.post(f"/api/children/{pipeline['child']['id']}/school-day/today").json()
     p1, p2 = upload(pipeline, day), upload(pipeline, day)
     pipeline["outputs"][:] = [
-        reading("Unsafe first reading"),
+        reading("Unsafe first reading", subject=CASE["subject"]),
         ProviderError("synthetic failed countercheck"),
-        reading(),
-        reading(),
+        reading(CASE["source"], subject=CASE["subject"], topic="Künstlicher Wasserkreislauf"),
+        reading(CASE["source"], subject=CASE["subject"], topic="Künstlicher Wasserkreislauf"),
     ]
     assert api.post(f"/api/school-days/{day['id']}/prepare", headers={"Idempotency-Key": "safe-day"}).status_code == 202
     for _ in range(4):
@@ -427,10 +427,11 @@ def test_day_after_check_failure_creates_only_safe_sources_package_and_path(pipe
 
     def package(config, function, payload, *args, **kwargs):
         assert function == "package"
+        assert payload["package_partition"] == 0
         calls.append(copy.deepcopy(payload))
         assert "Unsafe first reading" not in json.dumps(payload)
         return Result(
-            {"units": [{**unit_for(g["subject"]), "group_id": g["id"]} for g in payload["selected_groups"]]},
+            bounded_output(payload),
             20,
             50,
             23,
@@ -443,7 +444,12 @@ def test_day_after_check_failure_creates_only_safe_sources_package_and_path(pipe
         identifier = claim(db)
         assert identifier
     process(identifier)
-    advance_day()
+    # Exercise finalization directly here so an internal regression produces
+    # its real traceback instead of the generic user-facing failure message.
+    from schulpilot.school_preparation import _advance
+
+    with DB.begin() as db:
+        _advance(db, db.get(SchoolDay, day["id"]))
     with DB() as db:
         job = db.get(Job, identifier)
         assert job.status == "completed", job.error

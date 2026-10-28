@@ -89,3 +89,20 @@ Aufgabenanzahl, Wiederholungsgrenzen, bestehende Aufträge und Quellenbindung;
 er ist nicht durch ein bloßes Freischalten einer weiteren Wiederholung erledigt.
 Der vollständige Durchlauf von Aufgaben, adaptiver Weiterübung und
 Fertigstellungsbenachrichtigung bleibt bis zu einem erzeugten Paket offen.
+
+## Korrektur für neue kleine Pakete
+
+Neue bewusst abgegebene Materialstände verwenden auch für einen einzelnen
+Paketabschnitt den vorhandenen quellgebundenen Teilplan mit separater normaler
+Reservierung und geprüften Grafikreferenzen. Die einmalige Entscheidung wird
+über die automatische Bilderkennung hinweg gespeichert. Bereits fehlgeschlagene
+ältere Aufträge werden nicht allein durch das neue Format wieder freigeschaltet:
+Gespeicherte Zähler und tatsächlich vorhandene Aufträge werden berücksichtigt.
+Ein wirklich geänderter Materialstand kann nach erneuter ausdrücklicher Abgabe
+neu geplant werden; alte Versuche bleiben erhalten. Teilrunden enthalten im
+bestehenden Vertrag zwei Aufgaben und sind nur ein Einstieg in den Lernweg.
+
+Isolierte Tests decken neue und alte Einzelpakete, gebundene Grafikdaten,
+automatische Nachprüfung, Ausschluss unsicherer Quellen und den Abschluss ab.
+Der reale KI-Durchlauf muss gesondert erfolgen; ein erfolgreiches Mock-Ergebnis
+ist kein Nachweis für die Qualität oder Verfügbarkeit des Modells.

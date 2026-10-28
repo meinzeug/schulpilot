@@ -1,6 +1,7 @@
 """Synthetic persistent part coordination; every provider boundary is mocked."""
 import copy
 import uuid
+from unittest.mock import patch
 
 import pytest
 from schulpilot import package_partitions
@@ -87,16 +88,18 @@ def fail_part(day_id):
         return job.id
 
 
-def test_small_new_singleton_stays_legacy_but_stamps_new_contract(api, household):
+def test_small_new_singleton_uses_source_bound_part_and_reserves_once(api, household):
     day_id = make_day(household, 3)
     value = submit(api, day_id)
     with DB() as db:
         state = db.get(SchoolDay, day_id).preparation
         job = db.get(Job, state["job_id"])
-        assert state["package_parts_version"] == 1 and "package_plan" not in state
-        assert job.payload.get("package_partition") is None
+        assert state["package_parts_version"] == 1 and state["single_part_contract"] is True
+        assert job.payload.get("package_partition") == 0
         assert len(job.payload["groups"][0]["material_ids"]) == 3
-    assert "total_parts" not in value and count_jobs() == 1
+    assert value["total_parts"] == 1 and value["active_part"] == 0 and count_jobs() == 1
+    assert submit(api, day_id)["job"]["id"] == value["job"]["id"]
+    assert count_jobs() == 1
 
 
 def test_multi_part_submit_reserves_one_normal_job_replays_and_gets_never_advance(api, household):
@@ -243,12 +246,16 @@ def test_missing_completed_receipt_does_not_auto_repeat_paid_part(api, household
 
 def seed_legacy_failure(api, household, *, stamp=False, error=LENGTH_ERROR):
     day_id = make_day(household, 1)
-    submit(api, day_id)
+    # Model a job created by a deployed legacy version, before singleton
+    # contracts existed. Its attempts must not disappear after an upgrade.
+    with patch.object(prep, "_prepare_parts", return_value={}):
+        submit(api, day_id)
     fail_part(day_id)
     prep.advance(day_id)
     with DB.begin() as db:
         day = db.get(SchoolDay, day_id)
         state = prep._state(day)
+        state.pop("single_part_contract", None)
         if not stamp:
             state.pop("package_parts_version")
         state["package_attempts"][prep._fingerprint(state["sources"])] = 3
@@ -283,6 +290,39 @@ def test_fresh_contract_or_nonlength_legacy_cannot_unlock_extra_singleton_attemp
     assert count_jobs() == 1
     with DB() as db:
         assert "package_plan" not in db.get(SchoolDay, day_id).preparation
+
+
+def test_singleton_flag_cannot_hide_existing_legacy_attempts(api, household):
+    day_id = seed_legacy_failure(api, household, stamp=True, error="Ein anderer Fehler.")
+    with DB.begin() as db:
+        day = db.get(SchoolDay, day_id)
+        state = prep._state(day)
+        state["single_part_contract"] = True
+        # A lost counter must not hide the persisted provider job.
+        state["package_attempts"] = {}
+        prep._write(day, state)
+        child = db.get(Child, day.child_id)
+        assert prep._prepare_parts(db, day, child, state, prep._pages(db, day)) == {}
+    assert count_jobs() == 1
+
+
+def test_new_source_snapshot_after_legacy_failure_gets_new_plan_but_retains_attempts(api, household):
+    day_id = seed_legacy_failure(api, household, stamp=True, error="Ein anderer Fehler.")
+    with DB.begin() as db:
+        day = db.get(SchoolDay, day_id)
+        old_attempts = copy.deepcopy(day.preparation["package_attempts"])
+        first = db.scalar(select(Material).where(Material.school_day_id == day_id))
+        db.add(Material(child_id=day.child_id, school_day_id=day_id, page_number=2,
+            subject=first.subject, topic=first.topic, title="Weitere künstliche Seite",
+            content=first.content + " Neuer belegter Stoff.", confirmed=True, status="confirmed",
+            purpose="notebook", synthetic=False))
+        day.revision += 1
+    value = submit(api, day_id, "new-source-new-singleton")
+    assert value["active_part"] == 0 and count_jobs() == 2
+    with DB() as db:
+        state = db.get(SchoolDay, day_id).preparation
+        assert state["package_attempts"] == old_attempts
+        assert len(state["sources"]) == 2
 
 
 def test_final_merge_only_once_fresh_state_scrub_and_previous_units_attempts_preserved(api, household, monkeypatch):

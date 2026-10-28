@@ -1,5 +1,6 @@
 """Synthetic private pages; no external AI, mail or push calls."""
 
+import copy
 import uuid
 from datetime import timedelta
 
@@ -25,6 +26,31 @@ from schulpilot.school_preparation import advance_one
 from schulpilot.worker import claim, process
 from sqlalchemy import func, select
 from test_school_day import allow_synthetic_test_transport, image_bytes, unit_for
+
+
+def synthetic_package(payload):
+    if payload.get("package_partition") is not None:
+        from schulpilot.package_prepared_graphics import compile_candidates
+
+        candidates = compile_candidates(payload)
+        def step(stage):
+            candidate = next(row for row in candidates if row["kind"] == "fraction" and row["disclosure"] == stage)
+            return {"id": "e1", "text": candidate["text"], "competence_id": None,
+                "disclosure": stage, "reference": copy.deepcopy(candidate["reference"]),
+                "source_refs": candidate["source_refs"], "presentation": {"version": 1,
+                "evidence_kind": "knowledge", "blocks": [copy.deepcopy(candidate["block"])]}}
+        questions = [{"id": f"q{i}", "type": "short", "prompt": "Was beschreibt 1/2?",
+            "options": [], "answer": "1 von 2 gleich großen Teilen", "accepted": [],
+            "hints": ["Schau auf die gleich großen Teile."], "explanation": "Ein Teil von zwei.",
+            "presentation": None, "field_group": None, "explanation_steps": [step("solution")]}
+            for i in (1, 2)]
+        group = payload["selected_groups"][0]
+        return Result({"units": [{"group_id": group["id"], "subject": group["subject"],
+            "topic": "Brüche", "explanation": "Ein Teil von zwei.",
+            "explanation_steps": [step("given")], "questions": questions}]}, 20, 40, 0)
+    return Result(
+        {"units": [{**unit_for(g["subject"]), "group_id": g["id"]} for g in payload["selected_groups"]]}, 20, 40, 0
+    )
 
 
 def capture(api, child, monkeypatch, count=2):
@@ -54,7 +80,7 @@ def capture(api, child, monkeypatch, count=2):
                 {
                     "subject": "Mathematik",
                     "topic": "Brüche",
-                    "content": "SYNTHETISCHER SEITENINHALT: Ein Bruch besteht aus Zähler und Nenner.",
+                    "content": "SYNTHETISCHER SEITENINHALT: Ein Bruch 1/2 beschreibt 1 von 2 gleich großen Teilen.",
                     "uncertainties": ["Bitte die künstliche Stelle prüfen."],
                     "homework": [],
                 },
@@ -63,9 +89,7 @@ def capture(api, child, monkeypatch, count=2):
                 0,
             )
         assert function == "package"
-        return Result(
-            {"units": [{**unit_for(g["subject"]), "group_id": g["id"]} for g in payload["selected_groups"]]}, 20, 40, 0
-        )
+        return synthetic_package(payload)
 
     monkeypatch.setattr("schulpilot.worker.request_provider", provider)
     return day, calls
@@ -365,12 +389,7 @@ def test_explicit_package_crosses_midnight_without_discarding_its_units(api, hou
         def provider(config, function, payload, image_bytes=None, **kwargs):
             calls.append(function)
             midnight()
-            return Result(
-                {"units": [{**unit_for(g["subject"]), "group_id": g["id"]} for g in payload["selected_groups"]]},
-                20,
-                40,
-                0,
-            )
+            return synthetic_package(payload)
 
         monkeypatch.setattr("schulpilot.worker.request_provider", provider)
     assert step()
