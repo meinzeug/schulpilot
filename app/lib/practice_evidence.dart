@@ -13,6 +13,8 @@ List<String> supportReasonLabels(Json attempt) {
     'another_attempt': 'Du hast es noch einmal versucht.',
     'recent_solution':
         'Das Wort oder die Lösung war kurz vorher als Vorlage zu sehen.',
+    'intro_solution':
+        'Die Antwort war im ersten Erklärungsschritt schon zu sehen.',
     'possible_prior_solution': 'Eine frühere Erklärung könnte die Antwort gezeigt haben. Ob du sie schon alleine wusstest, ist noch offen.',
     'speech_transcript': 'Die Antwort wurde eingesprochen; das prüft keine eigene Rechtschreibung.',
   };

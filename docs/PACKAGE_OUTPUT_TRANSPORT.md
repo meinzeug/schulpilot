@@ -105,3 +105,39 @@ endete am 25.10.2026 mit `length` (bestätigte Generationgebühr: 0,107296 USD).
 Der höhere Rahmen allein reicht damit für diesen Paketvertrag nicht aus.
 Release 1.36.1+113 ergänzt deshalb persistente begrenzte Teilaufträge mit
 abschließender atomarer Veröffentlichung, siehe [PACKAGE_PARTS.md](PACKAGE_PARTS.md).
+
+## Zusätzliche Begrenzung fester Ausgabelisten
+
+`package-fixed-arrays-1` ergänzt den bestehenden Codec für neu angeforderte
+Pakete. Ausschließlich Listen, für die das konkrete Schema bereits dieselbe
+positive Mindest- und Höchstzahl von höchstens acht Einträgen vorgibt, werden
+als geschlossenes Objekt mit genau dieser Zahl verpflichtender Felder
+übertragen. Die Rückübersetzung erhält Reihenfolge und Werte; fehlende oder
+zusätzliche Felder werden abgewiesen. Variable Listen, gespeicherte Pakete und
+alle nachfolgenden Quellen-, Grafik- und Aufgabenprüfungen bleiben unverändert.
+So hängt die Anzahl dieser Felder nicht nur von `minItems`/`maxItems` ab.
+
+Microsoft dokumentiert für Azure Structured Outputs Einschränkungen bei
+bestimmten Schema-Schlüsselwörtern, darunter Listen- und Textlängen; die
+allgemeine Dokumentation ist keine Aussage über das Verhalten jedes einzelnen
+OpenRouter-Endpunkts. Ein künstlicher Grenztest mit `maxItems=1` und
+`maxLength=4` am tatsächlich gewählten Sol/Azure-EU-Endpunkt lieferte einen
+Eintrag mit vier Zeichen. Das ist ein Einzeltest, kein Beweis für jede
+Kombination. [Microsoft: Structured Outputs](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs)
+
+Mit ausschließlich künstlichem Stoff wurden echte reservierte Paketaufrufe
+über `openai/gpt-6.1-sol` und `azure/eu` ausgeführt. Der heutige Stand vor der
+Feldbegrenzung erzeugte drei Biologiepakete sowie je ein Mathematik- und
+Deutschpaket vollständig. Der neue Transport erzeugte je ein Paket in den drei
+Fächern vollständig und bestand die bestehenden Grafik- und Inhaltsprüfungen.
+Ein Vergleich mit Version 1.38.6 lieferte eine vollständige, aber wegen nicht
+belegter Grafikbeschriftungen verworfene Antwort. Er reproduzierte die beiden
+historischen `length`-Abbrüche nicht. Die zehn echten künstlichen Aufrufe
+einschließlich Vergleich und Schema-Grenztest kosteten laut Anbieter zusammen
+0,2495394 USD; keine echten Kinderinhalte wurden verwendet.
+
+Feste Felder vermeiden unbeschränkt anwachsende Listen an diesen Stellen,
+garantieren aber keine vollständige Antwort bei jedem Modellaufruf: Andere
+Listen, Texte, Reasoning und Anbieterfehler bleiben begrenzt oder werden
+weiterhin wie bisher geprüft. Ein `length`-Ergebnis wird unverändert verworfen;
+es gibt keinen stillen Modellwechsel oder automatischen erneuten Aufruf.

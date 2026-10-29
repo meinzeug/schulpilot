@@ -1,6 +1,6 @@
 """Request-bound, reversible package output spelling, never a saved format.
 
-Only property names and globally proven scalar constants change on the wire.
+Property names, proven scalar constants and exact-size arrays change on the wire.
 Strings, answers, source excerpts, list order and numeric values are untouched.
 The caller must run every existing canonical validator after decoding.
 """
@@ -11,6 +11,7 @@ import string
 from dataclasses import dataclass
 
 REVISION = "package-output-1"
+ARRAY_REVISION = "package-fixed-arrays-1"
 _KEEP = {"id", "type", "kind", "group_id", "subject"}
 _MISSING = object()
 
@@ -57,6 +58,16 @@ def _same(a, b):
     return _json(a) == _json(b)
 
 
+def _fixed_array_size(node):
+    """Only exact cardinalities become closed objects; never guess defaults."""
+    size = node.get("minItems")
+    if (node.get("type") == "array" and type(size) is int and 1 <= size <= 8
+            and node.get("maxItems") == size and isinstance(node.get("items"), dict)
+            and "enum" not in node and "const" not in node):
+        return size
+    return None
+
+
 def _enum_same(value, allowed):
     # JSON Schema equates finite JSON numbers (1 and1.0), including inside
     # numeric parameter arrays. Do not normalize data/constants or relax the
@@ -83,7 +94,10 @@ class Binding:
         return ("\n" + REVISION + ": Output property aliases=" + _json(names)
                 + ". These replace PROPERTY NAMES only, including nested objects; string/enum values, "
                 "answers, literal quotes and array order remain unchanged. Schema-omitted constants are "
-                "reconstructed by the server; never output their aliases. No compressed data or executable code.")
+                "reconstructed by the server; never output their aliases. " + ARRAY_REVISION +
+                ": Some exact-length lists are objects with required keys v0, v1, etc. "
+                "Fill each key once in order, exactly as specified by its schema. "
+                "No compressed data or executable code.")
 
     def encode(self, canonical):
         """Synthetic adapters/tests can emit the exact newly requested format."""
@@ -120,6 +134,17 @@ class Binding:
         if "oneOf" in node or "allOf" in node:
             raise ValueError("Nicht unterstützte Paket-Schemaform.")
         expected = node.get("type")
+        fixed_size = _fixed_array_size(node)
+        if fixed_size is not None:
+            keys = ["v" + str(index) for index in range(fixed_size)]
+            if encoding:
+                if not isinstance(value, list) or len(value) != fixed_size:
+                    raise ValueError("Paketliste hat nicht die festgelegte Anzahl Einträge.")
+                return {key: self._walk(node["items"], item, encoding=True, depth=depth + 1)
+                        for key, item in zip(keys, value, strict=True)}
+            if not isinstance(value, dict) or set(value) != set(keys):
+                raise ValueError("Feste Paketliste hat fehlende oder unerlaubte Einträge.")
+            return [self._walk(node["items"], value[key], encoding=False, depth=depth + 1) for key in keys]
         valid = {"object": isinstance(value, dict), "array": isinstance(value, list),
                  "string": isinstance(value, str), "integer": type(value) is int,
                  "number": type(value) is int or (type(value) is float and math.isfinite(value)),
@@ -215,6 +240,12 @@ def bind(schema):
     def project(node):
         if not isinstance(node, dict):
             return copy.deepcopy(node)
+        fixed_size = _fixed_array_size(node)
+        if fixed_size is not None:
+            keys = ["v" + str(index) for index in range(fixed_size)]
+            return {"type": "object", "properties": {key: project(node["items"]) for key in keys},
+                    "required": keys, "additionalProperties": False,
+                    "description": "Exact-length list: write v0, v1, etc. in their original order."}
         result = copy.deepcopy(node)
         if "properties" in node:
             result["properties"] = {aliases[name]: project(child) for name, child in node["properties"].items()

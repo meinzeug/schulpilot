@@ -104,6 +104,36 @@ def test_only_explicit_scalar_constants_are_restored(constant):
         binding.decode({**encoded, binding.aliases["value"]: constant})
 
 
+def test_fixed_array_wire_has_closed_required_slots_and_preserves_order():
+    schema = {"type": "object", "properties": {
+        "questions": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string"}},
+        "hints": {"type": "array", "minItems": 0, "maxItems": 2, "items": {"type": "string"}},
+    }, "required": ["questions", "hints"], "additionalProperties": False}
+    binding = transport.bind(schema)
+    question_schema = binding.wire_schema["properties"][binding.aliases["questions"]]
+    assert question_schema["type"] == "object" and question_schema["required"] == ["v0", "v1"]
+    assert question_schema["additionalProperties"] is False
+    assert binding.wire_schema["properties"][binding.aliases["hints"]]["type"] == "array"
+    original = {"questions": ["erste", "zweite"], "hints": ["Tipp"]}
+    encoded = binding.encode(original)
+    assert encoded[binding.aliases["questions"]] == {"v0": "erste", "v1": "zweite"}
+    assert binding.decode(encoded) == original
+    for bad in ({"v0": "erste"}, {"v0": "erste", "v1": "zweite", "v2": "dritte"}, ["erste", "zweite"]):
+        with pytest.raises(ValueError):
+            binding.decode({**encoded, binding.aliases["questions"]: bad})
+    with pytest.raises(ValueError):
+        binding.encode({"questions": ["erste"], "hints": []})
+
+
+def test_nullable_exact_list_distinguishes_null_from_fixed_slots():
+    schema = {"type": "object", "properties": {"field": {"anyOf": [
+        {"type": "null"}, {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string"}},
+    ]}}, "required": ["field"], "additionalProperties": False}
+    binding = transport.bind(schema)
+    for value in (None, ["A", "B"]):
+        assert binding.decode(binding.encode({"field": value})) == {"field": value}
+
+
 @pytest.mark.parametrize("fault", ["missing", "unknown", "canonical_keys", "wrong_type", "null_override"])
 def test_decoder_rejects_malformed_wire_without_guessing_or_partial_data(fault):
     data, _, schema = fixture()

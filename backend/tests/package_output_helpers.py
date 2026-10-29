@@ -102,4 +102,10 @@ class PackageOutputCapture:
                 assert alias not in result
                 result[alias] = rename(child)
             return result
-        return rename(defaults(root, value))
+        prepared = defaults(root, value)
+        try:
+            # Valid fixtures use the real request-bound list/alias codec.
+            return self.binding.encode(prepared)
+        except ValueError:
+            # Deliberately invalid provider payloads still reach the adapter.
+            return rename(prepared)

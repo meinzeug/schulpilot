@@ -126,6 +126,26 @@ class CompositionRound extends room.SavedRound {
   }
 }
 
+class ExposureRound extends CompositionRound {
+  final exposureRequests = <http.Request>[];
+  bool failExposure = true;
+  ExposureRound() {
+    value['supports_feedback_exposure'] = true;
+  }
+
+  @override
+  Future<http.Response> handle(http.Request request) async {
+    if (request.url.path.endsWith('/feedback-exposure')) {
+      exposureRequests.add(request);
+      expect(jsonDecode(request.body), {'attempt_id': 'saved-second-attempt'});
+      return failExposure
+          ? room.jsonReply({'detail': 'Vorübergehend nicht erreichbar.'}, 503)
+          : room.jsonReply({'recorded': true});
+    }
+    return super.handle(request);
+  }
+}
+
 Future<void> expandWhy(WidgetTester tester) async {
   await room.tapText(tester, 'Warum das stimmt');
   await tester.ensureVisible(
@@ -149,6 +169,36 @@ void main() {
     }
   });
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  testWidgets('Feedback text stays hidden until its display is recorded', (
+    tester,
+  ) async {
+    final server = ExposureRound();
+    await room.openRound(tester, server);
+    await room.tapText(tester, 'Warum das stimmt');
+    expect(server.exposureRequests, hasLength(1));
+    expect(
+      find.text('Die Lösungsgrafik zeigt ein Ganzes und ein Viertel.'),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('feedback-question-explanation')),
+      findsNothing,
+    );
+    server.failExposure = false;
+    await room.tapText(tester, 'Erklärung öffnen');
+    expect(server.exposureRequests, hasLength(2));
+    expect(
+      find.text('Die Lösungsgrafik zeigt ein Ganzes und ein Viertel.'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('feedback-question-explanation')),
+      findsOneWidget,
+    );
+    expect(server.answers, 0);
+    expect(server.acknowledgements, 0);
+  });
 
   testWidgets('127 v1 groups five quarters without changing saved prose', (
     tester,

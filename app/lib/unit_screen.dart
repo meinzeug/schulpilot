@@ -124,6 +124,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   bool answerAssisted = false;
   bool awaitingContinue = false;
   String? feedbackAttemptId;
+  final Set<String> openedFeedbackTexts = {};
   String? answeredText;
   bool helpExpanded = false;
   bool clockDetails = false;
@@ -269,6 +270,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       answerOutcome = null;
       awaitingContinue = false;
       feedbackAttemptId = answeredText = null;
+      openedFeedbackTexts.clear();
       helpExpanded = clockDetails = actionBusy = false;
       actionError = null;
       instructionalRequestKey = null;
@@ -559,6 +561,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     parentQuestionSearch.clear();
     closePrivateRoutes();
     explanationPositions.clear();
+    openedFeedbackTexts.clear();
     resetBankText = resetBankQuestion = null;
     resetBankUsed.clear();
     timer?.cancel();
@@ -3201,6 +3204,28 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> openFeedbackText(Json u, Json q) async {
+    final attemptId = feedbackAttemptId;
+    final requestedOwner = ownerAccount;
+    if (attemptId == null || !awaitingContinue) {
+      throw ApiError('Bitte lade die gespeicherte Rückmeldung erneut.');
+    }
+    final result = await state.api.post(
+      '/units/${u['id']}/questions/${q['id']}/feedback-exposure',
+      {'attempt_id': attemptId},
+    );
+    if (!requestIsCurrent(u['id'], requestedOwner) ||
+        !awaitingContinue ||
+        feedbackAttemptId != attemptId ||
+        answeredQuestion?['id'] != q['id']) {
+      return;
+    }
+    if (result['recorded'] != true) {
+      throw ApiError('Die Erklärung konnte noch nicht geöffnet werden.');
+    }
+    setState(() => openedFeedbackTexts.add(attemptId));
+  }
+
   Widget answerFeedback(BuildContext context, Json u) {
     final q = answeredQuestion!;
     final language = q['language'] is Map
@@ -3508,37 +3533,58 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 if (correct)
                   ExpansionTile(
                     title: Text('Warum das stimmt'),
+                    onExpansionChanged: (open) {
+                      if (open &&
+                          u['supports_feedback_exposure'] == true &&
+                          !openedFeedbackTexts.contains(feedbackAttemptId)) {
+                        unawaited(perform(() => openFeedbackText(u, q)));
+                      }
+                    },
                     children: [
-                      LearningContent(
-                        explanation!,
-                        style: TextStyle(fontSize: 17, height: 1.5),
-                      ),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: feedbackAudio(q, explanation!),
-                      ),
-                      if (u['supports_question_explanation'] == true)
+                      if (u['supports_feedback_exposure'] == true &&
+                          !openedFeedbackTexts.contains(feedbackAttemptId))
+                        TextButton(
+                          onPressed: actionBusy
+                              ? null
+                              : () => perform(() => openFeedbackText(u, q)),
+                          child: Text(
+                            actionBusy
+                                ? 'Erklärung wird geöffnet …'
+                                : 'Erklärung öffnen',
+                          ),
+                        )
+                      else ...[
+                        LearningContent(
+                          explanation!,
+                          style: TextStyle(fontSize: 17, height: 1.5),
+                        ),
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            key: const ValueKey(
-                              'feedback-question-explanation',
-                            ),
-                            onPressed: actionBusy
-                                ? null
-                                : () => perform(
-                                    () => showExplanation(
-                                      context,
-                                      u,
-                                      feedbackQuestion: q,
+                          child: feedbackAudio(q, explanation!),
+                        ),
+                        if (u['supports_question_explanation'] == true)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              key: const ValueKey(
+                                'feedback-question-explanation',
+                              ),
+                              onPressed: actionBusy
+                                  ? null
+                                  : () => perform(
+                                      () => showExplanation(
+                                        context,
+                                        u,
+                                        feedbackQuestion: q,
+                                      ),
                                     ),
-                                  ),
-                            icon: const Icon(Icons.auto_stories_outlined),
-                            label: const Text(
-                              'Lösung Schritt für Schritt ansehen',
+                              icon: const Icon(Icons.auto_stories_outlined),
+                              label: const Text(
+                                'Lösung Schritt für Schritt ansehen',
+                              ),
                             ),
                           ),
-                        ),
+                      ],
                     ],
                   )
                 else ...[

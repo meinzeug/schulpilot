@@ -242,9 +242,12 @@ def decide(db, unit, memory=None):
             expected_result="Eine nachvollziehbar geklärte Bewertung.", on_success="practice", on_error="clarify_assessment")
     elif unit.status == "completed" or (instructional_decisions.deferred(db, unit)
             and completion_ready(db, unit, data["attempts"])):
-        supported = any(a.assisted or a.outcome != "correct" for a in data["attempts"])
+        possible = any((a.evaluation or {}).get("independence_uncertain") for a in data["attempts"])
+        supported = any((a.assisted and not (a.evaluation or {}).get("independence_uncertain")) or a.outcome != "correct"
+                        for a in data["attempts"])
         value.update(kind="finish_round", phase="finish", reason_code="round_completed_supported" if supported else "round_completed",
             title="Deine Runde ist fertig", reason="Nach der Hilfe probierst du es später mit einer neuen Aufgabe allein." if supported
+                else "Eine Antwort war richtig. Mit einer neuen Aufgabe kannst du zeigen, was du schon alleine weißt." if possible
                 else "Deine Antworten sind gespeichert. Später prüfst du den Abruf mit neuen Aufgaben.",
             expected_result="Runde beenden oder bewusst eine weitere kleine Runde wählen.",
             on_success="schedule_review", on_error="offer_break")

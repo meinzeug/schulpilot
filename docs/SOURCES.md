@@ -1,3 +1,12 @@
+## 29.10.2026 · Begrenzter Pakettransport · Version 1.38.18
+
+Die [Azure-Dokumentation zu strukturierten Ausgaben](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs)
+und [OpenRouter zu Reasoning-Tokens](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)
+wurden geprüft. Feste Listen werden strukturell begrenzt und nach dem Empfang in
+das unveränderte Anwendungsschema zurückgeführt. Echte künstliche Aufrufe,
+gemessene Kosten und verbleibende Grenzen stehen in
+[PACKAGE_OUTPUT_TRANSPORT.md](PACKAGE_OUTPUT_TRANSPORT.md).
+
 ## 29.10.2026 · Sol-Route für den Alltagstest
 
 [OpenRouter: Sol-Endpunkte](https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol/endpoints) meldete die alte Azure-Route als gestört und Azure/EU als verfügbar; Katalogstatus ist kein Erfolgsnachweis. Die authentifizierte ZDR-Liste und drei getrennte künstliche Echtaufrufe wurden zusätzlich geprüft. Modell und Schutzgrenzen blieben erhalten, EU-Tokenpreise liegen um 10 % höher. [Prüfung und Einschränkungen](EVERYDAY_QA_2026_10_29.md).

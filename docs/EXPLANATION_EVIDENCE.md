@@ -15,10 +15,22 @@ neue Übersichten unterscheiden den offenen Nachweis von erwiesener Hilfe. Die
 Wortwiederholung steigt nicht auf und ein vorhandener Stand wird nicht
 zurückgesetzt. Frühere Antworten werden nicht verändert.
 
-Die Regel ist bewusst vorsichtig: Auch eine fachlich unabhängige frühere
-Erklärung kann einen offenen Nachweis auslösen. Sie ist kein semantischer
-Beweis, dass eine Lösung tatsächlich gesehen wurde. Außerdem erfasst sie nur
-Erklärungen, deren Öffnung serverseitig aufgezeichnet wurde. Insbesondere die
-inline angezeigten Rückmeldegrafiken und aufklappbaren Rückmeldetexte sind damit
-nicht vollständig abgedeckt. Eine uneingeschränkte Offenlegungserkennung ist
-erst nach zuverlässiger Erfassung dieser Ansichten und ihrer Tests belegt.
+Die aufklappbare Rückmeldung wird vor der Anzeige einmalig und nur für den
+berechtigten Kinderzugang vermerkt. Falls der Beleg nicht gespeichert werden
+kann, bleibt der Text geschlossen und kann erneut geöffnet werden. Beim
+bewussten Weitergehen wird eine eingeblendete Lösungsgrafik als mögliche
+Vorlage erfasst. Nicht aufgeklappte Texte werden daraus nicht abgeleitet. Ein
+wörtlicher Treffer im ersten ausdrücklich gelesenen strukturierten
+Einführungsschritt wird ebenfalls berücksichtigt; später nicht nachweislich
+angesehene Schritte gelten nicht automatisch als gezeigt. Die Markierungen
+enthalten Kennungen und Anzeigefläche, keine Lösungstexte; sie erzeugen weder
+Antworten noch Lernzeit.
+
+Die Regel bleibt bewusst vorsichtig: Auch eine fachlich unabhängige frühere
+Erklärung kann einen offenen Nachweis auslösen. Das ist kein Beweis, dass die
+Lösung tatsächlich gesehen wurde. Die Rückmeldung berücksichtigt Ansichten
+aktueller Clients, die eine gespeicherte Rückmeldung quittieren; bei älteren
+Clients und fehlender technischer Meldung ist die tatsächliche Anzeige nicht
+vollständig rekonstruierbar. Die Regel ist keine allgemeine semantische oder
+mathematische Gleichheitsprüfung und wertet nicht ungeöffnete spätere Schritte
+als gezeigt. Bereits gespeicherte Versuche bleiben unverändert.

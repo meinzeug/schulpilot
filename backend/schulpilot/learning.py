@@ -93,9 +93,23 @@ def prior_explanation_reveals_answer(db, unit, question, events):
     for event in events:
         detail = event.detail if isinstance(event.detail, dict) else {}
         prior = detail.get("question_id")
-        if not prior or prior == question.get("id") or prior not in questions or prior in seen:
+        event_kind = getattr(event, "kind", "explanation")
+        exposure_key = (prior, event_kind, detail.get("surface"))
+        if not prior or prior == question.get("id") or prior not in questions or exposure_key in seen:
             continue
-        seen.add(prior)
+        seen.add(exposure_key)
+        # Feedback graphics alone do not prove the full explanation text or
+        # the separate step-by-step projection was displayed.
+        if event_kind == "feedback_exposure":
+            if detail.get("surface") != "text":
+                continue
+            exposed = [str(questions[prior].get("explanation", ""))]
+            text = " ".join(unicodedata.normalize("NFKC", " ".join(exposed)).casefold().split())
+            if choice_text and re.search(r"(?<!\w)" + re.escape(choice_text) + r"(?!\w)", text):
+                return True
+            if any(re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text) for word in words):
+                return True
+            continue
         # Only the initially displayed step is evidence that the text could be
         # seen; later steps may never have been opened by the learner.
         steps = question_projection(db, unit, questions[prior], closed=True, hints=3)[:1]
@@ -109,6 +123,44 @@ def prior_explanation_reveals_answer(db, unit, question, events):
         if choice_text and re.search(r"(?<!\w)" + re.escape(choice_text) + r"(?!\w)", text):
             return True
         if any(re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text) for word in words):
+            return True
+    return False
+
+
+def introduction_reveals_answer(db, unit, question, events, *, user_id=None):
+    """Only the initially displayed structured step, after explicit reading."""
+    if not any(e.kind == "introduction_read" for e in events):
+        return False
+    if question.get("language") or question.get("type") not in ("short", "gap", "choice"):
+        return False
+    from .visual_references import projection
+
+    steps = projection(db, unit).get("explanation_steps", [])
+    if not steps or not isinstance(steps[0].get("text"), str):
+        return False
+    if user_id:
+        from .visual_reference_models import UnitVisualPosition
+
+        position = db.get(UnitVisualPosition, (unit.id, user_id))
+        if position and (not isinstance(position.position, dict) or
+            (position.position.get("explanation_kind") == "intro" and position.position.get("explanation_step_id") != steps[0].get("id"))):
+            return False
+    text = " ".join(unicodedata.normalize("NFKC", steps[0]["text"]).casefold().split())
+    answer = question.get("answer")
+    if question.get("type") == "choice":
+        options = question.get("options")
+        if not isinstance(answer, str) or not isinstance(options, list) or options.count(answer) != 1:
+            return False
+        values = [answer]
+    else:
+        values = [answer, *(question.get("accepted") or [])]
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        literal = " ".join(unicodedata.normalize("NFKC", value).casefold().split()).rstrip(".!?")
+        if len(literal) < 4 or not all(c.isalpha() or c.isspace() or c in "-'’" for c in literal):
+            continue
+        if re.search(r"(?<!\w)" + re.escape(literal) + r"(?!\w)", text):
             return True
     return False
 
@@ -445,6 +497,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "pending_feedback": pending_feedback(unit, attempts, events),
         "supports_recheck": True,
         "supports_question_explanation": True,
+        "supports_feedback_exposure": True,
         "supports_detailed_feedback": True,
         "learning_session": session,
         "content_version": 1,
@@ -1181,7 +1234,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
 def activity(child_id: str, before: int | None = None, p=Depends(authenticated), db=Depends(get_db)):
     child_access(db, p, child_id)
     query = select(Activity).where(
-        Activity.child_id == child_id, Activity.kind.not_in(["feedback_pending", "feedback_seen"])
+        Activity.child_id == child_id, Activity.kind.not_in(["feedback_pending", "feedback_seen", "feedback_exposure"])
     )
     if before:
         query = query.where(Activity.created < before)
@@ -1643,6 +1696,9 @@ def update_mastery(db, unit, attempts):
         if unit.review_of and mastery.last_practiced < today.isoformat():
             mastery.review_successes += 1
         interval = min(14, 2 ** min(mastery.review_successes, 3))
+    elif all(a.outcome == "correct" for a in final) and any((a.evaluation or {}).get("independence_uncertain") for a in final):
+        mastery.uncertain_units += 1
+        interval = 1
     elif all(a.outcome == "correct" for a in final):
         mastery.assisted += 1
         interval = 1
@@ -1776,12 +1832,15 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     from .family_calls import record_answer_help
 
     record_answer_help(db, p, unit)
-    explanation_events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "explanation")))
+    explanation_events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id,
+        Activity.kind.in_(("explanation", "feedback_exposure")))))
     explained = bool(
-        any(not e.detail.get("question_id") or e.detail.get("question_id") == question_id
+        any(e.kind == "explanation" and (not e.detail.get("question_id") or e.detail.get("question_id") == question_id)
             for e in explanation_events)
     )
     prior_solution = prior_explanation_reveals_answer(db, unit, q, explanation_events)
+    intro_events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "introduction_read")))
+    intro_solution = introduction_reveals_answer(db, unit, q, intro_events, user_id=p.user.id)
     # An absent literal match cannot rule out a paraphrase or diagram having
     # revealed an answer. Only explanations actually opened here count.
     prior_explanation = any(
@@ -1793,7 +1852,7 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         e.detail.get("question_id") == question_id
         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
     )
-    hinted = explained or had_hint or prior_solution
+    hinted = explained or had_hint or prior_solution or intro_solution
     from .answer_evaluation import evaluate as assess
 
     evaluation = assess(q, data.answer)
@@ -1838,6 +1897,7 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         *evaluation.get("support_reasons", []),
         *(["hint"] if had_hint else []), *(["explanation"] if explained else []),
         *(["recent_solution"] if prior_solution else []),
+        *(["intro_solution"] if intro_solution else []),
         *(["possible_prior_solution"] if independence_uncertain else []),
         *(["another_attempt"] if previous else []),
     ]))
@@ -1904,6 +1964,34 @@ def recheck_answer(unit_id: str, question_id: str, p=Depends(child_user), db=Dep
     return answer_response(db, unit, question(unit, question_id), attempt)
 
 
+def record_feedback_exposure(db, unit, attempt, surface):
+    """Idempotent display marker under the existing unit lock, without text."""
+    events = db.scalars(select(Activity).where(Activity.unit_id == unit.id,
+        Activity.child_id == unit.child_id, Activity.kind == "feedback_exposure"))
+    if not any(e.detail.get("attempt_id") == attempt.id and e.detail.get("surface") == surface for e in events):
+        db.add(Activity(child_id=unit.child_id, unit_id=unit.id, kind="feedback_exposure",
+                        detail={"attempt_id": attempt.id, "question_id": attempt.question_id, "surface": surface}))
+
+
+@router.post("/units/{unit_id}/questions/{question_id}/feedback-exposure")
+def open_feedback_explanation(unit_id: str, question_id: str, data: s.FeedbackAcknowledgement,
+                              p=Depends(child_user), db=Depends(get_db)):
+    """Record before showing expandable text, never create a learning attempt."""
+    unit = get_unit(db, p, unit_id, True, True)
+    question(unit, question_id)
+    attempt = db.get(Attempt, data.attempt_id)
+    if not attempt or attempt.unit_id != unit.id or attempt.question_id != question_id:
+        raise HTTPException(404, "Rückmeldung nicht gefunden.")
+    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
+    events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
+    pending = pending_feedback(unit, attempts, events)
+    if attempt.outcome != "correct" or not pending or pending["attempt_id"] != attempt.id:
+        raise HTTPException(409, "Die Rückmeldung hat sich geändert. Bitte die Runde neu laden.")
+    record_feedback_exposure(db, unit, attempt, "text")
+    db.commit()
+    return {"recorded": True}
+
+
 @router.post("/units/{unit_id}/feedback/acknowledge")
 def acknowledge_feedback(
     unit_id: str, data: s.FeedbackAcknowledgement, p=Depends(child_user), db=Depends(get_db)
@@ -1922,6 +2010,16 @@ def acknowledge_feedback(
     pending = pending_feedback(unit, attempts, events)
     if not pending or pending["attempt_id"] != attempt.id:
         raise HTTPException(409, "Die Rückmeldung hat sich geändert. Bitte die Runde neu laden.")
+    q = question(unit, attempt.question_id)
+    from .subject_content import legacy_presentation, public_presentation
+
+    closed = attempt.outcome in ("correct", "uncertain") or sum(a.question_id == attempt.question_id for a in attempts) >= 3
+    shown = public_presentation(q.get("presentation") or legacy_presentation(q, unit_source_texts(db, unit)), closed=closed)
+    if shown and any(block.get("disclosure") == "solution" for block in shown.get("blocks", [])):
+        record_feedback_exposure(db, unit, attempt, "visual")
+    # Incorrect/uncertain closed feedback is displayed without an expansion.
+    if attempt.outcome != "correct" and pending.get("explanation"):
+        record_feedback_exposure(db, unit, attempt, "text")
     record(db, unit.child_id, "feedback_seen", {"attempt_id": attempt.id}, unit.id)
     recovered = recover_instructional_round(db, unit)
     db.commit()
