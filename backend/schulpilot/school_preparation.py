@@ -481,7 +481,10 @@ def submit(db, p, day, child, key, *, learning_entry_enabled=False):
                 repair = {"failed_job_id": failed_job.id, "from_revision": old_revision, "to_revision": REVISION}
                 audit(db, p.user.id, "school_day.package_transport_repair", failed_job.id + ":" + REVISION)
     rate_limit(db, "school-prepare:" + p.user.id, 10, 60, commit=False)
-    if day.stage == "collecting":
+    if day.stage in ("collecting", "ready"):
+        # A changed or newly confirmed source can be prepared explicitly even
+        # after the day was saved. The worker checks for the review stage; keep
+        # the existing units and reopen that stage for this new submission.
         day.stage = "review"
         day.revision += 1
         if part_state:

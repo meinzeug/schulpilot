@@ -9,6 +9,7 @@ from conftest import HEADERS, create_child
 from fastapi.testclient import TestClient
 from schulpilot.db import (
     DB,
+    Attempt,
     Child,
     Family,
     Job,
@@ -19,6 +20,7 @@ from schulpilot.db import (
     SchoolDay,
     Session,
     Usage,
+    now,
 )
 from schulpilot.main import app
 from schulpilot.providers import ProviderError, Result
@@ -734,3 +736,42 @@ def test_pre_dispatch_cost_failure_does_not_spend_second_image_attempt(api, hous
         assert len(jobs) == 3 and sum(j.status == 'failed' for j in jobs) == 2
         assert sorted(u.cost_micros for u in db.scalars(select(Usage).where(Usage.child_id == child['id']))) == [0, 0, 1000]
     assert api.get(f"/api/school-days/{day['id']}").json()['preparation']['status'] == 'needs_review'
+
+
+def test_new_preparation_after_saved_source_revision_reopens_review(api, household, monkeypatch):
+    """A saved day can be explicitly prepared after a source has changed."""
+    _, child = household
+    day, calls = capture(api, child, monkeypatch, 1)
+    submit(api, day)
+    assert step()
+    review(api, day)
+    saved = api.post(f"/api/school-days/{day['id']}/save-for-later")
+    assert saved.status_code == 200 and saved.json()['stage'] == 'ready'
+    with DB.begin() as db:
+        previous = LearningUnit(child_id=child['id'], school_day_id=day['id'], provider='synthetic',
+            synthetic=True, status='completed', completed=int(now()), **unit_for('Mathematik'))
+        db.add(previous)
+        db.flush()
+        attempt = Attempt(unit_id=previous.id, question_id=previous.questions[0]['id'],
+            answer=previous.questions[0]['answer'], outcome='correct', assisted=False)
+        db.add(attempt)
+        db.flush()
+        old_unit, old_attempt = previous.id, attempt.id
+    page = saved.json()['pages'][0]
+    revised = api.put(f"/api/materials/{page['id']}/confirm", json={
+        **{k: page[k] for k in ('subject', 'content', 'homework')},
+        'topic': 'Brüche als Teile eines Ganzen', 'revision': page['revision'],
+        'uncertainties_resolved': True,
+    })
+    assert revised.status_code == 200, revised.text
+    started = submit(api, day)
+    assert started['status'] == 'processing' and started['phase'] == 'package'
+    assert api.get(f"/api/school-days/{day['id']}").json()['stage'] == 'review'
+    assert step()
+    state = api.get(f"/api/school-days/{day['id']}").json()
+    assert state['preparation']['status'] == 'ready'
+    assert state['stage'] == 'ready' and len(state['units']) == 2
+    with DB() as db:
+        assert db.get(LearningUnit, old_unit).status == 'completed'
+        assert db.get(Attempt, old_attempt).outcome == 'correct'
+    assert calls == ['extract', 'package']
