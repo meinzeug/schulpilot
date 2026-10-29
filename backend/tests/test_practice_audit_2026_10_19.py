@@ -112,6 +112,28 @@ def test_question_explanation_has_matching_values_and_support_does_not_spread(ap
         assert db.scalar(select(func.count()).select_from(Activity)) == before
 
 
+def test_earlier_solution_showing_later_answer_counts_as_support(api):
+    demo, unit_id = prepared(api)
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        unit.questions = [
+            {"id": "q1", "type": "short", "prompt": "Was bilden Pflanzen?", "answer": "Zucker",
+             "accepted": [], "options": [], "hints": [],
+             "explanation": "Pflanzen bilden mit Licht Zucker und geben Sauerstoff ab."},
+            {"id": "q2", "type": "short", "prompt": "Was brauchen Pflanzen zusätzlich?", "answer": "Licht",
+             "accepted": [], "options": [], "hints": [], "explanation": "Sie brauchen Licht."},
+        ]
+    with child_client(demo) as kid:
+        assert kid.post(f"/api/units/{unit_id}/start").status_code == 200
+        first = kid.post(f"/api/units/{unit_id}/questions/q1/answer", json={"answer": "Zucker", "request_id": "exposure-first-answer-01"})
+        assert first.status_code == 200 and first.json()["assisted"] is False
+        assert kid.post(f"/api/units/{unit_id}/explanation", json={"question_id": "q1"}).status_code == 200
+        second = kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer": "Licht", "request_id": "exposure-second-answer-01"})
+        assert second.status_code == 200 and second.json()["assisted"] is True
+        assert second.json()["evaluation"]["support_reasons"] == ["recent_solution"]
+        assert kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer": "Licht", "request_id": "exposure-second-answer-01"}).json()["attempt_id"] == second.json()["attempt_id"]
+
+
 def test_deferred_words_remain_private_source_bound_and_confirmation_replays(api, household):
     _, child = household
     data = {"target_locale":"en-GB", "title":"Künstliche Prüfliste", "language_confirmed":True,

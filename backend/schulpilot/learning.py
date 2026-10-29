@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -44,6 +45,26 @@ def record(db, child_id, kind, detail=None, unit_id=None):
     from .learning_controller import activity_recorded
 
     activity_recorded(db, activity)
+
+
+def prior_explanation_reveals_answer(question, events):
+    """Detect a literal single-word answer shown in another question's help.
+
+    Unknown overlap remains unknown; existing attempts are never modified.
+    """
+    if question.get("type") != "short" or question.get("language"):
+        return False
+    answers = [question.get("answer"), *(question.get("accepted") or [])]
+    words = {unicodedata.normalize("NFKC", a).casefold().strip() for a in answers if isinstance(a, str)}
+    words = {a for a in words if len(a) >= 4 and a.isalpha()}
+    for event in events:
+        detail = event.detail if isinstance(event.detail, dict) else {}
+        if not detail.get("question_id") or detail["question_id"] == question.get("id"):
+            continue
+        text = unicodedata.normalize("NFKC", str(detail.get("text", ""))).casefold()
+        if any(re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text) for word in words):
+            return True
+    return False
 
 
 def message_context_targets(db, rows):
@@ -1709,15 +1730,17 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     from .family_calls import record_answer_help
 
     record_answer_help(db, p, unit)
+    explanation_events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "explanation")))
     explained = bool(
         any(not e.detail.get("question_id") or e.detail.get("question_id") == question_id
-            for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "explanation")))
+            for e in explanation_events)
     )
+    prior_solution = prior_explanation_reveals_answer(q, explanation_events)
     had_hint = any(
         e.detail.get("question_id") == question_id
         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
     )
-    hinted = explained or had_hint
+    hinted = explained or had_hint or prior_solution
     from .answer_evaluation import evaluate as assess
 
     evaluation = assess(q, data.answer)
@@ -1755,6 +1778,7 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     evaluation["support_reasons"] = list(dict.fromkeys([
         *evaluation.get("support_reasons", []),
         *(["hint"] if had_hint else []), *(["explanation"] if explained else []),
+        *(["recent_solution"] if prior_solution else []),
         *(["another_attempt"] if previous else []),
     ]))
     attempt = Attempt(
