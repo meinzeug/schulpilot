@@ -170,7 +170,7 @@ def arithmetic_warnings(answer):
     A mathematical contradiction is not a judgment about handwriting, the
     teacher's markings, or the entire task. Never modify the original report.
     """
-    from .source_lineage import false_equality
+    from .source_lineage import _number, false_equality
 
     if not isinstance(answer, str):
         return []
@@ -185,7 +185,10 @@ def arithmetic_warnings(answer):
     warnings = []
     for expression in candidates[:16]:
         if false_equality(expression):
-            warnings.append({"expression": expression, "message": "Diese Gleichung stimmt rechnerisch nicht. Prüfe auch, ob sie richtig abgeschrieben wurde."})
+            values = [_number(term) for term in expression.split("=")]
+            left, right = next((a, b) for a, b in zip(values, values[1:]) if a != b)
+            warnings.append({"expression": expression,
+                "message": f"Diese Gleichung stimmt rechnerisch nicht: Links steht {left}, rechts {right}. Prüfe auch, ob sie richtig abgeschrieben wurde."})
     return warnings
 
 
