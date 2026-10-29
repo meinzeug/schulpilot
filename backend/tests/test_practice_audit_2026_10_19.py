@@ -281,6 +281,59 @@ def test_gap_answer_seen_in_previous_opened_graphic_counts_as_help(api, monkeypa
         assert second.json()['evaluation']['support_reasons'] == ['recent_solution']
 
 
+def test_source_bound_photosynthesis_choice_paraphrases_are_supported_without_negation(monkeypatch):
+    from types import SimpleNamespace
+    from schulpilot import visual_references
+    from schulpilot.learning import prior_explanation_reveals_answer
+
+    prior = {'id': 'q1', 'type': 'short'}
+    source = 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf. Mit Licht bilden sie Zucker und geben Sauerstoff ab.'
+    monkeypatch.setattr(visual_references, 'question_projection', lambda *args, **kwargs: [{'text': source}])
+    event = SimpleNamespace(detail={'question_id': 'q1', 'text': 'Zucker entsteht.'})
+    for answer in ['Bei der Fotosynthese nehmen Pflanzen Kohlenstoffdioxid auf.',
+                   'Pflanzen geben Sauerstoff ab.', 'Pflanzen bilden mithilfe von Licht Zucker.']:
+        choice = {'id': 'q2', 'type': 'choice', 'answer': answer, 'options': [answer, 'Andere Antwort.']}
+        assert prior_explanation_reveals_answer(None, SimpleNamespace(questions=[prior, choice]), choice, [event])
+    for answer in ['Bei der Fotosynthese nehmen Pflanzen kein Kohlenstoffdioxid auf.',
+                   'Pflanzen geben Kohlenstoffdioxid ab.', 'Pflanzen bilden Sauerstoff statt Zucker.']:
+        choice = {'id': 'q2', 'type': 'choice', 'answer': answer, 'options': [answer, 'Andere Antwort.']}
+        assert not prior_explanation_reveals_answer(None, SimpleNamespace(questions=[prior, choice]), choice, [event])
+    monkeypatch.setattr(visual_references, 'question_projection', lambda *args, **kwargs:
+        [{'text': 'Pflanzen brauchen Kohlenstoffdioxid.'}])
+    choice = {'id': 'q2', 'type': 'choice', 'answer': 'Bei der Fotosynthese nehmen Pflanzen Kohlenstoffdioxid auf.',
+              'options': ['Bei der Fotosynthese nehmen Pflanzen Kohlenstoffdioxid auf.', 'Andere Antwort.']}
+    assert not prior_explanation_reveals_answer(None, SimpleNamespace(questions=[prior, choice]), choice, [event])
+
+
+def test_rephrased_photosynthesis_choice_after_opened_graphic_is_supported_in_api(api, monkeypatch):
+    from schulpilot import visual_references
+
+    demo, unit_id = prepared(api)
+    correct = 'Bei der Fotosynthese nehmen Pflanzen Kohlenstoffdioxid auf.'
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        unit.questions = [
+            {'id': 'q1', 'type': 'gap', 'prompt': 'Was bilden Pflanzen?', 'answer': 'Zucker',
+             'accepted': [], 'options': [], 'hints': [], 'explanation': 'Sie bilden Zucker.'},
+            {'id': 'q2', 'type': 'choice', 'prompt': 'Welche Aussage stimmt?', 'answer': correct,
+             'accepted': [], 'options': [correct, 'Pflanzen geben Kohlenstoffdioxid ab.'],
+             'hints': [], 'explanation': 'Kohlenstoffdioxid wird aufgenommen.'},
+        ]
+    monkeypatch.setattr(visual_references, 'question_projection', lambda _db, _unit, q, **_kwargs:
+        [{'text': 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf. Mit Licht bilden sie Zucker und geben Sauerstoff ab.'}]
+        if q['id'] == 'q1' else [])
+    with child_client(demo) as kid:
+        assert kid.post(f'/api/units/{unit_id}/start').status_code == 200
+        first = kid.post(f'/api/units/{unit_id}/questions/q1/answer',
+            json={'answer': 'Zucker', 'request_id': 'paraphrase-first-answer-1'})
+        assert first.status_code == 200 and not first.json()['assisted']
+        assert kid.post(f'/api/units/{unit_id}/explanation', json={'question_id': 'q1'}).status_code == 200
+        second = kid.post(f'/api/units/{unit_id}/questions/q2/answer',
+            json={'answer': correct, 'request_id': 'paraphrase-second-answer-1'})
+        assert second.status_code == 200 and second.json()['assisted']
+        assert second.json()['evaluation']['support_reasons'] == ['recent_solution']
+
+
 def test_deferred_words_remain_private_source_bound_and_confirmation_replays(api, household):
     _, child = household
     data = {"target_locale":"en-GB", "title":"Künstliche Prüfliste", "language_confirmed":True,

@@ -71,10 +71,17 @@ def prior_explanation_reveals_answer(db, unit, question, events):
                               for option in options]
         if 3 <= len(normalized) <= 500 and normalized_options.count(normalized) == 1:
             choice_text = normalized
-    photosynthesis_choice = (choice and isinstance(answer, str)
-        and answer in (question.get("options") or [])
-        and re.fullmatch(r"\s*pflanzen nehmen kohlenstoffdioxid auf und geben sauerstoff ab[.!]?\s*",
-                         answer, re.IGNORECASE) is not None)
+    # Equivalent formulations are accepted only for the small, explicitly
+    # source-verified exchange reference. Negations, unlisted predicates and
+    # merely similar words cannot satisfy this closed grammar.
+    photosynthesis_choice = bool(choice_text and re.fullmatch(
+        r"(?:bei der fotosynthese )?(?:"
+        r"pflanzen nehmen kohlenstoffdioxid auf und geben sauerstoff ab|"
+        r"(?:pflanzen nehmen|nehmen pflanzen) (?:wasser und )?kohlenstoffdioxid auf|"
+        r"(?:pflanzen nehmen|nehmen pflanzen) wasser auf|"
+        r"(?:pflanzen geben|geben pflanzen) sauerstoff ab|"
+        r"(?:pflanzen bilden|bilden pflanzen) (?:mithilfe von licht |mit licht )?zucker)",
+        choice_text))
     if choice and not choice_text:
         return False
     if not words and not choice_text:
