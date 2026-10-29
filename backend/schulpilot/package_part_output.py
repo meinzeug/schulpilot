@@ -13,6 +13,7 @@ from .graphic_schema import bind_coherent_graphics as _bind_graphic_branches
 REVISION = "package-part-output-1"
 GRAPHIC_SCHEMA_REVISION = "package-part-graphics-4"
 _REPEATED_WORD = re.compile(r"(?<!\w)([^\W\d_]{2,40})(?:[\s,;]+\1){5,}(?!\w)", re.IGNORECASE)
+_SOLUTION_VISUAL_IN_PROMPT = re.compile(r"\b(?:lösungs|antwort)(?:grafik|bild|darstellung|szene)\b", re.IGNORECASE)
 
 
 def enabled(payload):
@@ -259,6 +260,8 @@ def validate(data):
         for question in unit["questions"]:
             if any(_REPEATED_WORD.search(text) for text in (question["prompt"], question["explanation"], *question["hints"])):
                 raise ValueError("Eine Aufgabe enthält eine stark wiederholte Formulierung.")
+            if _SOLUTION_VISUAL_IN_PROMPT.search(question["prompt"]):
+                raise ValueError("Eine Aufgabenstellung verweist auf eine Lösungsgrafik.")
             if (len(question["prompt"]) > 300 or len(question["explanation"]) > 400
                     or question.get("presentation") is not None or len(question["hints"]) > 2
                     or any(len(hint) > 180 for hint in question["hints"])):
@@ -294,6 +297,8 @@ Falls eine Lernszene passt: höchstens vier Objekte und genau zwei tatsächlich 
 belegte Phasen mit sinnvollen Beziehungen. Keine ausführliche Präsentation mit vielen Folien.
 Alle Aufgaben, Hinweise, Lösungen, Zahlen, Einheiten und wörtlichen Belege bleiben vollständig
 und müssen sämtliche Quellen-, Fach-, Offenlegungs- und Grafikregeln erfüllen.
+Die Frage steht für sich und verweist nie auf eine Lösungsgrafik oder spätere Lösungsdarstellung.
+Nenne die gesuchte Antwort nicht vorab in der Frage; notwendige Angaben und Beispiele bleiben erhalten.
 Keine fehlenden Daten erfinden, keine Originalquelle oder Antwort zum Einpassen verkürzen.
 Dies ist weder der gesamte Lernstoff noch ein Nachweis für bereits beherrschte Fähigkeiten.
 """

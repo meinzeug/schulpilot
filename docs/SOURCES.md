@@ -1,3 +1,7 @@
+## 29.10.2026 · Sol-Route für den Alltagstest
+
+[OpenRouter: Sol-Endpunkte](https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol/endpoints) meldete die alte Azure-Route als gestört und Azure/EU als verfügbar; Katalogstatus ist kein Erfolgsnachweis. Die authentifizierte ZDR-Liste und drei getrennte künstliche Echtaufrufe wurden zusätzlich geprüft. Modell und Schutzgrenzen blieben erhalten, EU-Tokenpreise liegen um 10 % höher. [Prüfung und Einschränkungen](EVERYDAY_QA_2026_10_29.md).
+
 ## 28.10.2026 · Terra als Routenkandidat
 
 [OpenRouter: Terra](https://openrouter.ai/openai/gpt-6.1-terra) und der

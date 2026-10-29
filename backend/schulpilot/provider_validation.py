@@ -57,6 +57,7 @@ _VALUE_REASONS = {
     "Der Lernpaketteil überschreitet den begrenzten Umfang.": "part_bounds",
     "Die Aufgabe überschreitet den begrenzten Ausgabeumfang.": "part_bounds",
     "Eine Aufgabe enthält eine stark wiederholte Formulierung.": "part_repeated_words",
+    "Eine Aufgabenstellung verweist auf eine Lösungsgrafik.": "part_solution_in_prompt",
     "Ein Erklärabschnitt benötigt genau einen vollständigen Grafikschritt.": "part_step_count",
     "Der Grafikschritt überschreitet den begrenzten Umfang.": "part_bounds",
     "Die Lernszene benötigt zwei überschaubare vollständige Phasen.": "part_scene_bounds",

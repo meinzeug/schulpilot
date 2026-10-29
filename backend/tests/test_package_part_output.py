@@ -30,7 +30,7 @@ def part():
     return data, payload
 
 
-@pytest.mark.parametrize("fault", [None, "three_questions", "two_steps", "long_prompt", "three_phases", "mixed_scene_numbers"])
+@pytest.mark.parametrize("fault", [None, "three_questions", "two_steps", "long_prompt", "three_phases", "mixed_scene_numbers", "solution_visual_prompt"])
 def test_actual_part_adapter_uses_two_questions_one_graphic_step_and_rejects_oversize(monkeypatch, fault):
     data, payload = part()
     if fault == "three_questions":
@@ -40,6 +40,10 @@ def test_actual_part_adapter_uses_two_questions_one_graphic_step_and_rejects_ove
             {**copy.deepcopy(data["units"][0]["questions"][0]["explanation_steps"][0]), "id": "extra"})
     elif fault == "long_prompt":
         data["units"][0]["questions"][0]["prompt"] = "x" * 301
+    elif fault == "solution_visual_prompt":
+        data["units"][0]["questions"][0]["prompt"] = (
+            "Welche Vergangenheitsform gehört in den Satz? Die Lösungsgrafik vergleicht play und played."
+        )
     elif fault == "three_phases":
         scene = data["units"][0]["explanation_steps"][0]["presentation"]["blocks"][0]["scene"]
         scene["steps"].append(copy.deepcopy(scene["steps"][0]))
@@ -72,6 +76,8 @@ def test_actual_part_adapter_uses_two_questions_one_graphic_step_and_rejects_ove
             assert len(errors) == 3 and {item["reason"] for item in errors} == {"scene_parameters"}
             assert all(item["location"].endswith("presentation.blocks.0") for item in errors)
             assert "synthetic-no-network-key" not in json.dumps(billed.telemetry)
+        elif fault == "solution_visual_prompt":
+            assert caught.value.billing_result.telemetry['validation']['errors'][0]['reason'] == 'part_solution_in_prompt'
     else:
         result = providers.request_provider(value, "package", payload)
         assert len(result.data["units"]) == 1 and len(result.data["units"][0]["questions"]) == 2
@@ -97,4 +103,24 @@ def test_repeated_generated_words_rejected_without_modifying_tasks(field):
 def test_short_repetitions_in_a_language_exercise_are_not_suppressed():
     data, _ = part()
     data['units'][0]['questions'][0]['prompt'] = 'Vergleiche: sehr sehr groß und sehr groß.'
+    package_part_output.validate(data)
+
+
+@pytest.mark.parametrize('text', [
+    'Die Lösungsgrafik vergleicht „play“ und „played“. Welche Verbform gehört in den Satz?',
+    'Welche Vergangenheitsform von eat passt? Die Lösungsgrafik vergleicht „eat“ und „ate“.',
+    'Finde das Ergebnis. Die Antwortdarstellung zeigt 3/4.',
+])
+def test_solution_visual_cannot_be_described_in_question_prompt(text):
+    data, _ = part()
+    data['units'][0]['questions'][0]['prompt'] = text
+    before = copy.deepcopy(data)
+    with pytest.raises(ValueError, match='Lösungsgrafik'):
+        package_part_output.validate(data)
+    assert data == before
+
+
+def test_visible_problem_data_can_still_be_named_in_prompt():
+    data, _ = part()
+    data['units'][0]['questions'][0]['prompt'] = 'Beim Bruch 2/3: Welche Zahl ist der Nenner?'
     package_part_output.validate(data)
