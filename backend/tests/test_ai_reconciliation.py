@@ -1,7 +1,7 @@
 """Synthetic metadata-only accounting checks; no external inference or money."""
 
 import httpx
-from schulpilot.ai_accounting import reconcile_one
+from schulpilot.ai_accounting import reconcile_one, response_metrics
 from schulpilot.db import DB, ProviderConfig, Usage, now, uid
 from test_model_routing import setup_policy
 
@@ -36,6 +36,7 @@ def test_old_ineligible_rows_do_not_starve_generation_reconciliation(api, househ
         calls.append(url)
         return httpx.Response(200, json={"data": {"id": "gen-synthetic-target", "total_cost": "0.0004",
             "tokens_prompt": 100, "tokens_completion": 50, "native_tokens_reasoning": 20,
+            "native_tokens_completion": 32, "native_finish_reason": "max_output_tokens",
             "provider_name": "Azure"}})
 
     monkeypatch.setattr(httpx, "get", metadata)
@@ -46,8 +47,20 @@ def test_old_ineligible_rows_do_not_starve_generation_reconciliation(api, househ
         result = db.get(Usage, target_id)
         assert result.cost_micros == 400 and result.cost_source == "generation"
         assert result.output_tokens == 50 and result.telemetry["reasoning_tokens"] == 20
+        assert result.telemetry["native_completion_tokens"] == 32
+        assert result.telemetry["native_finish_reason"] == "max_output_tokens"
         assert result.status == "failed_billed"
         assert not db.get(ProviderConfig, 1).emergency_stop
+
+
+def test_finish_reason_uses_allowlist_without_retaining_provider_content():
+    raw = {'choices': [{'finish_reason': 'length', 'message': {'content': 'synthetic-private-text'}}],
+           'usage': {'completion_tokens': 25}}
+    metrics = response_metrics(raw, 10)
+    assert metrics['telemetry']['finish_reason'] == 'length'
+    assert 'synthetic-private-text' not in str(metrics)
+    raw['choices'][0]['finish_reason'] = 'synthetic-private-text'
+    assert response_metrics(raw, 10)['telemetry']['finish_reason'] is None
 
 
 def test_malformed_historical_generation_keeps_hold_and_does_not_block_next_tick(api, household, monkeypatch):

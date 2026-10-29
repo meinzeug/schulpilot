@@ -57,19 +57,27 @@ def prior_explanation_reveals_answer(db, unit, question, events):
     answers = [question.get("answer"), *(question.get("accepted") or [])]
     words = {" ".join(unicodedata.normalize("NFKC", a).casefold().split()) for a in answers if isinstance(a, str)}
     words = {a for a in words if len(a) >= 4 and all(c.isalpha() or c.isspace() or c in "-'’" for c in a)}
-    # Choice options are normally whole statements, and overlap of a few
-    # subject words is not proof that a solution was revealed. Recognise only
-    # the specifically verified photosynthesis relation below; all other
-    # paraphrased choices remain unknown.
+    # An entire uniquely keyed option can also be shown verbatim in an earlier
+    # explanation. Shared subject words or partial phrases are not proof.
     choice = question.get("type") == "choice"
     answer = question.get("answer")
+    options = question.get("options")
+    choice_text = None
+    if (choice and isinstance(answer, str) and isinstance(options, list)
+            and all(isinstance(option, str) for option in options)
+            and options.count(answer) == 1):
+        normalized = " ".join(unicodedata.normalize("NFKC", answer).casefold().split()).rstrip(".!?")
+        normalized_options = [" ".join(unicodedata.normalize("NFKC", option).casefold().split()).rstrip(".!?")
+                              for option in options]
+        if 3 <= len(normalized) <= 500 and normalized_options.count(normalized) == 1:
+            choice_text = normalized
     photosynthesis_choice = (choice and isinstance(answer, str)
         and answer in (question.get("options") or [])
         and re.fullmatch(r"\s*pflanzen nehmen kohlenstoffdioxid auf und geben sauerstoff ab[.!]?\s*",
                          answer, re.IGNORECASE) is not None)
-    if choice and not photosynthesis_choice:
+    if choice and not choice_text:
         return False
-    if not words and not photosynthesis_choice:
+    if not words and not choice_text:
         return False
     from .visual_references import question_projection
 
@@ -91,6 +99,8 @@ def prior_explanation_reveals_answer(db, unit, question, events):
 
             if next(bases(text), None) is not None:
                 return True
+        if choice_text and re.search(r"(?<!\w)" + re.escape(choice_text) + r"(?!\w)", text):
+            return True
         if any(re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text) for word in words):
             return True
     return False

@@ -186,15 +186,72 @@ def test_opened_photosynthesis_graphic_marks_the_disclosed_choice_as_help(api, m
         assert second.json()["evaluation"]["support_reasons"] == ["recent_solution"]
 
 
-def test_choice_shared_topic_words_do_not_prove_solution_exposure():
+def test_choice_shared_topic_words_do_not_prove_solution_exposure(monkeypatch):
     from types import SimpleNamespace
     from schulpilot.learning import prior_explanation_reveals_answer
+    from schulpilot import visual_references
+
+    monkeypatch.setattr(visual_references, 'question_projection', lambda *args, **kwargs: [])
 
     prior = {"id": "q1", "type": "short"}
     choice = {"id": "q2", "type": "choice", "answer": "Pflanzen geben Sauerstoff ab.",
               "options": ["Pflanzen geben Sauerstoff ab.", "Pflanzen nehmen Sauerstoff auf."]}
     event = SimpleNamespace(detail={"question_id": "q1", "text": "Pflanzen brauchen Sauerstoff."})
     assert not prior_explanation_reveals_answer(None, SimpleNamespace(questions=[prior, choice]), choice, [event])
+
+
+def test_opened_explanation_exact_choice_is_detected_across_subjects(monkeypatch):
+    from types import SimpleNamespace
+    from schulpilot.learning import prior_explanation_reveals_answer
+    from schulpilot import visual_references
+
+    monkeypatch.setattr(visual_references, 'question_projection', lambda *args, **kwargs: [])
+    prior = {'id': 'q1', 'type': 'short'}
+    for answer, other, shown in [
+        ('Das Subjekt ist der Hund.', 'Das Subjekt ist der Ball.', 'Hier gilt: Das Subjekt ist der Hund.'),
+        ('3/4', '1/4', 'Das Ergebnis ist 3/4.'),
+        ('Wasser verdunstet', 'Wasser gefriert', 'Dabei kann Wasser verdunstet sein.'),
+    ]:
+        choice = {'id': 'q2', 'type': 'choice', 'answer': answer, 'options': [answer, other]}
+        unit = SimpleNamespace(questions=[prior, choice])
+        event = SimpleNamespace(detail={'question_id': 'q1', 'text': shown})
+        assert prior_explanation_reveals_answer(None, unit, choice, [event])
+        assert not prior_explanation_reveals_answer(None, unit, choice, [])
+    # An option only embedded in a longer word or duplicated with different
+    # casing cannot be treated as an unambiguous revealed choice.
+    choice = {'id': 'q2', 'type': 'choice', 'answer': 'rot', 'options': ['rot', 'blau']}
+    unit = SimpleNamespace(questions=[prior, choice])
+    assert not prior_explanation_reveals_answer(None, unit, choice,
+        [SimpleNamespace(detail={'question_id': 'q1', 'text': 'Brot ist ein Lebensmittel.'})])
+    choice['options'] = ['rot', 'ROT']
+    assert not prior_explanation_reveals_answer(None, unit, choice,
+        [SimpleNamespace(detail={'question_id': 'q1', 'text': 'Die Farbe ist rot.'})])
+
+
+def test_later_exact_choice_from_opened_explanation_counts_as_supported_in_api(api, monkeypatch):
+    from schulpilot import visual_references
+
+    demo, unit_id = prepared(api)
+    correct = 'Das Subjekt ist der Hund.'
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        unit.questions = [
+            {'id': 'q1', 'type': 'short', 'prompt': 'Wer rennt?', 'answer': 'Hund',
+             'accepted': [], 'options': [], 'hints': [], 'explanation': correct},
+            {'id': 'q2', 'type': 'choice', 'prompt': 'Was ist das Subjekt?', 'answer': correct,
+             'accepted': [], 'options': [correct, 'Das Subjekt ist der Ball.'],
+             'hints': [], 'explanation': correct},
+        ]
+    monkeypatch.setattr(visual_references, 'question_projection', lambda *args, **kwargs: [])
+    with child_client(demo) as kid:
+        assert kid.post(f'/api/units/{unit_id}/start').status_code == 200
+        assert kid.post(f'/api/units/{unit_id}/questions/q1/answer',
+            json={'answer': 'Hund', 'request_id': 'choice-subject-first-001'}).status_code == 200
+        assert kid.post(f'/api/units/{unit_id}/explanation', json={'question_id': 'q1'}).status_code == 200
+        result = kid.post(f'/api/units/{unit_id}/questions/q2/answer',
+            json={'answer': correct, 'request_id': 'choice-subject-second-001'})
+        assert result.status_code == 200 and result.json()['assisted'] is True
+        assert result.json()['evaluation']['support_reasons'] == ['recent_solution']
 
 
 def test_deferred_words_remain_private_source_bound_and_confirmation_replays(api, household):

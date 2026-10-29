@@ -924,6 +924,9 @@ def settle(db, usage, result=None, failed=False):
         schema_hash = receipt.get("schema_sha256")
         if isinstance(schema_hash, str) and re.fullmatch(r"[a-f0-9]{64}", schema_hash):
             telemetry["request_schema_sha256"] = schema_hash
+        max_output_tokens = receipt.get("max_output_tokens")
+        if type(max_output_tokens) is int and 0 < max_output_tokens < 2**31:
+            telemetry["requested_max_output_tokens"] = max_output_tokens
         if receipt.get("graphic_transport") == "graphic-table-1":
             telemetry["graphic_transport"] = "graphic-table-1"
         usage.telemetry = telemetry

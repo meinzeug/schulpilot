@@ -355,6 +355,10 @@ def test_local_paid_switch_can_explicitly_resize_hold_without_raising_quotas(api
         assert cfg.production_block_reason
         assert db.get(Family, fid).call_limit == 3 and db.get(Family, fid).budget_micros == 3000
         assert db.scalar(select(Audit.id).where(Audit.action == 'provider.explicit_paid_reservation'))
-    document['reservation_micros'] = 250001
+    # The explicitly configured reservation may exceed the historical 0.25 USD
+    # bound; the operator schema now caps it at 10 USD without changing quotas.
+    document['reservation_micros'] = 10_000_000
+    assert openrouter_setup.Configuration.model_validate(document).reservation_micros == 10_000_000
+    document['reservation_micros'] = 10_000_001
     with pytest.raises(ValidationError):
         openrouter_setup.Configuration.model_validate(document)

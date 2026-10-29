@@ -78,6 +78,8 @@ def test_http200_error_keeps_single_call_and_billing(monkeypatch, envelope_locat
         assert saved.cost_micros == (230 if known_usage else None)
         assert saved.cost_source == ("reported" if known_usage else "unknown")
         assert saved.input_tokens == result.input_tokens and saved.output_tokens == result.output_tokens
+        assert saved.telemetry["requested_max_output_tokens"] == result.request_receipt["max_output_tokens"]
+        assert private not in json.dumps(saved.telemetry, sort_keys=True)
         for bucket_id in saved.bucket_ids:
             bucket = db.get(UsageBucket, bucket_id)
             assert bucket.calls == 1

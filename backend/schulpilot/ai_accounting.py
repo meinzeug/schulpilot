@@ -36,6 +36,9 @@ def response_metrics(raw, elapsed_ms, request_id=None):
     usage = usage if isinstance(usage, dict) else {}
     prompt = usage.get("prompt_tokens_details") or {}
     completion = usage.get("completion_tokens_details") or {}
+    choices = raw.get("choices")
+    finish = (choices[0].get("finish_reason") if isinstance(choices, list) and choices
+              and isinstance(choices[0], dict) else None)
     details = {
         "generation_id": identifier(raw.get("id")),
         "request_id": identifier(request_id),
@@ -47,6 +50,7 @@ def response_metrics(raw, elapsed_ms, request_id=None):
         "reasoning_tokens": integer(completion.get("reasoning_tokens")) if isinstance(completion, dict) else None,
         "billed_usd": str(usage["cost"]) if micros(usage.get("cost")) is not None else None,
         "attempt": 1,
+        "finish_reason": finish if finish in ("stop", "length", "content_filter", "tool_calls", "error") else None,
     }
     # Reasoning tokens are a subset of completion_tokens, not an extra charge.
     return {
@@ -234,6 +238,9 @@ def reconcile_one():
             row.telemetry = {**row.telemetry, "billed_usd": str(data["total_cost"]),
                 "request_id": identifier(data.get("request_id")), "upstream": identifier(data.get("provider_name")),
                 "reasoning_tokens": integer(data.get("native_tokens_reasoning")),
+                "native_completion_tokens": integer(data.get("native_tokens_completion")),
+                "native_finish_reason": data.get("native_finish_reason") if data.get("native_finish_reason") in
+                    ("stop", "length", "max_output_tokens", "content_filter", "tool_calls", "error") else None,
                 "cached_tokens": integer(data.get("native_tokens_cached")), "reconciled_at": int(now()),
                 "cost_receipt_state": "verified_generation", "reported_cost_micros": previous_cost}
             row.input_tokens = integer(data.get("tokens_prompt"))
