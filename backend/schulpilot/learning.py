@@ -52,7 +52,7 @@ def prior_explanation_reveals_answer(db, unit, question, events):
 
     Unknown overlap remains unknown; existing attempts are never modified.
     """
-    if question.get("type") not in ("short", "choice") or question.get("language"):
+    if question.get("type") not in ("short", "gap", "choice") or question.get("language"):
         return False
     answers = [question.get("answer"), *(question.get("accepted") or [])]
     words = {" ".join(unicodedata.normalize("NFKC", a).casefold().split()) for a in answers if isinstance(a, str)}

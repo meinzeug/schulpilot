@@ -254,6 +254,33 @@ def test_later_exact_choice_from_opened_explanation_counts_as_supported_in_api(a
         assert result.json()['evaluation']['support_reasons'] == ['recent_solution']
 
 
+def test_gap_answer_seen_in_previous_opened_graphic_counts_as_help(api, monkeypatch):
+    from schulpilot import visual_references
+
+    demo, unit_id = prepared(api)
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        unit.questions = [
+            {'id': 'q1', 'type': 'choice', 'prompt': 'Was bilden Pflanzen?', 'answer': 'Zucker',
+             'accepted': [], 'options': ['Zucker', 'Wasser'], 'hints': [], 'explanation': 'Zucker entsteht.'},
+            {'id': 'q2', 'type': 'gap', 'prompt': 'Pflanzen nehmen Wasser und ___ auf.',
+             'answer': 'Kohlenstoffdioxid', 'accepted': [], 'options': [], 'hints': [],
+             'explanation': 'Sie nehmen Kohlenstoffdioxid auf.'},
+        ]
+    monkeypatch.setattr(visual_references, 'question_projection', lambda _db, _unit, q, **_kwargs:
+        [{'text': 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'}] if q['id'] == 'q1' else [])
+    with child_client(demo) as kid:
+        assert kid.post(f'/api/units/{unit_id}/start').status_code == 200
+        first = kid.post(f'/api/units/{unit_id}/questions/q1/answer',
+            json={'answer': 'Zucker', 'request_id': 'gap-exposure-first-001'})
+        assert first.status_code == 200 and first.json()['assisted'] is False
+        assert kid.post(f'/api/units/{unit_id}/explanation', json={'question_id': 'q1'}).status_code == 200
+        second = kid.post(f'/api/units/{unit_id}/questions/q2/answer',
+            json={'answer': 'Kohlenstoffdioxid', 'request_id': 'gap-exposure-second-001'})
+        assert second.status_code == 200 and second.json()['assisted'] is True
+        assert second.json()['evaluation']['support_reasons'] == ['recent_solution']
+
+
 def test_deferred_words_remain_private_source_bound_and_confirmation_replays(api, household):
     _, child = household
     data = {"target_locale":"en-GB", "title":"Künstliche Prüfliste", "language_confirmed":True,
