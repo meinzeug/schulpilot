@@ -134,6 +134,31 @@ def test_earlier_solution_showing_later_answer_counts_as_support(api):
         assert kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer": "Licht", "request_id": "exposure-second-answer-01"}).json()["attempt_id"] == second.json()["attempt_id"]
 
 
+def test_earlier_opened_graphic_step_can_show_a_multiword_answer(api, monkeypatch):
+    from schulpilot import visual_references
+
+    demo, unit_id = prepared(api)
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        unit.questions = [
+            {"id": "q1", "type": "short", "prompt": "Was bilden Pflanzen?", "answer": "Zucker",
+             "accepted": [], "options": [], "hints": [], "explanation": "Pflanzen bilden Zucker mit Licht."},
+            {"id": "q2", "type": "short", "prompt": "Welche Stoffe nehmen Pflanzen auf?",
+             "answer": "Wasser und Kohlenstoffdioxid", "accepted": [], "options": [], "hints": [],
+             "explanation": "Pflanzen nehmen Wasser und Kohlenstoffdioxid auf."},
+        ]
+    monkeypatch.setattr(visual_references, "question_projection", lambda _db, _unit, q, **_kw:
+        [{"text": "Pflanzen nehmen Wasser und Kohlenstoffdioxid auf."}] if q["id"] == "q1" else [])
+    with child_client(demo) as kid:
+        assert kid.post(f"/api/units/{unit_id}/start").status_code == 200
+        first = kid.post(f"/api/units/{unit_id}/questions/q1/answer", json={"answer": "Zucker", "request_id": "step-exposure-answer-one"})
+        assert first.status_code == 200 and first.json()["assisted"] is False
+        assert kid.post(f"/api/units/{unit_id}/explanation", json={"question_id": "q1"}).status_code == 200
+        second = kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer": "Wasser und Kohlenstoffdioxid", "request_id": "step-exposure-answer-two"})
+        assert second.status_code == 200 and second.json()["assisted"] is True
+        assert second.json()["evaluation"]["support_reasons"] == ["recent_solution"]
+
+
 def test_deferred_words_remain_private_source_bound_and_confirmation_replays(api, household):
     _, child = household
     data = {"target_locale":"en-GB", "title":"Künstliche Prüfliste", "language_confirmed":True,

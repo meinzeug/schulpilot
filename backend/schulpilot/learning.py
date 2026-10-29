@@ -47,21 +47,33 @@ def record(db, child_id, kind, detail=None, unit_id=None):
     activity_recorded(db, activity)
 
 
-def prior_explanation_reveals_answer(question, events):
-    """Detect a literal single-word answer shown in another question's help.
+def prior_explanation_reveals_answer(db, unit, question, events):
+    """Detect a literal text answer in another question's opened explanation.
 
     Unknown overlap remains unknown; existing attempts are never modified.
     """
     if question.get("type") != "short" or question.get("language"):
         return False
     answers = [question.get("answer"), *(question.get("accepted") or [])]
-    words = {unicodedata.normalize("NFKC", a).casefold().strip() for a in answers if isinstance(a, str)}
-    words = {a for a in words if len(a) >= 4 and a.isalpha()}
+    words = {" ".join(unicodedata.normalize("NFKC", a).casefold().split()) for a in answers if isinstance(a, str)}
+    words = {a for a in words if len(a) >= 4 and all(c.isalpha() or c.isspace() or c in "-'’" for c in a)}
+    if not words:
+        return False
+    from .visual_references import question_projection
+
+    questions = {q["id"]: q for q in unit.questions}
+    seen = set()
     for event in events:
         detail = event.detail if isinstance(event.detail, dict) else {}
-        if not detail.get("question_id") or detail["question_id"] == question.get("id"):
+        prior = detail.get("question_id")
+        if not prior or prior == question.get("id") or prior not in questions or prior in seen:
             continue
-        text = unicodedata.normalize("NFKC", str(detail.get("text", ""))).casefold()
+        seen.add(prior)
+        # Only the initially displayed step is evidence that the text could be
+        # seen; later steps may never have been opened by the learner.
+        steps = question_projection(db, unit, questions[prior], closed=True, hints=3)[:1]
+        exposed = [str(detail.get("text", "")), *(str(step.get("text", "")) for step in steps)]
+        text = " ".join(unicodedata.normalize("NFKC", " ".join(exposed)).casefold().split())
         if any(re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text) for word in words):
             return True
     return False
@@ -1735,7 +1747,7 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         any(not e.detail.get("question_id") or e.detail.get("question_id") == question_id
             for e in explanation_events)
     )
-    prior_solution = prior_explanation_reveals_answer(q, explanation_events)
+    prior_solution = prior_explanation_reveals_answer(db, unit, q, explanation_events)
     had_hint = any(
         e.detail.get("question_id") == question_id
         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
