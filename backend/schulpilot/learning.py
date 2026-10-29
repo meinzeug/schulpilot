@@ -52,12 +52,24 @@ def prior_explanation_reveals_answer(db, unit, question, events):
 
     Unknown overlap remains unknown; existing attempts are never modified.
     """
-    if question.get("type") != "short" or question.get("language"):
+    if question.get("type") not in ("short", "choice") or question.get("language"):
         return False
     answers = [question.get("answer"), *(question.get("accepted") or [])]
     words = {" ".join(unicodedata.normalize("NFKC", a).casefold().split()) for a in answers if isinstance(a, str)}
     words = {a for a in words if len(a) >= 4 and all(c.isalpha() or c.isspace() or c in "-'’" for c in a)}
-    if not words:
+    # Choice options are normally whole statements, and overlap of a few
+    # subject words is not proof that a solution was revealed. Recognise only
+    # the specifically verified photosynthesis relation below; all other
+    # paraphrased choices remain unknown.
+    choice = question.get("type") == "choice"
+    answer = question.get("answer")
+    photosynthesis_choice = (choice and isinstance(answer, str)
+        and answer in (question.get("options") or [])
+        and re.fullmatch(r"\s*pflanzen nehmen kohlenstoffdioxid auf und geben sauerstoff ab[.!]?\s*",
+                         answer, re.IGNORECASE) is not None)
+    if choice and not photosynthesis_choice:
+        return False
+    if not words and not photosynthesis_choice:
         return False
     from .visual_references import question_projection
 
@@ -74,6 +86,11 @@ def prior_explanation_reveals_answer(db, unit, question, events):
         steps = question_projection(db, unit, questions[prior], closed=True, hints=3)[:1]
         exposed = [str(detail.get("text", "")), *(str(step.get("text", "")) for step in steps)]
         text = " ".join(unicodedata.normalize("NFKC", " ".join(exposed)).casefold().split())
+        if photosynthesis_choice:
+            from .package_prepared_photosynthesis import bases
+
+            if next(bases(text), None) is not None:
+                return True
         if any(re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text) for word in words):
             return True
     return False

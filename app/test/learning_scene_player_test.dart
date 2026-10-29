@@ -76,6 +76,63 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  testWidgets(
+    'source-bound photosynthesis has a readable two-step plant diagram',
+    (tester) async {
+      size(tester, const Size(320, 844));
+      final labels = ['Wasser', 'Kohlenstoffdioxid', 'Zucker', 'Sauerstoff'];
+      final block = <String, dynamic>{
+        'title': 'Pflanzen',
+        'kind': 'scene',
+        'labels': labels,
+        'scene': {
+          'version': 1,
+          'layout': 'grid',
+          'transition_ms': 0,
+          'objects': [
+            for (var i = 0; i < labels.length; i++)
+              {
+                'id': 'o$i',
+                'label': labels[i],
+                'shape': 'box',
+                'tone': 'neutral',
+              },
+          ],
+          'steps': [
+            for (var i = 0; i < 2; i++)
+              {
+                'caption': labels[i * 2],
+                'placements': [
+                  for (var j = 0; j < labels.length; j++)
+                    {'object_id': 'o$j', 'slot': j},
+                ],
+                'highlight': i == 0 ? ['o0', 'o1'] : ['o2', 'o3'],
+                'edges': [],
+              },
+          ],
+        },
+      };
+      await tester.pumpWidget(
+        host(LearningScenePlayer(block), size: const Size(320, 844), scale: 2),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('photosynthesis-illustration')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'),
+        findsOneWidget,
+      );
+      await tapVisible(tester, find.byTooltip('Nächster Grafikschritt'));
+      expect(
+        find.text('Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (var index = 0; index < _cases.length; index++) {
     for (final viewport in [(320.0, 2.0), (390.0, 1.0), (1440.0, 1.0)]) {
       testWidgets(

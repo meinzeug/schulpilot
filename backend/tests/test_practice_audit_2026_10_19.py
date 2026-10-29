@@ -159,6 +159,44 @@ def test_earlier_opened_graphic_step_can_show_a_multiword_answer(api, monkeypatc
         assert second.json()["evaluation"]["support_reasons"] == ["recent_solution"]
 
 
+def test_opened_photosynthesis_graphic_marks_the_disclosed_choice_as_help(api, monkeypatch):
+    from schulpilot import visual_references
+
+    demo, unit_id = prepared(api)
+    correct = "Pflanzen nehmen Kohlenstoffdioxid auf und geben Sauerstoff ab."
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        unit.questions = [
+            {"id": "q1", "type": "short", "prompt": "Was bilden Pflanzen?", "answer": "Zucker",
+             "accepted": [], "options": [], "hints": [], "explanation": "Pflanzen bilden Zucker."},
+            {"id": "q2", "type": "choice", "prompt": "Was nehmen Pflanzen auf und geben sie ab?",
+             "answer": correct, "options": [correct, "Pflanzen geben Kohlenstoffdioxid ab."],
+             "accepted": [], "hints": [], "explanation": "Kohlenstoffdioxid wird aufgenommen."},
+        ]
+    monkeypatch.setattr(visual_references, "question_projection", lambda _db, _unit, q, **_kw:
+        [{"text": "Pflanzen nehmen Wasser und Kohlenstoffdioxid auf. Mit Licht bilden sie Zucker und geben Sauerstoff ab."}]
+        if q["id"] == "q1" else [])
+    with child_client(demo) as kid:
+        assert kid.post(f"/api/units/{unit_id}/start").status_code == 200
+        first = kid.post(f"/api/units/{unit_id}/questions/q1/answer", json={"answer": "Zucker", "request_id": "choice-exposure-first-01"})
+        assert first.status_code == 200 and first.json()["assisted"] is False
+        assert kid.post(f"/api/units/{unit_id}/explanation", json={"question_id": "q1"}).status_code == 200
+        second = kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer": correct, "request_id": "choice-exposure-second-01"})
+        assert second.status_code == 200 and second.json()["assisted"] is True
+        assert second.json()["evaluation"]["support_reasons"] == ["recent_solution"]
+
+
+def test_choice_shared_topic_words_do_not_prove_solution_exposure():
+    from types import SimpleNamespace
+    from schulpilot.learning import prior_explanation_reveals_answer
+
+    prior = {"id": "q1", "type": "short"}
+    choice = {"id": "q2", "type": "choice", "answer": "Pflanzen geben Sauerstoff ab.",
+              "options": ["Pflanzen geben Sauerstoff ab.", "Pflanzen nehmen Sauerstoff auf."]}
+    event = SimpleNamespace(detail={"question_id": "q1", "text": "Pflanzen brauchen Sauerstoff."})
+    assert not prior_explanation_reveals_answer(None, SimpleNamespace(questions=[prior, choice]), choice, [event])
+
+
 def test_deferred_words_remain_private_source_bound_and_confirmation_replays(api, household):
     _, child = household
     data = {"target_locale":"en-GB", "title":"Künstliche Prüfliste", "language_confirmed":True,

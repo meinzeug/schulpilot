@@ -398,9 +398,24 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
               else
                 Semantics(
                   image: true,
-                  label: description,
+                  label: _isPhotosynthesisScene(model)
+                      ? (index == 0
+                            ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
+                            : 'Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.')
+                      : description,
                   child: ExcludeSemantics(
-                    child: _SceneCanvas(scene: model, value: value),
+                    child: _isPhotosynthesisScene(model)
+                        ? AnimatedSwitcher(
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 280),
+                            child: _PhotosynthesisScene(
+                              key: ValueKey('photosynthesis-step-$index'),
+                              scene: model,
+                              step: index,
+                            ),
+                          )
+                        : _SceneCanvas(scene: model, value: value),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -418,7 +433,11 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
               ),
               const SizedBox(height: 8),
               Text(
-                step.caption,
+                _isPhotosynthesisScene(model)
+                    ? (index == 0
+                          ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
+                          : 'Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.')
+                    : step.caption,
                 key: const ValueKey('scene-caption'),
                 style: TextStyle(
                   color: context.palette.ink,
@@ -609,6 +628,151 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
       ),
     );
   }
+}
+
+// This illustration is only used for the exact, source-verified two-phase
+// exchange scene. Other biology scenes retain the generic validated player.
+bool _isPhotosynthesisScene(_Scene scene) {
+  final labels = scene.objects.map((o) => o.label.toLowerCase()).toList();
+  return scene.layout == 'grid' &&
+      labels.join('|') == 'wasser|kohlenstoffdioxid|zucker|sauerstoff' &&
+      scene.objects.map((o) => o.id).join('|') == 'o0|o1|o2|o3' &&
+      scene.steps.length == 2 &&
+      scene.steps.every(
+        (s) =>
+            s.edges.isEmpty &&
+            List.generate(4, (i) => s.placements['o$i'] == i).every((v) => v),
+      ) &&
+      scene.steps[0].highlight.containsAll({'o0', 'o1'}) &&
+      scene.steps[0].highlight.length == 2 &&
+      scene.steps[1].highlight.containsAll({'o2', 'o3'}) &&
+      scene.steps[1].highlight.length == 2;
+}
+
+class _PhotosynthesisScene extends StatelessWidget {
+  final _Scene scene;
+  final int step;
+  const _PhotosynthesisScene({
+    super.key,
+    required this.scene,
+    required this.step,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget group(String title, int first, bool active) => Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: context.palette.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          for (final object in scene.objects.skip(first).take(2))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                object.label,
+                style: TextStyle(
+                  color: active ? context.palette.ink : context.palette.muted,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    return Column(
+      key: const ValueKey('photosynthesis-illustration'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Text('Licht', style: TextStyle(color: context.palette.ink)),
+        ),
+        SizedBox(height: 160, child: CustomPaint(painter: _PlantPainter(step))),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            group('Aufnahme', 0, step == 0),
+            const SizedBox(width: 12),
+            group('Bildung und Abgabe', 2, step == 1),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PlantPainter extends CustomPainter {
+  final int step;
+  _PlantPainter(this.step);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height * .82);
+    final stem = Paint()
+      ..color = const Color(0xff42c49b)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(center, Offset(center.dx, size.height * .3), stem);
+    final leaf = Paint()..color = const Color(0xff58d8af);
+    for (final side in [-1.0, 1.0]) {
+      final path = Path()
+        ..moveTo(center.dx, size.height * .59)
+        ..quadraticBezierTo(
+          center.dx + side * 12,
+          size.height * .24,
+          center.dx + side * 58,
+          size.height * .38,
+        )
+        ..quadraticBezierTo(
+          center.dx + side * 54,
+          size.height * .58,
+          center.dx,
+          size.height * .59,
+        );
+      canvas.drawPath(path, leaf);
+    }
+    canvas.drawCircle(
+      Offset(center.dx, size.height * .16),
+      13,
+      Paint()..color = const Color(0xffffcf70),
+    );
+    final arrow = Paint()
+      ..color = const Color(0xff83b8ff)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    void line(double start, double end, double y) {
+      canvas.drawLine(Offset(start, y), Offset(end, y), arrow);
+      final direction = end > start ? 1.0 : -1.0;
+      canvas.drawLine(
+        Offset(end, y),
+        Offset(end - direction * 8, y - 6),
+        arrow,
+      );
+      canvas.drawLine(
+        Offset(end, y),
+        Offset(end - direction * 8, y + 6),
+        arrow,
+      );
+    }
+
+    final far = math.min(115.0, size.width * .46);
+    final near = math.min(65.0, size.width * .28);
+    if (step == 0) {
+      line(center.dx - far, center.dx - near, size.height * .62);
+    } else {
+      line(center.dx + near, center.dx + far, size.height * .62);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PlantPainter oldDelegate) =>
+      oldDelegate.step != step;
 }
 
 /// A local inspection of an existing process, never a new process or relation.
