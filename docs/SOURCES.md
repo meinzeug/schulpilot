@@ -3242,3 +3242,12 @@ Eine korrekte kgV-Bereitmeldung ist serverseitig belegt. Ihre Ausblendung nach d
 Release `20261028T072845Z-d7ef7e3`, Version1.37.0+151, Schema0042 tatsächlich ausgeliefert. Fünf Dienste aktiv,17 gesicherte Betriebskonfigurationen und Google-Nachweise unverändert, vorheriger Release150 erhalten. Direct-APK, Play-AAB und Web aus demselben sauberen Produktcommit; Signaturen/Manifest/Geheimnisse geprüft. Öffentliche vollständige APK und JavaScript bytegenau abgeglichen. Tatsächlicher Browser-Zufallsstart nur im künstlichen lokalen Konto,0Providerjobs/0Usage/0Antworten; regulär wieder pausiert. Produktion zusätzlich lesend bei Desktop und390×844 geprüft, einschließlich gebündeltem Verlauf und passendem Einzelrundenfilter. Temporäre künstliche Datenbank/Zugangsdaten entfernt, Screenshots nur im ignorierten lokalen Artefaktverzeichnis. Keine Kinderdaten oder privaten Fallkennungen neu im Repository; keine sichtbare native Geräteabnahme behauptet.
 
 29.10.2026 · OpenRouter-Generierungsmetadaten: [Generation API](https://openrouter.ai/docs/api/api-reference/generations/get-generation) dokumentiert getrennte native und allgemeine Tokenzähler sowie Abschlussgründe. Zwei ausdrücklich künstliche Fehlversuche wurden anhand ihrer eigenen Generierungsbelege überprüft; Ergebnisse und Grenzen stehen in [EVERYDAY_QA_2026_10_29.md](EVERYDAY_QA_2026_10_29.md). Keine privaten Antworttexte oder Denkinhalte gespeichert.
+# 29.10.2026: Selbstständigkeit nach geöffneter Erklärung
+
+Die serverseitigen, bereits vorhandenen Öffnungsbelege werden für neue
+Antworten derselben Einheit berücksichtigt. Der Unterschied zwischen einem
+belegten Treffer und einem lediglich möglichen Zusammenhang sowie die Grenzen
+der Erfassung sind in [EXPLANATION_EVIDENCE.md](EXPLANATION_EVIDENCE.md)
+beschrieben. Historische Antworten werden nicht umgeschrieben. Die weiterhin
+offene allgemeine Ursache der abgeschnittenen KI-Ausgaben wird hierdurch nicht
+als behoben behauptet.

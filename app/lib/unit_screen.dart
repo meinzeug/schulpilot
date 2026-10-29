@@ -3413,6 +3413,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       : 'Versuch es noch einmal. Unter Hilfe findest du einen Tipp.',
                   style: TextStyle(fontSize: 16),
                 )
+              else if (lastEvaluation?['independence_uncertain'] == true)
+                Text(
+                  'Richtig! Bei einer neuen Aufgabe kannst du zeigen, was du schon alleine weißt.',
+                  style: TextStyle(fontSize: 16),
+                )
               else if (answerAssisted)
                 MathText(
                   q['language'] is Map &&

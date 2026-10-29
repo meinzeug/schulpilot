@@ -97,8 +97,13 @@ def test_question_explanation_has_matching_values_and_support_does_not_spread(ap
         first = kid.post(f"/api/units/{unit_id}/questions/q1/answer", json={"answer":"1/2", "request_id":"audit-answer-first-001"})
         assert first.json()["evaluation"]["support_reasons"] == ["explanation"]
         second = kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer":"1/2", "request_id":"audit-answer-second-001"})
-        assert second.json()["assisted"] is False
-        assert second.json()["evaluation"]["support_reasons"] == []
+        assert second.json()["outcome"] == "correct"
+        assert second.json()["assisted"] is True
+        assert second.json()["evaluation"]["independence_uncertain"] is True
+        assert second.json()["evaluation"]["support_reasons"] == ["possible_prior_solution"]
+        progress = kid.get(f"/api/children/{demo['child_id']}/learning-progress").json()["totals"]
+        assert progress["uncertain_tasks"] == 1 and progress["assisted_tasks"] == 1
+        assert progress["independent_tasks"] == 0
         repeated = kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer":"1/2", "request_id":"audit-answer-second-001"})
         assert repeated.json()["attempt_id"] == second.json()["attempt_id"]
         for kind in ("answer_seems_right", "solution_seems_wrong", "display_unclear"):
@@ -131,6 +136,7 @@ def test_earlier_solution_showing_later_answer_counts_as_support(api):
         second = kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer": "Licht", "request_id": "exposure-second-answer-01"})
         assert second.status_code == 200 and second.json()["assisted"] is True
         assert second.json()["evaluation"]["support_reasons"] == ["recent_solution"]
+        assert second.json()["evaluation"]["independence_uncertain"] is False
         assert kid.post(f"/api/units/{unit_id}/questions/q2/answer", json={"answer": "Licht", "request_id": "exposure-second-answer-01"}).json()["attempt_id"] == second.json()["attempt_id"]
 
 
@@ -188,8 +194,9 @@ def test_opened_photosynthesis_graphic_marks_the_disclosed_choice_as_help(api, m
 
 def test_choice_shared_topic_words_do_not_prove_solution_exposure(monkeypatch):
     from types import SimpleNamespace
-    from schulpilot.learning import prior_explanation_reveals_answer
+
     from schulpilot import visual_references
+    from schulpilot.learning import prior_explanation_reveals_answer
 
     monkeypatch.setattr(visual_references, 'question_projection', lambda *args, **kwargs: [])
 
@@ -202,8 +209,9 @@ def test_choice_shared_topic_words_do_not_prove_solution_exposure(monkeypatch):
 
 def test_opened_explanation_exact_choice_is_detected_across_subjects(monkeypatch):
     from types import SimpleNamespace
-    from schulpilot.learning import prior_explanation_reveals_answer
+
     from schulpilot import visual_references
+    from schulpilot.learning import prior_explanation_reveals_answer
 
     monkeypatch.setattr(visual_references, 'question_projection', lambda *args, **kwargs: [])
     prior = {'id': 'q1', 'type': 'short'}
@@ -283,6 +291,7 @@ def test_gap_answer_seen_in_previous_opened_graphic_counts_as_help(api, monkeypa
 
 def test_source_bound_photosynthesis_choice_paraphrases_are_supported_without_negation(monkeypatch):
     from types import SimpleNamespace
+
     from schulpilot import visual_references
     from schulpilot.learning import prior_explanation_reveals_answer
 

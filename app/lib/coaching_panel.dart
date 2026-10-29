@@ -1011,6 +1011,9 @@ String storedQuestionCategory(Map question) {
     return 'contribution';
   }
   if (last['outcome'] == 'correct') {
+    if (last['evaluation']?['independence_uncertain'] == true) {
+      return 'uncertain';
+    }
     if (attempts.length > 1 || last['assisted'] == true) return 'assisted';
     if (last['assisted'] == false) return 'independent';
     return 'unclassified';
@@ -1088,6 +1091,12 @@ Widget _roundResultScope(AppState state, Json unit, Widget child) =>
     Icons.help_outline_rounded,
     PanelTone.info,
     'Die Antwort ist gespeichert. Ihre Bewertung ist noch offen.',
+  ),
+  'independence_uncertain' => (
+    'Richtig · selbstständig noch offen',
+    Icons.help_outline_rounded,
+    PanelTone.info,
+    'Die Antwort ist richtig. Eine frühere Erklärung könnte sie vorweggenommen haben.',
   ),
   'none' => (
     'Noch nicht beantwortet',
@@ -1186,7 +1195,14 @@ class RoundQuestionCards extends StatelessWidget {
             builder: (context) {
               final question = Json.from(raw),
                   category = storedQuestionCategory(raw);
-              final status = _roundStatus(category);
+              final attempts = question['attempts'] as List? ?? [];
+              final possibleExposure =
+                  attempts.isNotEmpty &&
+                  attempts.last['evaluation']?['independence_uncertain'] ==
+                      true;
+              final status = _roundStatus(
+                possibleExposure ? 'independence_uncertain' : category,
+              );
               return SurfaceInset(
                 tone: status.$3,
                 padding: const EdgeInsets.all(12),
@@ -1406,7 +1422,10 @@ class _SavedQuestionResult extends StatelessWidget {
         reasons.isNotEmpty && reasons.every((r) => r == 'another_attempt');
     final label = switch (category) {
       'contribution' => 'Eigener Beitrag · ohne Richtig/Falsch-Wertung',
-      'uncertain' => 'Prüfung offen',
+      'uncertain' =>
+        last['evaluation']?['independence_uncertain'] == true
+            ? 'Richtig · selbstständig noch offen'
+            : 'Prüfung offen',
       'practice' => 'Weiter üben',
       'independent' => 'Selbstständig gelöst',
       'unclassified' => 'Richtig gelöst · Hilfe nicht erfasst',

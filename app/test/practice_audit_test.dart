@@ -389,7 +389,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.text('21 gespeichert · 3 vorgemerkt · 0 noch möglich'),
+        find.text('21 bestätigt · 3 neu · 0 noch möglich'),
         findsOneWidget,
       );
       final preview = find.text('Vorgemerktes Foto 1 ansehen');

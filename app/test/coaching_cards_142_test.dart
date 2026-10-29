@@ -84,6 +84,37 @@ void main() {
       'Nunito',
     )..addFont(rootBundle.load('assets/fonts/Nunito.ttf'))).load();
   });
+  testWidgets(
+    'A correct answer with possible exposure remains correct but not independent',
+    (tester) async {
+      final item = question('exposure', [
+        {
+          'answer': 'Künstliche Antwort',
+          'outcome': 'correct',
+          'assisted': true,
+          'evaluation': {
+            'independence_uncertain': true,
+            'support_reasons': ['possible_prior_solution'],
+          },
+        },
+      ]);
+      expect(storedQuestionCategory(item), 'uncertain');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: RoundQuestionCards(questions: [item]),
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.textContaining('Richtig · selbstständig noch offen'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Die Antwort ist richtig.'), findsOneWidget);
+    },
+  );
   for (final role in ['child', 'parent']) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(

@@ -43,7 +43,14 @@ def catalogue(db, unit, sources):
 
 
 def evidence(db, unit, sources):
-    from .coaching import CHECK_KINDS, conflicting_fraction_goal, fraction_task_goal, fraction_task_signature, normalized_prompt, planned_review
+    from .coaching import (
+        CHECK_KINDS,
+        conflicting_fraction_goal,
+        fraction_task_goal,
+        fraction_task_signature,
+        normalized_prompt,
+        planned_review,
+    )
     from .learning_controller import source_state
 
     goals = catalogue(db, unit, sources)
@@ -102,11 +109,12 @@ def evidence(db, unit, sources):
             state["tasks"] += 1
             state["attempts"] += len(values)
             state["last_observation"] = max(state["last_observation"] or 0, last.created)
-            bucket = "reflection_tasks" if reflection else "independent" if independent else "supported" if last.outcome == "correct" else "needs_practice" if last.outcome == "incorrect" else "uncertain"
+            possible_exposure = bool((last.evaluation or {}).get("independence_uncertain"))
+            bucket = "reflection_tasks" if reflection else "uncertain" if possible_exposure and last.outcome == "correct" else "independent" if independent else "supported" if last.outcome == "correct" else "needs_practice" if last.outcome == "incorrect" else "uncertain"
             state[bucket] += 1
             if not reflection:
                 state["last_assessment_observation"] = max(state["last_assessment_observation"] or 0, last.created)
-            if not reflection and not independent:
+            if not reflection and not independent and not (possible_exposure and last.outcome == "correct"):
                 state["last_difficulty"] = max(state["last_difficulty"] or 0, last.created)
             state["evidence_refs"].extend("attempt:" + a.id for a in values)
             if independent:

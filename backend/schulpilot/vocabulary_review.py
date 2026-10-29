@@ -48,15 +48,17 @@ def record_review(db, unit, question, attempt, *, at=None):
         db.add(row)
         db.flush()
     independent = attempt.outcome == "correct" and not attempt.assisted
+    possible_exposure = attempt.outcome == "correct" and bool((attempt.evaluation or {}).get("independence_uncertain"))
     advanced = independent and row.last_promoted != day.isoformat()
     if advanced:
         row.stage = min(len(INTERVALS), row.stage + 1)
         row.last_promoted = day.isoformat()
         row.due = (day + timedelta(days=INTERVALS[row.stage - 1])).isoformat()
-    elif not independent:
+    elif not independent and not possible_exposure:
         row.stage = 0
         row.due = (day + timedelta(days=1)).isoformat()
-    row.needs_clarification = attempt.outcome == "uncertain"
+    if not possible_exposure:
+        row.needs_clarification = attempt.outcome == "uncertain"
     db.add(VocabularyReviewEvent(attempt_id=attempt.id, review_id=row.id, day=day.isoformat(),
                                   advanced=advanced, stage=row.stage, due=row.due))
 
@@ -66,12 +68,12 @@ def states(db, item):
                  VocabularyReview.revision == item.revision).order_by(VocabularyReview.direction, VocabularyReview.skill)))
     result = []
     for row in rows:
-        attempts = list(db.execute(select(Attempt.outcome, Attempt.assisted).join(VocabularyReviewEvent).where(VocabularyReviewEvent.review_id == row.id)
+        attempts = list(db.execute(select(Attempt.outcome, Attempt.assisted, Attempt.evaluation).join(VocabularyReviewEvent).where(VocabularyReviewEvent.review_id == row.id)
                                   .order_by(Attempt.created, Attempt.id)))
         result.append({"direction": row.direction, "skill": row.skill, "stage": row.stage, "due": row.due,
              "needs_clarification": row.needs_clarification, "revision": row.revision}
               | {"attempts": len(attempts), "independent_correct": sum(a.outcome == "correct" and not a.assisted for a in attempts),
-                 "assisted_correct": sum(a.outcome == "correct" and a.assisted for a in attempts),
+                 "assisted_correct": sum(a.outcome == "correct" and a.assisted and not (a.evaluation or {}).get("independence_uncertain") for a in attempts),
                  "incorrect": sum(a.outcome == "incorrect" for a in attempts),
-                 "uncertain": sum(a.outcome == "uncertain" for a in attempts)})
+                 "uncertain": sum(a.outcome == "uncertain" or (a.outcome == "correct" and bool((a.evaluation or {}).get("independence_uncertain"))) for a in attempts)})
     return result

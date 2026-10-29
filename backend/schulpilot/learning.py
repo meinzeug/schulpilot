@@ -1782,6 +1782,13 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
             for e in explanation_events)
     )
     prior_solution = prior_explanation_reveals_answer(db, unit, q, explanation_events)
+    # An absent literal match cannot rule out a paraphrase or diagram having
+    # revealed an answer. Only explanations actually opened here count.
+    prior_explanation = any(
+        isinstance(e.detail, dict) and e.detail.get("question_id")
+        and e.detail.get("question_id") != question_id
+        for e in explanation_events
+    )
     had_hint = any(
         e.detail.get("question_id") == question_id
         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
@@ -1818,13 +1825,20 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
                         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "language_stimulus")))
             if not heard:
                 raise HTTPException(409, "Bitte zuerst den Hörtext abspielen. Ohne Audio ist das keine Hörübung.")
+    # Keep the answer verdict distinct from uncertainty about independence.
+    # Conservatively set assisted for legacy evidence consumers as well.
+    independence_uncertain = bool(outcome == "correct" and prior_explanation and not prior_solution
+                                  and not hinted and not previous)
+    hinted = hinted or independence_uncertain
     evaluation.update(attempt_number=len(previous) + 1,
                       independent_attempt=not bool(hinted or previous),
-                      independent_evidence=outcome == "correct" and not bool(hinted or previous))
+                      independent_evidence=outcome == "correct" and not bool(hinted or previous),
+                      independence_uncertain=independence_uncertain)
     evaluation["support_reasons"] = list(dict.fromkeys([
         *evaluation.get("support_reasons", []),
         *(["hint"] if had_hint else []), *(["explanation"] if explained else []),
         *(["recent_solution"] if prior_solution else []),
+        *(["possible_prior_solution"] if independence_uncertain else []),
         *(["another_attempt"] if previous else []),
     ]))
     attempt = Attempt(

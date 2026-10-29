@@ -321,3 +321,34 @@ def test_timezone_dst_and_once_per_local_day(api, household):
             state = db.scalar(select(VocabularyReview))
             assert state.stage == (1 if index < 2 else 2)
         assert db.scalar(select(func.count()).select_from(VocabularyReviewEvent)) == 3
+
+
+def test_possible_prior_solution_keeps_existing_word_review_stage(api, household):
+    _, child_data = household
+    import_words(api, child_data)
+    with DB.begin() as db:
+        child = db.get(Child, child_data["id"])
+        item = db.scalar(select(VocabularyItem))
+        task = vocabulary.task_for(item, RoundRequest(target_locale="en-GB"), 0, [item])
+        unit = LearningUnit(child_id=child.id, subject="Englisch", topic="Wörter", explanation="",
+                            questions=[task], provider="vocabulary")
+        db.add(unit)
+        db.flush()
+        first = Attempt(unit_id=unit.id, question_id="first", answer=item.word, outcome="correct", assisted=False)
+        db.add(first)
+        db.flush()
+        vocabulary_review.record_review(db, unit, task, first)
+        state = db.scalar(select(VocabularyReview))
+        previous = (state.stage, state.due, state.last_promoted)
+        pending = Attempt(unit_id=unit.id, question_id="next", answer=item.word, outcome="correct", assisted=True,
+                          evaluation={"independence_uncertain": True})
+        db.add(pending)
+        db.flush()
+        vocabulary_review.record_review(db, unit, task, pending)
+        vocabulary_review.record_review(db, unit, task, pending)
+        assert (state.stage, state.due, state.last_promoted) == previous
+        assert db.scalar(select(func.count()).select_from(VocabularyReviewEvent)) == 2
+        values = vocabulary_review.states(db, item)
+        assert values[0]["independent_correct"] == 1
+        assert values[0]["assisted_correct"] == 0
+        assert values[0]["uncertain"] == 1

@@ -65,7 +65,8 @@ def observations(db, unit):
             "task_explanation": q["explanation"],
             "evidence_kind": (q.get("presentation") or {}).get("evidence_kind", "knowledge"),
             "attempts": [
-                {"answer": a.answer, "outcome": a.outcome, "assisted": a.assisted}
+                {"answer": a.answer, "outcome": a.outcome, "assisted": a.assisted,
+                 "independence_uncertain": bool((a.evaluation or {}).get("independence_uncertain"))}
                 for a in attempts
                 if a.question_id == q["id"]
             ],
@@ -247,7 +248,7 @@ def goal_states(db, unit):
                 count["practiced_tasks"] += 1
                 count["attempts"] += len(attempts)
                 last = attempts[-1]
-                key = ("independent_tasks" if len(attempts) == 1 and not last["assisted"] else "assisted_tasks") if last["outcome"] == "correct" else "needs_practice_tasks" if last["outcome"] == "incorrect" else "uncertain_tasks"
+                key = ("uncertain_tasks" if last.get("independence_uncertain") else "independent_tasks" if len(attempts) == 1 and not last["assisted"] else "assisted_tasks") if last["outcome"] == "correct" else "needs_practice_tasks" if last["outcome"] == "incorrect" else "uncertain_tasks"
                 count[key] += 1
         if old.status != "completed":
             continue
@@ -690,13 +691,15 @@ def report_projection(db, unit, stored):
     if isinstance(report.get("explanation"), str):
         report["explanation"] = factual_prose(report["explanation"])
     items = {q["question_id"]: q for q in observations(db, unit)}
-    independent = supported = incorrect = uncertain = 0
+    independent = supported = incorrect = uncertain = independence_uncertain = 0
     for q in items.values():
         attempts = q["attempts"]
         if not attempts:
             continue
         if q["deterministic_outcome"] == "correct":
-            if len(attempts) == 1 and not attempts[-1]["assisted"]:
+            if attempts[-1].get("independence_uncertain"):
+                independence_uncertain += 1
+            elif len(attempts) == 1 and not attempts[-1]["assisted"]:
                 independent += 1
             else:
                 supported += 1
@@ -706,7 +709,8 @@ def report_projection(db, unit, stored):
             uncertain += 1
     report["summary"] = (f"{independent} beim ersten Versuch selbstständig richtig, "
                          f"{supported} mit Unterstützung oder erneut richtig, {incorrect} weiter üben, "
-                         f"{uncertain} Bewertungen offen. Eine offene Prüfung ist kein nachgewiesener Fehler.")
+                         f"{uncertain} Bewertungen offen, {independence_uncertain} richtig mit offenem Selbstständigkeitsnachweis. "
+                         "Eine offene Prüfung ist kein nachgewiesener Fehler.")
     for review in report.get("question_reviews", []):
         observed = items.get(review["question_id"])
         if observed is None:
@@ -1025,12 +1029,13 @@ def save_report(
         and not q["attempts"][0]["assisted"]
         and not q["hints_used"]
     ]
-    supported = [q for q in values if q["deterministic_outcome"] == "correct" and q not in independent]
-    unresolved = [q for q in values if q["deterministic_outcome"] != "correct"]
+    possible_exposure = [q for q in values if q["attempts"] and q["attempts"][-1].get("independence_uncertain")]
+    supported = [q for q in values if q["deterministic_outcome"] == "correct" and q not in independent and q not in possible_exposure]
+    unresolved = [q for q in values if q["deterministic_outcome"] != "correct" or q in possible_exposure]
     data.update(
         practice_deferred=deferred,
         source_revisions=sources,
-        summary=f"{len(values)} Aufgaben bearbeitet: {len(independent)} beim ersten Versuch ohne zusätzliche Hilfe richtig, {len(supported)} mit Unterstützung gelöst, {len(unresolved)} noch falsch oder nicht sicher bewertbar. Das sind Beobachtungen aus dieser Runde.",
+        summary=f"{len(values)} Aufgaben bearbeitet: {len(independent)} beim ersten Versuch ohne zusätzliche Hilfe richtig, {len(supported)} mit Unterstützung gelöst, {len(unresolved)} brauchen Übung oder eine weitere Prüfung. Das sind Beobachtungen aus dieser Runde.",
         strengths=[
             q["prompt"][:250] + " · beim ersten Versuch ohne zusätzliche Hilfe richtig" for q in independent[:3]
         ],

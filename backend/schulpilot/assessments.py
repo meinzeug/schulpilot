@@ -40,6 +40,9 @@ def rebuild_mastery(db, child, subject, topic):
             if unit.review_of and previous_day is not None and previous_day < day:
                 mastery.review_successes += 1
             interval = min(14, 2 ** min(mastery.review_successes, 3))
+        elif any((a.evaluation or {}).get("independence_uncertain") for a in values) and all(a.outcome == "correct" for a in values):
+            mastery.uncertain_units += 1
+            interval = 1
         elif all(a.outcome == "correct" for a in values):
             mastery.assisted += 1
             interval = 1
@@ -68,7 +71,7 @@ def recheck(db, unit, question, actor_id):
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     assessment = evaluate(question, attempt.answer)
     previous = attempt.evaluation or {}
-    assessment.update({k: previous[k] for k in ("support_reasons", "attempt_number", "independent_attempt") if k in previous})
+    assessment.update({k: previous[k] for k in ("support_reasons", "attempt_number", "independent_attempt", "independence_uncertain") if k in previous})
     assessment["independent_evidence"] = assessment["outcome"] == "correct" and not attempt.assisted
     audit = AttemptAssessment(attempt_id=attempt.id, rules_version=VERSION, previous_outcome=attempt.outcome,
                               outcome=assessment["outcome"], previous_evaluation=attempt.evaluation,
