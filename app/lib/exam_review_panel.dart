@@ -993,6 +993,9 @@ class _ExamReviewPanelState extends State<ExamReviewPanel> {
                       'Deine ursprüngliche Antwort',
                       task!['original_answer'],
                     ),
+                    for (final warning
+                        in (task!['arithmetic_warnings'] as List? ?? []))
+                      if (warning is Map) Notice('${warning['message']}'),
                     written(
                       'Rückmeldung deiner Lehrkraft',
                       task!['teacher_feedback'],

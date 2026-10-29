@@ -206,6 +206,9 @@ einem WÖRTLICHEN source_excerpt aus materials.content oder goal.note. Keine fre
 Wenn learning_goals vorliegt: diese Ziele unverändert erhalten; der Server setzt sie selbst ein.
 Nur wenn das Schema learning_goal_id in question_reviews verlangt, ordne die Rückmeldung einem belegten Ziel zu.
 Gespeicherte completed_questions.learning_goal_id bleiben verbindlich.
+Fragen nach Bruchbedeutung, Zähler oder Nenner prüfen eine Grundlage, nicht das Addieren,
+Kürzen oder Erweitern. Ordne sie einem eigenen, im Stoff belegten Grundziel zu. Ein Rechenziel
+ist kein Grundziel, nur weil es Zähler und Nenner erwähnt.
 Jede Rückmeldung höchstens drei kurze Sätze. Die Erklärung höchstens sechs kurze Sätze und ein
 verständliches Beispiel zu einer tatsächlich beobachteten Schwierigkeit. Keine neuen Aufgaben stellen.
 Leistungen und nächste Schritte berechnet der Server; erfinde keine Gesamtbewertung.
@@ -229,6 +232,9 @@ Ordne jede neue Aufgabe mit learning_goal_id einem dieser Ziele zu.
 Gespeicherte completed_questions.learning_goal_id übernimmt der Server unverändert für die Rückmeldung.
 Nur wenn das Ausgabeschema learning_goal_id in question_reviews verlangt, ordne unzugeordnete Altaufgaben
 einem belegten Lernziel zu und übernimm bereits gespeicherte Zuordnungen unverändert.
+Eine Frage nach Bruchbedeutung, Zähler oder Nenner prüft eine Grundlage, nicht das Addieren,
+Kürzen oder Erweitern. Ordne sie einem eigenen, tatsächlich im Stoff belegten Grundziel zu;
+ein Rechenziel wird nicht allein deshalb zum Grundziel, weil es Zähler und Nenner erwähnt.
 Für neue Aufgaben zuerst focus_goal_ids bedienen. Ohne vorgegebene IDs: repair übt die Ziele mit Fehlern/Hilfen,
 check deckt bis zu zwei verschiedene Ziele ab. Zwei Aufgaben zu einem einzigen Ziel sind bei nur einem Schwerpunkt erlaubt.
 Erkläre den schwierigen Schritt

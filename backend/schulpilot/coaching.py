@@ -219,6 +219,7 @@ def source_goals(materials, subject, topic):
 def goal_states(db, unit):
     root, chain = root_and_units(db, unit)
     goals = goals_for(db, root)
+    labels = {g["id"]: g["label"] for g in goals}
     dates = {g["id"]: [] for g in goals}
     practice = {g["id"]: {"practiced_tasks": 0, "independent_tasks": 0, "assisted_tasks": 0,
                            "needs_practice_tasks": 0, "uncertain_tasks": 0, "attempts": 0} for g in goals}
@@ -235,7 +236,7 @@ def goal_states(db, unit):
         groups = {}
         for question in old.questions:
             goal_id = question.get("learning_goal_id") or mapping.get(question["id"])
-            if goal_id in dates:
+            if goal_id in dates and not conflicting_fraction_goal(question["prompt"], labels[goal_id]):
                 groups.setdefault(goal_id, []).append(by_id[question["id"]])
         for goal_id, items in groups.items():
             for item in items:
@@ -304,7 +305,11 @@ def focus_ids(db, unit, action):
             r["question_id"]: r["learning_goal_id"]
             for r in (report.report if report else {}).get("question_reviews", [])
         }
-        by_question = {q["id"]: q.get("learning_goal_id") or reviewed.get(q["id"]) for q in unit.questions}
+        labels = {g["id"]: g["label"] for g in states}
+        by_question = {}
+        for q in unit.questions:
+            target = q.get("learning_goal_id") or reviewed.get(q["id"])
+            by_question[q["id"]] = None if target in labels and conflicting_fraction_goal(q["prompt"], labels[target]) else target
         weak = {
             by_question[q["question_id"]]
             for q in observations(db, unit)
@@ -847,6 +852,24 @@ def fraction_task_goal(prompt, goals):
     return known.get(label, "outside_confirmed_goals") if label else None
 
 
+def conflicting_fraction_goal(prompt, label):
+    """Identify explicit prerequisite questions assigned to operation goals.
+
+    A reference to numerator and denominator inside an addition rule does not
+    make a prerequisite question evidence of adding. Leave ambiguous prompts
+    alone; never rewrite a previously stored question or its goal.
+    """
+    question = unicodedata.normalize("NFKC", prompt).casefold()
+    goal = unicodedata.normalize("NFKC", label).casefold()
+    prerequisite = (
+        bool(re.search(r"welche zahl ist (?:der|die) (?:zähler|nenner)", question))
+        or bool(re.search(r"welchen bruch beschreibt das", question) and "teile" in question)
+    )
+    operation_question = bool(re.search(r"addier|subtrahier|erweit|kürz|\d\s*/\s*\d\s*[+−-]\s*\d\s*/", question))
+    operation_goal = bool(re.search(r"addier|subtrahier|erweit|kürz", goal))
+    return prerequisite and not operation_question and operation_goal
+
+
 def validate_new_round(db, previous_unit, data, *, desired_ids=None):
     if (
         data["subject"].casefold() != previous_unit.subject.casefold()
@@ -874,6 +897,9 @@ def validate_new_round(db, previous_unit, data, *, desired_ids=None):
                 raise ProviderError(
                     "Eine Bruchaufgabe ist dem falschen oder einem nicht bestätigten Lernziel zugeordnet."
                 )
+            chosen = next((g for g in goals if g["id"] == question.get("learning_goal_id")), None)
+            if chosen and conflicting_fraction_goal(question["prompt"], chosen["label"]):
+                raise ProviderError("Eine Grundlagenfrage passt nicht zum zugeordneten Rechenziel.")
 
 
 def save_report(
@@ -918,6 +944,8 @@ def save_report(
             review["learning_goal_id"] = assigned_goal
         if review["learning_goal_id"] not in by_goal:
             raise ProviderError("Die Aufgabenrückmeldung verweist auf ein unbekanntes Lernziel.")
+        if assigned_goal is None and conflicting_fraction_goal(original["prompt"], by_goal[review["learning_goal_id"]]["label"]):
+            raise ProviderError("Die Grundlagenfrage wurde einem unpassenden Rechenziel zugeordnet. Die Antworten bleiben erhalten.")
         goal_id = fraction_task_goal(original["prompt"], goals) if assigned_goal is None else None
         if goal_id and goal_id != review["learning_goal_id"]:
             raise ProviderError("Die Aufgabenrückmeldung passt nicht zum erkennbaren Lernziel.")

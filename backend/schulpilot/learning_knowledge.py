@@ -43,7 +43,7 @@ def catalogue(db, unit, sources):
 
 
 def evidence(db, unit, sources):
-    from .coaching import CHECK_KINDS, fraction_task_goal, fraction_task_signature, normalized_prompt, planned_review
+    from .coaching import CHECK_KINDS, conflicting_fraction_goal, fraction_task_goal, fraction_task_signature, normalized_prompt, planned_review
     from .learning_controller import source_state
 
     goals = catalogue(db, unit, sources)
@@ -82,6 +82,11 @@ def evidence(db, unit, sources):
             if not values:
                 continue
             extra = q.get("controller_goal")
+            mapped_label = old_labels.get(q.get("learning_goal_id") or review_map.get(q["id"]))
+            if not extra and mapped_label and conflicting_fraction_goal(q["prompt"], mapped_label):
+                # Preserve attempts and reports, but do not count an explicitly
+                # mismatched old mapping as evidence for the operation goal.
+                continue
             goal = by_label.get(extra["label"]) if extra else by_label.get(old_labels.get(q.get("learning_goal_id") or review_map.get(q["id"])))
             if not goal and not extra:
                 goal = fraction_task_goal(q["prompt"], goals)

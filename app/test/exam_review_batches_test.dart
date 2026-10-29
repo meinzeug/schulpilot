@@ -128,6 +128,33 @@ Future<void> chooseSecond(WidgetTester tester) async {
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   testWidgets(
+    'a contradiction is visible separately from the original answer',
+    (tester) async {
+      final value = BatchFixture();
+      value.report = {
+        ...value.report,
+        'tasks': [
+          {
+            ...Json.from((value.report['tasks'] as List).first),
+            'original_answer': '6/8 = 2/4',
+            'arithmetic_warnings': [
+              {
+                'message': 'Diese Gleichung stimmt rechnerisch nicht. Prüfe auch, ob sie richtig abgeschrieben wurde.',
+              },
+            ],
+          },
+        ],
+      };
+      await value.mount(tester, selected: 'exam', tab: 'review');
+      expect(find.text('6/8 = 2/4'), findsOneWidget);
+      expect(
+        find.textContaining('Diese Gleichung stimmt rechnerisch nicht'),
+        findsOneWidget,
+      );
+      expect(value.writes, isEmpty);
+    },
+  );
+  testWidgets(
     'canceling an additional extract selects no sources and starts no job',
     (tester) async {
       final value = BatchFixture();

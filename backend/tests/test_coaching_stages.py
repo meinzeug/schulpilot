@@ -101,6 +101,29 @@ def test_deferred_repair_focus_uses_saved_review_mapping_for_unassigned_first_qu
         assert coaching.focus_ids(db, unit, "repair") == [expected]
 
 
+def test_old_mismatched_prerequisite_is_not_counted_as_addition_evidence(deferred_review):
+    _, unit_id, _, _, _, _, _ = deferred_review
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        questions = copy.deepcopy(unit.questions)
+        questions[0]["prompt"] = "Beim Bruch 4/6: Welche Zahl ist der Nenner?"
+        questions[0].pop("learning_goal_id", None)
+        unit.questions = questions
+        coach = db.get(UnitCoaching, unit_id)
+        report = copy.deepcopy(coach.report)
+        goal_id = next(r["learning_goal_id"] for r in report["question_reviews"] if r["question_id"] == questions[0]["id"])
+        next(g for g in report["learning_goals"] if g["id"] == goal_id)["label"] = "Zähler und Nenner beim Addieren gleichnamiger Brüche unterscheiden"
+        coach.report = report
+    with DB() as db:
+        unit = db.get(LearningUnit, unit_id)
+        before = copy.deepcopy(db.get(UnitCoaching, unit_id).report)
+        state = next(g for g in coaching.goal_states(db, unit) if g["id"] == goal_id)
+        other = [q for q in unit.questions[1:] if any(r["question_id"] == q["id"] and r["learning_goal_id"] == goal_id for r in before["question_reviews"])]
+        assert state["practice"]["practiced_tasks"] <= len(other)
+        assert db.get(UnitCoaching, unit_id).report == before
+        assert coaching.observations(db, unit)[0]["attempts"]
+
+
 def test_failed_generator_preserves_finished_review_answers_and_usage(deferred_review, monkeypatch):
     client, unit_id, _, _, _, before, _ = deferred_review
     calls = []

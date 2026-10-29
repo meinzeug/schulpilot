@@ -175,6 +175,28 @@ def no_learning():
             assert db.scalar(select(func.count()).select_from(model)) == 0
 
 
+def test_false_student_equation_is_reported_without_rewriting_the_saved_analysis(api, paper, transport):
+    question = "Kürze 6/8 vollständig."
+    answer = r"\(\frac{6}{8}=\frac{2}{4}\) weiter kürzen"
+    with DB.begin() as db:
+        db.get(Material, paper["material_id"]).content = question + "\n" + answer
+    transport["output"]["tasks"][0].update(
+        question=question, original_answer=answer, teacher_feedback="", score_label="",
+        sources=[{"ref": "p1", "quote": question}],
+    )
+    result = ready(paper, transport)
+    task = result["tasks"][0]
+    assert task["original_answer"] == answer
+    assert len(task["arithmetic_warnings"]) == 1
+    assert "rechnerisch nicht" in task["arithmetic_warnings"][0]["message"]
+    assert paper["client"].get(paper["path"]).json()["tasks"][0]["arithmetic_warnings"] == task["arithmetic_warnings"]
+    with DB() as db:
+        stored = db.scalar(select(ExamReview).where(ExamReview.exam_id == paper["exam_id"]))
+        assert stored.report["tasks"][0]["original_answer"] == answer
+        assert "arithmetic_warnings" not in stored.report["tasks"][0]
+    no_learning()
+
+
 def test_reading_and_explicit_review_keep_original_roles_without_grade_or_competence(api, paper, transport):
     for _ in range(2):
         assert api.get(paper["path"]).status_code == 200

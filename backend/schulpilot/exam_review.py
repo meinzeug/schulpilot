@@ -2,6 +2,7 @@
 
 import copy
 import json
+import re
 import unicodedata
 from itertools import combinations
 
@@ -163,6 +164,31 @@ def notebook_sources(db, exam, child):
     ]
 
 
+def arithmetic_warnings(answer):
+    """Check only complete literal equations in the transcribed answer.
+
+    A mathematical contradiction is not a judgment about handwriting, the
+    teacher's markings, or the entire task. Never modify the original report.
+    """
+    from .source_lineage import false_equality
+
+    if not isinstance(answer, str):
+        return []
+    candidates = []
+    for line in answer.splitlines():
+        # Parenthesized TeX has explicit boundaries even when a teacher's
+        # annotation follows it on the same line.
+        segments = re.findall(r"\\\((.*?)\\\)|\\\[(.*?)\\\]", line)
+        candidates.extend(next(value for value in segment if value) for segment in segments if any(segment))
+        if not segments:
+            candidates.append(line.strip())
+    warnings = []
+    for expression in candidates[:16]:
+        if false_equality(expression):
+            warnings.append({"expression": expression, "message": "Diese Gleichung stimmt rechnerisch nicht. Prüfe auch, ob sie richtig abgeschrieben wurde."})
+    return warnings
+
+
 def projection(db, p, exam, child):
     from .exams import can_manage
     from .materials import material_data
@@ -179,6 +205,8 @@ def projection(db, p, exam, child):
         if status == "ready":
             report = copy.deepcopy(row.report)
     tasks = report.get("tasks", [])
+    for task in tasks:
+        task["arithmetic_warnings"] = arithmetic_warnings(task.get("original_answer"))
     batches = (row.report or {}).get("analysis_batches", []) if row and row.context_revision == signature else []
     # The first model summary remains an immutable part of the saved report.
     # Describe the current aggregate from persisted facts instead of presenting
