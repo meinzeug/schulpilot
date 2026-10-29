@@ -136,6 +136,24 @@ def inventory():
         )
 
 
+def test_biology_notebook_context_offers_the_proven_photosynthesis_reference(notebook):
+    from schulpilot import visual_references
+
+    source = ("Pflanzen nehmen Wasser und Kohlenstoffdioxid auf. "
+              "Mit Licht bilden sie Zucker und geben Sauerstoff ab.")
+    with DB.begin() as db:
+        page = db.get(Material, notebook.refs[0]["id"])
+        page.subject, page.topic, page.content = "Biologie", "Fotosynthese", source
+        db.flush()
+        child = db.get(Child, notebook.child["id"])
+        context = visual_references.with_visual_context(db, child, {
+            "function": "unit", "review": False, "notebook_practice": {"version": 1, "question_count": 2},
+            "required_subject": "Biologie", "material": {"subject": "Biologie", "topic": "Fotosynthese", "content": source},
+        }, [page])["visual_context"]
+        assert "biology.photosynthesis.exchange" in {ref["id"] for ref in context["references"]}
+        assert context["sources"][0]["content"] == source
+
+
 def output(count):
     return UnitOutput.model_validate(
         {

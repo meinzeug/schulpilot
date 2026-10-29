@@ -5,7 +5,7 @@ import pytest
 from schulpilot import package_output_transport, package_part_output, package_transport, visual_references
 from schulpilot.db import DB
 from schulpilot.package_prepared_photosynthesis import REFERENCE, bases
-from schulpilot.schemas import PackageOutput, PracticeUnitOutput
+from schulpilot.schemas import PackageOutput, PracticeUnitOutput, UnitOutput
 from test_package_prepared_graphics import bind, payload_for, wire_step
 
 SOURCE = ("Pflanzen und Photosynthese\n\nPflanzen nehmen Wasser und Kohlenstoffdioxid auf.\n"
@@ -125,6 +125,51 @@ def test_goal_bound_followup_keeps_questions_and_uses_same_proven_scene():
         visual_references.validate_output(db, result, payload)
     assert [(q["id"], q["learning_goal_id"], q["answer"]) for q in result["questions"]] == [
         ("q1", "g1", "Kohlenstoffdioxid"), ("q2", "g1", "Wasser")]
+
+
+def test_explicit_notebook_round_can_use_same_source_bound_scene(monkeypatch):
+    from schulpilot import providers
+    from schulpilot.package_prepared_photosynthesis import bind_followup
+    from schulpilot.subject_content import bind_graphic_schema
+
+    base = payload_for(SOURCE, "Biologie")
+    with DB() as db:
+        refs = visual_references.candidates(db, "Biologie", SOURCE, package_prepared=True)
+    source = {**base["visual_context"]["sources"][0], "group_id": None}
+    payload = {"function": "unit", "notebook_practice": {"version": 1, "question_count": 2},
+               "review": False, "required_subject": "Biologie", "required_topic": "Fotosynthese",
+               "visual_context": {"required": True, "references": refs, "sources": [source]}}
+    schema = providers.strict_schema(UnitOutput, preserve_limits=True)
+    providers.indexed_choice_schema(schema, bounded_matches=True)
+    bind_graphic_schema(schema, ["Biologie"])
+    visual_references.bind_schema(schema, payload)
+    binding = bind_followup(schema, payload)
+    assert binding is not None
+    intro = next(row for row in binding.candidates if row["disclosure"] == "given")
+    solution = next(row for row in binding.candidates if row["disclosure"] == "solution")
+    questions = [{"id": f"q{n}", "type": "short", "prompt": prompt, "answer": answer,
+                  "options": [], "accepted": [], "hints": ["Lies genau."], "explanation": SOURCE,
+                  "presentation": None, "field_group": None, "explanation_steps": [wire_step(solution)]}
+                 for n, (prompt, answer) in enumerate([
+                    ("Welches Gas nehmen Pflanzen bei der Fotosynthese auf?", "Kohlenstoffdioxid"),
+                    ("Welches Gas geben Pflanzen bei der Fotosynthese ab?", "Sauerstoff")], 1)]
+    wire = {"subject": "Biologie", "topic": "Fotosynthese", "explanation": SOURCE,
+            "explanation_steps": [wire_step(intro)], "questions": questions}
+    result = binding.hydrate(copy.deepcopy(wire))
+    result = UnitOutput.model_validate(result).model_dump(mode="json")
+    with DB() as db:
+        visual_references.validate_output(db, result, payload)
+    assert len(result["questions"]) == 2
+    assert result["explanation_steps"][0]["reference"]["id"] == REFERENCE
+    assert bind_followup(schema, {**payload, "notebook_practice": None}) is None
+    assert bind_followup(schema, {**payload, "required_subject": "Physik"}) is None
+    from test_presentation_capability_paths import _config, _transport
+
+    calls = _transport(monkeypatch, "openrouter", wire)
+    payload["material"] = {"subject": "Biologie", "topic": "Fotosynthese", "content": SOURCE, "uncertainties": []}
+    result = providers.request_provider(_config("openrouter"), "unit", payload)
+    assert len(calls) == 1
+    assert result.data["explanation_steps"][0]["reference"]["id"] == REFERENCE
 
 
 @pytest.mark.parametrize("mutation", ["not_review", "other_subject", "no_practice", "homework"])

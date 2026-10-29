@@ -116,8 +116,11 @@ class UnitBinding(Binding):
 
 
 def bind_followup(schema, payload):
-    """Only an explicit existing goal-bound Biology repair/check may reuse this graphic."""
-    if (payload.get("review") is not True or payload.get("practice_kind") not in ("repair", "check")
+    """Bind the exact source in explicit Biology notebook or goal-bound rounds."""
+    is_followup = payload.get("review") is True and payload.get("practice_kind") in ("repair", "check")
+    is_notebook = (payload.get("function") == "unit" and bool(payload.get("notebook_practice"))
+                   and not payload.get("review"))
+    if (not (is_followup or is_notebook)
             or payload.get("required_subject") != "Biologie" or payload.get("selected_groups")
             or any(payload.get(key) for key in ("study_block", "homework_practice", "exam_preparation", "exam_review_practice"))):
         return None
