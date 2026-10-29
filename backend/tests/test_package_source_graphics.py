@@ -201,7 +201,7 @@ def test_actual_http_mock_uses_checked_ids_preserves_answers_and_one_reported_bi
         from schulpilot.package_prepared_scenes import prompt_pattern
         assert prompt_pattern(next(row for row in binding.candidates if row["disclosure"] == "solution")) in set(patterns(schema))
         sent = json.loads(body["messages"][1]["content"][0]["text"])
-        assert sent["prepared_graphics"]["revision"] == "package-source-graphics-1"
+        assert sent["prepared_graphics"]["revision"] == "package-source-graphics-2"
         assert all("block" not in row and "text" not in row and "source_caption" in row for row in sent["prepared_graphics"]["candidates"])
         assert "explanation-guidance-1" in body["messages"][0]["content"]
         assert "tatsächlich sichtbare explanation_steps.text" in body["messages"][0]["content"]

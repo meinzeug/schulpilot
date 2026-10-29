@@ -14,11 +14,11 @@ from .subject_content import PROFILES, Graphic, validate_question
 from .visual_reference_schemas import ExplanationStep
 from .visual_references import _meaningful
 
-REVISION = "package-prepared-graphics-3"
+REVISION = "package-prepared-graphics-4"
 MAX_BASE_CANDIDATES = 8
 STAGES = ("given", "hint1", "hint2", "hint3", "solution")
 RULES = """
-package-prepared-graphics-3: DIESER Auftrag verwendet ausschließlich servergeprüfte Grafiken.
+package-prepared-graphics-4: DIESER Auftrag verwendet ausschließlich servergeprüfte Grafiken.
 prepared_graphics.candidates enthält endliche IDs mit genau gebundener Quelle, Referenz,
 Stufe und Schritttext. Wähle eine zum tatsächlichen Lernziel passende ID. Im angeforderten
 Wireformat ist presentation.blocks=[dieseID], NICHT ein neu abgeschriebener Graphic-Block.
@@ -76,6 +76,10 @@ def _scene_bases(content):
         if not quote or len(quote) > 300 or not re.search(r"→|->", quote):
             continue
         labels = [label.strip() for label in re.split(r"\s*(?:→|->)\s*", quote.removesuffix("."))]
+        # A printed exercise number is not part of the first term. Strip only
+        # an explicit number plus punctuation and whitespace; the verbatim
+        # source quote and the independently checked arrow remain unchanged.
+        labels[0] = re.sub(r"^[0-9]{1,2}[.)][ \t]+(?=\S)", "", labels[0], count=1)
         if not 2 <= len(labels) <= 4 or len(set(label.casefold() for label in labels)) != len(labels):
             continue
         if any(not label or len(label) > 60 or re.search(r"[.!?;:=<>\n]", label) for label in labels):

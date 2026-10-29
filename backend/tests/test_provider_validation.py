@@ -126,6 +126,7 @@ def test_unexpected_existing_telemetry_is_not_replaced():
 
 @pytest.mark.parametrize("phase,error,reason", [
     ("part_bounds", ValueError("Ein Lernpaketteil benötigt genau ein Fach."), "part_structure"),
+    ("part_bounds", ValueError("Eine Aufgabe enthält eine stark wiederholte Formulierung."), "part_repeated_words"),
     ("catalog", ValueError("Unknown catalog subject identity"), "catalog_assignment"),
     ("entry", ValueError("Eine geprüfte Voraussetzung wurde verändert."), "entry_probe_changed"),
     ("subject", ValueError("Grafik ohne wörtlichen Quellenbeleg."), "source_excerpt"),

@@ -56,6 +56,7 @@ _VALUE_REASONS = {
     "Ein Lernpaketteil benötigt genau ein Fach.": "part_structure",
     "Der Lernpaketteil überschreitet den begrenzten Umfang.": "part_bounds",
     "Die Aufgabe überschreitet den begrenzten Ausgabeumfang.": "part_bounds",
+    "Eine Aufgabe enthält eine stark wiederholte Formulierung.": "part_repeated_words",
     "Ein Erklärabschnitt benötigt genau einen vollständigen Grafikschritt.": "part_step_count",
     "Der Grafikschritt überschreitet den begrenzten Umfang.": "part_bounds",
     "Die Lernszene benötigt zwei überschaubare vollständige Phasen.": "part_scene_bounds",

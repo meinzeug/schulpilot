@@ -12,13 +12,13 @@ from .subject_content import PROFILES, Graphic, validate_question
 from .visual_reference_schemas import ExplanationStep
 from .visual_references import _meaningful
 
-REVISION = "package-source-graphics-1"
+REVISION = "package-source-graphics-2"
 WORD_PARTS_REFERENCE = "german.word_formation.parts"
 # Six full four-label scenes fit the unchanged 8000/.25 request envelope.
 # This bounds offered graphics, never the original source or its topic plan.
 MAX_SOURCE_BASE_CANDIDATES = 6
 RULES = """
-package-source-graphics-1: Wähle ausschließlich eine bereitgestellte Grafik-ID zum selben
+package-source-graphics-2: Wähle ausschließlich eine bereitgestellte Grafik-ID zum selben
 Fach, Quellenbeleg und Lernziel. presentation.blocks=[ID]. reference, source_refs und
 disclosure bleiben exakt bei derselben ID; keine neuen Titel, Beschriftungen oder
 Pfeile erfinden. source_caption benennt nur den unveränderten Originalbeleg und ist

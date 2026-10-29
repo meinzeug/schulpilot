@@ -199,7 +199,7 @@ def test_scene_compiler_never_guesses_reverses_or_extends_a_relation(text):
 def test_explicit_nonmath_source_binding_keeps_legacy_paths_and_existing_saved_parts_unchanged():
     payload = payload_for("Wasser → Dampf.", subject="Geographie")
     assert prepared_graphics.compile_candidates(payload)
-    assert bind(payload)[1].context["revision"] == "package-source-graphics-1"
+    assert bind(payload)[1].context["revision"] == "package-source-graphics-2"
     # The new source-bound nonmath contract is explicit; legacy requests and
     # already saved canonical outputs do not acquire it retroactively.
     payload["package_partition"] = None
@@ -449,3 +449,23 @@ def test_equivalent_fractions_and_different_original_pages_are_not_merged_into_o
     wire["units"][0]["questions"][0].update(prompt="Was beschreibt 1/2?", explanation_steps=[wire_step(candidate)])
     with pytest.raises(ValueError, match="Frageparametern"):
         binding.hydrate(wire)
+
+
+@pytest.mark.parametrize('line,labels', [
+    ('1) go → went', ['go', 'went']),
+    ('12. play → played', ['play', 'played']),
+    ('3 → 7', ['3', '7']),
+    ('A1 → B2', ['A1', 'B2']),
+])
+def test_scene_excludes_only_separate_exercise_number_and_preserves_verbatim_quote(line, labels):
+    bases = list(prepared_graphics._scene_bases(line))
+    assert len(bases) == 1
+    block, _ = bases[0]
+    assert block['source_excerpt'] == line and block['labels'] == labels
+    assert [obj['label'] for obj in block['scene']['objects']] == labels
+    for stage in prepared_graphics.STAGES:
+        graphic = Graphic.model_validate({**block, 'disclosure': stage})
+        from schulpilot.subject_content import PROFILES, validate_question
+        validate_question({'version': 1, 'evidence_kind': 'knowledge', 'blocks': [graphic.model_dump()]},
+            {'prompt': '', 'type': 'short', 'answer': '', 'accepted': []}, [line], PROFILES['Englisch'],
+            structured=True, subject='Englisch')

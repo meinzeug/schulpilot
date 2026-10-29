@@ -12,6 +12,7 @@ from .graphic_schema import bind_coherent_graphics as _bind_graphic_branches
 
 REVISION = "package-part-output-1"
 GRAPHIC_SCHEMA_REVISION = "package-part-graphics-4"
+_REPEATED_WORD = re.compile(r"(?<!\w)([^\W\d_]{2,40})(?:[\s,;]+\1){5,}(?!\w)", re.IGNORECASE)
 
 
 def enabled(payload):
@@ -256,6 +257,8 @@ def validate(data):
         if len(unit["questions"]) != 2 or len(unit["explanation"]) > 900:
             raise ValueError("Der Lernpaketteil überschreitet den begrenzten Umfang.")
         for question in unit["questions"]:
+            if any(_REPEATED_WORD.search(text) for text in (question["prompt"], question["explanation"], *question["hints"])):
+                raise ValueError("Eine Aufgabe enthält eine stark wiederholte Formulierung.")
             if (len(question["prompt"]) > 300 or len(question["explanation"]) > 400
                     or question.get("presentation") is not None or len(question["hints"]) > 2
                     or any(len(hint) > 180 for hint in question["hints"])):

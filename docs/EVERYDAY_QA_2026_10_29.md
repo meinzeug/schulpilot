@@ -1,0 +1,15 @@
+# Alltagstest mit künstlichen Schulmaterialien – 29. Oktober 2026
+
+Dieser laufende Test verwendet ausschließlich ein separates künstliches Testkonto und eigens erstellte Bilder. Die vorhandenen Daten und Antworten realer Kinder wurden dafür nicht verändert. Die öffentliche Registrierung und der Verkauf bleiben abgeschaltet.
+
+## Bisheriger Durchlauf
+
+- Ein künstlicher Test zu Brüchen wurde als Foto hochgeladen, erkannt und nach Sichtprüfung bestätigt. Die Abschrift bewahrte die falsche Gleichung `6/8 = 2/4` und eine Korrekturanmerkung. In der ersten Auswertung wurde die falsche Gleichung nicht ausdrücklich als solche benannt. Auf die gesonderte Frage dazu erklärte die Lernhilfe korrekt, dass `6/8 = 3/4` und nicht `2/4` ist. Die gesonderte Antwort wurde nur für das Testkonto serverseitig geprüft; der Abruf im Browser steht noch aus.
+- Für einen neuen künstlichen Schultag wurden eine Buchseite zu Bruchvergleichen und ein Englischblatt zum Simple Past gemeinsam eingereicht. Beide Seiten wurden erkannt und die Verarbeitung meldete zwei fertige Facheinheiten. Erkennbare Beispiele und Fachzuordnung stimmten bei der Sichtprüfung mit den Testbildern überein.
+- Die In-App-Glocke des künstlichen Kinderkontos enthält eine Fertigmeldung für die beiden Fächer. Ihr gespeicherter Link zeigt auf die erste erstellte Lernrunde; das tatsächliche Öffnen über die Browseroberfläche und die Zustellung auf einem Gerät sind noch nicht geprüft. Auch für die künstliche Arbeitsbesprechung ist ein Eintrag vorhanden.
+- Die Englischaufgaben enthielten jedoch eine stark wiederholte, unverständliche Formulierung. Die Einheit wurde gespeichert, aber nicht beantwortet. Das ist kein erfolgreicher Aufgaben- oder Alltagstest.
+- Die Grafikvorbereitung übernimmt bei Pfeilbeispielen nun eine vorangestellte Aufgabennummer nicht mehr als Teil des ersten Begriffs; der unveränderte Quellenbeleg bleibt erhalten. Eine neue Prüfung weist künftig stark wiederholte Wörter in generierten Aufgabenstellungen, Erklärungen und Hinweisen zurück. Sie verändert weder Modellantworten noch bereits gespeicherte Einheiten und startet keinen automatischen neuen KI-Auftrag. Die Ursache der Wiederholung beim Modell und ein erfolgreicher echter Neuversuch nach der Änderung sind damit noch nicht belegt.
+
+## Noch offen
+
+Die Bedienung im Browser mit dem Testkonto, eine neue echte Verarbeitung nach der Korrektur, Aufgaben- und Hilfsabläufe über weitere Fächer, die fachlich passende Zuordnung von Lernzielen und der gesamte adaptive Folgeablauf müssen weiter geprüft werden. Eine serverseitig erstellte Benachrichtigung ist kein Nachweis für eine tatsächlich sichtbare Firebase-Zustellung oder einen funktionierenden Android-Hintergrundempfang; dafür ist ein geeignetes Testgerät erforderlich. Bestehende fehlerhafte Testeinheiten werden nicht nachträglich als erfolgreich ausgegeben.

@@ -78,3 +78,23 @@ def test_actual_part_adapter_uses_two_questions_one_graphic_step_and_rejects_ove
         assert result.cost_micros == 20200
         assert package_part_output.enabled(payload)  # index zero is a real part.
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize('field', ['prompt', 'explanation', 'hint'])
+def test_repeated_generated_words_rejected_without_modifying_tasks(field):
+    data, _ = part()
+    q = data['units'][0]['questions'][0]
+    if field == 'hint':
+        q['hints'][0] = 'So bleibt das bleiben bleiben bleiben bleiben bleiben bleiben.'
+    else:
+        q[field] = 'So soll es bleiben bleiben bleiben bleiben bleiben bleiben.'
+    before = copy.deepcopy(data)
+    with pytest.raises(ValueError, match='stark wiederholte Formulierung'):
+        package_part_output.validate(data)
+    assert data == before
+
+
+def test_short_repetitions_in_a_language_exercise_are_not_suppressed():
+    data, _ = part()
+    data['units'][0]['questions'][0]['prompt'] = 'Vergleiche: sehr sehr groß und sehr groß.'
+    package_part_output.validate(data)
