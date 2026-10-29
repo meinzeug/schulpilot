@@ -274,6 +274,16 @@
       "variant": null
     },
     {
+      "id": "biology.photosynthesis.exchange",
+      "version": 1,
+      "subjects": ["Biologie"],
+      "kind": "scene",
+      "purpose": "Den ausdrücklich belegten Stoffaustausch bei der Fotosynthese mit den unveränderten Originalbegriffen in zwei Leseschritten zeigen; keine zusätzlichen Stoffe oder Pfeile erfinden.",
+      "terms": ["pflanzen", "wasser", "kohlenstoffdioxid", "zucker", "sauerstoff"],
+      "interaction": "Aufgenommene und abgegebene Stoffe nacheinander hervorheben.",
+      "variant": null
+    },
+    {
       "id": "general.source_relation.phases",
       "version": 1,
       "subjects": [

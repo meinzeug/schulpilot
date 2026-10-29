@@ -1816,7 +1816,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               ),
               SizedBox(height: 12),
               Text(
-                '${pages.length} gespeichert · ${pendingPhotos.length} vorgemerkt · ${((day!['max_pages'] as int) - pages.length - pendingPhotos.length).clamp(0, 24)} noch möglich',
+                '$savedCount bestätigt · ${freshPages.length + pendingPhotos.length} neu · ${((day!['max_pages'] as int) - pages.length - pendingPhotos.length).clamp(0, 24)} noch möglich',
               ),
               if (!canAdd)
                 Notice(

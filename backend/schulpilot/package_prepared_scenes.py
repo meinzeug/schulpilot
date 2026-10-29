@@ -58,6 +58,10 @@ def reference_supported(reference, contents):
         return any(next(prepared._scene_bases(content), None) is not None for content in contents)
     if reference.get("id") == WORD_PARTS_REFERENCE:
         return any(next(word_part_bases(content), None) is not None for content in contents)
+    if reference.get("id") == "biology.photosynthesis.exchange":
+        from .package_prepared_photosynthesis import bases
+
+        return any(next(bases(content), None) is not None for content in contents)
     return True
 
 
@@ -165,11 +169,15 @@ class Binding(prepared.Binding):
 
 def bind_schema(schema, payload):
     from .package_prepared_focus import bind_schema as bind_focus
+    from .package_prepared_photosynthesis import bind_schema as bind_photosynthesis
     from .package_prepared_sentences import bind_schema as bind_sentences
 
     candidates = compile_candidates(payload)
     if candidates:
         return prepared.bind_candidates(schema, Binding(tuple(candidates)), question_kinds=("scene", "sentence"), prompt_pattern=prompt_pattern)
+    binding = bind_photosynthesis(schema, payload)
+    if binding is not None:
+        return binding
     binding = bind_sentences(schema, payload)
     if binding is not None:
         return binding

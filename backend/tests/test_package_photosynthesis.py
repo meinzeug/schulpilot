@@ -1,0 +1,85 @@
+"""Artificial source evidence only; no provider call or learner data."""
+import copy
+
+import pytest
+from schulpilot import package_output_transport, package_part_output, package_transport, visual_references
+from schulpilot.db import DB
+from schulpilot.package_prepared_photosynthesis import REFERENCE, bases
+from schulpilot.schemas import PackageOutput
+from test_package_prepared_graphics import bind, payload_for, wire_step
+
+SOURCE = ("Pflanzen und Photosynthese\n\nPflanzen nehmen Wasser und Kohlenstoffdioxid auf.\n"
+          "Mit Licht bilden sie Zucker und geben Sauerstoff ab.")
+
+
+def test_fotosynthese_uses_verified_exchange_not_unrelated_plant_anatomy():
+    payload = payload_for(SOURCE, "Biologie")
+    with DB() as db:
+        payload["visual_context"]["references"] = visual_references.candidates(db, "Biologie", SOURCE, package_prepared=True)
+    ids = {row["id"] for row in payload["visual_context"]["references"]}
+    assert REFERENCE in ids
+    assert "biology.plant.structure" not in ids
+    schema, binding = bind(payload)
+    assert binding is not None
+    # Azure strict output rejects line breaks inside string enum literals.
+    def enum_strings(node):
+        if isinstance(node, dict):
+            yield from (value for value in node.get("enum", []) if isinstance(value, str))
+            for value in node.values():
+                yield from enum_strings(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from enum_strings(value)
+    assert all("\n" not in value for value in enum_strings(schema))
+    intro = next(row for row in binding.candidates if row["disclosure"] == "given")
+    answer = next(row for row in binding.candidates if row["disclosure"] == "solution")
+    questions = []
+    for n, (prompt, solution) in enumerate((("Welches Gas nehmen Pflanzen bei der Fotosynthese auf?", "Kohlenstoffdioxid"),
+                                             ("Welches Gas geben Pflanzen bei der Fotosynthese ab?", "Sauerstoff"))):
+        questions.append({"id": f"q{n}", "type": "short", "prompt": prompt, "answer": solution,
+                          "options": [], "accepted": [], "hints": ["Lies den Satz genau."],
+                          "explanation": SOURCE, "presentation": None, "field_group": None,
+                          "explanation_steps": [wire_step(answer)]})
+    output = {"units": [{"group_id": "g1", "subject": "Biologie", "topic": "Fotosynthese",
+                        "explanation": SOURCE, "explanation_steps": [wire_step(intro)], "questions": questions}]}
+    codec = package_output_transport.bind(package_transport.schema_projection(schema))
+    result = binding.hydrate(codec.decode(codec.encode(output)))
+    result = PackageOutput.model_validate(result).model_dump(mode="json")
+    package_part_output.validate(result)
+    with DB() as db:
+        visual_references.validate_output(db, result, payload)
+    block = result["units"][0]["explanation_steps"][0]["presentation"]["blocks"][0]
+    assert block["labels"] == ["Wasser", "Kohlenstoffdioxid", "Zucker", "Sauerstoff"]
+    assert [phase["highlight"] for phase in block["scene"]["steps"]] == [["o0", "o1"], ["o2", "o3"]]
+    assert all(not phase["edges"] for phase in block["scene"]["steps"])
+
+
+@pytest.mark.parametrize("source", [
+    "Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.",
+    "Pflanzen nehmen Wasser und Sauerstoff auf. Mit Licht bilden sie Zucker und geben Kohlenstoffdioxid ab.",
+    "Pflanzen nehmen Wasser und Kohlenstoffdioxid nicht auf. Mit Licht bilden sie Zucker und geben Sauerstoff ab.",
+])
+def test_no_scene_is_invented_for_unmatched_or_negated_text(source):
+    assert not list(bases(source))
+
+
+def test_anatomy_remains_available_when_all_positions_are_proven():
+    with DB() as db:
+        refs = visual_references.candidates(db, "Biologie", "Die Pflanze: Blüte, Blatt, Stängel, Wurzel.")
+    assert "biology.plant.structure" in {row["id"] for row in refs}
+
+
+def test_prepared_scene_rejects_changed_labels_and_unrelated_questions():
+    payload = payload_for(SOURCE, "Biologie")
+    with DB() as db:
+        payload["visual_context"]["references"] = visual_references.candidates(db, "Biologie", SOURCE, package_prepared=True)
+    _, binding = bind(payload)
+    candidate = next(row for row in binding.candidates if row["disclosure"] == "solution")
+    block = copy.deepcopy(candidate["block"])
+    block["labels"][0] = "Luft"
+    from schulpilot.subject_content import Graphic
+
+    with pytest.raises(ValueError):
+        visual_references._meaningful(Graphic.model_validate(block), {"id": REFERENCE, "kind": "scene"},
+                                      sources=[SOURCE])
+    assert not binding.question_bound(candidate, {"prompt": "Welche Farbe hat das Meer?"})

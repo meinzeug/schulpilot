@@ -50,7 +50,7 @@ def seed(db):
     return rows
 
 
-def candidates(db, subject, text=""):
+def candidates(db, subject, text="", *, package_prepared=False):
     if subject not in PROFILES:
         return []
     result = []
@@ -65,6 +65,19 @@ def candidates(db, subject, text=""):
             continue
         if recipe["kind"] not in PROFILES[subject]:
             continue
+        if row.id == "biology.plant.structure":
+            # This fixed picture has four fixed organ positions, not arbitrary
+            # plant-related labels. Offer it only when all four are evidenced.
+            if not all(re.search(r"(?<!\w)" + term + r"(?!\w)", text, re.I)
+                       for term in (r"blüte", r"blatt", r"st[äe]ngel", r"wurzel")):
+                continue
+        if row.id == "biology.photosynthesis.exchange":
+            if not package_prepared:
+                continue  # This version requires the package's prepared-ID binder.
+            from .package_prepared_photosynthesis import bases
+
+            if next(bases(text), None) is None:
+                continue
         score = sum(term.casefold() in text.casefold() for term in recipe["terms"])
         # Universal source-relation scenes remain available for every profile;
         # their mandatory relation/phase validation prevents a fake word grid.
@@ -108,7 +121,8 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
                               for row in bindings]
     subjects = list(dict.fromkeys(row["subject"] for row in bindings))
     references = [row for subject in subjects for row in candidates(db, subject,
-                  "\n".join(item["topic"] + "\n" + item["content"] for item in bindings if item["subject"] == subject))]
+                  "\n".join(item["topic"] + "\n" + item["content"] for item in bindings if item["subject"] == subject),
+                  package_prepared=payload.get("function") == "package" and type(payload.get("package_partition")) is int)]
     if not payload.get("labs_enabled"):
         references = [row for row in references if row["kind"] != "lab"]
     lab_sources = []
@@ -223,6 +237,11 @@ def _meaningful(block, recipe, *, sources=None, question=None):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
     if block.kind == "lab" and block.lab.recipe_id != recipe.get("lab_recipe_id"):
         raise ValueError("Laborparameter passen nicht zur gewählten Referenz.")
+    if recipe.get("id") == "biology.photosynthesis.exchange":
+        from .package_prepared_photosynthesis import validate
+
+        validate(block, sources)
+        return
     if recipe.get("id") in ORIGINAL_COMPARISONS or recipe.get("id") == "german.word_formation.parts":
         labels = [" ".join(label.split()) for label in block.labels]
         quote = " ".join(block.source_excerpt.split())
