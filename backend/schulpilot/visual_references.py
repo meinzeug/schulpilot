@@ -122,7 +122,9 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
     subjects = list(dict.fromkeys(row["subject"] for row in bindings))
     references = [row for subject in subjects for row in candidates(db, subject,
                   "\n".join(item["topic"] + "\n" + item["content"] for item in bindings if item["subject"] == subject),
-                  package_prepared=payload.get("function") == "package" and type(payload.get("package_partition")) is int)]
+                  package_prepared=(payload.get("function") == "package" and type(payload.get("package_partition")) is int)
+                  or (payload.get("review") is True and payload.get("practice_kind") in ("repair", "check")
+                      and payload.get("required_subject") == "Biologie"))]
     if not payload.get("labs_enabled"):
         references = [row for row in references if row["kind"] != "lab"]
     lab_sources = []

@@ -5,7 +5,7 @@ import pytest
 from schulpilot import package_output_transport, package_part_output, package_transport, visual_references
 from schulpilot.db import DB
 from schulpilot.package_prepared_photosynthesis import REFERENCE, bases
-from schulpilot.schemas import PackageOutput
+from schulpilot.schemas import PackageOutput, PracticeUnitOutput
 from test_package_prepared_graphics import bind, payload_for, wire_step
 
 SOURCE = ("Pflanzen und Photosynthese\n\nPflanzen nehmen Wasser und Kohlenstoffdioxid auf.\n"
@@ -33,6 +33,8 @@ def test_fotosynthese_uses_verified_exchange_not_unrelated_plant_anatomy():
     assert all("\n" not in value for value in enum_strings(schema))
     intro = next(row for row in binding.candidates if row["disclosure"] == "given")
     answer = next(row for row in binding.candidates if row["disclosure"] == "solution")
+    assert {row["disclosure"] for row in binding.candidates} == {"given", "solution"}
+    assert intro["text"] == answer["text"] == " ".join(intro["block"]["source_excerpt"].split())
     questions = []
     for n, (prompt, solution) in enumerate((("Welches Gas nehmen Pflanzen bei der Fotosynthese auf?", "Kohlenstoffdioxid"),
                                              ("Welches Gas geben Pflanzen bei der Fotosynthese ab?", "Sauerstoff"))):
@@ -83,3 +85,53 @@ def test_prepared_scene_rejects_changed_labels_and_unrelated_questions():
         visual_references._meaningful(Graphic.model_validate(block), {"id": REFERENCE, "kind": "scene"},
                                       sources=[SOURCE])
     assert not binding.question_bound(candidate, {"prompt": "Welche Farbe hat das Meer?"})
+
+
+def test_goal_bound_followup_keeps_questions_and_uses_same_proven_scene():
+    from schulpilot import providers
+    from schulpilot.package_prepared_photosynthesis import bind_followup
+    from schulpilot.subject_content import bind_graphic_schema
+
+    base = payload_for(SOURCE, "Biologie")
+    with DB() as db:
+        refs = visual_references.candidates(db, "Biologie", SOURCE, package_prepared=True)
+    source = {**base["visual_context"]["sources"][0], "group_id": None}
+    payload = {"review": True, "practice_kind": "repair", "required_subject": "Biologie",
+               "required_topic": "Fotosynthese", "focus_goal_ids": ["g1"],
+               "learning_goals": [{"id": "g1", "label": "Stoffaufnahme unterscheiden", "source_excerpt": SOURCE}],
+               "visual_context": {"required": True, "references": refs, "sources": [source]}}
+    schema = providers.strict_schema(PracticeUnitOutput, preserve_limits=True)
+    providers.indexed_choice_schema(schema, bounded_matches=True)
+    providers.bind_practice_tasks(schema, providers.practice_tasks(payload))
+    bind_graphic_schema(schema, ["Biologie"])
+    visual_references.bind_schema(schema, payload)
+    binding = bind_followup(schema, payload)
+    assert binding is not None
+    intro = next(row for row in binding.candidates if row["disclosure"] == "given")
+    solution = next(row for row in binding.candidates if row["disclosure"] == "solution")
+    questions = []
+    for n, answer in enumerate(("Kohlenstoffdioxid", "Wasser"), start=1):
+        questions.append({"id": f"q{n}", "learning_goal_id": "g1", "type": "short",
+                          "prompt": "Welches Gas nehmen Pflanzen bei der Fotosynthese auf?" if n == 1
+                                    else "Was nehmen Pflanzen bei der Fotosynthese außer Kohlenstoffdioxid auf?",
+                          "answer": answer, "options": [], "accepted": [], "hints": ["Lies genau."],
+                          "explanation": SOURCE, "presentation": None, "field_group": None,
+                          "explanation_steps": [wire_step(solution)]})
+    wire = {"subject": "Biologie", "topic": "Fotosynthese", "explanation": SOURCE,
+            "explanation_steps": [wire_step(intro)], "questions": questions}
+    hydrated = binding.hydrate(wire)
+    result = PracticeUnitOutput.model_validate(hydrated).model_dump(mode="json")
+    with DB() as db:
+        visual_references.validate_output(db, result, payload)
+    assert [(q["id"], q["learning_goal_id"], q["answer"]) for q in result["questions"]] == [
+        ("q1", "g1", "Kohlenstoffdioxid"), ("q2", "g1", "Wasser")]
+
+
+@pytest.mark.parametrize("mutation", ["not_review", "other_subject", "no_practice", "homework"])
+def test_followup_does_not_replace_other_unit_contracts(mutation):
+    from schulpilot.package_prepared_photosynthesis import bind_followup
+
+    payload = {"review": True, "practice_kind": "repair", "required_subject": "Biologie"}
+    payload.update({"not_review": {"review": False}, "other_subject": {"required_subject": "Physik"},
+                    "no_practice": {"practice_kind": "other"}, "homework": {"homework_practice": True}}[mutation])
+    assert bind_followup({}, payload) is None

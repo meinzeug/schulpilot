@@ -1782,6 +1782,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     raise
                 raise ProviderError(MULTIPLES_ERROR, code="invalid_output", billing_result=Result({}, 0, 0, 0,
                     telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+        if unit_composition is None:
+            from .package_prepared_photosynthesis import bind_followup as bind_photosynthesis_followup
+
+            unit_composition = bind_photosynthesis_followup(schema, payload)
         if unit_composition is not None:
             payload = {**payload, "prepared_graphics": unit_composition.context}
             instructions += unit_composition.rules
