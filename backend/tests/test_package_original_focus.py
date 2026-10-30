@@ -201,6 +201,7 @@ def test_actual_http_schema_has_finite_slot_and_unchanged_cost_source_bounds(mon
         assert body["max_tokens"] == 8000 and body["reasoning"]["effort"] == "medium"
         assert "package-original-focus-1" in body["messages"][0]["content"]
         assert "Erkläre den konkreten Inhalt" in body["messages"][0]["content"]
+        assert "eine vollständige Originalaussage" in body["messages"][0]["content"]
         assert "eine allgemeine Aussage über Texte" in body["messages"][0]["content"]
         wire = capture.wire(model)
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(wire, ensure_ascii=False)}}],

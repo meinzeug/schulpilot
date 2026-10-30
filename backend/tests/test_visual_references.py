@@ -41,6 +41,10 @@ def test_empty_visual_step_uses_saved_explanation_without_changing_snapshot():
     different = {**caption, "text": "Die belegte Pfeilfolge: play → played. Hier geht es um Vergangenes."}
     assert readable_single_step([different], explanation) == [different]
     assert caption["text"] == "Die belegte Pfeilfolge: play → played"
+    focus = {"text": "Vergleiche die vollständig belegten Originaleinträge.",
+             "reference": {"id": "general.original_evidence.focused_sentences"}, "presentation": {"blocks": []}}
+    assert readable_single_step([focus], explanation)[0]["text"] == explanation
+    assert focus["text"] == "Vergleiche die vollständig belegten Originaleinträge."
 
 
 def test_new_calendar_graphics_need_two_distinct_ordered_source_labels():

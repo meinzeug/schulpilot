@@ -31,7 +31,11 @@ Schreibe explanation_steps.text verständlich nach explanation-guidance-1, maxim
 Erkläre den konkreten Inhalt und seine im Beleg sichtbare Bedeutung in einfachen Worten;
 greife mindestens einen vollständigen fachlichen Begriff aus der Quelle auf. Ein Hinweis
 wie „Die Grafik zeigt zwei Sätze“ oder „Jeder Satz erklärt einen Teil des Themas“ erklärt
-den Stoff allein nicht. Keine unbelegten Ursachen, Details oder zusätzlichen Beispiele
+den Stoff allein nicht. Wähle stattdessen mindestens eine vollständige Originalaussage
+aus und erkläre deren tatsächlichen Inhalt in einfachen Worten. Sage, was die genannten
+Menschen, Dinge oder Vorgänge tun oder bedeuten; beschreibe nicht nur, dass der Text
+etwas nennt. Wenn der Beleg dafür nicht ausreicht, benenne die Grenze ausdrücklich.
+Keine unbelegten Ursachen, Details oder zusätzlichen Beispiele
 erfinden. Wenn die Quelle nur wenig aussagt, erkläre diesen belegten Ausschnitt statt
 eine allgemeine Aussage über Texte oder Satzanzahl zu schreiben.
 Die sichtbaren Originalbeschriftungen/Quellen/Referenz/Stufe bleiben unverändert.

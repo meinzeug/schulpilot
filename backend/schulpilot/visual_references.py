@@ -521,6 +521,9 @@ def readable_single_step(steps, saved_explanation):
     quote = blocks[0].get("source_excerpt") if len(blocks) == 1 and isinstance(blocks[0], dict) else None
     caption_only = (isinstance(quote, str) and step.get("reference", {}).get("id") == "general.source_relation.phases"
                     and value == "Die belegte Pfeilfolge: " + quote)
+    caption_only = caption_only or (step.get("reference", {}).get("id") in (
+        "general.original_evidence.focused_list", "general.original_evidence.focused_sentences")
+        and value == "Vergleiche die vollständig belegten Originaleinträge.")
     if (not isinstance(value, str) or (any(c.isalpha() for c in value) and not caption_only)
             or len(saved_explanation.strip()) < 20
             or not any(c.isalpha() for c in saved_explanation)):

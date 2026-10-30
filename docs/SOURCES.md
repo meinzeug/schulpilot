@@ -3758,3 +3758,30 @@ erneut, dass ein beleuchteter undurchsichtiger Gegenstand einen Schatten wirft
 und Lampe und Wand fest stehen. Auch sie fragte nicht nach der Veränderung
 der Schattengröße. Die sichtbare Interaktion hilft beim Erkunden, aber eine
 gezielte selbstständige Prüfung dieses Zusammenhangs bleibt damit offen.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 27.11.: Eine selbst erzeugte
+Geschichtsseite über das alte Ägypten, den Nil und die Arbeit von Schreibern
+und Handwerkern wurde im mobilen Fotoassistenten vollständig erkannt. Das
+Thema „Das Alte Ägypten“ ist im
+[Fachlehrplan Geschichte der Sekundarschule](https://www.bildung-lsa.de/files/164f3f97e3adf65ff6f44685dd9e1ced/lp_sks_gesch_01_08_2019.pdf)
+für die Schuljahrgänge 5/6 aufgeführt. Ein echtes Paket wurde erstellt und
+die beiden passenden Auswahlaufgaben wurden nach der Erklärung richtig
+beantwortet. Die sichtbare Einführung blieb allerdings allgemein und erklärte
+vorwiegend, dass die Sätze unterschiedliche Informationen enthalten. Nach
+einem Neustart des isolierten Servers blieb die Auswahl erhalten und die
+letzte Rückmeldung wurde nach erneuter Übermittlung korrekt angezeigt.
+
+Der bestehende KI-Auftrag für den Originalsatz-Lesefokus fordert nun
+ausdrücklich eine konkrete Quellaussage und ihre verständliche Bedeutung.
+Ein künstlicher Diagnoseaufruf lieferte eine konkretere separat gespeicherte
+Gesamterklärung, verwendete als sichtbaren Schritt aber nur die feste
+Bildunterschrift „Vergleiche die vollständig belegten Originaleinträge.“.
+Für genau diese unveränderte Standardunterschrift und die zugehörigen
+Lesefokus-Referenzen zeigt die Leseprojektion den gespeicherten Erklärungstext;
+der ursprüngliche Modellschritt bleibt erhalten. Hinweise bleiben geschützt,
+und die Einführung wird weiterhin auf eine mögliche Antwortvorlage geprüft.
+Der einzelne Test belegt keine generell kindgerechte Erklärung aller Themen;
+die bereits vorhandene allgemeine Ägypten-Einführung wurde nicht umgeschrieben.
+Die Anzeige des Diagnoseergebnisses wurde zusätzlich in einer ausdrücklich
+gekennzeichneten lokalen Testkopie im 390-Pixel-Browser kontrolliert; daraus
+wurden keine Antworten eingetragen und kein neuer KI-Erfolg behauptet.
