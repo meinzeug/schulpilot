@@ -11,6 +11,7 @@ from schulpilot.schemas import Question, UnitOutput
 from schulpilot.subject_content import (
     PROFILES,
     Presentation,
+    canonical_profile,
     legacy_presentation,
     public_presentation,
     validate_output,
@@ -40,8 +41,9 @@ def test_both_curated_sources_per_subject_validate_and_evaluate(case):
 
 def test_subject_matrix_is_complete_and_has_two_sources_each():
     assert len(CASES) == 48
-    assert set(PROFILES) == {c["subject"] for c in CASES}
-    assert all(sum(c["subject"] == s for c in CASES) == 2 for s in PROFILES)
+    subjects = {canonical_profile(subject) for subject in PROFILES}
+    assert subjects == {c["subject"] for c in CASES}
+    assert all(sum(c["subject"] == subject for c in CASES) == 2 for subject in subjects)
 
 
 def test_given_hint_and_solution_are_independently_projected_with_no_hidden_quotes():

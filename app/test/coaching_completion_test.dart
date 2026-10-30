@@ -278,10 +278,10 @@ void main() {
         find.text('Tagesziel: noch 2 Min.'),
         findsNothing,
       ); // Time remains on Today/clock, not repeated as the round's result.
-      expect(find.text('Selbst ausprobieren'), findsOneWidget);
+      expect(find.text('Weitere Übung öffnen'), findsOneWidget);
       expect(find.text('Weiterlernen'), findsNothing);
       expect(fixture.requests, isEmpty);
-      await _tap(tester, 'Selbst ausprobieren');
+      await _tap(tester, 'Weitere Übung öffnen');
       expect(find.text('Neue Runde geöffnet'), findsOneWidget);
       expect(fixture.requests.map((r) => '${r.method} ${r.url.path}'), [
         'POST /api/units/next/start',

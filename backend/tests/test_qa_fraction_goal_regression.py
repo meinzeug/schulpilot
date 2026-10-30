@@ -1,5 +1,4 @@
 import pytest
-
 from schulpilot.coaching import conflicting_fraction_goal
 
 

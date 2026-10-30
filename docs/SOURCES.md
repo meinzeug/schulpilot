@@ -3967,3 +3967,16 @@ Fotoerkennung, Bestätigung und bewusste Paketvorbereitung wieder nutzbar:
 Generierungsbelegen. Der Aufgabenrückblick erhält einen direkten Zugang zu
 seiner gespeicherten Grafik; Satzwörter werden kompakt in Leserichtung dargestellt.
 Originalbelege und Grenzen: [EVERYDAY_QA_2026_10_30.md](EVERYDAY_QA_2026_10_30.md).
+
+30.10.2026 · Version1.38.48: Der reale künstliche Deutsch-Folgeauftrag zeigte
+einen vollständigen belegten Subjektausdruck in zwei getrennt markierten
+Wortkästen. Die Rollenprüfung betrachtet nun die vollständige zusammenhängende
+Wortgruppe; Teilwortpräfixe, widersprüchliche Rollen und verneinte Angaben werden
+nicht als Nachweis akzeptiert. Originalantworten und Modelloutput bleiben
+unverändert.171 betroffene Backendfälle und53 Flutterfälle bestanden. Nach einer
+rein lesenden Prüfung des tatsächlichen Fehloutputs gelang der reguläre bewusste
+Neuversuch: zwei zielgebundene Aufgaben g1/g2 mit belegten Rollen,27.217ms
+Anbieterzeit, gemeldete Kosten0,044196USD. Keine Änderung von Modell, Route,
+Reservierung oder Wiederholungskontingent. Die Gesamt-CI des Zwischenstands202
+war wegen Importformatierung und veralteter UI-Erwartungen nicht grün; deren
+gezielte Korrektur wird vollständig erneut geprüft.

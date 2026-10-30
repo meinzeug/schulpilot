@@ -75,6 +75,39 @@ Testverzeichnis festgehalten. Bilder werden nicht als private Uploads ins Git
 übernommen.
 `76-deutsch-november-repariert-390.png` zeigt den tatsächlichen Abschluss und
 die Unterscheidung zwischen bearbeitet und selbstständig gelöst.
+`77-satzgrafik-kompakt-390.png` zeigt die anschließend tatsächlich geöffnete
+kompakte Wortdarstellung im vollständigen Erklärdialog.
+
+## Gefundener Fehler in der Anschlussrunde
+
+Der erste ausdrücklich angeforderte Deutsch-Folgeauftrag wurde trotz vollständiger
+Modellantwort verworfen. Die Quelle nennt „Subjekt: Der Hund“, die Grafik markierte
+aber „Der“ und „Hund“ in getrennten Wortkästen. Die bisherige Rollenprüfung suchte
+für jedes Einzelwort einen eigenen Rollenbeleg und verwarf dadurch „Hund“.
+Ein kurzer Präfix wie „Der“ wurde dagegen zu großzügig akzeptiert.
+
+`sentence_role_evidence.py` prüft nun die vollständige zusammenhängende markierte
+Wortgruppe gegen eine ausdrücklich belegte Rollenangabe. Die Wörter und die
+Modellantwort werden dabei nicht verändert. Einzelne Teilwörter, widersprüchliche
+Rollen und verneinte Angaben reichen nicht aus. Die bisherige Sperre von
+Rollenmarkierungen in ungesehener Einführung bleibt erhalten.
+
+Die vollständige tatsächliche künstliche Fehlantwort bestand nach diesem Fix
+eine rein lesende Gegenprüfung. Danach wurde der vorhandene reguläre einmalige
+Wiederholungsbutton im Browser verwendet. Der echte Folgeauftrag gelang in
+27.217ms mit zwei Aufgaben und den unveränderten Zielkennungen g1/g2; die Grafik
+enthält die belegten Wortgruppen und passenden Rollen. Gemeldete Auftragskosten
+0,044196USD. Der alte Fehlversuch und sein Verbrauch wurden nicht überschrieben.
+
+171 Prüfungen für Rollenbelege, Fachgrafiken und Referenzen bestanden. Die
+Gesamt-CI des Zwischenstands202 wies außerdem fünf vorhandene Importformatierungen
+und veraltete UI-Erwartungen aus; die Backendtests wurden dort wegen der
+Formatprüfung noch nicht gestartet. Diese Formatierungen wurden korrigiert,
+die UI-Erwartungen an die bereits vorhandene Unterscheidung selbstständiger
+und unterstützter Runden angepasst. Alle53 betroffenen Flutterfälle bestanden.
+Die kanonischen24 Fachprofile werden einschließlich ihrer ausdrücklich bekannten
+Aliase geprüft; Aliase verlangen keine zusätzlichen erfundenen Fachfixtures.
+Der neue vollständige CI-Lauf wird getrennt von diesen lokalen Tests bewertet.
 
 ## Prüfungen und verbleibender Umfang
 

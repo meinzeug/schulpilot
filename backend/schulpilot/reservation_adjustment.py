@@ -1,11 +1,11 @@
 """Explicit local-operator reservation adjustment; never starts an AI call."""
 import argparse
 import json
-from decimal import Decimal, ROUND_CEILING
+from decimal import ROUND_CEILING, Decimal
 
 from sqlalchemy import select
 
-from .db import Audit, DB, Job, OperatorJob, ProviderConfig
+from .db import DB, Audit, Job, OperatorJob, ProviderConfig
 from .model_routing import RoutingPolicy
 from .security import audit
 

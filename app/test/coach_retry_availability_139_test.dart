@@ -67,7 +67,7 @@ void main() {
       final h = saved.Harness(data: round(canRetry: false));
       final before = jsonEncode(h.unit);
       await h.open(t);
-      await saved.click(t, 'Erklärung ansehen');
+      await saved.click(t, 'Mehr zur Rückmeldung');
       expect(find.text('Eine gespeicherte Erklärung.'), findsOneWidget);
       await saved.click(t, 'Mein Rückblick');
       expect(find.text('Der fertige Rückblick bleibt da.'), findsOneWidget);

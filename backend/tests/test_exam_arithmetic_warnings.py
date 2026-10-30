@@ -1,7 +1,6 @@
 """Do not lose literal student work or confuse a calculation with a grade."""
 
 import pytest
-
 from schulpilot.exam_review import arithmetic_warnings
 
 

@@ -3,9 +3,9 @@ from dataclasses import replace
 
 import pytest
 from pydantic import ValidationError
-
 from schulpilot import providers
 from schulpilot.model_routing import ModelRoute
+
 from scripts.evaluate_openrouter_mix import ocr_anchor_found
 
 

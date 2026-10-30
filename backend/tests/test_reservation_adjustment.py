@@ -1,9 +1,8 @@
 """Explicit operator action changes holds, not prices, models or old usage."""
 import pytest
-from sqlalchemy import select
-
-from schulpilot.db import Audit, DB, OperatorJob, ProviderConfig
+from schulpilot.db import DB, Audit, OperatorJob, ProviderConfig
 from schulpilot.reservation_adjustment import raise_reservations
+from sqlalchemy import select
 from test_model_routing import policy
 
 

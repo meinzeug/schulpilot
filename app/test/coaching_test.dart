@@ -156,7 +156,7 @@ void main() {
       expect(posts, isEmpty);
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
-      final next = find.text('Selbst ausprobieren');
+      final next = find.text('Weitere Übung öffnen');
       await tester.ensureVisible(next);
       await tester.tap(next);
       await tester.pumpAndSettle();

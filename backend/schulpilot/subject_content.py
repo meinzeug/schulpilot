@@ -619,15 +619,10 @@ def validate_question(presentation, question, sources, allowed_kinds, *, structu
             )
         ):
             raise ValueError("Wasserkreislauf braucht Verdunstung, Kondensation, Niederschlag, Sammlung.")
-        for mark in block.marks:
-            term = "Subjekt" if mark.role == "subject" else "Prädikat"
-            label = re.escape(block.labels[mark.index])
-            if not re.search(
-                r"(?:" + term + r"\s*[:=]\s*" + label + r"|" + label + r"\s+(?:ist|=)\s+(?:das\s+)?" + term + ")",
-                block.source_excerpt,
-                re.I,
-            ):
-                raise ValueError("Satzmarkierung hat keinen eindeutigen Rollenbeleg.")
+        if block.marks:
+            from .sentence_role_evidence import validate as validate_sentence_roles
+
+            validate_sentence_roles(block)
         if block.kind == "position":
             position = {"above": "auf", "below": "unter", "beside": "neben"}[block.variant]
             if not re.search(r"Ball[^.!?]{0,50}\b" + position + r"\b[^.!?]{0,30}Tisch", quoted, re.I):
