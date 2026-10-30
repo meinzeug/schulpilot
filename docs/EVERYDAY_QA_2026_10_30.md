@@ -138,3 +138,55 @@ Keine Datenbankmigration und keine Änderung von Modell, Anbieterroute,
 Reservierung oder Wiederholungskontingent. Der Code-Rückweg ist der vorherige
 kompatible Release 1.38.46. Dieser Rückweg enthält bereits den Leser für die
 neue Dezimalgrafik; ältere inkompatible Leser nicht an dessen Stelle einsetzen.
+
+## Weitere Befunde: Reihenfolge, Lesefokus und Unterstützungsnachweis
+
+Der künstliche 04.11. hatte eine abgeschlossene Mathematikrunde, eine bereits
+bereite Geschichtsrunde und weitere erst geplante Etappen. Der Tagesrückblick
+wählte trotzdem die neu zu erzeugende Mathematiketappe zuerst. `study_path.py`
+bevorzugt innerhalb dieses ausdrücklich geöffneten Tages nun eine vom bestehenden
+Plan tatsächlich angebotene gespeicherte Runde. Elternpflichten und begonnene
+Runden gehen weiter vor; Freigabetermine und fachliche Vorgänger werden nicht
+übersprungen. GET verändert weder den Plan noch Antworten und startet keine KI.
+
+Der normale erneute Vorbereitungsweg erstellte den noch fehlenden Geschichtsteil,
+ohne die vorhandene Mathematikrunde oder deren Antworten zu ersetzen. Im Browser
+wurde die echte gespeicherte Einführung geöffnet. Vollständige Originalsätze
+stehen nun in kompakten Lesekarten; die beiden Schritte ändern die Hervorhebung,
+nicht den Wortlaut oder eine erfundene zeitliche Reihenfolge. Screenshot:
+`artifacts/monthly-qa-20261030/79-geschichte-lesekarten-390.png`.
+
+Die bisherige Unabhängigkeitsprüfung behandelte jede früher geöffnete andere
+Erklärung als möglichen Lösungshinweis, auch beim lokal berechneten neuen
+Bruchbeispiel mit anderem Ergebnis. Neue endliche Rechen-Erklärschritte speichern
+nun einen eng begrenzten Offenlegungsbeleg. Nur wenn jeder tatsächlich geöffnete
+andere Schritt einen gültigen Beleg hat und der neue geprüfte Ergebniswert darin
+nicht vorkommt, entfällt diese pauschale Unsicherheit. Beliebige Prosa, Grafiken,
+Sprachaufgaben, Altbelege und zuvor gezeigte gleiche Ergebniswerte bleiben
+konservativ. Hinweise zur aktuellen Aufgabe zählen weiterhin als Hilfe. Kein
+bereits gespeicherter Versuch wird nachträglich verändert.
+
+Öffentliche Fachaliase wie `Engl.` und `DaZ` erhalten die vorhandenen kanonischen
+Darstellungs- und Laborverträge; neue öffentliche Cacheanfragen verwenden dieselbe
+kanonische Identität. Private historische Fachbezeichnungen bleiben Snapshots.
+Der Katalog führt die tatsächlich vorhandenen Herz- und Schattenrenderer nun
+auch vollständig in seiner zentralen Artenliste.
+
+Die vollständige CI des vorherigen Commitstands war nicht grün. Neben den
+Unabhängigkeits- und Aliasfehlern enthielt sie veraltete Assertions für frühere
+Transportfehlerphasen, ausschließlich voraussetzungsbezogene Altverträge sowie
+Schema-Snapshots vor der zusätzlichen Referenzprüfung. Diese Assertions wurden
+an den tatsächlichen weiterhin strengen Vertrag angepasst. Die reine künstliche
+23-Seiten-Serializerfixture reserviert ausdrücklich 0,25 statt 0,15 USD; dies
+ändert keine Anbieter- oder Kontoeinstellung. Ein separater übergroßer Request
+muss weiterhin vor Versand und ohne Kosten abgewiesen werden. Die
+Einheits-Sizingfixture berücksichtigt den durch weitere Grafikverträge größeren
+Request; ihr Kostenlimit bleibt unverändert 0,25 USD.
+
+Gezielte lokale Prüfungen: 416 Tests für Transport, Grafikschemata, Profile,
+Referenzen, öffentliche Bausteine und Auswahlindizes; 33 für adaptive Abläufe,
+Modellkurzpläne, Lernwissen und Lösungsoffenlegung; weitere 88 für
+Offenlegungsgrenzen, Wortschatzschutz, Fachaliase und Tagesprioritäten bestanden.
+Die neuen Lesekarten wurden zusätzlich mit realen Fonts bei 390px sowie 320px
+und doppelter Textgröße im Widgettest geprüft. Dies ist keine abgeschlossene
+30-Tage- oder Android-Geräteabnahme.

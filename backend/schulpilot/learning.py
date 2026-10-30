@@ -1886,8 +1886,11 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
                 raise HTTPException(409, "Bitte zuerst den Hörtext abspielen. Ohne Audio ist das keine Hörübung.")
     # Keep the answer verdict distinct from uncertainty about independence.
     # Conservatively set assisted for legacy evidence consumers as well.
+    from .learning_disclosures import independent_example
+
     independence_uncertain = bool(outcome == "correct" and prior_explanation and not prior_solution
-                                  and not hinted and not previous)
+                                  and not hinted and not previous
+                                  and not independent_example(unit, q, explanation_events))
     hinted = hinted or independence_uncertain
     evaluation.update(attempt_number=len(previous) + 1,
                       independent_attempt=not bool(hinted or previous),

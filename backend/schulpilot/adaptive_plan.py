@@ -245,7 +245,16 @@ def execute(db, unit, kind):
 
         target = value["current_question_id"] if value["phase"] == "change_support" else value["origin_question_id"]
         if not value.get("explanation_seen"):
-            record(db, unit.child_id, "explanation", {"question_id": target, "via": "adaptive_plan"}, unit.id)
+            from .learning_disclosures import receipt
+
+            value["explanation_seen"] = True
+            save(db, unit, value)
+            shown = public_plan(db, unit)["explanation"]
+            question = next(q for q in unit.questions if q["id"] == target)
+            detail = {"question_id": target, "via": "adaptive_plan"}
+            if proof := receipt(question, shown["text"], adaptive=True):
+                detail["arithmetic_disclosure"] = proof
+            record(db, unit.child_id, "explanation", detail, unit.id)
         value["explanation_seen"] = True
         save(db, unit, value)
         return True

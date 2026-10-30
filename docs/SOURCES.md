@@ -3980,3 +3980,12 @@ Anbieterzeit, gemeldete Kosten0,044196USD. Keine Änderung von Modell, Route,
 Reservierung oder Wiederholungskontingent. Die Gesamt-CI des Zwischenstands202
 war wegen Importformatierung und veralteter UI-Erwartungen nicht grün; deren
 gezielte Korrektur wird vollständig erneut geprüft.
+
+### Alltagstest-Fortsetzung 30.10.2026: Tagesfolge und Offenlegung
+
+Eigene künstliche 390px-Browserbeobachtung am isolierten Geschichte-Testtag:
+Die vorhandene Runde war bereit, wurde aber hinter einer geplanten Erzeugung
+angeboten. Enge Tagespriorisierung, kompakte Lesefokuskarten sowie neue endliche
+Rechen-Offenlegungsbelege sind in `docs/EVERYDAY_QA_2026_10_30.md` dokumentiert.
+Gezielte lokale Serien: 416, 33 und 88 bestandene Backendtests. Keine Änderung
+an Produktionsbudgets, Modellrouten oder gespeicherten Kinderantworten.

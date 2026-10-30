@@ -160,10 +160,11 @@ def context(subjects, profiles, *, schema=None, compact_matching=False, symbol_w
     }
     if "lab" in allowed:
         from .learning_labs import RECIPES
+        from .subject_content import canonical_profile
 
         enabled = {recipe for item in reachable if {"recipe_id", "recipe_version", "parameters"} <= item.get("properties", {}).keys()
                    for recipe in item["properties"]["recipe_id"].get("enum", [])}
-        value["lab_recipes"] = {subject: [key for key, recipe in RECIPES.items() if key in enabled and subject in recipe["subjects"]]
+        value["lab_recipes"] = {subject: [key for key, recipe in RECIPES.items() if key in enabled and canonical_profile(subject) in recipe["subjects"]]
             for subject in selected}
     if "grouped" in types:
         value["field_group"] = {"version": 1, "fields_min": 2, "fields_max": 4,

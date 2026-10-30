@@ -451,16 +451,22 @@ def path_data(db, day, child):
 
     current = plan(db, child)
     open_blocks = [b for b in result["blocks"] if b["status"] != "completed"]
-    preferred = next(
-        (
-            b
-            for item in [*current["today"], *current.get("voluntary", [])]
-            for b in open_blocks
-            if (item["kind"] == "study_path" and item["id"] == day.id and item.get("block_id") == b["id"])
-            or (item["kind"] == "unit" and item["id"] == b.get("unit_id"))
-        ),
-        None,
-    )
+    offered = [
+        (b, item)
+        for item in [*current["today"], *current.get("voluntary", [])]
+        for b in open_blocks
+        if (item["kind"] == "study_path" and item["id"] == day.id and item.get("block_id") == b["id"])
+        or (item["kind"] == "unit" and item["id"] == b.get("unit_id"))
+    ]
+    # Within this explicitly opened day, use an available saved round before
+    # proposing another paid generation. Parent duties and started rounds keep
+    # precedence; only planner-eligible steps participate, preserving release
+    # dates and each subject's prerequisite chain. GET never changes the plan.
+    preferred = min(offered, key=lambda pair: (
+        not pair[1].get("mandatory", False),
+        pair[1].get("status") not in ("active", "paused"),
+        pair[0]["status"] != "ready",
+    ))[0] if offered else None
     next_block = preferred or next(iter(open_blocks), None)
     if next_block:
         saved = next(b for b in value["blocks"] if b["id"] == next_block["id"])

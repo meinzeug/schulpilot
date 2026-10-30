@@ -38,7 +38,7 @@ from schulpilot.learning_assets import (
 from schulpilot.main import app
 from schulpilot.model_routing import choose_tier, job_config
 from schulpilot.providers import ProviderError, Result
-from schulpilot.subject_content import PROFILES
+from schulpilot.subject_content import PROFILES, canonical_profile
 from schulpilot.visual_reference_models import VisualReference
 from schulpilot.visual_references import candidates, digest
 from sqlalchemy import select
@@ -153,10 +153,21 @@ def test_complete_vertical_path_and_cache_hit_never_create_learning_evidence(api
 def test_every_supported_subject_has_a_real_public_selector_and_renderer_contract(api, prepared):
     # Contract breadth, deliberately NOT 24 claims of factual content review.
     with DB() as db:
-        for subject in PROFILES:
+        for subject in set(map(canonical_profile, PROFILES)):
             public = public_spec(db, spec(subject))
             assert checked_output(db, output(subject), public)["subject"] == subject
             assert public["subject_id"] and public["catalog_topic"]["id"]
+
+
+@pytest.mark.parametrize("canonical,alias", [("Englisch", "Engl."), ("Deutsch als Zweitsprache", "DaZ")])
+def test_known_public_aliases_reuse_the_same_canonical_asset_key(api, prepared, canonical, alias):
+    original = spec(canonical)
+    with DB() as db:
+        expected = public_spec(db, original)
+        actual = public_spec(db, {**original, "subject": alias})
+    assert actual == expected
+    assert digest(actual) == digest(expected)
+    assert original["subject"] == canonical
 
 
 
@@ -165,7 +176,7 @@ def test_catalogue_and_lookup_are_read_only_bounded_and_recommend_public_recipes
     response = api.get("/api/learning-assets/catalogue")
     assert response.status_code == 200
     catalogue = response.json()
-    assert set(catalogue["subjects"]) == set(PROFILES)
+    assert set(catalogue["subjects"]) == set(map(canonical_profile, PROFILES))
     assert catalogue["subject_definitions"] and catalogue["foundations"]
     assert len(catalogue["topics"]) <= 100 and catalogue["pagination"]["page_size"] == 100
     assert all("general.source_relation.phases" in topic["recommended_recipe_ids"] for topic in catalogue["topics"])

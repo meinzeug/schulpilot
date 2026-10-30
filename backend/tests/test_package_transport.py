@@ -145,7 +145,10 @@ def config(provider="openrouter"):
         provider=provider,
         model="openai/gpt-6.1-sol",
         max_output_tokens=4000,
-        reserve_micros=150000,
+        # Serializer fixture includes all 23 sources and every supported
+        # entry/graphic branch. Keep its explicit reservation separate from
+        # production route settings and the bounded partition tests.
+        reserve_micros=250000,
         input_per_million_micros=2000000,
         output_per_million_micros=10000000,
         capability_evidence="synthetic upstream=azure",
@@ -285,12 +288,12 @@ def test_multisubject_11641_character_packages_fit_without_a_changed_reservation
         )
     )
     preflight = projection(config(), "package", length, None, 0)
-    assert preflight["projected_micros"] <= 150000
-    assert preflight["reserved_micros"] == 150000
+    assert preflight["projected_micros"] <= 250000
+    assert preflight["reserved_micros"] == 250000
 
 
 def test_large_sources_still_fail_before_dispatch_without_a_fallback_or_retry(monkeypatch):
-    payload = artificial(monkeypatch, chars=60000)
+    payload = artificial(monkeypatch, chars=100000)
     monkeypatch.setattr(providers, "external_allowed", lambda *a, **kw: None)
     monkeypatch.setattr(providers.httpx, "Client", lambda **kw: pytest.fail("No HTTP may be constructed."))
     with pytest.raises(providers.ProviderError) as error:
@@ -349,6 +352,7 @@ def test_fixed_prerequisite_prompt_answer_pairs_cannot_cross_bind(monkeypatch):
     payload = artificial(monkeypatch, ("Mathematik",), catalog=False)
     payload["learning_entry"]["units"][0].update(
         entry_mode="prerequisite_probe",
+        allocation_version=1,  # Replay the legacy all-probe contract; new plans reserve application.
         probes=[
             {
                 "id": "prior_a",

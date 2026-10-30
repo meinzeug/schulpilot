@@ -81,7 +81,7 @@ def test_invalid_returned_fraction_is_still_rejected_once_with_billing(monkeypat
     assert billed is not None
     validation = billed.telemetry["validation"]
     assert validation["phase"] == "transport"
-    assert validation["errors"][0]["reason"] == "schema_validation"
+    assert validation["errors"][0]["reason"] == "graphic_pair_transport"
     with pytest.raises(ValidationError):
         Graphic.model_validate(response["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0])
     schema = _submitted("openrouter", calls[0])[1]
@@ -204,7 +204,12 @@ def test_actual_unit_profile_capability_precedes_copied_branches_and_later_passe
 
     def coherent(schema):
         assert order == ["profile"]
-        assert schema["$defs"]["Graphic"] == snapshots["profile"]
+        # Provider requests additionally gate recipe-only renderers on actual
+        # reference evidence before composing coherent graphic branches.
+        expected = copy.deepcopy(snapshots["profile"])
+        expected["properties"]["kind"]["enum"] = [kind for kind in expected["properties"]["kind"]["enum"]
+            if kind not in {"decimal_sum", "heart_pump", "shadow_size"}]
+        assert schema["$defs"]["Graphic"] == expected
         coherent_bind(schema)
         order.append("coherent")
         snapshots["coherent"] = copy.deepcopy(schema["$defs"]["Graphic"])

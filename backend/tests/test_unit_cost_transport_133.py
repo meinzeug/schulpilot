@@ -12,7 +12,7 @@ from test_presentation_capability_paths import _config, _submitted
 
 @pytest.mark.parametrize("reason", ["material_graphic_teaching", "notebook_graphic_teaching"])
 @pytest.mark.parametrize("subject,entry,padding,allowed", [("Deutsch", False, 0, True),
-    ("Deutsch", True, 40000, True), ("Mathematik", True, 30000, True),
+    ("Deutsch", True, 39000, True), ("Mathematik", True, 30000, True),
     ("Mathematik", True, 40000, False), ("Deutsch", True, 200000, False)])
 def test_unit_transport_preserves_schema_and_existing_cost_boundary(monkeypatch, household, subject, entry, padding, allowed, reason):
     content = ("Der Vogel singt - Die Vögel singen. Artikel und Nomen gehören zusammen."

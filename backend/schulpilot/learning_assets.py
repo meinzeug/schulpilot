@@ -14,7 +14,7 @@ from .db import DB, Child, Family, Job, Session, Subject, Usage, User, get_db, n
 from .learning_asset_models import LearningAssetBuild, LearningAssetInstance
 from .learning_asset_schemas import LearningAssetOutput, LearningAssetSpec
 from .security import Principal, authenticated, child_access, rate_limit
-from .subject_content import PROFILES, validate_question
+from .subject_content import PROFILES, canonical_profile, validate_question
 from .visual_reference_models import VisualReference
 from .visual_references import _meaningful, digest
 
@@ -58,7 +58,7 @@ def request_key(value):
 def profile_subjects(db):
     """The existing renderer has one established short registry label."""
     rows = list(db.scalars(select(Subject).where(Subject.owner_family_id.is_(None), Subject.active.is_(True))))
-    return {title: row for title in PROFILES for row in rows
+    return {title: row for title in dict.fromkeys(canonical_profile(name) for name in PROFILES) for row in rows
             if row.title == title or (title == "Lerntechniken" and row.key == "lern-und-arbeitstechniken")}
 
 
@@ -68,6 +68,9 @@ def public_spec(db, raw):
     from .competences import VERSION, resolve_reference
 
     spec = raw if isinstance(raw, LearningAssetSpec) else LearningAssetSpec.model_validate(raw)
+    # Public aliases identify one shared catalogue/cache entry. This does not
+    # rewrite historical private material or learning-unit subject snapshots.
+    spec = spec.model_copy(update={"subject": canonical_profile(spec.subject)})
     if spec.subject not in PROFILES:
         raise HTTPException(422, "Für dieses Fach ist kein Darstellungsprofil vorhanden.")
     subject = profile_subjects(db).get(spec.subject)
@@ -226,7 +229,7 @@ def catalogue(topic_subject: str | None = None, page: int = Query(default=1, ge=
         foundation["recommended_recipe_ids"] = [row["id"] for row in candidates(db, subject_titles.get(foundation["subject_key"]), foundation["content"]) if row["kind"] != "lab"]
     for topic in public_topics:
         topic["recommended_recipe_ids"] = [row["id"] for row in candidates(db, topic["subject"], topic["title"]) if row["kind"] != "lab"]
-    return {"version": BUILDER_VERSION, "subjects": list(PROFILES), "locale": "de-DE",
+    return {"version": BUILDER_VERSION, "subjects": list(profiles), "locale": "de-DE",
             "subject_definitions": [{"key": row.key, "title": title} for title, row in profiles.items()],
             "topics": public_topics,
             "pagination": {"page": page, "page_size": 100, "total": total, "has_more": page * 100 < total},

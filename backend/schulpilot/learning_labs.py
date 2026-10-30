@@ -84,6 +84,9 @@ def references():
 
 
 def validate(block, question, sources, *, structured=False, subject=None):
+    from .subject_content import canonical_profile
+
+    subject = canonical_profile(subject)
     lab = block.lab
     if lab is None or resolve(lab.recipe_id, lab.recipe_version) is None:
         raise ValueError("Unbekanntes Laborrezept.")

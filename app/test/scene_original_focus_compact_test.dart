@@ -1,10 +1,115 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:schulpilot/learning_scene_player.dart';
+import 'package:schulpilot/ui.dart';
 
 import 'learning_scene_player_test.dart' as fixture;
 
 void main() {
+  setUpAll(() async {
+    for (final font in ['Nunito', 'SpaceGrotesk']) {
+      await (FontLoader(
+        font,
+      )..addFont(rootBundle.load('assets/fonts/$font.ttf'))).load();
+    }
+  });
+  for (final viewport in [(390.0, 1.0), (320.0, 2.0)]) {
+    testWidgets(
+      'long original statements appear once in compact readable cards at $viewport',
+      (tester) async {
+        fixture.size(tester, Size(viewport.$1, 844));
+        const labels = [
+          'Sachquellen sind Gegenstände aus früherer Zeit, zum Beispiel ein Werkzeug.',
+          'Schriftquellen sind geschriebene Texte, zum Beispiel ein Brief.',
+          'Bildquellen zeigen Bilder aus früherer Zeit, zum Beispiel eine Zeichnung.',
+        ];
+        final block = <String, dynamic>{
+          'kind': 'scene',
+          'title': labels.first,
+          'labels': labels,
+          'scene': {
+            'version': 1,
+            'layout': 'grid',
+            'transition_ms': 0,
+            'objects': [
+              for (var i = 0; i < labels.length; i++)
+                {
+                  'id': 'o$i',
+                  'label': labels[i],
+                  'shape': 'box',
+                  'tone': 'neutral',
+                },
+            ],
+            'steps': [
+              for (var i = 0; i < 2; i++)
+                {
+                  'caption': labels[i],
+                  'placements': [
+                    for (var j = 0; j < labels.length; j++)
+                      {'object_id': 'o$j', 'slot': j},
+                  ],
+                  'highlight': ['o$i'],
+                  'edges': [],
+                },
+            ],
+          },
+        };
+        final before = jsonEncode(block), calls = <http.Request>[];
+        await tester.pumpWidget(
+          fixture.host(
+            LearningScenePlayer(block, state: fixture.actor(calls)),
+            size: Size(viewport.$1, 844),
+            scale: viewport.$2,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('scene-reading-cards')),
+          findsOneWidget,
+        );
+        for (final label in labels) {
+          expect(find.text(label), findsOneWidget);
+        }
+        expect(find.text(labels.join(' ')), findsNothing);
+        expect(find.byKey(const ValueKey('scene-caption')), findsNothing);
+        expect(find.byKey(fixture.playKey), findsNothing);
+        expect(
+          tester
+              .widget<SurfaceInset>(
+                find.byKey(const ValueKey('scene-reading-card-o0')),
+              )
+              .tone,
+          PanelTone.info,
+        );
+        await fixture.tapVisible(
+          tester,
+          find.byKey(const ValueKey('scene-direct-step-1')),
+        );
+        expect(
+          tester
+              .widget<SurfaceInset>(
+                find.byKey(const ValueKey('scene-reading-card-o1')),
+              )
+              .tone,
+          PanelTone.info,
+        );
+        expect(find.text('Schritt 2 von 2'), findsOneWidget);
+        if (viewport.$2 == 1) {
+          expect(
+            tester.getSize(find.byType(LearningScenePlayer)).height,
+            lessThan(600),
+          );
+        }
+        expect(jsonEncode(block), before);
+        expect(calls, isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   testWidgets(
     'static arrow with highlight change offers compact steps and playback',
     (tester) async {

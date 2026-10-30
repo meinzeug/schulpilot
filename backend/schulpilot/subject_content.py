@@ -25,12 +25,14 @@ KINDS = (
     "timeline",
     "picture_words",
     "plant",
+    "heart_pump",
     "food_chain",
     "compass",
     "position",
     "water_cycle",
     "perspectives",
     "reflection",
+    "shadow_size",
     "circuit",
     "particles",
     "filtration",
@@ -752,6 +754,7 @@ def open_learning_unit(unit):
 
 def bind_graphic_schema(schema, subjects, *, labs_enabled=False):
     """Bind actual subject recipes; unsupported clients retain a null lab field."""
+    subjects = [canonical_profile(subject) for subject in subjects]
     recipes = [key for key, value in learning_labs.RECIPES.items()
         if labs_enabled and any(subject in value["subjects"] for subject in subjects)]
     allowed = sorted({kind for subject in subjects for kind in PROFILES.get(subject, ())

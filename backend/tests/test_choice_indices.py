@@ -201,7 +201,7 @@ def test_provider_cannot_silently_shrink_a_five_topic_package(transport, paid):
     config, _, _, calls = transport
     if paid:
         config.model, config.openrouter_free_only = "synthetic-paid-fixture", False
-    with pytest.raises(ProviderError, match="Lernumfang"):
+    with pytest.raises(ProviderError, match="Paket-Ausgabe.*Ausgabeformat"):
         request_provider(config, "package", multipage_payload())
     assert len(calls) == 1
 

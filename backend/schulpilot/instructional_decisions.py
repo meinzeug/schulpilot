@@ -384,7 +384,13 @@ def execute(db, unit, kind):
 
     if kind in ("explain", "visual_example"):
         if not plan.get("shown"):
-            record(db, unit.child_id, "explanation", {"question_id": step["question_id"], "via": "model_short_plan"}, unit.id)
+            from .learning_disclosures import receipt
+
+            question = next(q for q in unit.questions if q["id"] == step["question_id"])
+            detail = {"question_id": question["id"], "via": "model_short_plan"}
+            if proof := receipt(question, question["explanation"]):
+                detail["arithmetic_disclosure"] = proof
+            record(db, unit.child_id, "explanation", detail, unit.id)
         plan["shown"] = True
     elif kind == "offer_break":
         unit.status, unit.heartbeat = "paused", None

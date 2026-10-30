@@ -264,14 +264,20 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
           image: true,
           label: '$label. $description ${model.steps[step].caption}',
           child: ExcludeSemantics(
-            child: _SceneCanvas(scene: model, value: step.toDouble()),
+            child: _isReadingCards(model)
+                ? _ReadingFocusCards(scene: model, step: step)
+                : _SceneCanvas(scene: model, value: step.toDouble()),
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          model.steps[step].caption,
-          style: const TextStyle(fontSize: 15, height: 1.4),
-        ),
+        if (!_isReadingCards(model) ||
+            !model.objects.any(
+              (object) => object.label == model.steps[step].caption,
+            ))
+          Text(
+            model.steps[step].caption,
+            style: const TextStyle(fontSize: 15, height: 1.4),
+          ),
       ],
     );
     final changes = differences(model, index);
@@ -382,11 +388,12 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
         ? labels.join(' ')
         : model.objects.map((object) => object.label).join('; ');
     final simpleFocus = _isOriginalListFocus(model);
+    final readingCards = _isReadingCards(model);
     // Source quotes stay private; the server derives this flag after checking
     // the presentation against its source.
     final formationOnly = widget.block['photosynthesis_formation_only'] == true;
     return LearningGraphicFrame(
-      title: title,
+      title: readingCards ? 'Schau dir die Aussagen an' : title,
       action: widget.action,
       child: AnimatedBuilder(
         animation: controller,
@@ -426,12 +433,15 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                           )
                         : _isAtlanticBetweenScene(model)
                         ? _AtlanticBetweenScene(scene: model, step: index)
+                        : readingCards
+                        ? _ReadingFocusCards(scene: model, step: index)
                         : _SceneCanvas(scene: model, value: value),
                   ),
                 ),
               const SizedBox(height: 16),
               Semantics(
                 liveRegion: true,
+                label: readingCards ? 'Im Blick: ${step.caption}' : null,
                 child: Text(
                   'Schritt ${index + 1} von ${model.steps.length}',
                   key: const ValueKey('scene-step-count'),
@@ -442,22 +452,27 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _isPhotosynthesisScene(model)
-                    ? (index == 0
-                          ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
-                          : formationOnly
-                          ? 'Mit Licht bilden Pflanzen Zucker. Dabei entsteht Sauerstoff.'
-                          : 'Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.')
-                    : step.caption,
-                key: const ValueKey('scene-caption'),
-                style: TextStyle(
-                  color: context.palette.ink,
-                  fontSize: 16,
-                  height: 1.5,
+              if (!readingCards ||
+                  !model.objects.any(
+                    (object) => object.label == step.caption,
+                  )) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _isPhotosynthesisScene(model)
+                      ? (index == 0
+                            ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
+                            : formationOnly
+                            ? 'Mit Licht bilden Pflanzen Zucker. Dabei entsteht Sauerstoff.'
+                            : 'Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.')
+                      : step.caption,
+                  key: const ValueKey('scene-caption'),
+                  style: TextStyle(
+                    color: context.palette.ink,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
                 ),
-              ),
+              ],
               if (model.steps.length > 1) ...[
                 const SizedBox(height: 8),
                 Wrap(
@@ -682,16 +697,17 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                       ),
                   ],
                 ),
-              ExcludeSemantics(
-                child: Text(
-                  description,
-                  style: TextStyle(
-                    color: context.palette.muted,
-                    fontSize: 13,
-                    height: 1.5,
+              if (!readingCards)
+                ExcludeSemantics(
+                  child: Text(
+                    description,
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
                   ),
                 ),
-              ),
               for (final edge in step.edges) ...[
                 const SizedBox(height: 6),
                 Text(
@@ -812,6 +828,58 @@ bool _isOriginalListFocus(_Scene scene) {
             scene.steps[0].placements[object.id] ==
             scene.steps[1].placements[object.id],
       );
+}
+
+// These reviewed scenes only move a reading focus. Do not turn a moving or
+// connected model into a list, and do not infer symbols from private wording.
+bool _isReadingCards(_Scene scene) =>
+    scene.layout == 'grid' &&
+    scene.transitionMs == 0 &&
+    scene.steps.length == 2 &&
+    scene.objects.length >= 2 &&
+    scene.objects.length <= 4 &&
+    scene.objects.every((object) => object.shape == 'box') &&
+    scene.steps.every(
+      (step) => step.edges.isEmpty && step.highlight.length == 1,
+    ) &&
+    scene.objects.every(
+      (object) =>
+          scene.steps[0].placements[object.id] ==
+          scene.steps[1].placements[object.id],
+    );
+
+class _ReadingFocusCards extends StatelessWidget {
+  final _Scene scene;
+  final int step;
+  const _ReadingFocusCards({required this.scene, required this.step});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    key: const ValueKey('scene-reading-cards'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (final object in scene.objects) ...[
+        if (object != scene.objects.first) const SizedBox(height: 8),
+        SurfaceInset(
+          key: ValueKey('scene-reading-card-${object.id}'),
+          tone: scene.steps[step].highlight.contains(object.id)
+              ? PanelTone.info
+              : PanelTone.neutral,
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            object.label,
+            style: TextStyle(
+              fontSize: 17,
+              height: 1.4,
+              fontWeight: scene.steps[step].highlight.contains(object.id)
+                  ? FontWeight.w800
+                  : FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ],
+  );
 }
 
 // This illustration is only used for the exact, source-verified two-phase

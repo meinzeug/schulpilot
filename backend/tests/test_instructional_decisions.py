@@ -15,13 +15,16 @@ def profile(api, household):
     client, uid, mid, parent, child = next(fixture)
     with DB.begin() as db:
         unit = db.get(LearningUnit, uid)
+
+        # Different result as well as operands: repeating the shown old value
+        # is deliberately insufficient for independent-transfer evidence.
         second = dict(
             unit.questions[0],
             id="new_sum",
-            prompt="Berechne 1/6 + 2/6.",
-            options=["3/6", "3/12", "1/6"],
-            answer="3/6",
-            explanation="1/6 + 2/6 = 3/6.",
+            prompt="Berechne 1/6 + 1/6.",
+            options=["2/6", "3/12", "1/6"],
+            answer="2/6",
+            explanation="1/6 + 1/6 = 2/6.",
         )
         unit.questions = [unit.questions[0], second]
     assert client.post(f"/api/units/{uid}/start").status_code == 200
@@ -114,7 +117,7 @@ def test_bounded_model_plan_is_reserved_once_executed_and_replanned_from_actual_
     assert value["learning_session"]["action"]["question_id"] == "new_sum"
     assert client.post(f"/api/units/{uid}/questions/sum/answer", json={"answer": "2/4"}).status_code == 409
     response = client.post(
-        f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "3/6", "request_id": "new-model-answer-0001", "guided_feedback": True}
+        f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "2/6", "request_id": "new-model-answer-0001", "guided_feedback": True}
     )
     assert response.status_code == 200, response.text
     assert response.json()["outcome"] == "correct" and not response.json()["assisted"]
@@ -177,7 +180,7 @@ def test_exhausted_legacy_plan_recovers_only_on_conscious_post_and_preserves_ans
     with monkeypatch.context() as old:
         old.setattr(learning, "complete_round", lambda *_a, **_kw: False)
         response = client.post(f"/api/units/{uid}/questions/new_sum/answer",
-            json={"answer": "3/6", "request_id": "legacy-independent-0001", "guided_feedback": True})
+            json={"answer": "2/6", "request_id": "legacy-independent-0001", "guided_feedback": True})
         assert response.status_code == 200, response.text
         attempt_id = response.json()["attempt_id"]
         assert client.post(f"/api/units/{uid}/feedback/acknowledge", json={"attempt_id": attempt_id}).status_code == 200
@@ -231,7 +234,7 @@ def test_legacy_deferral_requires_current_sources_shown_solution_and_actual_succ
     execute(client, uid, "practice", "legacy-guard-next-0001")
     with monkeypatch.context() as old:
         old.setattr(learning, "complete_round", lambda *_a, **_kw: False)
-        assert client.post(f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "3/6"}).status_code == 200
+        assert client.post(f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "2/6"}).status_code == 200
     with DB.begin() as db:
         memory = db.get(LearningMemory, uid)
         working = dict(memory.working)
@@ -285,7 +288,7 @@ def test_late_model_plan_cannot_overwrite_current_sources_session_or_answers(pro
             elif change == "session":
                 db.get(Session, db.get(Job, first.json()["id"]).payload["session_id"]).revoked = True
         if change == "answer":
-            assert client.post(f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "3/6"}).status_code == 200
+            assert client.post(f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "2/6"}).status_code == 200
         return Result(sample_plan(payload), 100, 100, 10)
 
     monkeypatch.setattr("schulpilot.providers.request_provider", model)
