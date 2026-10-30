@@ -14,3 +14,8 @@ def test_only_actual_busy_worker_message_is_classified_as_busy():
     assert message_code("Der Codex-Worker ist gerade belegt. Bitte später versuchen.") == "provider_busy"
     assert message_code("Die KI ist beschäftigt.") == "provider_busy"
     assert message_code("Diese Stufe ist für dieses Fach nicht im Katalog belegt.") != "provider_busy"
+
+
+def test_unreachable_provider_does_not_look_like_an_invalid_photo():
+    text = "KI-Anbieter ist nicht erreichbar. Kein automatischer Wiederholungsversuch; mögliche Kosten bleiben reserviert."
+    assert message_code(text) == "provider_unavailable"

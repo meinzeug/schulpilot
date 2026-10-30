@@ -3543,3 +3543,18 @@ Quellform, nicht beliebige Schaltungen. Eine sinngemäß richtige freie Antwort
 „Er unterbricht den Stromkreis“ blieb bei der hinterlegten Kurzlösung
 „unterbricht“ unklar. Sie wurde nicht als falsch bewertet, bedarf aber einer
 besser verständlichen und verlässlichen Klärung. Der 30-Tage-Test bleibt offen.
+
+30.10.2026 · Die geschilderte Physikantwort wird für die konkrete Frage und
+die versionierte, quellengebundene Darstellung des geöffneten Stromkreises
+nun anhand weniger vollständig übereinstimmender Satzformen geprüft. Andere
+Formulierungen, Verneinungen und Zusätze bleiben ungeklärt. Im isolierten
+Mobilbrowser wurde die zuvor gespeicherte Antwort ausdrücklich erneut geprüft
+und als richtig mit Hilfe ausgewiesen; bisherige Hilfen und Versuche blieben
+erhalten. Dies ist keine allgemeine semantische Freitextbewertung.
+
+Beim folgenden künstlichen Deutsch-Foto scheiterte der Leseauftrag zweimal mit
+einem Verbindungsfehler. Die gespeicherten Versuche bleiben erhalten. Die
+Kindermeldung unterscheidet nun diese Verbindungslage von einer fehlerhaften
+Aufgabe; die Ursache des Verbindungsabbruchs und eine zuverlässige Verarbeitung
+dieses Fotos sind damit noch nicht nachgewiesen. Keine automatischen erneuten
+Anbieteraufrufe wurden ergänzt. Der 30-Tage-Alltagstest bleibt unvollständig.

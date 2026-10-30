@@ -1600,6 +1600,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               switch (code) {
                 'quota_exhausted' => 'Neue KI-Inhalte können gerade nicht vorbereitet werden. Mit gespeicherten Aufgaben und Erklärungen kannst du weiterlernen.',
                 'provider_timeout' => 'Die KI hat länger gebraucht als erlaubt. Deine Heftseiten sind da.',
+                'provider_unavailable' => 'Die Verbindung zur Lernhilfe ist gerade unterbrochen. Deine Fotos sind gespeichert.',
                 'invalid_output' =>
                   isExtract
                       ? 'Eine Heftseite konnte noch nicht vollständig gelesen werden. Deine Fotos und bisherigen Abschriften bleiben gespeichert.'

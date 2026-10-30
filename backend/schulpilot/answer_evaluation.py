@@ -12,11 +12,12 @@ from math import gcd, lcm
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
-VERSION = "subject_rules_v6"
+VERSION = "subject_rules_v7"
 FRACTION_COMPONENT_VERSION = "fraction_components_v1"
 FRACTION_MEANING_VERSION = "fraction_meaning_v1"
 FRACTION_COMPARISON_VERSION = "fraction_comparison_v1"
 LCM_VERSION = "lcm_numeric_v1"
+CIRCUIT_VERSION = "circuit_interruption_v1"
 
 
 def fraction_addition_hint(question, answer):
@@ -46,6 +47,43 @@ def normalized(value):
 def result(outcome, reason, *, content=None, form=None, method=VERSION):
     return {"version": 2, "outcome": outcome, "reason": reason, "method": method,
             "dimensions": {"content": content or outcome, "form": form or "not_requested"}}
+
+
+def circuit_interruption(question, answer):
+    """Recognize a few exact formulations only for the verified source task."""
+    key = question.get("answer")
+    raw_prompt = question.get("prompt")
+    if (question.get("type") != "short" or question.get("language") or not isinstance(key, str)
+            or not isinstance(raw_prompt, str) or not isinstance(answer, str) or normalized(key) != "unterbricht"):
+        return None
+    prompt = normalized(raw_prompt)
+    if not re.fullmatch(r"bei geöffnetem schalter:\s*was bewirkt dieser im stromkreis\?", prompt):
+        return None
+    from .package_prepared_circuit import REFERENCE, validate
+    from .subject_content import Graphic
+
+    verified = False
+    for step in question.get("explanation_steps") or []:
+        if not isinstance(step, dict) or step.get("reference") != {"id": REFERENCE, "version": 1}:
+            continue
+        presentation = step.get("presentation")
+        if not isinstance(presentation, dict) or not isinstance(presentation.get("blocks"), list):
+            continue
+        for value in presentation["blocks"]:
+            try:
+                block = Graphic.model_validate(value)
+                if block.kind == "circuit" and block.variant == "open":
+                    validate(block, [block.source_excerpt])
+                    verified = True
+            except (ValueError, TypeError):
+                continue
+    if not verified:
+        return None
+    value = normalized(answer).rstrip(".! ")
+    if re.fullmatch(r"(?:(?:er|der schalter) )?unterbricht den stromkreis|der stromkreis wird unterbrochen", value):
+        return result("correct", "Dein Satz beschreibt richtig, dass der Schalter den Stromkreis unterbricht.",
+                      method=CIRCUIT_VERSION)
+    return None  # Negation, extra claims and unknown wording remain uncertain.
 
 
 def fraction_comparison(question, answer):
@@ -413,6 +451,8 @@ def evaluate(question, answer):
         from .language_evaluation import evaluate as language_evaluate
 
         return language_evaluate(question, answer)
+    if checked := circuit_interruption(question, answer):
+        return checked
     if checked := lcm_short_answer(question, answer):
         return checked
     if checked := fraction_comparison(question, answer):
