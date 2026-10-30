@@ -5,6 +5,38 @@ import 'package:schulpilot/math_content.dart';
 import 'package:schulpilot/ui.dart';
 
 void main() {
+  testWidgets(
+    'highlights keep the sentence readable without hiding corrections',
+    (tester) async {
+      const text = 'Mara liest ein Buch.';
+      final block = {
+        'kind': 'paragraph',
+        'text': text,
+        'annotations': [
+          {'kind': 'highlight', 'quote': 'Mara', 'color': 'red'},
+          {'kind': 'highlight', 'quote': 'liest', 'color': 'blue'},
+        ],
+      };
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: LearningContent(text, blocks: [block]),
+            ),
+          ),
+        ),
+      );
+      expect(find.text(text), findsOneWidget);
+      expect(find.text('Markierungen im Foto'), findsNothing);
+      await tester.tap(find.text('Hervorhebungen im Foto'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mara'), findsOneWidget);
+      expect(find.text('liest'), findsOneWidget);
+      expect(block['text'], text);
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final width in [320.0, 1024.0]) {
     testWidgets(
       'literal correction cards distinguish repeated numbers on $width px',

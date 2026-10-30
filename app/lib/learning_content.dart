@@ -128,6 +128,39 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = block['text'] as String;
     final marks = _sourceMarks(block);
+    if (marks.isNotEmpty &&
+        marks.every((mark) => mark['kind'] == 'highlight')) {
+      // A colour highlight is not a correction: keep the whole sentence in
+      // reading order and make the original annotations available on demand.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Section(
+            {...block, 'annotations': <dynamic>[]},
+            figure: figure,
+            style: style,
+            interactive: interactive,
+          ),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Hervorhebungen im Foto'),
+            children: [
+              ?figure,
+              for (final mark in marks)
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.format_color_text),
+                  title: MathText(mark['quote'], style: body),
+                ),
+              Text(
+                'Eine Hervorhebung ist keine Bewertung.',
+                style: TextStyle(fontSize: 13, color: context.palette.muted),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
     if (marks.isNotEmpty) {
       final hasUnreadableText = RegExp(
         r'\[\s*unleserlich',

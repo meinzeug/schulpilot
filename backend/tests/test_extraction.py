@@ -390,6 +390,26 @@ def test_compact_transcription_wire_keeps_literal_symbols_marks_regions_and_whit
     assert quarantined.reading_uncertainties
 
 
+@pytest.mark.parametrize('bad', [
+    {'k': 'highlight', 'q': 'Mara', 'c': 'ultraviolet'},
+    {'k': 'made_up', 'q': 'Mara'},
+    {'k': 'highlight', 'q': 'Mara', 'r': {'l': 900, 't': 0, 'r': 20, 'b': 500}},
+    'not a mark',
+])
+def test_unparsable_mark_metadata_quarantines_literal_block_without_inventing_correction(bad):
+    literal = 'Mara liest ein Buch.'
+    data = transcription(blocks=[{'k': 'paragraph', 't': literal, 'a': [
+        {'k': 'highlight', 'q': 'liest', 'c': 'blue'}, bad], 'u': []}])
+    parsed = TranscriptionOutput.model_validate(data)
+    assert parsed.legibility == 'partial'
+    result = parsed.as_material()
+    assert result['content'] == literal
+    assert result['source_blocks'][0]['annotations'][0]['quote'] == 'liest'
+    assert len(result['source_blocks'][0]['annotations']) == 1
+    assert result['source_blocks'][0]['reading_uncertainties']
+    assert result['uncertainties']
+
+
 
 def test_compact_wire_saves_repeated_metadata_without_shortening_original_text():
     from schulpilot.extraction import TranscriptionBlock

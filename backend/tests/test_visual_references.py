@@ -22,6 +22,20 @@ from schulpilot.visual_references import (
 SOURCE = "Ein Bruch 1/2 beschreibt 1 von 2 gleich großen Teilen."
 
 
+def test_empty_visual_step_uses_saved_explanation_without_changing_snapshot():
+    from schulpilot.visual_references import readable_single_step
+
+    original = [{"id": "one", "text": "1", "presentation": {"blocks": []}}]
+    explanation = "Satzglieder können mit passenden Fragen untersucht werden."
+    shown = readable_single_step(original, explanation)
+    assert shown[0]["text"] == explanation
+    assert shown[0]["text_source"] == "saved_explanation"
+    assert original[0]["text"] == "1"
+    assert readable_single_step(original * 2, explanation) == original * 2
+    assert readable_single_step([{"text": "x = 1"}], explanation)[0]["text"] == "x = 1"
+    assert readable_single_step(original, "1") == original
+
+
 def test_new_calendar_graphics_need_two_distinct_ordered_source_labels():
     from schulpilot.subject_content import Graphic
     from schulpilot.visual_references import _meaningful
@@ -245,6 +259,31 @@ def test_persisted_intro_and_question_have_source_revision_reference_version_and
         parent = unit_data(db, db.get(LearningUnit, uid), include_answers=True)
         assert parent["questions"][0]["explanation_steps"][0]["disclosure"] == "solution"
         assert "source_excerpt" not in json.dumps(parent["questions"][0]["explanation_steps"])
+
+
+def test_legacy_bad_step_uses_saved_text_and_does_not_open_unseen_solution(generated_visual_unit):
+    from schulpilot.db import LearningUnit
+    from schulpilot.learning import introduction_reveals_answer
+    from schulpilot.visual_references import projection, question_projection
+
+    uid, _, _ = generated_visual_unit
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, uid)
+        unit.explanation = "Im Beispiel wird das Wort Zucker als Ergebnis genannt."
+        row = db.get(UnitVisualSnapshot, uid)
+        row.steps = [{**row.steps[0], "text": "1"}]
+        row.question_steps = {"q1": [{**row.question_steps["q1"][0], "text": "1"}]}
+    with DB() as db:
+        unit = db.get(LearningUnit, uid)
+        projected = projection(db, unit)
+        assert projected["explanation_steps"][0]["text"] == unit.explanation
+        assert projection(db, unit, show_introduction=False)["explanation_steps"] == []
+        assert introduction_reveals_answer(db, unit, {"type": "short", "answer": "Zucker"},
+                                           [SimpleNamespace(kind="introduction_read")])
+        question = unit.questions[0]
+        assert question_projection(db, unit, question) == []
+        assert question_projection(db, unit, question, closed=True)[0]["text"] == question["explanation"]
+        assert db.get(UnitVisualSnapshot, uid).steps[0]["text"] == "1"
 
 
 def test_source_revision_change_marks_graphics_incomplete_without_rewriting_saved_work(generated_visual_unit):

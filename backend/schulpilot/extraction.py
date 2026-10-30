@@ -14,7 +14,7 @@ from functools import lru_cache
 from typing import Annotated, Literal
 
 from PIL import Image, UnidentifiedImageError
-from pydantic import ConfigDict, Field, StringConstraints, model_validator
+from pydantic import ConfigDict, Field, StringConstraints, ValidationError, model_validator
 
 from . import schemas as s
 from .subject_content import SourceAnnotation, SourceBlock, SourceImageRegion
@@ -145,6 +145,41 @@ class TranscriptionBlock(SourceBlock):
     literal_role: SourceBlock.model_fields["literal_role"].annotation = Field(default="unknown", alias="l")
     annotations: list[TranscriptionAnnotation] = Field(default_factory=list, max_length=8, alias="a")
     reading_uncertainties: list[Annotated[str, Field(min_length=1, max_length=300)]] = Field(default_factory=list, max_length=8, alias="u")
+
+    @model_validator(mode="before")
+    @classmethod
+    def quarantine_invalid_annotation_metadata(cls, value):
+        """Keep literal text if optional mark metadata cannot be parsed.
+
+        The affected block is explicitly uncertain and therefore excluded
+        from learning evidence until reviewed; no marking is guessed. Other
+        schema errors, including invalid text and uncertainty fields, still
+        fail normally. The strict downstream SourceBlock is unchanged.
+        """
+        if not isinstance(value, dict) or ("a" in value and "annotations" in value):
+            return value
+        key = "a" if "a" in value else "annotations"
+        if key not in value:
+            return value
+        raw = value[key]
+        valid = []
+        invalid = not isinstance(raw, list) or len(raw) > 8
+        if isinstance(raw, list) and len(raw) <= 8:
+            for item in raw:
+                try:
+                    TranscriptionAnnotation.model_validate(item)
+                except ValidationError:
+                    invalid = True
+                else:
+                    valid.append(item)
+        if not invalid:
+            return value
+        uncertainty_key = "u" if "u" in value else "reading_uncertainties"
+        warnings = value.get(uncertainty_key, [])
+        if not isinstance(warnings, list) or any(not isinstance(w, str) or not w.strip() for w in warnings):
+            return value
+        return {**value, key: valid, uncertainty_key: [*warnings[:7],
+            "Eine Markierung konnte nicht sicher gelesen werden. Diesen Abschnitt am Foto überprüfen."]}
 
     @model_validator(mode="after")
     def literal_marks(self):

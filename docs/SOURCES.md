@@ -3652,3 +3652,31 @@ erklärte aber den Vergleich zu 0,25 nicht; eine Auswahloption in der zweiten
 Frage war sprachlich unpassend. Dieser Einzelfall behebt weder die allgemeine
 didaktische Auswahl noch Hundertstelgrafiken oder die Erkennung unbeschrifteter
 Zeichnungen. Der 30-Tage-Test ist weiterhin nicht abgeschlossen.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 24.11.: Eine künstliche
+Deutschseite mit farbig unterstrichenen Satzgliedern führte beim ersten echten
+Erkennungsauftrag zu einem Schemafehler in strukturierten Daten; die genauen
+Modellwerte dieses ersten Fehlers sind nicht erhalten. Ein bewusst ausgelöster
+zweiter Auftrag las den Text richtig. Ungültige optionale Markierungsmetadaten
+werden nun getrennt abgefangen: Der Wortlaut bleibt erhalten, der betroffene
+Abschnitt wird als unsicher gekennzeichnet und vor der Überprüfung nicht als
+verlässlicher Lernstoff behandelt. Andere Schemafehler bleiben Fehler. Die
+Regression deckt unter anderem ungültige Farben, Markierungstypen und
+Bildbereiche ab; sie beweist nicht, dass eine bestimmte Variante den ersten
+Abbruch ausgelöst hat.
+
+Reine Hervorhebungen verdecken den vollständigen Text auf schmalen Displays
+nicht mehr; die Details bleiben auf Wunsch erreichbar. Streichungen und
+Korrekturen werden weiterhin gesondert kenntlich gemacht. In der erzeugten
+Deutschübung bestand der sichtbare Grafikschritt nur aus „1“, obwohl eine
+ausführlichere Erklärung gespeichert war. Für genau einen nichtsprachlichen
+Schritt zeigt die lesende Projektion jetzt den separat gespeicherten Text,
+ohne den ursprünglichen Schritt zu ändern. Ungeöffnete Fragehinweise erhalten
+keinen Lösungstext; gezeigte Einführungen bleiben bei der Bewertung als
+mögliche Hilfe berücksichtigt. Eine lokale, ausdrücklich als Testkopie
+gekennzeichnete Runde zeigte diese Korrektur im 390-Pixel-Browser. Die zwei
+Aufgaben der ursprünglichen künstlichen Runde wurden korrekt mit Unterstützung
+bewertet. Die Grafik zerlegt den Satz aber lediglich in einzelne Wörter und
+erklärt Satzglieder damit noch nicht ausreichend. Die didaktische Qualität,
+das Erkennen unbeschrifteter Zeichnungen und der 30-Tage-Alltagstest bleiben
+offen. Ein physischer Android-Test wurde nicht durchgeführt.

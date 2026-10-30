@@ -496,6 +496,24 @@ def public_steps(steps, *, closed=False, hints=0):
             for step in steps or [] if step.get("disclosure") in allowed]
 
 
+def readable_single_step(steps, saved_explanation):
+    """Use the separately saved explanation only for a clearly empty step.
+
+    This is a read projection, not a change to a model result or a new
+    explanation. Restrict it to one step so earlier steps never expose later
+    content. Callers must only pass an explanation already safe to show.
+    """
+    if len(steps) != 1 or not isinstance(saved_explanation, str):
+        return steps
+    step = steps[0]
+    value = step.get("text")
+    if (not isinstance(value, str) or any(c.isalpha() for c in value)
+            or len(saved_explanation.strip()) < 20
+            or not any(c.isalpha() for c in saved_explanation)):
+        return steps
+    return [{**step, "text": saved_explanation, "text_source": "saved_explanation"}]
+
+
 
 def _binding_current(db, unit, ref):
     from .competences import resolve_reference
@@ -541,7 +559,8 @@ def projection(db, unit, *, show_introduction=True):
     # of some still-usable paragraph on the same material revision.
     valid = source_bindings_current(db, unit) and all(_binding_current(db, unit, ref)
         for step in [*row.steps, *[step for steps in row.question_steps.values() for step in steps]] for ref in step["source_refs"])
-    return {**preparation, "explanation_steps": public_steps(row.steps) if show_introduction and valid else [],
+    steps = readable_single_step(public_steps(row.steps), unit.explanation) if show_introduction and valid else []
+    return {**preparation, "explanation_steps": steps,
             "explanation_visual_status": row.status if valid else "incomplete",
             "explanation_visual_reason": row.reason if valid else "source_changed"}
 
@@ -595,4 +614,6 @@ def question_projection(db, unit, question, *, closed=False, hints=0):
 
         closed = db.scalar(select(Activity.id).where(Activity.unit_id == unit.id,
             Activity.kind == "explanation", Activity.detail["question_id"].as_string() == question["id"]).limit(1)) is not None
-    return public_steps(row.question_steps.get(question["id"], []), closed=closed, hints=hints)
+    steps = public_steps(row.question_steps.get(question["id"], []), closed=closed, hints=hints)
+    # An unopened hint must never expose the separate full solution.
+    return readable_single_step(steps, question.get("explanation")) if closed else steps
