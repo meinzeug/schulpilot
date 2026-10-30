@@ -697,6 +697,11 @@ def process(job_id):
             from .visual_references import with_visual_context
 
             payload = with_visual_context(db, child, payload, items)
+            from .package_decimal_addition import HISTORY, REFERENCE
+            from .package_decimal_addition import history as decimal_history
+
+            if any(r.get("id") == REFERENCE for r in (payload.get("visual_context") or {}).get("references", [])):
+                payload[HISTORY] = decimal_history(db, child.id)
             from .unit_multiples_common import with_history
 
             payload = with_history(payload, previous_prompts)
@@ -731,6 +736,9 @@ def process(job_id):
                 return
             db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
             day, child, block, items = job_context(db, job)
+            from .package_decimal_addition import validate_history as validate_decimal_history
+
+            validate_decimal_history(db, child.id, {"units": [data]})
             from .commerce import usage_terms
             from .providers import external_allowed
 

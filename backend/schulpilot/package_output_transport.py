@@ -81,6 +81,51 @@ def _enum_same(value, allowed):
     return _same(value, allowed)
 
 
+def shared_schema(schema):
+    """Intern identical schema fragments; change no value or constraint.
+
+    JSON Schema local references are already part of this transport. Repeated
+    fixed-list/step contracts otherwise copy the same full objects many times.
+    Only the wire schema is factored; canonical decoding is unchanged.
+    """
+    counts = {}
+    for node in _nodes(schema):
+        key = _json(node)
+        counts[key] = counts.get(key, 0) + 1
+    existing = set(schema.get("$defs", {}))
+    fragments, names = {}, {}
+
+    def walk(node, *, root=False):
+        if not isinstance(node, dict):
+            return copy.deepcopy(node)
+        original = _json(node)
+        result = copy.deepcopy(node)
+        for key in ("properties", "$defs", "definitions"):
+            if key in node:
+                result[key] = {name: walk(value) for name, value in node[key].items()}
+        for key in ("items", "additionalProperties"):
+            if isinstance(node.get(key), dict):
+                result[key] = walk(node[key])
+        for key in ("anyOf", "oneOf", "allOf"):
+            if key in node:
+                result[key] = [walk(value) for value in node[key]]
+        if not root and counts.get(original, 0) > 1 and len(_json(result)) >= 160:
+            if original not in names:
+                name = "WireShared" + str(len(names) + 1)
+                while name in existing:
+                    name += "x"
+                existing.add(name)
+                names[original] = name
+                fragments[name] = result
+            return {"$ref": "#/$defs/" + names[original]}
+        return result
+
+    result = walk(schema, root=True)
+    if fragments:
+        result.setdefault("$defs", {}).update(fragments)
+    return result if len(_json(result)) < len(_json(schema)) else schema
+
+
 @dataclass(frozen=True)
 class Binding:
     canonical_schema: dict
@@ -263,4 +308,4 @@ def bind(schema):
                 result[key] = [project(child) for child in node[key]]
         return result
 
-    return Binding(original, project(original), aliases, constants)
+    return Binding(original, shared_schema(project(original)), aliases, constants)

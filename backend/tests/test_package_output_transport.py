@@ -294,3 +294,36 @@ def test_unsupported_or_unknown_schema_is_refused_before_any_adapter_call(fault)
         schema[fault] = [] if fault == "oneOf" else {"value": ["other"]}
     with pytest.raises(ValueError):
         transport.bind(schema)
+
+
+def test_shared_fragments_preserve_schema_closure_ranges_and_enum_order():
+    import sys
+    try:
+        from jsonschema import Draft202012Validator
+    except ModuleNotFoundError:
+        sys.path.append('/usr/lib/python3/dist-packages')
+        from jsonschema import Draft202012Validator
+    child = {'type': 'object', 'properties': {
+        'values': {'type': 'array', 'minItems': 2, 'maxItems': 2,
+                   'items': {'type': 'integer', 'minimum': 1, 'maximum': 9}},
+        'choice': {'type': 'string', 'enum': ['second', 'first']}},
+        'required': ['values', 'choice'], 'additionalProperties': False}
+    schema = {'type': 'object', 'properties': {f'panel{i}': copy.deepcopy(child) for i in range(8)},
+              'required': [f'panel{i}' for i in range(8)], 'additionalProperties': False,
+              '$defs': {'WireShared1': {'type': 'string'}}}
+    saved = copy.deepcopy(schema)
+    shared = transport.shared_schema(schema)
+    assert schema == saved and _bytes(shared) < _bytes(schema) * .75
+    assert shared['$defs']['WireShared1'] == {'type': 'string'}
+    Draft202012Validator.check_schema(shared)
+    original, compact = Draft202012Validator(schema), Draft202012Validator(shared)
+    good = {f'panel{i}': {'values': [2, 8], 'choice': 'first'} for i in range(8)}
+    assert original.is_valid(good) and compact.is_valid(good)
+    for bad_value in ([0, 8], [2, 10], [2], [2, 8, 9], [2.5, 8]):
+        bad = copy.deepcopy(good)
+        bad['panel0']['values'] = bad_value
+        assert not original.is_valid(bad) and not compact.is_valid(bad)
+    for key, value in [('extra', 'forbidden'), ('choice', 'other')]:
+        bad = copy.deepcopy(good)
+        bad['panel0'][key] = value
+        assert not original.is_valid(bad) and not compact.is_valid(bad)

@@ -5,6 +5,7 @@ second model call. Detailed data/validation rules stay with the existing models.
 """
 
 PURPOSES = {
+    "decimal_sum": "Stellenwertgerechte Dezimaladdition ohne Übertrag, ausschließlich mit bestätigter Regel, geprüftem Originalbeispiel und serverseitig vorab berechneten Aufgabenparametern.",
     "lab": "Eigenes versioniertes Lehrmodell zur konstanten Kraft/Bewegung oder zu ausdrücklich kuratierten Satzumstellungen; Zusatzwissen, keine Schülerbewertung.",
     "fraction": "Bruchteile und belegte Bruchzahlen vergleichen.",
     "triangle": "Grundseite und senkrechte Höhe eines belegten Dreiecks erkennen.",
@@ -67,6 +68,7 @@ ANSWER_UI = {
 }
 
 INTERACTIONS = {
+    "decimal_sum": "Stellenwerttafel mit untereinander stehenden Kommas: bewusst spaltenweise von rechts addieren, zurückgehen oder zurücksetzen. Kein Autoplay, keine Antwortbewertung durch Erkunden.",
     "heart_pump": "Zwei ausdrücklich gewählte Leseschritte zeigen Herz und Weg zum Körper; keine Kreislaufsimulation.",
     "shadow_size": "Zwei ausdrücklich gewählte Gegenstandspositionen vergleichen die Schattengröße bei fester Lampe und Wand.",
     "lab": "Nur freigegebene eigene Rezepte: physics.force_motion mit begrenzter Masse/Beschleunigung und bewusstem2s-Lauf; german.sentence_shift mit Mira-Beispiel/vier erlaubtenUmstellungen. Tippen/Tastatur/Drag/Reset; keine freienFormeln/Gruppen oder Anbieteraufrufe.",

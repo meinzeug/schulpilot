@@ -484,6 +484,16 @@
       ],
       "interaction": "Zwei endliche Vielfachenreihen bewusst vergleichen und den rechnerisch geprüften kleinsten gemeinsamen Wert hervorheben; keine frei veränderlichen Zahlen.",
       "variant": null
+    },
+    {
+      "id": "math.decimal.column_sum",
+      "version": 1,
+      "subjects": ["Mathematik"],
+      "kind": "decimal_sum",
+      "purpose": "Kommagerechte Addition ohne Übertrag anhand bestätigter Regel und rechnerisch geprüftem Originalbeispiel; neue Aufgaben vorab berechnen.",
+      "terms": ["komma", "dezimal"],
+      "interaction": "column_steps",
+      "variant": null
     }
   ]
 }

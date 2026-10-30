@@ -3926,3 +3926,30 @@ Die im künstlichen Test tatsächlich beobachtete englische Selbstkorrektur des
 Modells wird für neue Paketaufgaben nun gezielt abgewiesen. Ein normaler
 englischer Beispielsatz mit „Oops“ bleibt erlaubt. Diese konkrete Prüfung ist
 keine Garantie gegen alle anderen Arten unverständlicher Modelltexte.
+
+30.10.2026 · Version1.38.46: Neue Dezimalaufgaben werden vor dem Anbieteraufruf
+an eine ausdrückliche bestätigte Kommaregel und ein korrektes Originalbeispiel
+gebunden. Das Original dient als Einführung, eigene neue Zahlenpaare als Übungen.
+Paket, Vorwissens-IDs, Etappenumfang und Anschluss-Lernziele bleiben verbunden;
+ganze Summanden werden auch im Veröffentlichungsschutz erkannt. Die gemeinsame
+Flutter-Stellenwertgrafik bietet eigene Spaltenschritte, Zurücksetzen und
+Tutorzustand. Gezielte Stellenwerthinweise ändern keine gespeicherten Lösungen.
+Grenzen, Prüfweg und tatsächliche lokale Screenshots: [DECIMAL_ADDITION.md](DECIMAL_ADDITION.md).
+
+Der echte isolierte Uploadtest und die nachfolgende zielgebundene Übungsrunde
+wurden abgeschlossen. Die absichtlich falschen Antworten, Hilfen und späteren
+selbstständigen Erstlösungen blieben getrennt. Der Paketaufruf benötigte laut
+Anbieterbeleg14.977ms, die Anschlussvorbereitung15.570ms; verbuchte Kosten
+0,001697USD beziehungsweise0,031870USD. Diese Einzelmessungen sind keine
+allgemeine Latenzzusage. Sichtbare In-App-Fertigmeldung und kontogebundene
+Lesemarkierungen wurden im390px-Browser geprüft; keine native Firebase-Zustellung
+behauptet.
+
+Zusätzlich belegte ein unveränderter Vergleich mit Commit0b67d6d, dass der
+Acht-Bruch-Vertrag bereits vor dieser Änderung an der250.000-Mikro-Reservierung
+scheiterte. Identische Schemateile werden nun über gemeinsame lokale Referenzen
+übertragen. Die unabhängige JSON-Schema-Prüfung erhält Pflichtfelder, Reihenfolge,
+Bereiche und Ablehnungen. Im selben Test sank die konservative Projektion von
+268.636 auf246.318MikroUSD. Anbieterroute, Modell, Ausgabelimit und Kostenfreigaben
+wurden dafür nicht erhöht. Die vollständige Monatsabnahme und frühere offene
+Testtage bleiben offen; fehlgeschlagene Läufe wurden nicht überschrieben.

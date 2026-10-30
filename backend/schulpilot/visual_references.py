@@ -50,12 +50,17 @@ def seed(db):
     return rows
 
 
-def candidates(db, subject, text="", *, package_prepared=False):
+def candidates(db, subject, text="", *, package_prepared=False, decimal_prepared=False):
     if subject not in PROFILES:
         return []
     result = []
     for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only")).order_by(VisualReference.id, VisualReference.version)):
         recipe = row.recipe
+        if row.id == "math.decimal.column_sum":
+            from .package_decimal_addition import evidence
+
+            if not (package_prepared or decimal_prepared) or evidence(text) is None:
+                continue
         if row.id in ("math.fraction.wholes_remainder", "math.fraction.expansion", "math.multiples.common"):
             continue  # Only the dedicated Unit proof binder may offer this recipe.
         # AI exploration templates are NEVER a vetted source-bound recipe.
@@ -158,7 +163,10 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
                   or (payload.get("review") is True and payload.get("practice_kind") in ("repair", "check")
                       and payload.get("required_subject") in ("Biologie", "Physik"))
                   or (payload.get("function") == "unit" and bool(payload.get("notebook_practice"))
-                      and payload.get("required_subject") in ("Biologie", "Physik")))]
+                      and payload.get("required_subject") in ("Biologie", "Physik")),
+                  decimal_prepared=(payload.get("function") == "unit" or
+                      (not groups and payload.get("required_subject") == "Mathematik"
+                       and bool(payload.get("study_block") or payload.get("review")))))]
     if not payload.get("labs_enabled"):
         references = [row for row in references if row["kind"] != "lab"]
     lab_sources = []
@@ -271,6 +279,13 @@ def bind_schema(schema, payload):
 def _meaningful(block, recipe, *, sources=None, question=None):
     if block.kind != recipe["kind"] or (recipe.get("variant") and block.variant != recipe["variant"]):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
+    if block.kind == "decimal_sum":
+        from .package_decimal_addition import REFERENCE, validate
+
+        if recipe.get("id") != REFERENCE:
+            raise ValueError("Dezimaladdition benötigt ihr geprüftes Stellenwertrezept.")
+        validate(block, sources, question)
+        return
     if block.kind == "lab" and block.lab.recipe_id != recipe.get("lab_recipe_id"):
         raise ValueError("Laborparameter passen nicht zur gewählten Referenz.")
     if block.kind == "timeline" and block.variant == "calendar":

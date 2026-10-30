@@ -1281,6 +1281,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # The heart model has a dedicated, strictly source-bound reference.
         # Do not enlarge unrelated Biology schemas or offer it without proof.
         references = (payload.get("visual_context") or {}).get("references", [])
+        if not any(row.get("id") == "math.decimal.column_sum" for row in references if isinstance(row, dict)):
+            graphic = schema.get("$defs", {}).get("Graphic", {}).get("properties", {}).get("kind", {})
+            if "enum" in graphic:
+                graphic["enum"] = [kind for kind in graphic["enum"] if kind != "decimal_sum"]
         if not any(row.get("id") == "biology.heart.pump" for row in references if isinstance(row, dict)):
             graphic = schema.get("$defs", {}).get("Graphic", {}).get("properties", {}).get("kind", {})
             if "enum" in graphic:
@@ -1813,6 +1817,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 raise ProviderError(MULTIPLES_ERROR, code="invalid_output", billing_result=Result({}, 0, 0, 0,
                     telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
         if unit_composition is None:
+            from .package_decimal_addition import bind_unit as bind_decimal_unit
+
+            unit_composition = bind_decimal_unit(schema, payload)
+        if unit_composition is None:
             from .package_prepared_heart import bind_followup as bind_heart_followup
 
             unit_composition = bind_heart_followup(schema, payload)
@@ -1965,17 +1973,18 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # Share identical schema nodes; output fields and canonical validation
         # remain unchanged. These routes can contain several full entry steps.
         wire_schema = schema_projection(wire_schema)
-    if function == "unit":
+    if function in ("unit", "package"):
         from .coach_fraction_expansions import HISTORY as COACH_EXPANSION_HISTORY
         from .material_fraction_expansions import HISTORY as MATERIAL_EXPANSION_HISTORY
         from .notebook_fraction_compositions import HISTORY_KEY as NOTEBOOK_COMPOSITION_HISTORY
         from .notebook_fraction_expansions import HISTORY_KEY as NOTEBOOK_EXPANSION_HISTORY
+        from .package_decimal_addition import HISTORY as DECIMAL_HISTORY
         from .review_fraction_plan import HISTORY as REVIEW_FRACTION_HISTORY
         from .unit_multiples_common import HISTORY_KEY as MULTIPLES_HISTORY
 
         outgoing_payload = {key: value for key, value in outgoing_payload.items()
             if key not in (REVIEW_FRACTION_HISTORY, COACH_EXPANSION_HISTORY, MATERIAL_EXPANSION_HISTORY, NOTEBOOK_COMPOSITION_HISTORY,
-                NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY)}
+                NOTEBOOK_EXPANSION_HISTORY, MULTIPLES_HISTORY, DECIMAL_HISTORY)}
     from .explanation_guidance import rules as explanation_rules
 
     instructions += explanation_rules(function, payload)

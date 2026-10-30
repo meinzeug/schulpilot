@@ -360,6 +360,25 @@ def elementary_arithmetic(question, answer):
         return result("uncertain", "Die gespeicherte Musterlösung passt nicht zum Rechenterm. Die Aufgabe muss geklärt werden.")
     if supplied is None:
         return None
+    if supplied != expected and operator == "+" and supplied is not None:
+        from .package_decimal_addition import REFERENCE, validate
+        from .subject_content import Graphic
+
+        for step in question.get("explanation_steps") or []:
+            if step.get("reference") != {"id": REFERENCE, "version": 1}:
+                continue
+            for raw in (step.get("presentation") or {}).get("blocks", []):
+                try:
+                    graphic = Graphic.model_validate(raw)
+                    validate(graphic, [graphic.source_excerpt], question)
+                except (ValueError, TypeError):
+                    continue
+                reason = ("Schau auf die erste Stelle hinter dem Komma: Dort stehen die Zehntel. "
+                          "Addiere die Ziffern dieser Spalte; das Ergebnis gehört direkt hinter das Komma."
+                          if graphic.numbers[2] == 1 and int(supplied) == int(expected) else
+                          "Schreibe die Kommas untereinander. Rechne die Einer und die Nachkommastellen "
+                          "jeweils in ihrer eigenen Spalte zusammen.")
+                return result("incorrect", reason, method="decimal_columns_v1")
     return result("correct" if supplied == expected else "incorrect",
         "Dein Ergebnis passt zum Rechenterm." if supplied == expected else "Prüfe die Rechenzeichen und rechne die beiden Zahlen noch einmal nach.")
 

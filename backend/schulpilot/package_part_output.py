@@ -77,6 +77,11 @@ def bind_schema(schema, payload=None, *, question_count=2):
     _bind_graphic_branches(schema)
     if payload is not None:
         _bind_references(schema, payload)
+        from .package_decimal_addition import bind_schema as bind_decimal_addition
+
+        binding = bind_decimal_addition(schema, payload)
+        if binding is not None:
+            return binding
         from .package_prepared_graphics import bind_schema as bind_prepared_graphics
 
         binding = bind_prepared_graphics(schema, payload)

@@ -36,7 +36,7 @@ def bind_coherent_graphics(schema):
     props = graphic["properties"]
     allowed = props["kind"]["enum"]
     branches = {}
-    numeric = {"fraction", "triangle", "reflection", "notes", "bar_chart", "place_values", "money",
+    numeric = {"fraction", "decimal_sum", "triangle", "reflection", "notes", "bar_chart", "place_values", "money",
                "timeline", "function_graph", "data_plot", "technical_drawing"}
     labelled = {"forms", "sentence", "speech", "picture_words", "plant", "heart_pump", "shadow_size", "water_cycle", "perspectives",
                 "statements", "flowchart", "movement", "pattern", "layers", "mindmap", "flashcard",
@@ -81,7 +81,7 @@ def bind_coherent_graphics(schema):
                 fields["variant"] = {"type": "string", "enum": variants[kind]}
             # Numeric cardinality/type is structural. Relations between values
             # (n<=d, ordered dates, one amount/category) are NOT guessed here.
-            sizes = {"fraction": (2, 2), "triangle": (2, 2), "reflection": (1, 1), "notes": (1, 6),
+            sizes = {"fraction": (2, 2), "decimal_sum": (3, 3), "triangle": (2, 2), "reflection": (1, 1), "notes": (1, 6),
                 "bar_chart": (1, 16), "place_values": (1, 8), "money": (1, 16),
                 "function_graph": (3, 3), "data_plot": (4, 16), "technical_drawing": (3, 3)}
             if kind in sizes:

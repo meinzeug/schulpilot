@@ -17,6 +17,7 @@ from . import grouped_questions, learning_labs, learning_scenes, science_graphic
 
 KINDS = (
     "fraction",
+    "decimal_sum",
     "triangle",
     "sentence",
     "speech",
@@ -60,7 +61,7 @@ KINDS = (
 
 # The same profiles constrain generation and document the curriculum's limits.
 PROFILES = {
-    "Mathematik": ("fraction", "triangle"),
+    "Mathematik": ("fraction", "triangle", "decimal_sum"),
     "Deutsch": ("sentence", "speech"),
     "Englisch": ("forms", "timeline", "picture_words"),
     "Französisch": ("forms", "picture_words"),
@@ -235,6 +236,7 @@ class SentenceMark(Bounded):
 class Graphic(Bounded):
     kind: Literal[
         "fraction",
+        "decimal_sum",
         "triangle",
         "sentence",
         "speech",
@@ -356,6 +358,7 @@ class Graphic(Bounded):
                 "Satzmarkierungen nur an vorhandenen Bausteinen nach ausdrücklich geöffneter Hilfe oder Lösung."
             )
         numeric_kinds = {
+            "decimal_sum",
             "fraction",
             "triangle",
             "reflection",
@@ -367,6 +370,10 @@ class Graphic(Bounded):
         }
         if n and self.kind not in numeric_kinds:
             raise ValueError("Dieser Grafiktyp hat keine Zahlenparameter.")
+        if self.kind == "decimal_sum" and (len(n) != 3 or any(v != int(v) for v in n)
+                or not 0 < n[0] < 1000 or not 0 < n[1] < 1000 or n[2] not in (1, 2)
+                or labels or self.connections or self.marks or self.unit or self.variant):
+            raise ValueError("Dezimaladdition braucht genau zwei skalierte Ganzzahlen und eine Dezimalstellenzahl.")
         if self.kind == "position" and (self.variant not in ("above", "below", "beside") or labels):
             raise ValueError(
                 "Positionsmodell braucht eine eindeutige Lage des Balls am Tisch; keine umgedeuteten Beschriftungen."
@@ -554,6 +561,11 @@ def validate_question(presentation, question, sources, allowed_kinds, *, structu
             raise ValueError("Grafik gehört nicht zum ausgewählten Fachprofil.")
         if not any(_contains(text, block.source_excerpt) for text in [*sources, question["prompt"]]):
             raise ValueError("Grafik ohne wörtlichen Quellenbeleg.")
+        if block.kind == "decimal_sum":
+            from .package_decimal_addition import validate
+
+            validate(block, sources, question)
+            continue  # Exact rule/arithmetic proof replaces literal numeric matching only for this type.
         if block.kind in science_graphics.KINDS:
             science_graphics.validate(block, question, sources)
         if block.kind == "heart_pump":

@@ -1520,6 +1520,11 @@ def process_practice(job_id):
             from .visual_references import with_visual_context
 
             payload = with_visual_context(db, child, payload, [db.get(Material, source["id"]) for source in sources])
+            from .package_decimal_addition import HISTORY, REFERENCE
+            from .package_decimal_addition import history as decimal_history
+
+            if any(r.get("id") == REFERENCE for r in (payload.get("visual_context") or {}).get("references", [])):
+                payload[HISTORY] = decimal_history(db, child.id)
             from .unit_fraction_compositions import with_practice_history
 
             payload = with_practice_history(payload, complete_history)
@@ -1555,6 +1560,9 @@ def process_practice(job_id):
             for review in data["question_reviews"]:
                 review.pop("assessment_kind", None)
             data["next_unit"] = result.data
+            from .package_decimal_addition import validate_history as validate_decimal_history
+
+            validate_decimal_history(db, unit.child_id, {"units": [result.data]})
             verify_current_provider(db, unit, values, "unit", job)
             from .coach_fraction_expansions import CURRENT_ERROR as EXPANSION_HISTORY_CHANGED
             from .coach_fraction_expansions import validate_practice_history as validate_expansion_history

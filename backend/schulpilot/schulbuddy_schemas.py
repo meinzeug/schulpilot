@@ -28,7 +28,7 @@ class BuddyScope(Strict):
     explanation_step_id: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
     graphic_index: int | None = Field(default=None, ge=0, le=5, strict=True)
     graphic_phase: str | None = Field(default=None, max_length=40,
-        pattern=r"^(?:initial|fraction-(?:circle|bar)-(?:whole|denominator|numerator)|scene-[0-7]|science-(?:[0-9]|[1-9][0-9]))$")
+        pattern=r"^(?:initial|fraction-(?:circle|bar)-(?:whole|denominator|numerator)|scene-[0-7]|science-(?:[0-9]|[1-9][0-9])|decimal-[0-3])$")
 
     lab_view: str | None = Field(default=None, max_length=512)
 

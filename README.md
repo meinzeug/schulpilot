@@ -92,6 +92,8 @@ Darstellungen verwenden strukturierte, versionierte Daten und vorhandene Flutter
 
 Vorhanden sind unter anderem Bruch-/Flächenmodelle, Satz- und Wortkarten, Zeitachsen, Funktionen, Messpunkte, Logiktafeln, Prozessfolgen und deklarative Szenen. Geeignete Interaktionen verändern einen Parameter, einen markierten Schritt oder eine erlaubte Ansicht. Zuordnungen unterstützen Tippen, Tastatur und Drag-and-drop. Eine deklarative Szene ist keine beliebige physikalische Simulation. Bedienumfang und fachliche Grenzen stehen im [Darstellungskatalog](docs/AI_RENDER_CAPABILITIES.md).
 
+Bei ausdrücklich belegter [Dezimaladdition](docs/DECIMAL_ADDITION.md) werden neue Zahlenaufgaben vor der KI-Anfrage berechnet. Eine interaktive Stellenwerttafel zeigt die Addition spaltenweise; Vorwissensfragen, Lernzielzuordnung und die Unterscheidung zwischen Hilfe und selbstständiger Lösung bleiben erhalten. Dieses Rezept unterstützt zunächst Addition ohne Übertrag.
+
 Die Referenzdatenbank steuert private quellengebundene Aufgaben. Der getrennte [Bausteinpfad](docs/GENERATED_LEARNING_ASSETS.md) kann auf bewusste Anfrage allgemeine öffentliche KI-Erklärungen mit einer vorhandenen Szene erzeugen und unverändert wiederverwenden. Er erhält keine privaten Hefttexte oder Antworten. Diese Bausteine sind als **unbewertete Erkundung** gekennzeichnet und liefern keine neuen geprüften Antwortschlüssel.
 
 [Sofatutor und weitere Katalogeinträge](docs/CATALOG_INTEGRATION.md) werden anhand vorhandener Metadaten gesucht. Gezeigt werden tatsächlich gespeicherte Links; ein fehlender Treffer blockiert den Lernweg nicht. Ein Titel ist kein Beleg dafür, dass die App das gesamte Video kennt. Externe Angebote können Anmeldung oder ein eigenes Abonnement benötigen.

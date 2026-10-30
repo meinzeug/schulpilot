@@ -14,6 +14,7 @@ import 'text_probe_player.dart';
 import 'language_comparison_widget.dart';
 import 'heart_pump_graphic.dart';
 import 'shadow_size_graphic.dart';
+import 'decimal_sum_graphic.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
 import 'learning_graphic_scope.dart';
@@ -277,6 +278,9 @@ class SubjectGraphic extends StatelessWidget {
     }
     if (kind == 'shadow_size') {
       return ShadowSizeGraphic(block, action: action);
+    }
+    if (kind == 'decimal_sum') {
+      return DecimalSumGraphic(block, action: action);
     }
     if (kind == 'text_probe') {
       return TextProbePlayer(block, state: state, action: action);

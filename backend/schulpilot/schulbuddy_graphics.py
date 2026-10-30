@@ -16,6 +16,20 @@ def _phase(block, phase):
     kind = block["kind"]
     if phase == "initial":
         return {"phase": "initial"}
+    if phase.startswith("decimal-"):
+        index = int(phase.split("-")[1])
+        numbers = block.get("numbers", [])
+        if kind != "decimal_sum" or len(numbers) != 3 or numbers[2] not in (1, 2) or not 0 <= index <= numbers[2] + 1:
+            raise HTTPException(422, "Diese Stellenwertphase gehört nicht zur geöffneten Grafik.")
+        a, b, places = map(int, numbers)
+        position = places + 1 - index if index else places
+
+        def digit(value):
+            return (value // 10**(places - position)) % 10
+
+        return {"phase": phase, "step_index": index, "column": ["Einer", "Zehntel", "Hundertstel"][position],
+                "left_digit": digit(a), "right_digit": digit(b),
+                "shown_result_digit": digit(a + b) if index else None, "derived_locally": True}
     if phase.startswith("fraction-"):
         if kind != "fraction" or len(block.get("numbers", [])) != 2:
             raise HTTPException(422, "Die gewählte Ansicht gehört nicht zu dieser Grafik.")

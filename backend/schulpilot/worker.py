@@ -381,6 +381,13 @@ def _process(job_id):
             from . import unit_novelty
 
             novelty_prompts = []
+            if job.kind in ("unit", "package"):
+                from .package_decimal_addition import HISTORY
+                from .package_decimal_addition import evidence as decimal_evidence
+                from .package_decimal_addition import history as decimal_history
+
+                if any(m.subject == "Mathematik" and decimal_evidence(m.content) for m in source_pages):
+                    payload[HISTORY] = decimal_history(db, child.id)
             if unit_novelty.applies(job, material):
                 novelty_prompts = unit_novelty.previous_prompts(db, child.id, source_pages)
                 payload["previous_prompts"] = unit_novelty.provider_context(novelty_prompts)
@@ -548,6 +555,9 @@ def _process(job_id):
                 from .school_day import save_package, validate_package_sources
 
                 validate_package_sources(db, job)
+                from .package_decimal_addition import validate_history as validate_decimal_history
+
+                validate_decimal_history(db, job.child_id, data)
                 if job.payload.get("package_partition") is not None:
                     from .package_partitions import store_validated_part
                     from .school_preparation import _state, _write
@@ -601,6 +611,9 @@ def _process(job_id):
                 record(db, job.child_id, "material_extracted", {"uncertainty_count": len(data["uncertainties"])})
             else:
                 source_pages = unit_sources(db, job)
+                from .package_decimal_addition import validate_history as validate_decimal_history
+
+                validate_decimal_history(db, job.child_id, {"units": [data]})
                 if not source_pages and material:
                     source_pages = [material]
                 if job.payload.get("notebook_practice"):

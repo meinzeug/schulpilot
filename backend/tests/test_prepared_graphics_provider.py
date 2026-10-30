@@ -209,7 +209,7 @@ def test_eight_prepared_bases_keep_actual_outbound_request_within_existing_reser
     assert decoded["units"][0]["questions"][1]["explanation_steps"] == unit["questions"][1]["explanation_steps"]
     bad_wire = copy.deepcopy(actual_wire)
     alias = output.binding.aliases
-    bad_wire[alias["units"]][0][alias["questions"]][1][alias["prompt"]] = "Was beschreibt der Bruch 5/4?"
+    bad_wire[alias["units"]]["v0"][alias["questions"]]["v1"][alias["prompt"]] = "Was beschreibt der Bruch 5/4?"
     assert not validator.is_valid(bad_wire)  # Keeps the selected 2/3 graphic ID.
     assert output.binding.decode(bad_wire)["units"][0]["questions"][1]["prompt"] == "Was beschreibt der Bruch 5/4?"
 
