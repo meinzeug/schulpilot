@@ -22,6 +22,10 @@ CASES = {
         'Ein Bruch 2/3 beschreibt 2 von 3 gleich großen Teilen.'),
     'german': ('Deutsch', 'Wortbausteine',
         'Vorsilbe (Präfix) | + | Wortstamm | + | Nachsilbe (Suffix)'),
+    'history': ('Geschichte', 'Handel in einer erfundenen Hafenstadt',
+        'Eine erfundene Hafenstadt zeigt einen Handelsweg: Marktplatz → Hafen.\n'
+        'Die Waren gelangen vom Marktplatz zum Hafen. Der Hafen liegt am Meer.\n'
+        'Am Hafen werden Waren auf Schiffe geladen.'),
 }
 
 
@@ -29,9 +33,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', type=Path, required=True, help='New private local directory')
     parser.add_argument('--case', choices=tuple(CASES), default='biology')
+    parser.add_argument('--study', action='store_true', help='Run the fixed artificial history study-stage probe')
     parser.add_argument('--schema-probe', action='store_true', help='Test one fixed artificial schema-boundary request')
     parser.add_argument('--key-file', type=Path, default=Path.home() / 'or.txt')
     args = parser.parse_args()
+    if args.study and args.case != 'history':
+        parser.error('--study is available only for the fixed artificial history case')
     subject, topic, source = CASES[args.case]
     directory = args.directory.resolve()
     directory.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -97,23 +104,36 @@ def main():
                 'sources': [{'ref': 'p1', 'material_id': 'b' * 32, 'revision': 1,
                     'source_refs': [{'block_id': 'c' * 32}], 'subject': subject,
                     'group_id': 'g1', 'topic': topic, 'content': source}]}}
+        function = 'unit' if args.study else 'package'
+        if args.study:
+            payload = {'grade': 6, 'required_subject': subject, 'required_topic': topic,
+                'material': {'subject': subject, 'topic': topic, 'content': source, 'uncertainties': []},
+                'study_block': {'mode': 'understand', 'question_count': 2,
+                    'tasks': [{'number': 1, 'action': 'Beschreibe den belegten Weg.', 'source_excerpt': source},
+                              {'number': 2, 'action': 'Erkläre eine belegte Station.', 'source_excerpt': source}]},
+                'previous_prompts': [],
+                'visual_context': {'required': True, 'references': references,
+                    'sources': [{'ref': 'p1', 'material_id': 'b' * 32, 'revision': 1,
+                        'source_refs': [{'block_id': 'c' * 32}], 'subject': subject,
+                        'group_id': None, 'topic': topic, 'content': source}]}}
         config = db.get(ProviderConfig, 1)
         config.provider, config.model, config.routing_policy = 'openrouter', routes['sol']['model'], policy
         config.emergency_stop, config.production_block_reason = False, 'Artificial probe only'
         config.reserve_micros, config.max_output_tokens = 1000000, 8000
         config.global_limit_micros = 5000000
         config.revision += 1
-        job = Job(id=uid(), child_id=child.id, kind='package', payload={}, status='running',
+        job = Job(id=uid(), child_id=child.id, kind=function, payload={}, status='running',
                   idempotency='fixed-artificial-package-' + args.case)
         db.add(job)
         db.flush()
-        usage = reserve(db, family, child.id, job.id, 'package', synthetic_fixture=True, probe_tier='sol')
-        routed = select_route(config, 'package', snapshot=usage.route_snapshot)
+        usage = reserve(db, family, child.id, job.id, function, synthetic_fixture=True, probe_tier='sol')
+        routed = select_route(config, function, snapshot=usage.route_snapshot)
         job_id = job.id
     # This process replaces only the trusted server fixture with the fixed
     # artificial payload above. Caller-controlled production data are rejected.
-    def fixed(function, fixture_id):
-        if function != 'package' or fixture_id != fixtures.PACKAGE_FIXTURE_ID:
+    def fixed(request_function, fixture_id):
+        expected = fixtures.FIXTURE_ID if args.study else fixtures.PACKAGE_FIXTURE_ID
+        if request_function != function or fixture_id != expected:
             raise ValueError('Only the fixed artificial package is allowed')
         return payload
     fixtures.trusted_payload = fixed
@@ -164,7 +184,7 @@ def main():
                 except (ValueError, KeyError, TypeError):
                     error = 'Synthetic schema response incomplete'
         else:
-            result = request_provider(routed, 'package', {}, synthetic_fixture=True, private_probe=True)
+            result = request_provider(routed, function, {}, synthetic_fixture=True, private_probe=True)
     except ProviderError as exc:
         result, error = exc.billing_result, str(exc)
     with DB.begin() as db:

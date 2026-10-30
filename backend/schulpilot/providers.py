@@ -2425,9 +2425,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             subject_content.validate_output(data, payload, bounded_matching=compact_openrouter)
             if payload.get("visual_context"):
                 from .db import DB
+                from .scene_quote_repair import expand_scene_quotes
                 from .visual_references import validate_output as validate_visual_output
 
                 validation_phase = "visual"
+                # Only widen a scene's existing literal quote when one cited
+                # source itself contains the unchanged quote and labels. All
+                # normal source, relation and disclosure checks still follow.
+                expand_scene_quotes(data, payload["visual_context"])
                 with DB() as visual_db:
                     if function == "unit_visuals":
                         from .visual_jobs import checked_output

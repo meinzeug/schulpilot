@@ -229,6 +229,10 @@ scene.layout grid/row/cycle; 1bis12 objects mit eindeutiger id, belegtem label, 
 1bis8 steps, jeder mit wörtlichem source_excerpt und darin wörtlich enthaltener caption; alle Objekte exakt einmal platzieren,
 eindeutige slots0bis11, highlight enthält nur vorhandene IDs; edges sind gerichtete Pfeile start/end/label (leer erlaubt), höchstens24.
 Pfeile nur für ausdrücklich im bestätigten Stoff belegte LabelA→LabelB oder LabelA->LabelB, niemals aus erfundenem Prompt ableiten.
+Bei Erklärungsschritten mit der Referenz general.source_relation.phases: mindestens ein Pfeil in mindestens einem Schritt,
+mindestens zwei Schritte mit verschiedenen Hervorhebungen oder Beziehungen. Im source_excerpt jedes Schritts mit Pfeil
+steht dessen vollständiges LabelA→LabelB oder LabelA->LabelB wortgetreu. Wenn die Quelle keinen Originalpfeil enthält,
+diese Referenz nicht wählen; Fließtext oder frei erfundene Pfeile ersetzen den Originalpfeil nicht.
 Titel, Objektlabels, Textalternative und Pfeiltexte sind wörtlich belegt. Positionen sind schematisch, keine Messwerte oder fachlichen Geometrien.
 transition_ms0bis800; lokale Übergänge erklären nur die belegten Schritte, keine erfundene Simulation oder Messung.
 Keine URLs, HTML/SVG, Skripte, freien Koordinaten, Pfade, Ausdrücke, ausführbarer Code oder neue Modellaufrufe.

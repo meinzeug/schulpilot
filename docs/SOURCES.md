@@ -1,3 +1,22 @@
+## 30.10.2026 · Szenenbelege bei Lernetappen · Version 1.38.21
+
+Bei einem ausdrücklich beauftragten Geschichts-Liveversuch schlug die
+Grafikprüfung mit `scene_label_evidence` fehl. Eine Szene darf ihren wörtlichen
+Grafikbeleg nun begrenzt erweitern, ausschließlich als zusammenhängenden
+Ausschnitt derselben ausdrücklich zitierten, bestätigten Quelle. Inhalte,
+Beschriftungen, Pfeile, Aufgaben und Quellenzuordnungen werden nicht erfunden
+oder verändert; sämtliche bisherigen Prüfungen laufen danach erneut.
+Die Anbietervorgabe beschreibt außerdem die bereits geltende Pflicht zu
+wörtlich belegten Szenenpfeilen genauer. Erfundenes, fremde Quellen und
+umgekehrte Pfeile bleiben gesperrt.
+
+Ein reservierter echter OpenRouter-Test mit festem künstlichem Geschichtstext
+scheiterte zunächst an `visual_scene_relations` (0,0469304 USD); nach der
+Präzisierung bestand eine weitere echte Etappe mit zwei Aufgaben die regulären
+Prüfungen (0,0524458 USD, 59,99 Sekunden). Ein Paketvorversuch wurde vor
+Anbieterversand mangels passender vorbereiteter Referenz abgebrochen. Diese
+Einzelprüfungen sind keine Garantie gegen künftige Anbieter- oder Quellenfehler.
+
 ## 30.10.2026 · Vorbereitungsstatus von Lernweg-Etappen · Version 1.38.20
 
 Der Live-Test von 1.38.19 zeigte, dass die Statusseite `study_block`-Aufträge
