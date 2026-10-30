@@ -56,6 +56,11 @@ def candidates(db, subject, text="", *, package_prepared=False, decimal_prepared
     result = []
     for row in db.scalars(select(VisualReference).where(or_(VisualReference.recipe["scope"].as_string().is_(None), VisualReference.recipe["scope"].as_string() != "exploration_only")).order_by(VisualReference.id, VisualReference.version)):
         recipe = row.recipe
+        if row.id == "math.decimal.number_line_midpoint":
+            from .package_prepared_midpoints import bases
+
+            if not package_prepared or next(bases(text), None) is None:
+                continue
         if row.id == "math.decimal.column_sum":
             from .package_decimal_addition import evidence
 
@@ -279,6 +284,11 @@ def bind_schema(schema, payload):
 def _meaningful(block, recipe, *, sources=None, question=None):
     if block.kind != recipe["kind"] or (recipe.get("variant") and block.variant != recipe["variant"]):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
+    if recipe.get("id") == "math.decimal.number_line_midpoint":
+        from .package_prepared_midpoints import validate
+
+        validate(block, sources)
+        return
     if block.kind == "decimal_sum":
         from .package_decimal_addition import REFERENCE, validate
 

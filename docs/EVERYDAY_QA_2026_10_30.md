@@ -190,3 +190,52 @@ Offenlegungsgrenzen, Wortschatzschutz, Fachaliase und Tagesprioritäten bestande
 Die neuen Lesekarten wurden zusätzlich mit realen Fonts bei 390px sowie 320px
 und doppelter Textgröße im Widgettest geprüft. Dies ist keine abgeschlossene
 30-Tage- oder Android-Geräteabnahme.
+
+## Dezimalzahlen auf dem Zahlenstrahl
+
+Der künstliche13.11. hatte zuerst eine vollständig beantwortete, aber wegen
+fehlender wörtlicher Szenenbelege verworfene Anbieterantwort und danach einen
+8.000-Token-Abbruch. Für die beiden tatsächlich fotografierten Aussagen fehlte
+ein passender endlicher Grafikvertrag. Eine Bruch- oder Additionsgrafik ersetzt
+diesen Inhalt nicht.
+
+`package_prepared_midpoints.py` erkennt ausschließlich vollständige Aussagen
+der Form „0,5 liegt genau zwischen0und1.“ mit Original-Leerzeichen, zwei
+aufsteigenden ganzzahligen Rändern und einer rechnerisch exakten Dezimalmitte.
+Verneinungen, ungefähre oder unlesbare Angaben und falsche Mittelpunkte werden
+nicht in eine richtige Quelle umgeschrieben. Das neue unveränderliche Rezept
+`math.decimal.number_line_midpoint@1` bindet eine vorhandene Szene mit drei
+Originalzahlen. Flutter erhält erst nach exaktem Abgleich einen Darstellungsmarker
+und berechnet den Zahlenstrahl lokal; der Anbieter liefert keine Koordinaten.
+Die beiden bewussten Schritte heben die Mitte beziehungsweise beide Ränder
+hervor. Keine automatische Animation oder Leistungsbewertung durch Erkunden.
+
+Jede neue Frage ist bereits vor dem Aufruf an einen anderen belegten Satz,
+seine Randzahlen und die private richtige Mitte gebunden. Bei zu wenigen
+unterschiedlichen Beispielen oder inkompatiblen festen Vorwissensfragen wird
+dieser spezielle Vertrag nicht verwendet. Alle bisherigen Schema-, Quellen-,
+Offenlegungs-, Antworten- und Kostenprüfungen bleiben bestehen.
+
+Nach belegtem Codefix wurde genau ein lokaler, auditierter und regulär
+reservierter Reparaturauftrag im künstlichen Konto ausgeführt. Der alte
+Auftragsdatensatz war vor dem Aufbewahrungsfix gelöscht; seine weiterhin aktuelle
+Quellen-/Teilplanung wurde geprüft, beide Fehlversuchszähler erhalten und eine
+aktuelle gültige Kindersitzung verwendet. Keine alte Sitzung reaktiviert,
+keine echte Quelle oder Antwort verändert und kein öffentlicher Retry-Bypass.
+Die echte Anbieterantwort lieferte zwei vollständige Aufgaben mit `stop`,
+22.175ms gemeldeter Anbieterzeit und0,002125USD zunächst gemeldeten Kosten.
+Der Lernweg wurde bereitgestellt und im390px-Browser geöffnet. Die erste
+ununterstützte Antwort1,5 wurde richtig gewertet. Screenshot der tatsächlich
+geöffneten Grafik: `82-zahlenstrahl-echte-ki-390.png` im lokalen Testverzeichnis.
+
+Nach dem Vorwissenscheck stand zuvor schon das nächste Antwortfeld auf dem
+Bildschirm, während der Hauptbutton zunächst die Erklärung öffnete. Dieser
+Übergang zeigt jetzt eine eindeutige Verstehen-Karte. Die Eingabe folgt nach
+der Erklärung; vorhandene Antwortbelege bleiben erhalten. Screenshot:
+`81-klarer-erklaerungswechsel-390.png`.
+
+Prüfungen:221 gezielte Backendfälle für die neue Bindung, alte vorbereitete
+Grafiken, Referenzen und Paketausgabe sowie28 Flutterfälle für Zahlenstrahl,
+Übergang und gespeicherte Aufgabenerklärungen bestanden. Die zuvor geprüften
+26 Szenen-/Lesekartenfälle blieben erhalten; beide neuen Zahlenstrahlansichten
+bestehen bei390px sowie320px mit doppelter Schrift und reduzierter Bewegung.

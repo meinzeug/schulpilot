@@ -1,3 +1,31 @@
+# Fortsetzung des Alltagstests · Releasekandidat 1.38.49+204
+
+Am 30.10.2026 ist als Produktion weiterhin Release `20261030T193637Z-7df6127`
+mit Version1.38.46+201 belegt. Die nachfolgenden Änderungen werden gemeinsam
+gebaut und erst nach erfolgreicher Artefaktprüfung ausgeliefert. Der ältere
+Status152 weiter unten ist historische Dokumentation.
+
+Künstlicher Monatstest: mobile Browserführung bei390×844px, reale reservierte
+KI-Verarbeitung in einer isolierten Familien-/SQLite-Umgebung; keine Änderung
+der Produktivzeit oder echter Kinderantworten. Details und Grenzen:
+[Alltagstest-Fortsetzung](EVERYDAY_QA_2026_10_30.md).
+
+Bereits umgesetzt und gezielt geprüft: Erhalt offener Auftrags-/Kostenbelege,
+korrekte zusammenhängende Satzrollen, direkter Zugang zu gespeicherten
+Aufgabenerklärungen, kompakte Satz-/Lesegrafiken, Vorrang bereiter Tagesrunden,
+kanonische öffentliche Fachaliase sowie endliche Offenlegungsbelege für neue
+Rechenbeispiele. Neu hinzu kommt ein quellgebundener, rechnerisch geprüfter
+Zahlenstrahl für ausdrücklich belegte Dezimal-Mittelpunkte. Der echte
+Reparaturauftrag des künstlichen13.11. ist abgeschlossen: zwei Aufgaben,
+22.175ms gemeldete Anbieterzeit,0,002125USD bislang gemeldete Kosten.
+
+Der vollständige30-Tage-Durchlauf ist noch nicht abgenommen; ein alter
+Dezimaladditions-Testtag und mehrere begonnene Runden sind noch aufzuarbeiten.
+Physischer Androidtest bleibt ausdrücklich ausgenommen. Sichtbare
+Firebase-Zustellung wird aus einer In-App-Meldung nicht abgeleitet.
+
+---
+
 # Zuletzt belegter Produktionsstand · 1.37.1+152
 
 Stand:28.10.2026. Release `20261028T144255Z-6bf8784`, Produktcommit `6bf87846fdc174104dda321556d44a35aca95c50`, Schema0042 unverändert. Web, signierte Direct-APK und Play-AAB stammen aus demselben sauberen Commit. Fünf Dienste aktiv;17 gesicherte Betriebskonfigurationen, Google-Nachweise und geprüfte Bestandstabellen unverändert. Geschütztes Backup: `/var/backups/schulpilot/elements152-config-20261028T133413Z`. Release151 bleibt als Rückweg erhalten.

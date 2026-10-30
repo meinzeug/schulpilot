@@ -494,6 +494,22 @@
       "terms": ["komma", "dezimal"],
       "interaction": "column_steps",
       "variant": null
+    },
+    {
+      "id": "math.decimal.number_line_midpoint",
+      "version": 1,
+      "subjects": [
+        "Mathematik"
+      ],
+      "kind": "scene",
+      "purpose": "Eine wörtlich bestätigte und rechnerisch geprüfte Dezimalzahl genau in der Mitte zweier Randzahlen auf dem Zahlenstrahl verstehen.",
+      "terms": [
+        "dezim",
+        "zahlenstrahl",
+        "liegt genau zwischen"
+      ],
+      "interaction": "scene_steps",
+      "variant": null
     }
   ]
 }

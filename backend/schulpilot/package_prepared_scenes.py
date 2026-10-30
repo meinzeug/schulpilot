@@ -84,6 +84,10 @@ def reference_supported(reference, contents):
         sentence_bases,
     )
 
+    if reference.get("id") == "math.decimal.number_line_midpoint":
+        from .package_prepared_midpoints import bases
+
+        return any(next(bases(content), None) is not None for content in contents)
     if reference.get("id") == "biology.heart.pump":
         from .package_prepared_heart import bases
 
@@ -230,10 +234,14 @@ def bind_schema(schema, payload):
     from .package_prepared_focus import bind_schema as bind_focus
     from .package_prepared_geography import bind_schema as bind_geography
     from .package_prepared_heart import bind_schema as bind_heart
+    from .package_prepared_midpoints import bind_schema as bind_midpoints
     from .package_prepared_photosynthesis import bind_schema as bind_photosynthesis
     from .package_prepared_sentences import bind_schema as bind_sentences
     from .package_prepared_shadow import bind_schema as bind_shadow
 
+    binding = bind_midpoints(schema, payload)
+    if binding is not None:
+        return binding
     candidates = compile_candidates(payload)
     if candidates:
         def question_binding(node, candidate):

@@ -16,7 +16,12 @@ void main() {
   testWidgets(
     '107 after prior probe explains topic without revealing next question solution',
     (tester) async {
-      final server = room.SavedRound();
+      final server = room.SavedRound(
+        questions: [
+          room.question('first', type: 'short'),
+          room.question('second', type: 'short'),
+        ],
+      );
       final requests = <String>[];
       final bodies = <String>[];
       server.value['learning_session'] = {
@@ -50,6 +55,16 @@ void main() {
           return server.handle(request);
         },
       );
+      expect(
+        find.byKey(const ValueKey('entry-explanation-transition')),
+        findsOneWidget,
+      );
+      expect(
+        find.byType(TextField),
+        findsNothing,
+        reason: 'Do not offer answer input while the main action opens the required explanation.',
+      );
+      expect(find.text('Verstehen'), findsOneWidget);
       await tester.ensureVisible(find.text('Erklärung ansehen'));
       await tester.tap(find.text('Erklärung ansehen'));
       // The covered learning room deliberately retains its busy spinner until
@@ -68,6 +83,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
       expect(find.text('Antwort prüfen'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
       expect(
         requests.where((r) => r == 'GET /api/units/unit').length,
         greaterThanOrEqualTo(2),

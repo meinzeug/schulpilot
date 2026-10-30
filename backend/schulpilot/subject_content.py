@@ -689,6 +689,7 @@ def public_presentation(value, *, closed=False, hints=0):
     if not value:
         return None
     p = Presentation.model_validate(value)
+    from .package_prepared_midpoints import is_midpoint
     allowed = {"given"} | {f"hint{i}" for i in range(1, min(3, hints) + 1)} | ({"solution"} if closed else set())
     return {
         "version": 1,
@@ -697,6 +698,7 @@ def public_presentation(value, *, closed=False, hints=0):
             {**{k: v for k, v in b.model_dump(exclude={"source_excerpt", "scene", "text_probe", "lab"}).items()},
              **({"photosynthesis_formation_only": True} if b.kind == "scene" and
                 re.search(r"\bDabei\s+entsteht\s+Sauerstoff\s*\.", b.source_excerpt, re.I) else {}),
+             **({"number_line_midpoint": True} if b.kind == "scene" and is_midpoint(b) else {}),
              **({"scene": learning_scenes.public_scene(b.scene)} if b.scene is not None else {}),
              **({"text_probe": text_probes.public_probe(b.text_probe)} if b.text_probe is not None else {}),
              **({"lab": b.lab.model_dump()} if b.lab is not None else {})}

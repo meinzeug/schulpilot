@@ -264,7 +264,9 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
           image: true,
           label: '$label. $description ${model.steps[step].caption}',
           child: ExcludeSemantics(
-            child: _isReadingCards(model)
+            child: widget.block['number_line_midpoint'] == true
+                ? _MidpointNumberLine(scene: model, step: step)
+                : _isReadingCards(model)
                 ? _ReadingFocusCards(scene: model, step: step)
                 : _SceneCanvas(scene: model, value: step.toDouble()),
           ),
@@ -389,11 +391,16 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
         : model.objects.map((object) => object.label).join('; ');
     final simpleFocus = _isOriginalListFocus(model);
     final readingCards = _isReadingCards(model);
+    final midpoint = widget.block['number_line_midpoint'] == true;
     // Source quotes stay private; the server derives this flag after checking
     // the presentation against its source.
     final formationOnly = widget.block['photosynthesis_formation_only'] == true;
     return LearningGraphicFrame(
-      title: readingCards ? 'Schau dir die Aussagen an' : title,
+      title: midpoint
+          ? 'Zahlenstrahl'
+          : readingCards
+          ? 'Schau dir die Aussagen an'
+          : title,
       action: widget.action,
       child: AnimatedBuilder(
         animation: controller,
@@ -409,7 +416,9 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
               else
                 Semantics(
                   image: true,
-                  label: _isPhotosynthesisScene(model)
+                  label: midpoint
+                      ? 'Zahlenstrahl von ${model.objects.first.label} bis ${model.objects.last.label}. ${step.caption}'
+                      : _isPhotosynthesisScene(model)
                       ? (index == 0
                             ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
                             : formationOnly
@@ -419,7 +428,9 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                       ? 'Der Atlantische Ozean liegt zwischen Amerika und Europa.'
                       : description,
                   child: ExcludeSemantics(
-                    child: _isPhotosynthesisScene(model)
+                    child: midpoint
+                        ? _MidpointNumberLine(scene: model, step: index)
+                        : _isPhotosynthesisScene(model)
                         ? AnimatedSwitcher(
                             duration: MediaQuery.disableAnimationsOf(context)
                                 ? Duration.zero
@@ -847,6 +858,87 @@ bool _isReadingCards(_Scene scene) =>
           scene.steps[0].placements[object.id] ==
           scene.steps[1].placements[object.id],
     );
+
+// Enabled only by the server after checking the complete literal midpoint
+// recipe. Positions are local and equal distances are not guessed from prose.
+class _MidpointNumberLine extends StatelessWidget {
+  final _Scene scene;
+  final int step;
+  const _MidpointNumberLine({required this.scene, required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    if (scene.objects.length != 3 || scene.steps.length != 2) {
+      return _SceneCanvas(scene: scene, value: step.toDouble());
+    }
+    final palette = context.palette;
+    final selected = scene.steps[step].highlight;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        return SizedBox(
+          key: const ValueKey('midpoint-number-line'),
+          height: 142,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 26,
+                right: 26,
+                top: 48,
+                child: Container(height: 2, color: palette.controlBorder),
+              ),
+              for (var i = 0; i < 3; i++) ...[
+                Positioned(
+                  left: 26 + (width - 52) * i / 2 - 1,
+                  top: 40,
+                  child: Container(
+                    width: 2,
+                    height: 18,
+                    color: palette.controlBorder,
+                  ),
+                ),
+                if (selected.contains(scene.objects[i].id))
+                  Positioned(
+                    left: 26 + (width - 52) * i / 2 - 9,
+                    top: 40,
+                    child: Container(
+                      key: ValueKey('midpoint-active-$i'),
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: palette.teal,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: palette.ink, width: 2),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  left: 26 + (width - 52) * i / 2 - 36,
+                  top: 68,
+                  width: 72,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      scene.objects[i].label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: palette.ink,
+                        fontWeight: selected.contains(scene.objects[i].id)
+                            ? FontWeight.w900
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _ReadingFocusCards extends StatelessWidget {
   final _Scene scene;

@@ -1081,9 +1081,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final number = question == null
         ? null
         : questions.indexWhere((item) => item['id'] == question['id']) + 1;
+    final entryExplanationPending =
+        !awaitingContinue &&
+        adaptiveAction == 'saved_explanation' &&
+        u?['learning_session']?['action']?['reason_code'] ==
+            'entry_probe_followup';
     final phase = u?['status'] == 'completed' && !awaitingContinue
         ? 2
-        : u?['introduction_seen'] == false
+        : u?['introduction_seen'] == false || entryExplanationPending
         ? 0
         : 1;
     var progressLabel = 'Aufgabe $number von ${questions.length}';
@@ -2019,6 +2024,33 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               SizedBox(height: 12),
               sampleNotice(u),
             ],
+          ],
+        ),
+      );
+    }
+    if (adaptiveAction == 'saved_explanation' &&
+        u['learning_session']?['action']?['reason_code'] ==
+            'entry_probe_followup') {
+      return Panel(
+        key: const ValueKey('entry-explanation-transition'),
+        tone: PanelTone.info,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(
+              Icons.auto_stories_outlined,
+              size: 40,
+              color: context.palette.teal,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Jetzt schauen wir uns den Zusammenhang an',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Dein erster Versuch ist gespeichert. Danach probierst du die nächste Aufgabe.',
+            ),
           ],
         ),
       );
