@@ -57,6 +57,36 @@ void main() {
       },
     );
   }
+  testWidgets('a partially unreadable marked sentence remains visible', (
+    tester,
+  ) async {
+    const text = 'She [unleserlich durchgestrichen] a nice cake.';
+    final block = {
+      'kind': 'paragraph',
+      'text': text,
+      'annotations': [
+        {'kind': 'crossout', 'quote': '[unleserlich durchgestrichen]'},
+      ],
+    };
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: LearningContent(text, blocks: [block]),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Abschrift mit unleserlicher Stelle'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((w) => w is MathText && w.data == text),
+      findsOneWidget,
+    );
+    expect(find.text('Gestrichen im Foto'), findsOneWidget);
+    expect(block['text'], text);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'ordinary ink and stale annotations do not become correction cards',
     (tester) async {

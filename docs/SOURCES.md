@@ -3586,3 +3586,20 @@ allerdings vor allem Umformulierungen der vorherigen Fragen. Damit ist eine
 anspruchsvolle adaptive Förderung nicht nachgewiesen. Der Fehler bei der
 Dezimalzahlen-Grafik und die generelle Vermeidung von Ausgabelängen-Abbrüchen
 sind weiterhin offen; der 30-Tage-Alltagstest ist nicht abgeschlossen.
+
+30.10.2026 · Ein künstliches Englischfoto enthielt einen absichtlich verdeckten
+Wortteil. Das Modell kennzeichnete ihn als unlesbar, interpretierte den Fleck
+aber fälschlich als Streichung. Der umgebende Wortlaut blieb im Bearbeitungsfeld
+erhalten; die Markierungsansicht verbarg ihn zunächst hinter einer Aufklappung.
+Bei Texten mit explizit unleserlicher Stelle zeigt diese Ansicht nun den
+vollständigen umgebenden Wortlaut direkt und behält die Markierungskennzeichnung.
+Andere markierte Texte behalten ihre bisherige Darstellung, damit etwa
+durchgestrichene falsche Rechnungen nicht unkommentiert als gültig erscheinen.
+Der Leseauftrag unterscheidet nun ausdrücklich Flecken von Streichlinien.
+
+Ein weiterer echter KI-Leseauftrag mit einem anderen künstlichen Tintenfleck
+erhielt die lesbaren Sätze und „She [unleserlich] a cake.“ und benannte den
+Fleck als unleserlich. Diese Einzelbeobachtung ist kein allgemeiner Nachweis
+für die Erkennungsqualität oder für jede Markierung. Das Foto wurde im
+isolierten 390-Pixel-Browser geprüft; es wurden keine echten Kinderangaben oder
+die Uhr des Produktionsservers verwendet. Der 30-Tage-Test bleibt offen.

@@ -129,6 +129,10 @@ class _Section extends StatelessWidget {
     final text = block['text'] as String;
     final marks = _sourceMarks(block);
     if (marks.isNotEmpty) {
+      final hasUnreadableText = RegExp(
+        r'\[\s*unleserlich',
+        caseSensitive: false,
+      ).hasMatch(text);
       return SurfaceInset(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -188,21 +192,34 @@ class _Section extends StatelessWidget {
               'Das zeigt die Einträge im Original. Es ist keine Bewertung.',
               style: TextStyle(fontSize: 13, color: context.palette.muted),
             ),
-            ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              title: const Text('Wörtliche Abschrift mit allen Einträgen'),
-              children: [
-                const Text(
-                  'Ursprüngliche und ergänzte Einträge stehen hier zusammen. Beachte die Markierungen oben.',
-                ),
-                const SizedBox(height: 8),
-                _Section(
-                  {...block, 'annotations': <dynamic>[]},
-                  style: style,
-                  interactive: interactive,
-                ),
-              ],
-            ),
+            if (hasUnreadableText) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Abschrift mit unleserlicher Stelle',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              _Section(
+                {...block, 'annotations': <dynamic>[]},
+                style: style,
+                interactive: interactive,
+              ),
+            ] else
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('Wörtliche Abschrift mit allen Einträgen'),
+                children: [
+                  const Text(
+                    'Ursprüngliche und ergänzte Einträge stehen hier zusammen. Beachte die Markierungen oben.',
+                  ),
+                  const SizedBox(height: 8),
+                  _Section(
+                    {...block, 'annotations': <dynamic>[]},
+                    style: style,
+                    interactive: interactive,
+                  ),
+                ],
+              ),
           ],
         ),
       );

@@ -75,6 +75,9 @@ Unterscheide besonders Teilbarkeit \\mid und Nichtteilbarkeit \\nmid, Minus/Plus
 Hoch-/Tiefstellungen und gemischte Zahlen. Keine bekannte richtige Ersatzgleichung einsetzen.
 Alle sichtbaren Schriftfarben und tatsächlichen Einfügungen/Durchstreichungen WÖRTLICH in text erhalten.
 annotations sind für echte sichtbare Markierungen (Streichung, Einfügung, Korrektur, Hervorhebung, Randkommentar).
+Ein verschmierter Fleck oder Schatten ist nicht automatisch eine Durchstreichung oder Korrektur.
+Streichung nur bei erkennbarer Streichlinie kennzeichnen; bei Zweifel die Stelle als unleserlich
+beschreiben und keine Absicht behaupten. Lesbare Wörter vor und nach der Lücke im selben Satz erhalten.
 Normale blaue/schwarze/rote Handschrift ist KEINE unbekannte Markierung und KEIN Schülerlösungsnachweis.
 Nur wenn die gewöhnliche Schriftfarbe als Metadatum erhalten wird, dafür kind=ink verwenden; alternativ annotations=[].
 kind=unknown nur für eine tatsächlich besondere, aber nicht deutbare Markierung, niemals für normale Tinte.
