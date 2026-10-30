@@ -110,6 +110,15 @@ def test_blocks_preserve_every_word_order_equation_and_original_mistake():
     assert result["source_blocks"] == [{**b, "purpose": "unknown"} for b in data["blocks"]]
 
 
+def test_known_ocr_subject_alias_uses_catalogue_without_changing_page_contents():
+    original = material(subject="English", topic="Simple past", content="English\nI played yesterday.")
+    result = validate_material(original)
+    assert result["subject"] == "Englisch"
+    assert result["content"] == original["content"]
+    assert result["topic"] == original["topic"]
+    assert validate_material(material(subject="English club"))["subject"] == "English club"
+
+
 @pytest.mark.parametrize(
     "changes",
     [

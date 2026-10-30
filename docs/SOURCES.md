@@ -3341,3 +3341,34 @@ der Erfassung sind in [EXPLANATION_EVIDENCE.md](EXPLANATION_EVIDENCE.md)
 beschrieben. Historische Antworten werden nicht umgeschrieben. Die weiterhin
 offene allgemeine Ursache der abgeschnittenen KI-Ausgaben wird hierdurch nicht
 als behoben behauptet.
+
+30.10.2026 · Isolierter mobiler Alltagstest: Eine künstliche englische Seite wurde vom
+Erkennungsmodell mit dem Fachlabel `English` versehen. Dieses Label fand keine
+passende bestehende Grafikreferenz; der folgende künstliche Paketaufruf scheiterte
+mit HTTP 400 und der geschlossenen Anbieterkategorie `invalid_json_schema`.
+Auch eine flachere Grafikstruktur allein beseitigte diesen Fehler im erneuten
+künstlichen Diagnoseaufruf nicht. Mit demselben künstlichen Inhalt und dem
+Katalogfach `Englisch` lieferte ein regulär reservierter OpenRouter-Aufruf eine
+vollständig validierte Paketantwort (HTTP 200, gemeldete Kosten 0,040076 USD).
+Die beiden Fehlantworten besitzen keine bestätigten Kostenbelege und bleiben
+entsprechend reserviert; sie sind nicht als kostenlos nachgewiesen.
+
+Die eindeutige OCR-Fachbezeichnung `English` wird künftig bei Erkennung und
+Bestätigung auf den Titel des vorhandenen versionierten Fachkatalogs abgebildet;
+Inhalt und unbekannte Fachbezeichnungen bleiben unverändert. Bereits bestätigte
+Quellen werden nicht nachträglich umgeschrieben. Für eine ausdrücklich gemeldete
+Schemaablehnung liefert der Adapter eine technische Fehlerkategorie statt der
+unbelegten Behauptung, Schlüssel oder Kontingent seien falsch. Dies behebt nicht
+allgemein alle möglichen Anbieter-Schemafehler und ersetzt keinen vollständigen
+monatlichen Alltagstest. Die beiden diagnostischen Fehlversuche und der Erfolg
+verwendeten ausschließlich künstliche Materialien; alle Aufrufe sind in der
+isolierten Testkostenrechnung erfasst.
+
+Beim tatsächlichen Fortsetzen nach einer ausdrücklichen Quellenkorrektur zeigte
+sich im 390-Pixel-Browser außerdem: Die historische Fehlerkategorie konnte die
+Hauptaktion trotz serverseitig erlaubter neuer Planung verdecken. Die Kinderansicht
+bietet bei geänderter Quelle nun den bewussten Neustart an, sofern der Server
+`can_retry` meldet und keine aktuelle Sperre übermittelt. Aktuelle Sperren,
+Quellenrevisionen, Versuchsgrenzen und der explizite einzelne POST bleiben erhalten.
+Die mobile Prüfung verwendet ausschließlich die getrennte künstliche Familie;
+die simulierte Uhr gilt nur für deren Testprozesse.

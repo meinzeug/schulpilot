@@ -59,6 +59,20 @@ def confirm_payload(content, revision):
                                if not pair["uncertainty"]]}}
 
 
+def test_confirmation_normalizes_known_subject_alias_without_changing_text(api, household):
+    _, child = household
+    content = "English\nI played yesterday."
+    material_id, revision = source(child, content)
+    body = {"subject": "English", "topic": "Simple past", "content": content, "homework": [],
+            "uncertainties_resolved": True, "revision": revision}
+    response = api.put(f"/api/materials/{material_id}/confirm", json=body)
+    assert response.status_code == 200, response.text
+    assert response.json()["subject"] == "Englisch"
+    assert response.json()["content"] == content
+    replay = api.put(f"/api/materials/{material_id}/confirm", json=body)
+    assert replay.status_code == 200 and replay.json()["revision"] == revision + 1
+
+
 def test_photo_confirmation_saves_words_and_open_meaning_in_one_transaction(api, household):
     _, child = household
     content = "apple = Apfel\nschool = Schule\nbank = Bank\nlamp = Lampe"

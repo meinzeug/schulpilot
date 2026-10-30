@@ -7,8 +7,10 @@ valid; the user still has to check and confirm every material.
 """
 
 import io
+import json
 import re
 import warnings
+from functools import lru_cache
 from typing import Annotated, Literal
 
 from PIL import Image, UnidentifiedImageError
@@ -18,6 +20,25 @@ from . import schemas as s
 from .subject_content import SourceAnnotation, SourceBlock, SourceImageRegion
 
 MAX_IMAGE_PIXELS = 16_000_000
+
+# OCR may return the English name of the school subject rather than the
+# catalogue's German title. This is metadata only: never rewrite page text or
+# infer an unknown/private subject from the child's material.
+OCR_SUBJECT_ALIASES = {"english": "englisch"}
+
+
+@lru_cache(maxsize=1)
+def _subject_titles():
+    from .subject_registry import SEED
+
+    return {row["key"]: row["title"] for row in json.loads(SEED.read_text())["subjects"]}
+
+
+def canonical_subject(value):
+    if not isinstance(value, str):
+        return value
+    key = OCR_SUBJECT_ALIASES.get(" ".join(value.casefold().split()))
+    return _subject_titles().get(key, value) if key else value
 
 OCR_SYSTEM = """Du bist ein genauer Abschreibdienst für eine einzelne fotografierte Heftseite.
 Deine einzige Aufgabe ist die vollständige WÖRTLICHE TRANSKRIPTION des beigefügten Bildes.
@@ -259,6 +280,7 @@ def validate_material(data, image_bytes=None):
     Explicit partial/unreadable results retain their honest uncertainties.
     """
     material = s.ExtractionOutput.model_validate(data).model_dump()
+    material["subject"] = canonical_subject(material["subject"])
     if material["legibility"] == "readable":
         bands = text_like_bands(image_bytes)
         characters = len("".join(material["content"].split()))

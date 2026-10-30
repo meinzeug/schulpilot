@@ -145,6 +145,27 @@ def test_http200_diagnostics_remain_private_but_keep_schema_cause(monkeypatch, l
     assert private not in str(raised.value) + json.dumps(telemetry)
 
 
+def test_http400_schema_failure_is_not_misreported_as_missing_credentials(monkeypatch):
+    import httpx
+
+    private = "PRIVATE-FIXTURE-CONTENT"
+    real_client = httpx.Client
+    calls = []
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(400, json={"error": {"code": 400, "message": private,
+            "metadata": {"provider_error_code": "invalid_json_schema", "raw": private}}})
+    monkeypatch.setattr(providers.httpx, "Client",
+        lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(providers.ProviderError) as raised:
+        providers.request_provider(_config("openrouter"), "unit", {"material": {
+            "subject": "Informatik", "topic": "UND", "content": "UND und ODER."}})
+    assert len(calls) == 1
+    assert raised.value.code == "invalid_output"
+    assert "Schlüssel" not in str(raised.value)
+    assert private not in str(raised.value) + json.dumps(raised.value.billing_result.telemetry)
+
+
 def test_failed_job_keeps_its_status_and_discovers_only_same_child_repair(household):
     # The regular fixture's child session is used; no administrator content path.
     from types import SimpleNamespace

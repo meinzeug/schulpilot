@@ -105,4 +105,28 @@ void main() {
     parts.expectNoWrites(server);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Corrected source can start a new plan despite old HTTP error', (
+    tester,
+  ) async {
+    final server = parts.partsServer({
+      'status': 'failed',
+      'phase': 'package',
+      'can_retry': true,
+      'sources_changed': true,
+      'error_code': 'not_configured',
+      'error': 'KI-Anbieter meldet HTTP 400. Schlüssel, Modell, Freigabe oder Kontingent prüfen.',
+    });
+    await parts.openParts(tester, server, width: 390);
+    parts.expectNoWrites(server);
+    await background.tapText(
+      tester,
+      'Mit den aktuellen Seiten neu vorbereiten',
+    );
+    expect(server.submissions, 1);
+    expect(server.requests.where((r) => !r.startsWith('GET ')), [
+      'POST /api/school-days/day/prepare',
+    ]);
+    expect(tester.takeException(), isNull);
+  });
 }

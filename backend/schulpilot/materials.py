@@ -344,6 +344,11 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
         raise HTTPException(404, "Heftseite nicht mehr vorhanden.")
     if material.purpose == "exam" and (data.task_decisions or data.vocabulary):
         raise HTTPException(422, "Aus einer korrigierten Arbeit werden keine Hausaufgaben oder Wörter übernommen.")
+    from .extraction import canonical_subject
+
+    # Normalize only a known catalogue alias; the confirmed transcript and
+    # unrecognized family-specific subject names are retained verbatim.
+    data = data.model_copy(update={"subject": canonical_subject(data.subject)})
     confirmation_digest = material_tasks.fingerprint(data.model_dump(mode="json", exclude={"revision"}))
     if (material.confirmed and material.confirmation_digest == confirmation_digest
             and all(getattr(data, key) == getattr(material, key) for key in ("subject", "topic", "content", "homework"))):

@@ -1555,11 +1555,15 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       'not_configured',
     }.contains(code);
     final canRetry =
-        preparation?['can_retry'] == true && blocker == null && !accessBlocked;
-    final technicalFailure = isTechnicalPreparationFailure(
-      message,
-      code: code is String ? code : null,
-    );
+        preparation?['can_retry'] == true &&
+        blocker == null &&
+        (sourcesChanged || !accessBlocked);
+    final technicalFailure =
+        !sourcesChanged &&
+        isTechnicalPreparationFailure(
+          message,
+          code: code is String ? code : null,
+        );
     const technicalMessage =
         'Neue Aufgaben oder Grafiken konnten gerade nicht vorbereitet werden. Deine Fotos und gespeicherten Runden bleiben erhalten.';
     final visibleBlocker = blockerMessage != null && technicalFailure

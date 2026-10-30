@@ -2132,6 +2132,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         # Retain only closed diagnostic categories, never a provider's message,
         # parameter value, raw metadata, or private echoed request.
         diagnostic = None
+        invalid_schema = False
         if config.provider == "openrouter" and len(response.content) <= 50_000:
             from .ai_accounting import response_metrics
 
@@ -2142,11 +2143,19 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                         (time.monotonic() - started) * 1000, response.headers.get("x-request-id")))
                     error = raw_error.get("error")
                     annotate_openrouter_error(diagnostic, error)
+                    metadata = error.get("metadata") if isinstance(error, dict) else None
+                    invalid_schema = (response.status_code == 400 and isinstance(metadata, dict)
+                        and metadata.get("provider_error_code") == "invalid_json_schema")
             except ValueError:
                 pass
         # Provider error bodies can contain secrets or private echoed content.
         if diagnostic is not None:
             diagnostic.request_receipt = receipt
+        if invalid_schema:
+            raise ProviderError(
+                "Die Vorbereitung hat ein technisches Problem. Deine Fotos bleiben gespeichert.",
+                code="invalid_output", billing_result=diagnostic,
+            )
         raise ProviderError(
             f"KI-Anbieter meldet HTTP {response.status_code}. Schlüssel, Modell, Freigabe oder Kontingent prüfen.",
             billing_result=diagnostic,
