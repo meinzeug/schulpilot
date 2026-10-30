@@ -4000,3 +4000,25 @@ Echter Reparaturauftrag:22.175ms,0,002125USD zunächst gemeldet,2Aufgaben,stop.
 221 gezielte Backend- und28 Flutterfälle erfolgreich; Details/Grenzen in
 `docs/EVERYDAY_QA_2026_10_30.md`. Releasekandidat, kein vorweggenommener
 Deployment- oder vollständiger Monats-Abnahmebeleg.
+
+### 1.38.49+204 · Prüfung bis zur tatsächlichen Antwort
+
+Eigene isolierte künstliche Browser-/Anbieterbelege: gezielte Mitte/Abstand-
+Anschlussrunde vollständig bearbeitet; neuer Dezimal-Paketteil des09.12.
+vollständig erzeugt und beantwortet.16.339ms/0,024816USD gemeldete Paketkosten,
+13.038ms/0,001707USD gemeldete gezielte Anschlussrunde. Kosten einer älteren
+übergroßen verworfenen Antwort bleiben unbekannt; keine Nullkostenbehauptung.
+Details und lokal gehaltene Screenshots84–86 im Alltagstestbericht.
+
+[OpenRouter: Reasoning Tokens](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)
+(30.10.2026 geprüft): `exclude` betrifft die Ausgabe der Reasoning-Inhalte,
+nicht deren Berechnung oder Abrechnung. Eine echte synthetische Antwort enthielt
+verschlüsselte Metadaten trotz gesetztem `exclude`; nur Typ/Größe untersucht.
+Separat begrenzter4MB-Umschlag, weiter500KB nach Entfernen ungenutzter
+Reasoning-Felder, Usage-Beleg vor Inhaltsprüfung. Fünf künstliche Grenzfälle und
+eine umfassendere128-Fälle-Serie bestanden. Kein Modell-/Token-/Budgetwechsel.
+
+Der eng belegte historische interne Korrekturmarker wird auch bei offenen
+Alt-Runden rein lesend erkannt. Originale bleiben erhalten; ein klarer
+Quellen-Ausweg ersetzt das fehlerhafte Antwortformular. Keine automatische
+Neuerzeugung oder rückwirkende Änderung abgeschlossener Leistungsbelege.

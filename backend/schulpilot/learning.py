@@ -416,6 +416,7 @@ def unit_source_projection(db, unit):
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from . import adaptive_plan, coaching
     from .learning_controller import projection as session_projection
+    from .legacy_learning_content import issue as content_issue
     from .visual_references import projection as visual_projection
 
     sources = unit_source_texts(db, unit)
@@ -501,6 +502,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "supports_detailed_feedback": True,
         "learning_session": session,
         "content_version": 1,
+        "content_issue": content_issue(unit),
         "supports_answer_idempotency": True,
         "status": unit.status,
         "synthetic": unit.synthetic,
@@ -1605,6 +1607,10 @@ def evaluate(q, answer):
 
 
 def learning_block(db, unit):
+    from .legacy_learning_content import issue as content_issue
+
+    if problem := content_issue(unit):
+        return problem["message"]
     if unit.round_kind == "vocabulary":
         from .vocabulary import current_sources
 

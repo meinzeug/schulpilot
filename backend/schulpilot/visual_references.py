@@ -59,7 +59,7 @@ def candidates(db, subject, text="", *, package_prepared=False, decimal_prepared
         if row.id == "math.decimal.number_line_midpoint":
             from .package_prepared_midpoints import bases
 
-            if not package_prepared or next(bases(text), None) is None:
+            if not (package_prepared or decimal_prepared) or next(bases(text), None) is None:
                 continue
         if row.id == "math.decimal.column_sum":
             from .package_decimal_addition import evidence

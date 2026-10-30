@@ -823,6 +823,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       visible &&
       routeVisible &&
       unit?['status'] == 'active' &&
+      unit?['content_issue'] == null &&
       !needsTimeBaseline &&
       !clockOffline &&
       clockAnchor != null &&
@@ -859,7 +860,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         !identical(state.user, ownerAccount) ||
         !visible ||
         !routeVisible ||
-        unit?['status'] != 'active') {
+        unit?['status'] != 'active' ||
+        unit?['content_issue'] != null) {
       return;
     }
     if (interactionNow.difference(lastInteraction).inSeconds > 60) {
@@ -1038,14 +1040,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                VisualPreparationCard(
-                  state: state,
-                  unit: u,
-                  isCurrent: () =>
-                      requestIsCurrent(widget.unitId, ownerAccount) &&
-                      identical(unit, u),
-                  refresh: load,
-                ),
+                if (u['content_issue'] == null)
+                  VisualPreparationCard(
+                    state: state,
+                    unit: u,
+                    isCurrent: () =>
+                        requestIsCurrent(widget.unitId, ownerAccount) &&
+                        identical(unit, u),
+                    refresh: load,
+                  ),
                 body(context),
               ],
             ),
@@ -1123,7 +1126,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             title: u?['topic']?.toString() ?? 'Deine Lernrunde',
             phase: phase,
             questionTotal: questions.length,
-            questionCompleted: questions.where(done).length,
+            questionCompleted: u?['status'] == 'completed'
+                ? questions
+                      .where((q) => (q['attempts'] as List? ?? []).isNotEmpty)
+                      .length
+                : questions.where(done).length,
             progress: phase == 1 && number != null && number > 0
                 ? progressLabel
                 : null,
@@ -1170,7 +1177,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             onPause: u?['status'] == 'active' && !actionBusy
                 ? () => unawaited(perform(() => pauseUnit(u!)))
                 : null,
-            onHelp: u == null || actionBusy
+            onHelp: u == null || actionBusy || u['content_issue'] != null
                 ? null
                 : () => unawaited(perform(() => openHelp(u))),
             primaryAction: u == null || error != null ? null : primaryAction(u),
@@ -1245,6 +1252,23 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       : text.text.trim().isNotEmpty;
 
   Widget? primaryAction(Json u) {
+    if (state.isChild && u['content_issue'] is Map) {
+      final source =
+          u['material_id'] ??
+          ((u['source_material_ids'] as List? ?? []).firstOrNull);
+      return ActionButton(
+        label: source is String ? 'Zur Heftseite' : 'Zu meinen Heften',
+        icon: Icons.menu_book_rounded,
+        onPressed: () async {
+          openRoute(
+            context,
+            source is String
+                ? '/material/$source'
+                : '/library/${u['child_id']}',
+          );
+        },
+      );
+    }
     if (u['status'] == 'completed' && !awaitingContinue) return null;
     final question = currentQuestion;
     final preparation = u['learning_session']?['preparation'];
@@ -1710,6 +1734,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Widget body(BuildContext context) {
     final u = unit!;
+    if (state.isChild && u['content_issue'] is Map) {
+      return Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.build_circle_outlined, size: 32),
+            SizedBox(height: 16),
+            heading('Diese Runde hat einen Fehler'),
+            SizedBox(height: 8),
+            Text(u['content_issue']['message'].toString()),
+          ],
+        ),
+      );
+    }
     final renderedOwner = ownerAccount;
     final renderedFamily = ownerFamily;
     final renderedUnit = widget.unitId;
@@ -1719,6 +1757,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (u['content_issue'] is Map)
+            Notice(u['content_issue']['message'].toString(), warning: true),
           heading('${u['subject']} · ${u['topic']}'),
           Wrap(
             spacing: 8,
@@ -3265,7 +3305,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         : <String, dynamic>{};
     final cue = language['cue']?.toString() ?? '';
     final languageContext = language['context']?.toString() ?? '';
-    final closed = done(q);
+    final closed = done(q) || u['status'] == 'completed';
     final correct = answerOutcome == 'correct';
     final uncertain = answerOutcome == 'uncertain';
     final lastEvaluation =
@@ -3465,6 +3505,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 MathText(
                   adaptiveAction != null
                       ? 'Deine Antwort ist gespeichert. Wir üben diesen Schritt weiter.'
+                      : u['status'] == 'completed'
+                      ? 'Schau dir jetzt dein Ergebnis an. Dort kannst du diesen Schritt gezielt weiterüben.'
                       : closed
                       ? 'Diese Aufgabe kommt später noch einmal dran.'
                       : 'Versuch es noch einmal. Unter Hilfe findest du einen Tipp.',

@@ -19,6 +19,27 @@ UNUSED_ERROR = "Grafiktransport: nicht verwendeter Eintrag."
 MAX_GRAPHICS = 256
 
 
+def _prepared_ids(schema):
+    """Only finite IDs already declared by a presentation's canonical schema."""
+    ids = set()
+    def walk(node):
+        if isinstance(node, dict):
+            props = node.get('properties', {})
+            if {'blocks', 'version', 'evidence_kind'} <= props.keys():
+                items = props['blocks'].get('items', {})
+                if items.get('type') == 'string' and isinstance(items.get('enum'), list):
+                    ids.update(item for item in items['enum'] if isinstance(item, str))
+            for child in node.values():
+                walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+    walk(schema)
+    if any(re.fullmatch(r'g[0-9]{1,3}', item) for item in ids):
+        raise ValueError(ERROR)
+    return ids
+
+
 def nesting_depth(schema):
     """Count actual JSON containers, including arrays and referenced objects."""
     def depth(node, active=()):
@@ -60,7 +81,9 @@ class Binding:
         return ("\n" + REVISION + ": Grafikblöcke werden vollständig in der obersten Liste "
                 "graphic_catalog ausgegeben: je Eintrag {id: g0, graphic: vollständiger Grafikblock}. "
                 "presentation.blocks enthält ausschließlich passende Eintrags-IDs als Strings. "
-                "Jede ID genau einmal definieren und genau einmal verwenden; keine unbenutzten Einträge. "
+                "Jede Tabellen-ID genau einmal definieren und genau einmal verwenden; keine unbenutzten Einträge. "
+                "Ausnahme: Bereits als String-Enum gebundene vorbereitete Grafik-IDs bleiben unverändert direkt in blocks; "
+                "sie gehören NICHT in graphic_catalog. Nur vollständige Graphic-Objekte werden ausgelagert. "
                 "Ohne Grafik graphic_catalog=[]. Sämtliche Grafik-, Objekt-, Phasen-, Quellen- und Aufdeckregeln bleiben unverändert. "
                 "Der Server setzt jeden Block verlustfrei an dieselbe Stelle zurück.")
 
@@ -69,7 +92,10 @@ class Binding:
             raise ValueError(ERROR)
         result = copy.deepcopy(canonical)
         catalog = []
+        prepared = _prepared_ids(self.canonical_schema)
         def encode_block(block):
+            if isinstance(block, str) and block in prepared:
+                return block
             if not isinstance(block, dict) or len(catalog) >= MAX_GRAPHICS:
                 raise ValueError(ERROR)
             key = "g" + str(len(catalog))
@@ -96,8 +122,11 @@ class Binding:
                 raise ValueError(DUPLICATE_ERROR)
             graphics[row["id"]] = row["graphic"]
         used = set()
+        prepared = _prepared_ids(self.canonical_schema)
         def decode_block(block):
             key = block
+            if isinstance(key, str) and key in prepared:
+                return key
             if not isinstance(key, str) or key not in graphics:
                 raise ValueError(REFERENCE_ERROR)
             if key in used:
@@ -113,6 +142,7 @@ class Binding:
 def bind(schema):
     if nesting_depth(schema) <= 10:
         return None
+    _prepared_ids(schema)  # Reject ambiguous namespaces before any dispatch.
     original = copy.deepcopy(schema)
     wire = copy.deepcopy(schema)
     ref = "#/$defs/Graphic"

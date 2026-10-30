@@ -190,3 +190,40 @@ def test_failed_job_keeps_its_status_and_discovers_only_same_child_repair(househ
         assert data["recovery_job_id"] == repair.id
         assert db.get(Job, failed.id).result is None
         assert materials.job_view(repair.id, principal, db)["recovery_job_id"] is None
+
+
+def mixed_prepared_schema(identifier='nl_checked'):
+    value=schema()
+    presentation=copy.deepcopy(value['$defs']['Presentation'])
+    presentation['properties']['blocks']['items']={'type':'string','enum':[identifier]}
+    # Only the explanation step is prepared; ordinary question graphics still
+    # need the shallow graphic_catalog transport in the same native envelope.
+    value['$defs']['ExplanationStep']['properties']['presentation']=presentation
+    return value
+
+
+def test_prepared_ids_and_new_graphic_table_ids_coexist_without_double_decoding():
+    binding=graphic_table_transport.bind(mixed_prepared_schema())
+    assert binding is not None
+    value={'explanation_steps':[{'presentation':{'version':1,'evidence_kind':'knowledge','blocks':['nl_checked']}}],
+           'questions':[copy.deepcopy(CASES[0]['question'])]}
+    before=copy.deepcopy(value)
+    wire=binding.encode(value)
+    assert wire['explanation_steps'][0]['presentation']['blocks']==['nl_checked']
+    assert wire['questions'][0]['presentation']['blocks']==['g0']
+    assert len(wire['graphic_catalog'])==1
+    assert binding.decode(wire)==before and value==before
+    for unknown in ('nl_unchecked','g9'):
+        bad=copy.deepcopy(wire)
+        bad['explanation_steps'][0]['presentation']['blocks']=[unknown]
+        with pytest.raises(ValueError,match='Grafiktransport'):
+            binding.decode(bad)
+    unused=copy.deepcopy(wire)
+    unused['questions'][0]['presentation']['blocks']=['nl_checked']
+    with pytest.raises(ValueError,match='nicht verwendeter'):
+        binding.decode(unused)
+
+
+def test_prepared_and_new_graphic_table_namespaces_cannot_be_ambiguous():
+    with pytest.raises(ValueError):
+        graphic_table_transport.bind(mixed_prepared_schema('g0'))

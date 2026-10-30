@@ -12,7 +12,7 @@ from math import gcd, lcm
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
-VERSION = "subject_rules_v7"
+VERSION = "subject_rules_v8"
 FRACTION_COMPONENT_VERSION = "fraction_components_v1"
 FRACTION_MEANING_VERSION = "fraction_meaning_v1"
 FRACTION_COMPARISON_VERSION = "fraction_comparison_v1"
@@ -501,6 +501,10 @@ def evaluate(question, answer):
         from .language_evaluation import evaluate as language_evaluate
 
         return language_evaluate(question, answer)
+    from .package_prepared_midpoints import evaluate_answer as midpoint_answer
+
+    if checked := midpoint_answer(question, answer):
+        return checked
     if checked := circuit_interruption(question, answer):
         return checked
     if checked := heart_pump_direction(question, answer):

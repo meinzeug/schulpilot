@@ -239,3 +239,101 @@ Grafiken, Referenzen und Paketausgabe sowie28 Flutterfälle für Zahlenstrahl,
 Übergang und gespeicherte Aufgabenerklärungen bestanden. Die zuvor geprüften
 26 Szenen-/Lesekartenfälle blieben erhalten; beide neuen Zahlenstrahlansichten
 bestehen bei390px sowie320px mit doppelter Schrift und reduzierter Bewegung.
+
+## Zahlenstrahl: Bewertung und gezieltes Nachlernen
+
+Die absichtlich falsche Eingabe0,6 auf die Frage nach der Mitte zwischen0und1
+blieb zunächst unklar. Der neue eng begrenzte Bewertungsweg prüft die exakte
+Frage, den unveränderlichen Referenzvertrag und die Zahlenstrahldaten gemeinsam.
+Dezimalpunkt/-komma und mathematisch gleichwertige einzelne Zahlen sind möglich;
+eine falsche Zahl wird falsch bewertet, unbekannte Prosa bleibt unklar. Eine
+explizite Neubewertung im Browser korrigierte diesen Versuch auf falsch und
+erhielt seine ursprüngliche Antwort, Hilfen und vorherige Bewertung im Audit.
+Der Rückblick zählt eine danach geschlossene Runde weiterhin als vollständig
+bearbeitet; falsche Lösungen werden dadurch nicht richtig.
+
+Die gezielte Anschlussrunde bleibt an das tatsächlich betroffene Lernziel und
+seinen Quellensatz gebunden. Sie fragt nach Mitte/Rand und gleichen/verschiedenen
+Abständen, statt dieselbe Zahlenfrage umzuschreiben. Kernfragen und Antworten
+stehen vor dem Aufruf fest; bekannte Zielkennungen bleiben erhalten. Ein
+erschöpfter endlicher Fragenvorrat wird vor dem Versand ohne neue Kosten gemeldet.
+
+Ein Folgeauftrag scheiterte an der Vermischung vorbereiteter Grafikkennungen mit
+der separaten dynamischen Grafiktabelle. Der Transport erkennt nun ausschließlich
+die im jeweiligen Schema ausdrücklich aufgezählten vorbereiteten Kennungen und
+prüft weiterhin tatsächliche Tabellenverweise, unbenutzte Einträge und Kollisionen.
+Ein weiterer fehlgeschlagener Versuch überschritt die alte500KB-Gesamtgrenze;
+sein ursprünglicher Antwortkörper wurde nicht erhalten. Seine konkrete Ursache
+und tatsächlichen Kosten sind unbekannt, die Reservierung bleibt erhalten.
+Nach nachgewiesenem Fix gelang genau ein auditierter, normal reservierter
+synthetischer Reparaturauftrag:13.038ms,0,001707USD gemeldet, vollständige
+Antwort von12.084Bytes. Die beiden richtigen Antworten wurden im390px-Browser
+abgegeben und der Rückblick abgeschlossen. Screenshot84 im lokalen Testordner.
+
+## Antwortumschlag und Kostenbeleg
+
+OpenRouter wird weiterhin mit `reasoning.effort=medium` und `exclude=true`
+angesprochen. In einer tatsächlich erfolgreichen künstlichen Antwort waren
+trotzdem verschlüsselte `reasoning_details` enthalten; nur Typen und Größen
+wurden untersucht, keine Gedankeninhalte ausgewertet. Dies beweist nicht die
+Ursache des früheren500KB-Abbruchs.
+
+Der gesamte OpenRouter-JSON-Umschlag ist jetzt auf4MB begrenzt. Innerhalb dieser
+Grenze werden zuerst vorhandene Usage-/Generierungsbelege erfasst und die nicht
+verwendeten Reasoning-Felder entfernt. Für den verbleibenden Umschlag gilt weiter
+500KB; Lerntext, Schemas, Tokenlimits, Route, Wiederholungsgrenzen und Reservierung
+werden nicht gelockert. Über4MB bleibt der Auftrag verworfen und bei fehlendem
+Beleg konservativ unbekannt abgerechnet. Fünf künstliche Transportfälle prüfen
+große verschlüsselte Metadaten, große sichtbare Inhalte, fremde Metadaten,
+Gesamtgrenze und Belegerhalt. Kein automatischer zweiter Modellaufruf.
+
+## Letzter fehlender Paket-Tag und fehlerhafter Altbestand
+
+Die künstliche Dezimalquellenprüfung des09.12. bestätigte die vorhandene
+`math.decimal.column_sum`-Bindung. Der alte Ausgabeversuch enthielt eine
+verstümmelte Frage mit einem anderen Ergebnis; er wird nicht nachträglich gültig
+umgeschrieben. Nach dem gesondert belegten Fix der festen Fragekerne wurde genau
+ein weiterer lokaler Reparaturauftrag für diesen konkreten Fehler auditiert und
+regulär reserviert. Alle drei früheren Versuche bleiben erhalten, Zähler3→4.
+Die neue Antwort war vollständig (`stop`),16.339ms und0,024816USD gemeldet.
+Sie erzeugte zwei verschiedene neue Aufgaben; weder fotografierte Beispiele
+noch ältere Aufgaben wurden wiederholt.
+
+Der Browserdurchlauf prüfte8.6 als Antwort auf2,6+6 und anschließend5,7 auf2,7+3.
+Die Erklärung zeigt tatsächlich das Originalbeispiel2,4+1,3 mit schrittweiser
+Zehntel-/Einerrechnung. Beide Antworten und der Abschluss sind gespeichert;
+selbstständiger Erstversuch und angeleitete Anwendung bleiben unterschieden.
+Screenshots85/86 im lokalen Testordner.
+
+Beim Öffnen einer früher angelegten Runde des10.12. erschien noch die interne
+Korrekturmarkierung „oops bad character Need fix“. Der vorhandene Generatorguard
+verhindert neue solche Pakete, repariert aber keinen Altbestand. Eine zusätzliche
+rein lesende Prüfung erkennt genau diesen belegten Marker in erzeugter Prosa.
+Sie verändert weder Originalfragen noch Antworten. Start/Antwort/Lernzeit sind
+für diese offene fehlerhafte Runde gesperrt; die Kinderansicht führt direkt zur
+eigenen Heftseite für eine bewusst angeforderte neue Übung. Eltern können den
+ursprünglichen Inhalt mit Warnung weiter nachvollziehen. Dies ist keine pauschale
+semantische Nachprüfung sämtlicher historischer Aufgaben.
+
+Weitere gezielte Prüfungen:128 Anbieter-/Kosten-/Transport- und Altbestandsfälle
+bestanden;21 Aufgabenraum-Widgetfälle einschließlich Quellen-Ausweg und
+unterbundener Heartbeats bestanden. Ein unterbrochener Lauf auf langsamer
+Dateiablage ist kein zusätzlicher vollständiger Testlauf; dieselbe Testauswahl
+wurde anschließend in einer eigenen temporären RAM-Datenbank abgeschlossen.
+
+Die reale Altfrage enthielt unmittelbar vor `oops` ein arabisches Schriftzeichen.
+Die frühere Unicode-Wortgrenze erkannte diesen konkreten Übergang nicht. Sowohl
+Generatorguard als auch Altbestandsprüfung erfassen jetzt den vollständigen
+Korrekturmarker auch in dieser beobachteten Form; gewöhnliches englisches
+„Oops! I made a mistake.“ bleibt erlaubt.27 gezielte Fälle dazu bestanden.
+Die erneute vollständige passende UI-Auswahl bestand mit70 Fällen; Flutter
+Analyze meldete keine Probleme.146 weitere Backendfälle für Zahlenstrahl,
+Dezimalbindung, Transport und Altbestand bestanden. Ein zunächst falsch
+angegebener Flutter-Testdateiname war ein Aufruffehler; er ist kein bestandener
+Test und wurde durch den korrekten vollständigen Lauf ersetzt.
+
+Der Quellen-Ausweg wurde tatsächlich im390px-Browser benutzt. Von der eigenen
+bestätigten Heftseite wurde über „Jetzt lernen“ genau eine reguläre Zweierübung
+angefordert. Die neue Runde wurde bereit; die Glocke erhöhte ihren In-App-Stand
+von16auf17. Screenshot88 hält diese Bereitschaft fest. Dies ist weiterhin kein
+Beleg einer sichtbaren FCM-Zustellung auf einem physischen Gerät.

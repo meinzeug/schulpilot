@@ -248,6 +248,10 @@ Future<RoundHarness> openRound(
         path: '/app',
         builder: (_, _) => const Scaffold(body: Text('Startseite')),
       ),
+      GoRoute(
+        path: '/material/:id',
+        builder: (_, _) => const Scaffold(body: Text('Eigene Heftseite')),
+      ),
     ],
   );
   final harness = RoundHarness(state, router, tester);
@@ -753,6 +757,30 @@ void main() {
   );
 
   testWidgets(
+    'A rechecked wrong answer in a completed round leads clearly to its result',
+    (tester) async {
+      final server = SavedRound(questions: [question('cat')])
+        ..pending(answer: 'Hund', outcome: 'incorrect', status: 'completed');
+      await openRound(tester, server);
+      expect(find.text('Das üben wir noch'), findsOneWidget);
+      expect(find.text('Bearbeitet 1 von 1'), findsOneWidget);
+      expect(
+        find.text(
+          'Schau dir jetzt dein Ergebnis an. Dort kannst du diesen Schritt gezielt weiterüben.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Versuch es noch einmal. Unter Hilfe findest du einen Tipp.'),
+        findsNothing,
+      );
+      await tapText(tester, 'Ergebnis ansehen');
+      expect(server.answers, 0);
+      expect(server.acknowledgements, 1);
+    },
+  );
+
+  testWidgets(
     'A new client uses local feedback with an old strict backend and never sends an unsupported extra or ACK',
     (tester) async {
       final server = SavedRound();
@@ -821,6 +849,32 @@ void main() {
       expect(server.acknowledgements, 0);
       expect(server.value['pending_feedback']['attempt_id'], 'saved-attempt');
       expect(server.answers, 0);
+    },
+  );
+
+  testWidgets(
+    'Saved corrupt prose has a source escape and no answer or heartbeat',
+    (tester) async {
+      final server = SavedRound();
+      server.value['material_id'] = 'source';
+      server.value['content_issue'] = {
+        'code': 'generated_correction_artifact',
+        'message': 'Öffne deine Heftseite und starte dort eine neue Übung.',
+      };
+      await openRound(tester, server);
+      expect(find.text('Diese Runde hat einen Fehler'), findsOneWidget);
+      expect(find.text('Was bedeutet cat?'), findsNothing);
+      expect(find.text('Antwort prüfen'), findsNothing);
+      await tester.pump(const Duration(seconds: 21));
+      expect(
+        server.calls.where((call) => call.contains('/heartbeat')),
+        isEmpty,
+      );
+      await tester.tap(find.text('Zur Heftseite'));
+      await tester.pumpAndSettle();
+      expect(find.text('Eigene Heftseite'), findsOneWidget);
+      expect(server.answers, 0);
+      expect(server.starts, 0);
     },
   );
 

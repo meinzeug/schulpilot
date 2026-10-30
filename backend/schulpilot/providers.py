@@ -1821,6 +1821,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
             unit_composition = bind_decimal_unit(schema, payload)
         if unit_composition is None:
+            from .package_prepared_midpoints import bind_unit as bind_midpoint_unit
+
+            unit_composition = bind_midpoint_unit(schema, payload)
+        if unit_composition is None:
             from .package_prepared_heart import bind_followup as bind_heart_followup
 
             unit_composition = bind_heart_followup(schema, payload)
@@ -2196,7 +2200,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         )
     validation_phase = "json"
     try:
-        if len(response.content) > 500_000:
+        # Encrypted reasoning metadata is not the generated learning content.
+        # Bound the entire OpenRouter envelope separately, then discard unused
+        # reasoning after collecting its usage receipt. The original 500k
+        # limit still applies to the remaining envelope and visible output.
+        envelope_limit = 4_000_000 if config.provider == "openrouter" else 500_000
+        if len(response.content) > envelope_limit:
             raise ValueError("oversize")
         try:
             raw = response.json()
@@ -2212,6 +2221,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
             billing_result = Result({}, **response_metrics(raw, (time.monotonic() - started) * 1000,
                 response.headers.get("x-request-id")))
+            for choice in raw.get("choices", []) if isinstance(raw.get("choices"), list) else []:
+                message = choice.get("message") if isinstance(choice, dict) else None
+                if isinstance(message, dict):
+                    message.pop("reasoning", None)
+                    message.pop("reasoning_details", None)
+            if len(json.dumps(raw, ensure_ascii=False, separators=(",", ":")).encode()) > 500_000:
+                raise ValueError("oversize")
         # OpenRouter can return HTTP 200 with only an error after generation
         # has started. An HTTP success is not a completed learning response.
         if config.provider == "openrouter" and raw.get("error") is not None:

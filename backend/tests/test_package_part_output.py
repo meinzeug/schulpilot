@@ -147,10 +147,11 @@ def test_normal_english_examples_and_parenthetical_pupils_text_are_not_model_ins
     package_part_output.validate(data)
 
 
-def test_observed_model_correction_note_is_not_shown_to_the_child():
+@pytest.mark.parametrize('prefix', ['؟؟', '؟؟و', ' '])
+def test_observed_model_correction_note_is_not_shown_to_the_child(prefix):
     data, _ = part()
     data['units'][0]['questions'][0]['prompt'] = (
-        'Wie viel ist 4,5 + 2,3 insgesamt, wenn du die Stellen addierst؟؟'
+        'Wie viel ist 4,5 + 2,3 insgesamt, wenn du die Stellen addierst' + prefix +
         'oops bad character Need fix.4,5 + 2,3?'
     )
     with pytest.raises(ValueError, match='interne Anweisungen'):
