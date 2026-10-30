@@ -3464,3 +3464,51 @@ Testauftrag bleibt erhalten. Der Fotoeinstieg führt bei bereits fertigem
 Tagespaket wieder zum Lernweg. Doppelte Rundenlinks stehen dort platzsparend
 hinter „Weitere Runden“; die Beschriftung des Rückblicks berücksichtigt, ob
 die Aufgaben bereits selbstständig gelöst wurden.
+
+30.10.2026 · Ausgabelänge der Luna-Route: Ein künstlicher Paketauftrag
+scheiterte mit `finish_reason=length`; alle 4.000 angeforderten Ausgabetokens
+waren laut Anbieter-Telemetrie Reasoning-Tokens. Mit demselben Modell, derselben
+Denkstufe und dem vorhandenen Azure-Endpunkt gelang ein separat reservierter
+künstlicher Kontrollaufruf mit 8.000 Ausgabetokens. Danach wurde derselbe
+künstliche Schultag über den Fotoassistenten erneut vorbereitet und das Paket
+bereitgestellt. Die produktive Luna-Routenobergrenze wurde auf 8.000 erhöht;
+Modell, Denkstufe, Upstream und Reservierungen wurden nicht verändert. Eine
+Operator-Sicherung der vorherigen Routingkonfiguration liegt außerhalb des
+Repos. Die reguläre produktive Prüfung mit festen künstlichen Bild-, Aufgaben-
+und Paketaufrufen bestand, und die technische Sperre wurde aufgehoben. Die
+Beobachtungen garantieren keinen Erfolg beliebiger zukünftiger Anfragen.
+
+Der anschließende mobile Test einer Vergleichsetappe verwendete eine echte
+künstliche KI-Ausgabe. Der kleinere Bruch wurde als falsch zurückgemeldet, der
+richtige zweite Versuch als erneuter Versuch und die zweite selbstständige
+Antwort separat erfasst. Der Fotoeinstieg führte bei einem bereits vorbereiteten
+Tag ohne neuen KI-Auftrag zurück zum Lernweg. Der 30-Tage-Alltagstest ist zum
+Zeitpunkt dieses Eintrags noch nicht abgeschlossen.
+
+30.10.2026 · Weitere künstliche Tests: Eine Englisch-Kurzantwort `ed` wurde
+zurückgewiesen, weil die Endung nur innerhalb eines Wortes in der Quelle stand.
+Die sachlich richtige Ablehnung wurde wegen des Wortes „belegt“ irrtümlich als
+beschäftigter Anbieter angezeigt; neu und für gespeicherte Altfehler wird diese
+Kategorie richtig dargestellt. Für ausdrücklich durch einen Pfeil verbundene
+Sprachbeispiele bindet der versionierte Grafikvertrag die Frage an einen
+vollständigen Originalausdruck im Fragesatz und begrenzt kurze Antworten auf
+wörtliche Wörter des dargestellten Beispiels. Eine zusätzliche Prüfung weist
+beobachtete interne Modellanweisungen und unsichtbare Richtungssteuerzeichen
+in generierten Texten zurück. Sie ist eine begrenzte Prüfung, kein Nachweis,
+dass alle denkbaren unverständlichen oder falschen Ausgaben erkannt werden.
+
+Eine weitere künstliche Biologieseite trennte die Aufnahme durch Blätter und
+Wurzeln in eigene Sätze. Die bestehende, quellengebundene Pflanzengrafik
+unterstützt nun auch diese ausdrücklich belegte Satzform. Im isolierten
+390-Pixel-Browsertest wurde das zuvor zurückgewiesene Paket nach einem bewusst
+angestoßenen neuen Versuch mit einem echten Anbieteraufruf erstellt. Beide
+Grafikphasen und die beiden quellengebundenen Fragen waren bedienbar; nach
+vorher geöffneter Erklärung wurden die Antworten als unterstützt ausgewiesen.
+Der Test nutzt ein künstliches Konto und eine isolierte Testuhr, nicht Junas
+Lernstand oder eine veränderte Uhr des Produktionsservers. Die sichtbare
+In-App-Benachrichtigung für das vorherige Englischpaket führte zum passenden
+Schultag; eine native Firebase-Zustellung ist damit nicht belegt.
+Eine spätere separate Englischprobe wurde vom Anbieter mit einem internen
+Anbieterfehler abgebrochen; ein anderer Kontrollaufruf wurde wegen eines in
+fremden Fragetext eingefügten Grafikausschnitts verworfen. Der sichere
+Englisch-Erzeugungsweg ist damit nicht für beliebige Antworten nachgewiesen.

@@ -394,6 +394,10 @@ def preparation_data(db, day, child=None):
     error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
     if error_code == "unknown" and error:
         error_code = message_code(error)
+    if error_code == "provider_busy" and error and message_code(error) == "invalid_output":
+        # Older builds misclassified a source that was "nicht ... belegt"
+        # as a busy provider. Keep the saved error; correct only its display.
+        error_code = "invalid_output"
     if can_retry and not blocker and error_code == "cost_preflight" and job and not new_part_contract:
         failed_usage = db.scalar(select(Usage).where(Usage.job_id == job.id).order_by(Usage.created.desc()).limit(1))
         config = db.get(ProviderConfig, 1)

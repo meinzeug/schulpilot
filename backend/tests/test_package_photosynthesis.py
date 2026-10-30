@@ -10,6 +10,35 @@ from test_package_prepared_graphics import bind, payload_for, wire_step
 
 SOURCE = ("Pflanzen und Photosynthese\n\nPflanzen nehmen Wasser und Kohlenstoffdioxid auf.\n"
           "Mit Licht bilden sie Zucker und geben Sauerstoff ab.")
+SOURCE_PARTS = ("Pflanzen brauchen Licht\n\nBlätter nehmen Kohlenstoffdioxid aus der Luft auf.\n"
+                "Die Wurzeln nehmen Wasser auf.\nMit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.")
+
+
+def test_leaf_and_root_wording_compiles_the_exact_three_source_sentences():
+    selected = list(bases(SOURCE_PARTS))
+    assert len(selected) == 1
+    block = selected[0]
+    assert block['source_excerpt'] in SOURCE_PARTS
+    assert block['labels'] == ['Wasser', 'Kohlenstoffdioxid', 'Zucker', 'Sauerstoff']
+    assert [phase['highlight'] for phase in block['scene']['steps']] == [['o0', 'o1'], ['o2', 'o3']]
+    assert all(not phase['edges'] for phase in block['scene']['steps'])
+    payload = payload_for(SOURCE_PARTS, 'Biologie')
+    with DB() as db:
+        payload['visual_context']['references'] = visual_references.candidates(db, 'Biologie', SOURCE_PARTS, package_prepared=True)
+    _, binding = bind(payload)
+    assert binding is not None
+    assert all(not row['term_in_source'] for row in binding.candidates)
+    assert binding.question_bound(binding.candidates[0], {'prompt': 'Was nehmen Pflanzen auf?'})
+    assert not binding.question_bound(binding.candidates[0], {'prompt': 'Was nehmen Pflanzen bei Fotosynthese auf?'})
+
+
+@pytest.mark.parametrize('source', [
+    SOURCE_PARTS.replace('nehmen Wasser auf', 'nehmen kein Wasser auf'),
+    SOURCE_PARTS.replace('geben Sauerstoff ab', 'nehmen Sauerstoff auf'),
+    SOURCE_PARTS.replace('Blätter nehmen Kohlenstoffdioxid', 'Blätter nehmen Sauerstoff'),
+])
+def test_leaf_and_root_variant_never_invents_missing_or_negated_facts(source):
+    assert not list(bases(source))
 
 
 @pytest.mark.parametrize("known", [False, True])

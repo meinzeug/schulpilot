@@ -679,7 +679,8 @@ def validate_factual_package(data, payload, *, allow_matching=False):
                     )
                 if not re.search(r"(?<!\w)" + re.escape(answer) + r"(?!\w)", source):
                     raise ProviderError(
-                        "Eine kurze Sachantwort ist nicht im bestätigten Material belegt. Das Paket wurde nicht übernommen."
+                        "Eine kurze Sachantwort ist nicht im bestätigten Material belegt. Das Paket wurde nicht übernommen.",
+                        code="invalid_output",
                     )
 
 
@@ -1622,6 +1623,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Jede kurze Texteingabe soll nur einen klaren Begriff oder Zusammenhang verlangen. "
                 "Bei Fächern außer Mathematik frage nach genau einem wörtlich im zugehörigen "
                 "materials.content belegten Begriff oder kurzen Ausdruck. Verwende ihn unverändert als answer. "
+                "Auch in Sprachaufgaben muss bei short die vollständige Antwort dort als eigener Ausdruck stehen; "
+                "eine bloße Endung innerhalb eines Wortes oder eine erfundene Form ist kein eigener Beleg. "
+                "Falls das nicht möglich ist, wähle eine verständliche Auswahlaufgabe zum bestätigten Beispiel. "
                 + ("Verwende dort choice, short, eine belegte match-Zuordnung oder grouped mit explizitem Beleg je Feld, keine gap-Aufgabe. "
                    if compact_openrouter else "Verwende dort ausschließlich choice/short, keine gap- oder match-Aufgabe. ")
                 + "Eine short-Antwort hat höchstens "

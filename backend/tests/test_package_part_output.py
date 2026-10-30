@@ -124,3 +124,41 @@ def test_visible_problem_data_can_still_be_named_in_prompt():
     data, _ = part()
     data['units'][0]['questions'][0]['prompt'] = 'Beim Bruch 2/3: Welche Zahl ist der Nenner?'
     package_part_output.validate(data)
+
+
+@pytest.mark.parametrize('field', ['prompt', 'explanation', 'hint'])
+def test_model_self_instructions_are_rejected_without_changing_the_generated_content(field):
+    data, _ = part()
+    question = data['units'][0]['questions'][0]
+    leaked = "Welche Form passt? [The prompt's form selection should be grounded; options] Actually options. Keep:Today I play."
+    if field == 'hint':
+        question['hints'][0] = leaked
+    else:
+        question[field] = leaked
+    before = copy.deepcopy(data)
+    with pytest.raises(ValueError, match='interne Anweisungen'):
+        package_part_output.validate(data)
+    assert data == before
+
+
+def test_normal_english_examples_and_parenthetical_pupils_text_are_not_model_instructions():
+    data, _ = part()
+    data['units'][0]['questions'][0]['prompt'] = 'Vergleiche „I play“ und „I played“. Welche Form steht für gestern?'
+    package_part_output.validate(data)
+
+
+def test_model_source_and_prompt_planning_does_not_reach_pupil():
+    data, _ = part()
+    data['units'][0]['questions'][0]['prompt'] = (
+        'Welche Verbform steht für gestern? [Full source sentence yes]. '
+        'Which answer is cleaned. But problem prompt requires the original sentence.'
+    )
+    with pytest.raises(ValueError, match='interne Anweisungen'):
+        package_part_output.validate(data)
+
+
+def test_invisible_direction_controls_in_generated_question_are_rejected():
+    data, _ = part()
+    data['units'][0]['questions'][0]['prompt'] = 'Welche Form passt؟\u200f؟ Today I play.'
+    with pytest.raises(ValueError, match='interne Anweisungen'):
+        package_part_output.validate(data)

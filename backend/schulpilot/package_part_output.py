@@ -14,6 +14,14 @@ REVISION = "package-part-output-1"
 GRAPHIC_SCHEMA_REVISION = "package-part-graphics-4"
 _REPEATED_WORD = re.compile(r"(?<!\w)([^\W\d_]{2,40})(?:[\s,;]+\1){5,}(?!\w)", re.IGNORECASE)
 _SOLUTION_VISUAL_IN_PROMPT = re.compile(r"\b(?:lösungs|antwort)(?:grafik|bild|darstellung|szene)\b", re.IGNORECASE)
+_MODEL_INSTRUCTIONS = re.compile(
+    r"\[\s*(?:the\s+)?(?:prompt|question|answer|options?)(?:['’]s)?\b"
+    r"|\[\s*(?:full\s+)?source\s+(?:sentence|text)\b"
+    r"|\b(?:actually|instead),?\s+(?:options?|the\s+(?:question|answer|prompt))\b"
+    r"|\b(?:but|the)\s+(?:problem\s+)?prompt\s+(?:requires|should|needs)\b"
+    r"|\bkeep\s*:\s*", re.IGNORECASE,
+)
+_HIDDEN_DIRECTION = re.compile(r"[\u061c\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069]")
 
 
 def enabled(payload):
@@ -257,7 +265,15 @@ def validate(data):
     for unit in units:
         if len(unit["questions"]) != 2 or len(unit["explanation"]) > 900:
             raise ValueError("Der Lernpaketteil überschreitet den begrenzten Umfang.")
+        generated_texts = [unit["explanation"]]
+        for item in [unit, *unit["questions"]]:
+            generated_texts.extend(step["text"] for step in (item.get("explanation_steps") or []))
+        if any(_MODEL_INSTRUCTIONS.search(text) or _HIDDEN_DIRECTION.search(text) for text in generated_texts):
+            raise ValueError("Eine Aufgabe enthält interne Anweisungen statt eines verständlichen Fragetexts.")
         for question in unit["questions"]:
+            if any(_MODEL_INSTRUCTIONS.search(text) or _HIDDEN_DIRECTION.search(text)
+                   for text in (question["prompt"], question["explanation"], *question["hints"])):
+                raise ValueError("Eine Aufgabe enthält interne Anweisungen statt eines verständlichen Fragetexts.")
             if any(_REPEATED_WORD.search(text) for text in (question["prompt"], question["explanation"], *question["hints"])):
                 raise ValueError("Eine Aufgabe enthält eine stark wiederholte Formulierung.")
             if _SOLUTION_VISUAL_IN_PROMPT.search(question["prompt"]):
@@ -298,6 +314,8 @@ belegte Phasen mit sinnvollen Beziehungen. Keine ausführliche Präsentation mit
 Alle Aufgaben, Hinweise, Lösungen, Zahlen, Einheiten und wörtlichen Belege bleiben vollständig
 und müssen sämtliche Quellen-, Fach-, Offenlegungs- und Grafikregeln erfüllen.
 Die Frage steht für sich und verweist nie auf eine Lösungsgrafik oder spätere Lösungsdarstellung.
+Schreibe ausschließlich den fertigen Text für das Kind. Keine internen Überlegungen,
+Arbeitsanweisungen, Platzhalter oder nachträglich angehängten Prüfvermerke ausgeben.
 Nenne die gesuchte Antwort nicht vorab in der Frage; notwendige Angaben und Beispiele bleiben erhalten.
 Keine fehlenden Daten erfinden, keine Originalquelle oder Antwort zum Einpassen verkürzen.
 Dies ist weder der gesamte Lernstoff noch ein Nachweis für bereits beherrschte Fähigkeiten.

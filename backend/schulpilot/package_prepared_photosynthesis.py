@@ -1,7 +1,7 @@
 """A bounded, literal source-bound illustration for one explicit science relation.
 
-This is not a general inference engine: only both complete source sentences in
-the stated form qualify. No model output, photo or saved answer is rewritten.
+This is not a general inference engine: only explicitly supported complete
+source sentences qualify. No model output, photo or saved answer is rewritten.
 """
 import copy
 import re
@@ -10,7 +10,7 @@ from . import package_prepared_graphics as prepared
 from .subject_content import PROFILES, Graphic, validate_question
 
 REFERENCE = "biology.photosynthesis.exchange"
-REVISION = "photosynthesis-exchange-1"
+REVISION = "photosynthesis-exchange-2"
 PROMPT_PATTERN = r"([Pp]flanzen.*(?:[Ff]oto|[Pp]hoto)synthese|(?:[Ff]oto|[Pp]hoto)synthese.*[Pp]flanzen)"
 TERM = re.compile(r"\b(?:foto|photo)synthese\b", re.IGNORECASE)
 _SOURCE = re.compile(
@@ -18,12 +18,23 @@ _SOURCE = re.compile(
     r"Mit\s+(Licht)\s+bilden\s+sie\s+(Zucker)\s+und\s+geben\s+(Sauerstoff)\s+ab\s*\.",
     re.IGNORECASE,
 )
+_SOURCE_PARTS = re.compile(
+    r"\bBlätter\s+nehmen\s+(Kohlenstoffdioxid)\s+aus\s+der\s+Luft\s+auf\s*\.\s*"
+    r"Die\s+Wurzeln\s+nehmen\s+(Wasser)\s+auf\s*\.\s*"
+    r"Mit\s+(Licht)\s+bilden\s+(Pflanzen)\s+(Zucker)\s+und\s+geben\s+(Sauerstoff)\s+ab\s*\.",
+    re.IGNORECASE,
+)
 
 
 def bases(content):
-    for match in _SOURCE.finditer(content):
+    matches = [(match, False) for match in _SOURCE.finditer(content)]
+    matches.extend((match, True) for match in _SOURCE_PARTS.finditer(content))
+    for match, parts in sorted(matches, key=lambda row: row[0].start()):
         quote = match.group(0)
-        plants, water, carbon, light, sugar, oxygen = match.groups()
+        if parts:
+            carbon, water, light, plants, sugar, oxygen = match.groups()
+        else:
+            plants, water, carbon, light, sugar, oxygen = match.groups()
         labels = [water, carbon, sugar, oxygen]
         objects = [{"id": f"o{i}", "label": label, "shape": "box", "tone": "neutral"}
                    for i, label in enumerate(labels)]
@@ -88,7 +99,7 @@ def compile_candidates(payload):
 class Binding(prepared.Binding):
     @property
     def rules(self):
-        return ("\nphotosynthesis-exchange-1: Wähle eine angebotene Grafik-ID derselben Quelle und Aufdeckstufe. "
+        return ("\nphotosynthesis-exchange-2: Wähle eine angebotene Grafik-ID derselben Quelle und Aufdeckstufe. "
                 "Die Grafik hebt die im Original ausdrücklich aufgenommenen beziehungsweise gebildeten "
                 "oder abgegebenen Stoffe hervor. Keine neuen Stoffe oder Pfeile erfinden. "
                 "Übernimm den mitgelieferten quellengebundenen Erklärungstext unverändert; er gilt für beide Bildzustände. "

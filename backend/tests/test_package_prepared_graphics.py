@@ -199,7 +199,7 @@ def test_scene_compiler_never_guesses_reverses_or_extends_a_relation(text):
 def test_explicit_nonmath_source_binding_keeps_legacy_paths_and_existing_saved_parts_unchanged():
     payload = payload_for("Wasser → Dampf.", subject="Geographie")
     assert prepared_graphics.compile_candidates(payload)
-    assert bind(payload)[1].context["revision"] == "package-source-graphics-2"
+    assert bind(payload)[1].context["revision"] == "package-source-graphics-3"
     # The new source-bound nonmath contract is explicit; legacy requests and
     # already saved canonical outputs do not acquire it retroactively.
     payload["package_partition"] = None

@@ -1,5 +1,7 @@
 """Controlled categories; never surface upstream bodies or claim zero cost."""
 
+import re
+
 from fastapi import HTTPException
 
 CODES = {
@@ -29,7 +31,7 @@ def message_code(message):
         return "cost_preflight"
     if "lernumfang" in value and ("erreicht" in value or "kostenlimit" in value):
         return "quota_exhausted"
-    if "beschäftigt" in value or "belegt" in value:
+    if "beschäftigt" in value or re.search(r"\b(?:worker|ki|anbieter|modell|dienst)\b.{0,40}\bbelegt\b", value):
         return "provider_busy"
     if "unlesbar" in value or "nicht lesbar" in value:
         return "unreadable_photo"
@@ -43,6 +45,7 @@ def message_code(message):
             "ungeprüfte",
             "ausgabe",
             "unvollständig",
+            "sachantwort ist nicht im bestätigten material belegt",
         )
     ):
         return "invalid_output"

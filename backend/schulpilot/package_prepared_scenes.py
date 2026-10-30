@@ -12,13 +12,14 @@ from .subject_content import PROFILES, Graphic, validate_question
 from .visual_reference_schemas import ExplanationStep
 from .visual_references import _meaningful
 
-REVISION = "package-source-graphics-2"
+REVISION = "package-source-graphics-3"
 WORD_PARTS_REFERENCE = "german.word_formation.parts"
+LANGUAGE_COMPARISON_REFERENCE = "language.forms.original_comparison"
 # Six full four-label scenes fit the unchanged 8000/.25 request envelope.
 # This bounds offered graphics, never the original source or its topic plan.
 MAX_SOURCE_BASE_CANDIDATES = 6
 RULES = """
-package-source-graphics-2: Wähle ausschließlich eine bereitgestellte Grafik-ID zum selben
+package-source-graphics-3: Wähle ausschließlich eine bereitgestellte Grafik-ID zum selben
 Fach, Quellenbeleg und Lernziel. presentation.blocks=[ID]. reference, source_refs und
 disclosure bleiben exakt bei derselben ID; keine neuen Titel, Beschriftungen oder
 Pfeile erfinden. source_caption benennt nur den unveränderten Originalbeleg und ist
@@ -27,9 +28,14 @@ wie explanation-guidance-1: kurz verständlich erklären, was die Grafik zeigt, 
 Kind sie liest und warum das beim belegten Lernziel hilft. Höchstens350 Zeichen und
 passend zur Offenlegungsstufe; keine verdeckte Antwort vorwegnehmen. Eine Frage mit einer Szene nennt mindestens zwei vollständige Original-
 Objektlabels. Ein Wortbausteinvergleich nennt mindestens einen vollständigen Original-
-Baustein. Verwende die sichtbaren Beschriftungen wortgetreu im Frageprompt. Antworten,
+Baustein. Ein Sprachvergleich nennt mindestens einen vollständigen Originalsatz der
+gewählten Grafik im eigentlichen Fragesatz vor dem ersten Fragezeichen. Kein fremdes
+Beispiel als Fülltext anhängen. Verwende die Beschriftungen wortgetreu. Antworten,
 Aufgabenanzahl und alle fachlichen Prüfungen bleiben unverändert. Pluszeichen belegen
 nur die sichtbare Bausteinfolge, keine Pfeilrichtung oder erfundene Wortzerlegung.
+Bei einem Sprachvergleich mit short ist die Antwort genau ein vollständiges Wort aus
+dem dargestellten Beispiel, keine daraus abgeleitete Endung. Stelle die Frage passend
+zu diesem Wort; frage nicht nach einer Endung, die im Beispiel nur Teil eines Wortes ist.
 """
 
 
@@ -47,6 +53,22 @@ def word_part_bases(content):
         yield ({"kind": "sentence", "title": labels[0], "source_excerpt": quote, "labels": labels,
                 "numbers": [], "connections": [], "marks": [], "unit": "", "variant": "",
                 "scene": None, "text_probe": None, "lab": None}, "Original-Wortbausteine: " + quote)
+
+
+def language_comparison_bases(content):
+    """Use only two complete visible examples explicitly separated by an arrow."""
+    for line in content.splitlines():
+        quote = line.strip()
+        if not quote or len(quote) > 300 or len(re.findall(r"→|->", quote)) != 1:
+            continue
+        labels = [part.strip() for part in re.split(r"→|->", quote)]
+        if (len(labels) != 2 or len(set(labels)) != 2
+                or any(not label or len(label) > 160 or re.search(r"[?؟？]", label) for label in labels)):
+            continue
+        yield ({"kind": "forms", "title": "Beispiele vergleichen", "source_excerpt": quote,
+                "labels": labels, "numbers": [], "connections": [], "marks": [], "unit": "",
+                "variant": "classification", "scene": None, "text_probe": None, "lab": None},
+               "Schau dir an, was in den beiden Beispielen gleich ist und was sich verändert.")
 
 
 def reference_supported(reference, contents):
@@ -89,15 +111,17 @@ def compile_candidates(payload):
     if subject == "Mathematik":
         return []  # The established fractional-question contract stays separate.
     result = [row for row in prepared.compile_candidates(payload) if row["kind"] == "scene"]
-    if subject != "Deutsch":
+    if subject != "Deutsch" and subject not in ("Englisch", "Französisch", "Spanisch", "Latein", "Deutsch als Zweitsprache"):
         return _bounded(result)
-    references = [row for row in context.get("references", []) if row.get("id") == WORD_PARTS_REFERENCE
+    reference_id = WORD_PARTS_REFERENCE if subject == "Deutsch" else LANGUAGE_COMPARISON_REFERENCE
+    bases = word_part_bases if subject == "Deutsch" else language_comparison_bases
+    references = [row for row in context.get("references", []) if row.get("id") == reference_id
                   and row.get("subject") == subject and type(row.get("version")) is int and row.get("digest")]
     count = len({row["block"]["source_excerpt"] for row in result})
     for source in context.get("sources", []):
         if source.get("subject") != subject or source.get("group_id") != group or not isinstance(source.get("content"), str):
             continue
-        for base, text in word_part_bases(source["content"]):
+        for base, text in bases(source["content"]):
             if count >= prepared.MAX_BASE_CANDIDATES:
                 break
             added = False
@@ -133,6 +157,10 @@ def _labels(candidate):
 
 def prompt_pattern(candidate):
     labels = _labels(candidate)
+    if candidate["kind"] == "forms":
+        # The anchor must occur in the actual question, not in unrelated
+        # filler appended after it. Never rewrite a model's question to fit.
+        return r"^[^?؟？\n]{0,159}(?:^|[^\w])(?:" + "|".join(re.escape(label) for label in labels) + r")($|[^\w])"
     if candidate["kind"] == "sentence":
         return r"(^|[^\w])(?:" + "|".join(re.escape(label) for label in labels) + r")($|[^\w])"
     gap = r"(?:[^\w]|[^\w][\s\S]*[^\w])"
@@ -150,7 +178,7 @@ class Binding(prepared.Binding):
         return False
 
     def offered(self, candidate):
-        return candidate["kind"] in ("scene", "sentence")
+        return candidate["kind"] in ("scene", "sentence", "forms")
 
     def question_bound(self, candidate, question):
         prompt = question.get("prompt")
@@ -158,6 +186,8 @@ class Binding(prepared.Binding):
             return False
         text = " ".join(unicodedata.normalize("NFC", prompt).split())
         labels = [" ".join(unicodedata.normalize("NFC", value).split()) for value in _labels(candidate)]
+        if candidate["kind"] == "forms":
+            text = re.split(r"[?؟？]", text, maxsplit=1)[0]
         matches = sum(bool(re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", text)) for label in labels)
         return matches >= (2 if candidate["kind"] == "scene" else 1) and bool(re.search(prompt_pattern(candidate), prompt))
 
@@ -176,7 +206,33 @@ def bind_schema(schema, payload):
 
     candidates = compile_candidates(payload)
     if candidates:
-        return prepared.bind_candidates(schema, Binding(tuple(candidates)), question_kinds=("scene", "sentence"), prompt_pattern=prompt_pattern)
+        def question_binding(node, candidate):
+            prompt = node["properties"]["prompt"]
+            pattern = prompt_pattern(candidate)
+            if prompt.get("pattern") and prompt["pattern"] != pattern:
+                return None
+            fixed = prompt.get("enum", [prompt["const"]] if "const" in prompt else [])
+            if fixed and not any(isinstance(value, str) and re.search(pattern, value) for value in fixed):
+                return None
+            prompt["pattern"] = pattern
+            props = node["properties"]
+            if candidate["kind"] == "forms" and "short" in props["type"].get("enum", []):
+                # Complete literal words only; suffixes like "ed" within
+                # "played" are not independent source evidence.
+                words = list(dict.fromkeys(re.findall(r"[^\W_]+(?:['’][^\W_]+)*", candidate["block"]["source_excerpt"])))
+                words = [word for word in words if 1 <= len(word) <= 80][:100]
+                if not words:
+                    return None
+                answer = props["answer"]
+                if answer.get("enum"):
+                    words = [word for word in words if word in answer["enum"]]
+                if not words:
+                    return None
+                answer["enum"] = words
+            return node
+
+        return prepared.bind_candidates(schema, Binding(tuple(candidates)),
+            question_kinds=("scene", "sentence", "forms"), question_binding=question_binding)
     binding = bind_photosynthesis(schema, payload)
     if binding is not None:
         return binding

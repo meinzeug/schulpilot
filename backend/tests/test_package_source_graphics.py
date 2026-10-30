@@ -160,6 +160,53 @@ def test_unavailable_scene_is_removed_while_existing_language_comparison_remains
     assert "language.forms.original_comparison" in encoded
 
 
+def test_english_arrow_examples_bind_each_question_to_its_own_comparison():
+    source = "Today I play. → Yesterday I played.\nToday they clean. → Yesterday they cleaned."
+    payload, schema, binding = fixture("Englisch", source)
+    assert binding is not None
+    comparisons = [row for row in binding.candidates if row["kind"] == "forms"]
+    assert len(comparisons) == 10
+    model = response(payload, binding)
+    graphic = next(row for row in comparisons if row["disclosure"] == "solution"
+                   and "clean" in row["block"]["source_excerpt"])
+    question = model["units"][0]["questions"][0]
+    question["explanation_steps"] = [wire_step(graphic)]
+    question["prompt"] = "Welche Form steht in Today I play.?"
+    with pytest.raises(ValueError, match="Frageparametern"):
+        binding.hydrate(model)
+    question["prompt"] = "Welche Form steht in Today I play.? Zur Grafik: Today they clean."
+    with pytest.raises(ValueError, match="Frageparametern"):
+        binding.hydrate(model)
+    question["prompt"] = "Welche Form steht in Today I play.؟ Today they clean."
+    with pytest.raises(ValueError, match="Frageparametern"):
+        binding.hydrate(model)
+    question["prompt"] = "Welche Form steht im QuToday they clean.ellensatz?"
+    with pytest.raises(ValueError, match="Frageparametern"):
+        binding.hydrate(model)
+    question["prompt"] = "Welche Form steht in Today they clean.?"
+    result = binding.hydrate(model)
+    assert result["units"][0]["questions"][0]["explanation_steps"][0]["presentation"]["blocks"][0]["labels"] == [
+        "Today they clean.", "Yesterday they cleaned."]
+    assert binding.question_bound(graphic, question)
+    with DB() as db:
+        visual_references.validate_output(db, PackageOutput.model_validate(result).model_dump(mode="json"), payload)
+    codec = package_output_transport.bind(package_transport.schema_projection(schema))
+    assert codec
+    def short_answer_enums(node):
+        if isinstance(node, dict):
+            props = node.get('properties', {})
+            if 'short' in props.get('type', {}).get('enum', []) and 'enum' in props.get('answer', {}):
+                yield props['answer']['enum']
+            for value in node.values():
+                yield from short_answer_enums(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from short_answer_enums(value)
+    allowed = list(short_answer_enums(schema))
+    assert any('played' in words for words in allowed)
+    assert all('ed' not in words for words in allowed)
+
+
 @pytest.mark.parametrize("subject,source,kind", CASES)
 def test_actual_http_mock_uses_checked_ids_preserves_answers_and_one_reported_bill(monkeypatch, subject, source, kind):
     import json
@@ -201,7 +248,7 @@ def test_actual_http_mock_uses_checked_ids_preserves_answers_and_one_reported_bi
         from schulpilot.package_prepared_scenes import prompt_pattern
         assert prompt_pattern(next(row for row in binding.candidates if row["disclosure"] == "solution")) in set(patterns(schema))
         sent = json.loads(body["messages"][1]["content"][0]["text"])
-        assert sent["prepared_graphics"]["revision"] == "package-source-graphics-2"
+        assert sent["prepared_graphics"]["revision"] == "package-source-graphics-3"
         assert all("block" not in row and "text" not in row and "source_caption" in row for row in sent["prepared_graphics"]["candidates"])
         assert "explanation-guidance-1" in body["messages"][0]["content"]
         assert "tatsächlich sichtbare explanation_steps.text" in body["messages"][0]["content"]

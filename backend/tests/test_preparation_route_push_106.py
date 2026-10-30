@@ -156,6 +156,31 @@ def test_retry_uses_next_actual_phase_and_preserves_original_failure(api, househ
     assert [call[0] for call in seen] == ([next_kind] if next_kind else [])
 
 
+def test_legacy_unbacked_answer_is_not_presented_as_busy(api, household, monkeypatch):
+    parent, child = household
+    _, material_id, job_id = route_case(parent, child)
+    error = "Eine kurze Sachantwort ist nicht im bestätigten Material belegt. Das Paket wurde nicht übernommen."
+    with DB.begin() as db:
+        day = SchoolDay(child_id=child["id"], school_date="2026-10-24")
+        db.add(day)
+        db.flush()
+        material = db.get(Material, material_id)
+        material.school_day_id, material.status, material.confirmed = day.id, "confirmed", True
+        material.content, material.subject = "SYNTHETIC current source", "Englisch"
+        job = db.get(Job, job_id)
+        job.status, job.error, job.error_code = "failed", error, "provider_busy"
+        day.preparation = {"status": "failed", "phase": "package", "job_id": job.id,
+            "error": error, "sources": [{"id": material.id, "revision": material.revision}]}
+        day_id = day.id
+    monkeypatch.setattr("schulpilot.job_failures.generation_availability", lambda *args, **kwargs: None)
+    with DB() as db:
+        value = preparation_data(db, db.get(SchoolDay, day_id), db.get(Child, child["id"]))
+        assert value["error_code"] == "invalid_output"
+        assert value["error"] == error
+        assert db.get(Job, job_id).error_code == "provider_busy"
+        assert not db.new and not db.dirty
+
+
 @pytest.fixture
 def completion(api, household, tmp_path):
     parent, child = household
