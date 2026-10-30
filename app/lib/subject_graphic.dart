@@ -12,6 +12,7 @@ import 'science_graphic.dart';
 import 'learning_lab.dart';
 import 'text_probe_player.dart';
 import 'language_comparison_widget.dart';
+import 'heart_pump_graphic.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
 import 'learning_graphic_scope.dart';
@@ -269,6 +270,9 @@ class SubjectGraphic extends StatelessWidget {
     }
     if (kind == 'lab') {
       return LearningLab(block, state: state, action: action);
+    }
+    if (kind == 'heart_pump') {
+      return HeartPumpGraphic(block, action: action);
     }
     if (kind == 'text_probe') {
       return TextProbePlayer(block, state: state, action: action);

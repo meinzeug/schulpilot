@@ -18,6 +18,7 @@ FRACTION_MEANING_VERSION = "fraction_meaning_v1"
 FRACTION_COMPARISON_VERSION = "fraction_comparison_v1"
 LCM_VERSION = "lcm_numeric_v1"
 CIRCUIT_VERSION = "circuit_interruption_v1"
+HEART_DIRECTION_VERSION = "heart_pump_direction_v1"
 
 
 def fraction_addition_hint(question, answer):
@@ -84,6 +85,36 @@ def circuit_interruption(question, answer):
         return result("correct", "Dein Satz beschreibt richtig, dass der Schalter den Stromkreis unterbricht.",
                       method=CIRCUIT_VERSION)
     return None  # Negation, extra claims and unknown wording remain uncertain.
+
+
+def heart_pump_direction(question, answer):
+    """Accept only the exact supported prepositional phrase for this proven task."""
+    key, prompt = question.get("answer"), question.get("prompt")
+    if (question.get("type") != "short" or question.get("language") or not isinstance(key, str)
+            or not isinstance(prompt, str) or not isinstance(answer, str)
+            or normalized(key).rstrip(".! ") != "körper"
+            or not re.fullmatch(r"wohin pumpt das herz das blut\?", normalized(prompt))):
+        return None
+    from .package_prepared_heart import REFERENCE, validate
+    from .subject_content import Graphic
+
+    for step in question.get("explanation_steps") or []:
+        if not isinstance(step, dict) or step.get("reference") != {"id": REFERENCE, "version": 1}:
+            continue
+        presentation = step.get("presentation")
+        if not isinstance(presentation, dict) or not isinstance(presentation.get("blocks"), list):
+            continue
+        for value in presentation["blocks"]:
+            try:
+                block = Graphic.model_validate(value)
+                if block.kind != "heart_pump":
+                    continue
+                validate(block, [block.source_excerpt])
+            except (ValueError, TypeError):
+                continue
+            if re.fullmatch(r"durch den körper[.! ]*", normalized(answer)):
+                return result("correct", "Genau, das Herz pumpt Blut durch den Körper.", method=HEART_DIRECTION_VERSION)
+    return None
 
 
 def fraction_comparison(question, answer):
@@ -452,6 +483,8 @@ def evaluate(question, answer):
 
         return language_evaluate(question, answer)
     if checked := circuit_interruption(question, answer):
+        return checked
+    if checked := heart_pump_direction(question, answer):
         return checked
     if checked := lcm_short_answer(question, answer):
         return checked

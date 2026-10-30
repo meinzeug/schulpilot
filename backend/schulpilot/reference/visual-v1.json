@@ -284,6 +284,16 @@
       "variant": null
     },
     {
+      "id": "biology.heart.pump",
+      "version": 1,
+      "subjects": ["Biologie"],
+      "kind": "heart_pump",
+      "purpose": "Ein einfaches Herz-und-Körper-Schema für den ausdrücklich belegten Satz, dass das Herz Blut durch den Körper pumpt; keine Darstellung von Herzklappen oder vollständigem Kreislauf.",
+      "terms": ["herz", "blut", "körper"],
+      "interaction": "Herz und Weg zum Körper in zwei bewusst gewählten Schritten betrachten.",
+      "variant": null
+    },
+    {
       "id": "biology.photosynthesis.exchange",
       "version": 1,
       "subjects": ["Biologie"],

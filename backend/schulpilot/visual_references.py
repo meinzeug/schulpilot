@@ -71,6 +71,11 @@ def candidates(db, subject, text="", *, package_prepared=False):
             if not all(re.search(r"(?<!\w)" + term + r"(?!\w)", text, re.I)
                        for term in (r"blüte", r"blatt", r"st[äe]ngel", r"wurzel")):
                 continue
+        if row.id == "biology.heart.pump":
+            from .package_prepared_heart import bases
+
+            if not package_prepared or next(bases(text), None) is None:
+                continue
         if row.id == "biology.photosynthesis.exchange":
             if not package_prepared:
                 continue  # This version requires the package's prepared-ID binder.
@@ -262,6 +267,11 @@ def _meaningful(block, recipe, *, sources=None, question=None):
         if (len(labels) < 2 or len(set(labels)) != len(labels)
                 or any(position < 0 for position in positions) or positions != sorted(positions)):
             raise ValueError("Die Zeitachse benötigt mindestens zwei verschiedene, in Reihenfolge belegte Zeitpunkte.")
+    if recipe.get("id") == "biology.heart.pump":
+        from .package_prepared_heart import validate
+
+        validate(block, sources)
+        return
     if recipe.get("id") == "biology.photosynthesis.exchange":
         from .package_prepared_photosynthesis import validate
 

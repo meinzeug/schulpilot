@@ -1278,6 +1278,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         schema["$defs"]["Presentation"]["properties"]["blocks"]["maxItems"] = 2
     if visual_functions:
         subject_content.bind_graphic_schema(schema, subjects, labs_enabled=bool(payload.get("labs_enabled")))
+        # The heart model has a dedicated, strictly source-bound reference.
+        # Do not enlarge unrelated Biology schemas or offer it without proof.
+        references = (payload.get("visual_context") or {}).get("references", [])
+        if not any(row.get("id") == "biology.heart.pump" for row in references if isinstance(row, dict)):
+            graphic = schema.get("$defs", {}).get("Graphic", {}).get("properties", {}).get("kind", {})
+            if "enum" in graphic:
+                graphic["enum"] = [kind for kind in graphic["enum"] if kind != "heart_pump"]
     if function == "coach" and payload.get("learning_goals"):
         # Partial/legacy assignment still needs a closed set. Previously only
         # fully assigned questions omitted the model-selected ID; a model could
@@ -1801,6 +1808,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     raise
                 raise ProviderError(MULTIPLES_ERROR, code="invalid_output", billing_result=Result({}, 0, 0, 0,
                     telemetry={"pre_dispatch": True}, cost_source="cancelled")) from None
+        if unit_composition is None:
+            from .package_prepared_heart import bind_followup as bind_heart_followup
+
+            unit_composition = bind_heart_followup(schema, payload)
         if unit_composition is None:
             from .package_prepared_photosynthesis import bind_followup as bind_photosynthesis_followup
 

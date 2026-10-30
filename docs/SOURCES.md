@@ -3603,3 +3603,31 @@ Fleck als unleserlich. Diese Einzelbeobachtung ist kein allgemeiner Nachweis
 für die Erkennungsqualität oder für jede Markierung. Das Foto wurde im
 isolierten 390-Pixel-Browser geprüft; es wurden keine echten Kinderangaben oder
 die Uhr des Produktionsservers verwendet. Der 30-Tage-Test bleibt offen.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 20.11.: Das künstliche
+Biologiefoto zum Herzen wurde vollständig gelesen und bestätigt. Der erste
+Paketversuch endete vor Anbieterversand, da für den belegten Zusammenhang
+keine passende Grafikreferenz angeboten wurde. Die neue versionierte Referenz
+`biology.heart.pump` bindet ein bewusst vereinfachtes eigenes Herzschema an
+den vollständigen ausdrücklich bestätigten Satz „Das Herz pumpt Blut durch
+den Körper.“ Zwei manuell wählbare Ansichten zeigen Herz beziehungsweise
+Körper; das Schema behauptet weder Anatomiedetails noch einen vollständigen
+Kreislauf. Verneinte oder anderslautende Quellen qualifizieren nicht.
+
+Nach einem ausdrücklichen erneuten Versuch erzeugte ein echter Anbieteraufruf
+in 31 Sekunden eine Runde mit zwei Aufgaben. Im mobilen Browser wurde die
+Grafik bedient und die Runde abgeschlossen. Die korrekte freie Antwort
+„durch den Körper“ blieb zunächst unklar, weil die Musterantwort „Körper“
+lautete. Eine eng an diesen belegten Fragetyp und die unveränderte Referenz
+gebundene Regel erkennt diese genaue Formulierung; die ausdrücklich ausgelöste
+Nachprüfung änderte das Ergebnis unter Erhalt des Unterstützungsnachweises.
+Auch eine bewusst angeforderte Anschlussrunde wurde mit einem echten
+Anbieteraufruf erstellt und abgeschlossen. Ihre Aufgaben wiederholten jedoch
+denselben kurzen Heftsatz; ein belastbarer Transfer auf neue Beispiele ist
+damit nicht belegt. Die längste getestete Quellenaufnahme überschritt schon
+vor diesen Änderungen die konservative Auftragsreservierung. Höchstens vier
+statt sechs vorbereitete Grafikbasen halten diesen Test unter der bestehenden
+Grenze; Quelltext, Aufgaben und Preisgrenze werden nicht gekürzt oder geändert.
+Ein zuvor unvollständiger Strukturtest wurde an die vier festen Pflanzenlabels
+angepasst. Der 30-Tage-Test, der Dezimalzahlenfall und die allgemeine Qualität
+adaptiver Aufgaben bleiben offen. Eine Android-Zustellung wurde nicht geprüft.

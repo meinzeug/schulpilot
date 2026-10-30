@@ -15,9 +15,9 @@ from .visual_references import _meaningful
 REVISION = "package-source-graphics-3"
 WORD_PARTS_REFERENCE = "german.word_formation.parts"
 LANGUAGE_COMPARISON_REFERENCE = "language.forms.original_comparison"
-# Six full four-label scenes fit the unchanged 8000/.25 request envelope.
-# This bounds offered graphics, never the original source or its topic plan.
-MAX_SOURCE_BASE_CANDIDATES = 6
+# Four full four-label scenes keep large original sources inside the existing
+# conservative request envelope. The complete source and topic plan stay intact.
+MAX_SOURCE_BASE_CANDIDATES = 4
 RULES = """
 package-source-graphics-3: Wähle ausschließlich eine bereitgestellte Grafik-ID zum selben
 Fach, Quellenbeleg und Lernziel. presentation.blocks=[ID]. reference, source_refs und
@@ -74,6 +74,10 @@ def language_comparison_bases(content):
 def reference_supported(reference, contents):
     from .package_prepared_focus import REFERENCE, SENTENCE_REFERENCE, focus_bases, sentence_bases
 
+    if reference.get("id") == "biology.heart.pump":
+        from .package_prepared_heart import bases
+
+        return any(next(bases(content), None) is not None for content in contents)
     if reference.get("id") == REFERENCE:
         return any(next(focus_bases(content), None) is not None for content in contents)
     if reference.get("id") == SENTENCE_REFERENCE:
@@ -211,6 +215,7 @@ def bind_schema(schema, payload):
     from .package_prepared_circuit import bind_schema as bind_circuit
     from .package_prepared_focus import bind_schema as bind_focus
     from .package_prepared_geography import bind_schema as bind_geography
+    from .package_prepared_heart import bind_schema as bind_heart
     from .package_prepared_photosynthesis import bind_schema as bind_photosynthesis
     from .package_prepared_sentences import bind_schema as bind_sentences
 
@@ -243,6 +248,9 @@ def bind_schema(schema, payload):
 
         return prepared.bind_candidates(schema, Binding(tuple(candidates)),
             question_kinds=("scene", "sentence", "forms"), question_binding=question_binding)
+    binding = bind_heart(schema, payload)
+    if binding is not None:
+        return binding
     binding = bind_photosynthesis(schema, payload)
     if binding is not None:
         return binding

@@ -64,7 +64,7 @@ PROFILES = {
     "Spanisch": ("forms", "picture_words"),
     "Latein": ("forms", "picture_words"),
     "Deutsch als Zweitsprache": ("forms", "picture_words", "sentence", "position"),
-    "Biologie": ("plant", "food_chain", "forms"),
+    "Biologie": ("plant", "food_chain", "forms", "heart_pump"),
     "Geographie": ("compass", "water_cycle"),
     "Geschichte": ("timeline", "statements"),
     "Physik": ("reflection", "circuit"),
@@ -246,7 +246,7 @@ class Graphic(Bounded):
         "forces",
         "money",
         "function_graph", "data_plot", "cell", "molecule", "logic_table", "circuit_network", "technical_drawing", "function_curve", "process_graph", "process_cycle",
-        "scene", "text_probe", "lab",
+        "scene", "text_probe", "lab", "heart_pump",
     ]
     title: str = Field(min_length=1, max_length=100)
     disclosure: Literal["given", "hint1", "hint2", "hint3", "solution"]
@@ -531,6 +531,10 @@ def validate_question(presentation, question, sources, allowed_kinds, *, structu
             raise ValueError("Grafik ohne wörtlichen Quellenbeleg.")
         if block.kind in science_graphics.KINDS:
             science_graphics.validate(block, question, sources)
+        if block.kind == "heart_pump":
+            from .package_prepared_heart import validate
+
+            validate(block, sources)
         if block.kind == "scene":
             learning_scenes.validate(block, question, sources)
         if block.kind == "text_probe":

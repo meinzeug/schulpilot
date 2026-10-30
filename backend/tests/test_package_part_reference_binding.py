@@ -135,6 +135,10 @@ def test_curated_variant_is_bound_even_when_base_variant_has_no_explicit_enum(va
     step["reference"]["id"] = "test." + variant
     block = step["presentation"]["blocks"][0]
     block.update(kind=kind, variant=variant, scene=None)
+    if kind == "plant":
+        # The current plant schema has four fixed positions; this is still a
+        # transport-only fixture and does not claim these labels are sourced.
+        block["labels"] = ["Blüte", "Blatt", "Stängel", "Wurzel"]
     value = binding(payload)
     assert value.decode(value.encode(data)) == data  # Structural pairing; not a source-approval claim.
     block["variant"] = ""
