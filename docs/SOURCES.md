@@ -3917,7 +3917,12 @@ jedoch interne Modellnotizen in einer Frage. Ein späterer künstlicher Test mit
 fest gebundenen Fragen und Antworten gelang technisch im 390-Pixel-Browser,
 verwendete aber bereits vorgerechnete Beispiele aus der Heftseite. Deshalb
 wurde diese experimentelle Darstellung nicht freigegeben: Neue selbstständige
-Aufgaben und die korrekte Behandlung solcher Modellnotizen bleiben offen. Die
+Aufgaben bleiben offen. Die
 Sicherheitsprüfung für unbelegte Grafiken wird nicht gelockert. Bei einem der
 Tests musste die falsch gelesene Überschrift vor der Bestätigung korrigiert
 werden. Die ursprünglichen Fehlversuche und Gebühren bleiben erhalten.
+
+Die im künstlichen Test tatsächlich beobachtete englische Selbstkorrektur des
+Modells wird für neue Paketaufgaben nun gezielt abgewiesen. Ein normaler
+englischer Beispielsatz mit „Oops“ bleibt erlaubt. Diese konkrete Prüfung ist
+keine Garantie gegen alle anderen Arten unverständlicher Modelltexte.

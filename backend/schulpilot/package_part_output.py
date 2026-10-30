@@ -19,7 +19,8 @@ _MODEL_INSTRUCTIONS = re.compile(
     r"|\[\s*(?:full\s+)?source\s+(?:sentence|text)\b"
     r"|\b(?:actually|instead),?\s+(?:options?|the\s+(?:question|answer|prompt))\b"
     r"|\b(?:but|the)\s+(?:problem\s+)?prompt\s+(?:requires|should|needs)\b"
-    r"|\bkeep\s*:\s*", re.IGNORECASE,
+    r"|\bkeep\s*:\s*"
+    r"|\boops\s+bad\s+character\s+need\s+fix\b", re.IGNORECASE,
 )
 _HIDDEN_DIRECTION = re.compile(r"[\u061c\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069]")
 
