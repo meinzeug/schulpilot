@@ -93,6 +93,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   final packageSearch = TextEditingController();
   String packageKind = 'all';
   bool receiptProblems = false;
+  final reviewStartKey = GlobalKey();
   Timer? poll;
   late String? actor = widget.state.user?['id'];
   late Json? actorAccount = widget.state.user;
@@ -400,6 +401,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           (requestGeneration != generation || ticket != readVersion)) {
         return;
       }
+      final previousReviewId = reviewId;
       setState(() {
         day = next;
         error = null;
@@ -412,6 +414,12 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           reviewId = pending.isEmpty ? null : pending.first['id'] as String;
         }
       });
+      if (state.isChild &&
+          previousReviewId != null &&
+          reviewId != null &&
+          reviewId != previousReviewId) {
+        showReviewStart(reviewId!);
+      }
       if (state.isChild) await refreshPending();
       schedule();
     } catch (e) {
@@ -2158,6 +2166,14 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       ? 'Erkennung offen'
       : 'Noch prüfen';
 
+  void showReviewStart(String id) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = reviewStartKey.currentContext;
+      if (!active || reviewId != id || target == null) return;
+      Scrollable.ensureVisible(target, alignment: 0);
+    });
+  }
+
   Future<void> chooseReviewPage(Json selected) async {
     if (!active || locked || day == null) return;
     final version = generation, epoch = reviewPickerEpoch;
@@ -2209,6 +2225,10 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                               }
                               setState(() => reviewId = page['id']);
                               closeDayDialog(dialog);
+                              if (state.isChild &&
+                                  page['id'] != selected['id']) {
+                                showReviewStart(page['id'] as String);
+                              }
                             },
                     );
                   },
@@ -2270,39 +2290,42 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OutlinedButton(
-          key: const ValueKey('school-day-page-picker'),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-          ),
-          onPressed: active && !locked
-              ? () => chooseReviewPage(selected)
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Seite ${selected['page_number']} prüfen',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+        KeyedSubtree(
+          key: reviewStartKey,
+          child: OutlinedButton(
+            key: const ValueKey('school-day-page-picker'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            onPressed: active && !locked
+                ? () => chooseReviewPage(selected)
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Seite ${selected['page_number']} prüfen',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${day!['confirmed_count']} von ${pages.length} geprüft',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
+                        Text(
+                          '${day!['confirmed_count']} von ${pages.length} geprüft',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.expand_more_rounded),
-              ],
+                  const SizedBox(width: 8),
+                  const Icon(Icons.expand_more_rounded),
+                ],
+              ),
             ),
           ),
         ),

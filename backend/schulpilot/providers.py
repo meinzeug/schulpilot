@@ -1490,7 +1490,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "einer neuen, quellengebundenen Aufgabe selbst anwenden. Vermeide bloßes Abschreiben. "
             "Bei Schwierigkeiten Hilfen zum nächsten Teilschritt anbieten, nicht sofort die Lösung verraten. "
             "Nutze ausschließlich bereits erklärte Voraussetzungen. Schwierigkeit am bestätigten Stoff "
-            "und an der Klassenstufe ausrichten, nicht durch zusätzliche unbekannte Inhalte erhöhen."
+            "und an der Klassenstufe ausrichten, nicht durch zusätzliche unbekannte Inhalte erhöhen. "
+            "Formuliere jede Aufgabe für das Kind möglichst kurz und konkret: eine klare Frage oder "
+            "Handlungsaufforderung, bei Bedarf ein kurzer Satz Kontext. Vermeide technische Überschriften "
+            "wie 'Übung – Fehlerdetektiv' und verschachtelte doppelte Verneinungen; notwendige "
+            "Informationen und eine eindeutige richtige Lösung müssen erhalten bleiben."
         )
         if payload.get("instructional_support") == "guided_example":
             instructions += (

@@ -54,7 +54,7 @@ void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   for (final width in [390.0, 1280.0]) {
     testWidgets('Saved wizard reviews every page on $width px', (tester) async {
-      tester.view.physicalSize = Size(width, 1000);
+      tester.view.physicalSize = Size(width, width == 390 ? 600 : 1000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -129,7 +129,12 @@ void main() {
         await tester.ensureVisible(button);
         await tester.tap(button);
         await tester.pumpAndSettle();
-        if (number == 1) expect(find.text('Seite 2 prüfen'), findsOneWidget);
+        if (number == 1) {
+          expect(find.text('Seite 2 prüfen'), findsOneWidget);
+          if (width == 390) {
+            expect(find.text('Seite 2 prüfen').hitTestable(), findsOneWidget);
+          }
+        }
       }
       expect(confirmations, ['page1', 'page2']);
       expect(find.text('Im Hintergrund vorbereiten'), findsOneWidget);

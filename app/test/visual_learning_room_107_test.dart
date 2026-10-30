@@ -148,7 +148,7 @@ void main() {
       expect(find.byType(FractionExplorer), findsNothing);
       expect(find.text('Was weißt du schon?'), findsOneWidget);
       expect(find.text('Erst selbst probieren'), findsOneWidget);
-      expect(find.text('Erst die Erklärung ansehen'), findsNothing);
+      expect(find.text('Erst die Erklärung ansehen'), findsOneWidget);
       expect(server.answers, 0);
       expect(server.starts, 0);
     },

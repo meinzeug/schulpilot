@@ -2046,12 +2046,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 'Probiere die erste Aufgabe. Wenn du Hilfe brauchst, gehen wir einen Schritt zusammen.',
               ),
               SizedBox(height: 12),
-              if (!entryProbePending(u))
-                OutlinedButton.icon(
-                  onPressed: () => showExplanation(context, u),
-                  icon: Icon(Icons.auto_stories_outlined),
-                  label: Text('Erst die Erklärung ansehen'),
-                ),
+              OutlinedButton.icon(
+                onPressed: () => showExplanation(context, u),
+                icon: Icon(Icons.auto_stories_outlined),
+                label: Text('Erst die Erklärung ansehen'),
+              ),
             ],
           ),
         );

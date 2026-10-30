@@ -48,7 +48,7 @@ void main() {
           probe(server, mode);
           await room.openRound(tester, server, textScale: scale);
           expect(find.text('Was weißt du schon?'), findsOneWidget);
-          expect(find.text('Erst die Erklärung ansehen'), findsNothing);
+          expect(find.text('Erst die Erklärung ansehen'), findsOneWidget);
           await tap(tester, 'Hilfe');
           expect(find.text('Was hilft dir jetzt?'), findsOneWidget);
           expect(find.text('Erklärung ansehen'), findsOneWidget);
@@ -101,8 +101,7 @@ void main() {
             return server.handle(request);
           },
         );
-        await tap(tester, 'Hilfe');
-        await tap(tester, 'Erklärung ansehen');
+        await tap(tester, 'Erst die Erklärung ansehen');
         await tester.pump(const Duration(milliseconds: 450));
         expect(find.text('Kurz erklärt'), findsOneWidget);
         expect(find.byType(AlertDialog), findsOneWidget);

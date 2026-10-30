@@ -1,3 +1,35 @@
+## 30.10.2026 · Mobiler Seitenwechsel und Listengrafiken · Version 1.38.23
+
+Beim mobilen Alltagstest wechselte die Quellenprüfung nach einer Bestätigung
+korrekt zur nächsten Seite, behielt aber die untere Scrollposition. Der
+Seitenanfang der neu gewählten Kinderseite wird nun sichtbar gemacht; normale
+Statusaktualisierungen derselben Seite verändern die Scrollposition nicht.
+Statische quellengebundene Listen mit zwei Leseschritten zeigen direkt die
+Schrittwahl; optionale Vergleichs- und Detailfunktionen stehen unter „Mehr zur
+Grafik“. Andere Szenen behalten ihre Animationssteuerung. Die KI-Anweisung
+fordert außerdem kurze, klare Aufgabenstellungen ohne unnötige Fachlabels.
+Auch beim Vorwissenscheck ist der freiwillige Einstieg in die gespeicherte
+Erklärung direkt erreichbar; das Öffnen bleibt eine ausdrückliche Aktion und
+die bestehende Bewertung erfasst spätere Antworten weiterhin als unterstützt.
+39 Grafiktests und 26 Prüfungen des Foto-/Seitenablaufs bestanden, darunter
+kleine Ansichten und große Schrift; 30 Tests prüfen den Lernraum und den
+Erklärungseinstieg. Ein weiterer künstlicher Modellaufruf
+gelang (0,0396066 USD); einzelne Formulierungen können weiterhin zu lang sein.
+
+Auf 1.38.22 wurde Junas ausdrücklich beauftragte Geschichtsetappe nach dem
+erneuten Vorbereiten mit vier Aufgaben geöffnet und anschließend pausiert;
+es wurden keine Testantworten eingetragen. Der laufende 30-Tage-Alltagstest
+verwendet einen getrennten lokalen Testhaushalt, künstliche Bilder und eine
+isoliert verstellbare Testzeit. Am ersten simulierten Tag wurden zwei Seiten
+über den mobilen Browser abgegeben; beide Paketabschnitte wurden erstellt.
+Eine falsch und anschließend richtig beantwortete Bruchfrage wurde als
+unterstützt erfasst. Die gezielt vorbereitete Anschlussübung erklärte Zähler
+und Nenner mit Grafik; zwei nach Öffnen dieser Erklärung beantwortete Fragen
+wurden ebenfalls als unterstützt gewertet. Eine In-App-Fertigmeldung öffnete
+die zugehörige Deutschrunde. Ein künstliches Noten-PDF lieferte vier Noten;
+beim erneuten Import wurden alle vier als unverändert wiedererkannt.
+Die getrennte Simulation ist damit noch nicht abgeschlossen.
+
 ## 30.10.2026 · Quellgebundene Listengrafiken für Etappen · Version 1.38.22
 
 Ein weiterer ausdrücklich beauftragter Geschichtsversuch scheiterte nach der

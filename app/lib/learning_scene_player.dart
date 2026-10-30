@@ -381,6 +381,7 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
     final description = labels.isNotEmpty
         ? labels.join(' ')
         : model.objects.map((object) => object.label).join('; ');
+    final simpleFocus = _isOriginalListFocus(model);
     return LearningGraphicFrame(
       title: title,
       action: widget.action,
@@ -463,89 +464,91 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                       ),
                   ],
                 ),
-                Slider(
-                  key: const ValueKey('scene-timeline'),
-                  value: value,
-                  max: (model.steps.length - 1).toDouble(),
-                  divisions: motion ? null : model.steps.length - 1,
-                  semanticFormatterCallback: (v) =>
-                      'Schritt ${v.round() + 1} von ${model.steps.length}',
-                  onChangeStart: active ? (_) => pause() : null,
-                  onChanged: active
-                      ? (v) {
-                          controller.stop();
-                          controller.value = v / (model.steps.length - 1);
-                          LearningGraphicScope.report(
-                            context,
-                            'scene-${v.round()}',
-                          );
-                        }
-                      : null,
-                ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    FilledButton.icon(
-                      key: const ValueKey('scene-play-pause'),
-                      onPressed: controller.isAnimating
-                          ? pause
-                          : motion
-                          ? play
-                          : null,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(48, 48),
-                        shape: const StadiumBorder(),
+                if (!simpleFocus)
+                  Slider(
+                    key: const ValueKey('scene-timeline'),
+                    value: value,
+                    max: (model.steps.length - 1).toDouble(),
+                    divisions: motion ? null : model.steps.length - 1,
+                    semanticFormatterCallback: (v) =>
+                        'Schritt ${v.round() + 1} von ${model.steps.length}',
+                    onChangeStart: active ? (_) => pause() : null,
+                    onChanged: active
+                        ? (v) {
+                            controller.stop();
+                            controller.value = v / (model.steps.length - 1);
+                            LearningGraphicScope.report(
+                              context,
+                              'scene-${v.round()}',
+                            );
+                          }
+                        : null,
+                  ),
+                if (!simpleFocus)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      FilledButton.icon(
+                        key: const ValueKey('scene-play-pause'),
+                        onPressed: controller.isAnimating
+                            ? pause
+                            : motion
+                            ? play
+                            : null,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          shape: const StadiumBorder(),
+                        ),
+                        icon: Icon(
+                          controller.isAnimating
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                        ),
+                        label: Text(
+                          controller.isAnimating ? 'Pausieren' : 'Abspielen',
+                        ),
                       ),
-                      icon: Icon(
-                        controller.isAnimating
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                      ),
-                      label: Text(
-                        controller.isAnimating ? 'Pausieren' : 'Abspielen',
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      key: const ValueKey('scene-replay'),
-                      onPressed: active
-                          ? () {
-                              if (motion) {
-                                play(replay: true);
-                              } else {
-                                controller.stop();
-                                controller.value = 0;
+                      OutlinedButton.icon(
+                        key: const ValueKey('scene-replay'),
+                        onPressed: active
+                            ? () {
+                                if (motion) {
+                                  play(replay: true);
+                                } else {
+                                  controller.stop();
+                                  controller.value = 0;
+                                }
                               }
-                            }
-                          : null,
-                      icon: const Icon(Icons.replay_rounded),
-                      label: const Text('Wiederholen'),
-                    ),
-                    IconButton(
-                      tooltip: 'Vorheriger Grafikschritt',
-                      constraints: const BoxConstraints(
-                        minWidth: 48,
-                        minHeight: 48,
+                            : null,
+                        icon: const Icon(Icons.replay_rounded),
+                        label: const Text('Wiederholen'),
                       ),
-                      onPressed: active && index > 0
-                          ? () => chooseStep(index - 1)
-                          : null,
-                      icon: const Icon(Icons.chevron_left_rounded),
-                    ),
-                    IconButton(
-                      tooltip: 'Nächster Grafikschritt',
-                      constraints: const BoxConstraints(
-                        minWidth: 48,
-                        minHeight: 48,
+                      IconButton(
+                        tooltip: 'Vorheriger Grafikschritt',
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        onPressed: active && index > 0
+                            ? () => chooseStep(index - 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_left_rounded),
                       ),
-                      onPressed: active && index < model.steps.length - 1
-                          ? () => chooseStep(index + 1)
-                          : null,
-                      icon: const Icon(Icons.chevron_right_rounded),
-                    ),
-                  ],
-                ),
+                      IconButton(
+                        tooltip: 'Nächster Grafikschritt',
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        onPressed: active && index < model.steps.length - 1
+                            ? () => chooseStep(index + 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_right_rounded),
+                      ),
+                    ],
+                  ),
               ],
               if (reducedMotion || widget.state == null) ...[
                 const SizedBox(height: 10),
@@ -556,7 +559,53 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                   style: TextStyle(color: context.palette.muted, fontSize: 13),
                 ),
               ],
-              if (model.steps.length > 1) ...[
+              if (simpleFocus)
+                ExpansionTile(
+                  key: const ValueKey('scene-focus-more'),
+                  title: const Text('Mehr zur Grafik'),
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          key: const ValueKey('scene-compare'),
+                          onPressed: active ? compare : null,
+                          icon: Icon(
+                            comparing
+                                ? Icons.view_agenda_outlined
+                                : Icons.compare_arrows_rounded,
+                          ),
+                          label: Text(
+                            comparing
+                                ? 'Einzelansicht'
+                                : 'Zustände vergleichen',
+                          ),
+                        ),
+                        TextButton.icon(
+                          key: const ValueKey('scene-reset-view'),
+                          onPressed: active ? resetView : null,
+                          icon: const Icon(Icons.restart_alt_rounded),
+                          label: const Text('Ansicht zurücksetzen'),
+                        ),
+                      ],
+                    ),
+                    ExpansionTile(
+                      key: const ValueKey('scene-object-legend'),
+                      title: const Text('Elemente der Grafik'),
+                      children: [
+                        for (final entry in model.objects.indexed)
+                          ListTile(
+                            leading: CircleAvatar(
+                              child: Text('${entry.$1 + 1}'),
+                            ),
+                            title: Text(entry.$2.label),
+                          ),
+                      ],
+                    ),
+                  ],
+                )
+              else if (model.steps.length > 1) ...[
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -584,23 +633,24 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                 const SizedBox(height: 12),
               ],
               const SizedBox(height: 14),
-              ExpansionTile(
-                key: const ValueKey('scene-object-legend'),
-                title: const Text('Elemente der Grafik'),
-                children: [
-                  for (final entry in model.objects.indexed)
-                    ListTile(
-                      leading: CircleAvatar(child: Text('${entry.$1 + 1}')),
-                      title: Text(entry.$2.label),
-                      subtitle: Text(switch (entry.$2.shape) {
-                        'circle' => 'Kreis',
-                        'triangle' => 'Dreieck',
-                        'diamond' => 'Raute',
-                        _ => 'Rechteck',
-                      }),
-                    ),
-                ],
-              ),
+              if (!simpleFocus)
+                ExpansionTile(
+                  key: const ValueKey('scene-object-legend'),
+                  title: const Text('Elemente der Grafik'),
+                  children: [
+                    for (final entry in model.objects.indexed)
+                      ListTile(
+                        leading: CircleAvatar(child: Text('${entry.$1 + 1}')),
+                        title: Text(entry.$2.label),
+                        subtitle: Text(switch (entry.$2.shape) {
+                          'circle' => 'Kreis',
+                          'triangle' => 'Dreieck',
+                          'diamond' => 'Raute',
+                          _ => 'Rechteck',
+                        }),
+                      ),
+                  ],
+                ),
               ExcludeSemantics(
                 child: Text(
                   description,
@@ -628,6 +678,28 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
       ),
     );
   }
+}
+
+// A source-list focus has no movement or relation: the two states merely
+// highlight one original entry each. Direct step chips are sufficient; keep
+// optional comparison and inspection available without crowding the lesson.
+bool _isOriginalListFocus(_Scene scene) {
+  if (scene.layout != 'grid' ||
+      scene.transitionMs != 0 ||
+      scene.steps.length != 2 ||
+      scene.objects.length < 2 ||
+      scene.objects.any((object) => object.shape != 'box') ||
+      scene.steps.any(
+        (step) => step.edges.isNotEmpty || step.highlight.length != 1,
+      )) {
+    return false;
+  }
+  return scene.steps[0].highlight.single != scene.steps[1].highlight.single &&
+      scene.objects.every(
+        (object) =>
+            scene.steps[0].placements[object.id] ==
+            scene.steps[1].placements[object.id],
+      );
 }
 
 // This illustration is only used for the exact, source-verified two-phase
