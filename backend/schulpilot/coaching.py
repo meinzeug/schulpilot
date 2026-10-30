@@ -51,6 +51,17 @@ PRACTICE_LIMIT_MESSAGE = (
 )
 
 
+def _verified_prior_checks(db, unit):
+    from . import competences
+    from .competence_models import QuestionCompetence
+
+    bindings = {row.question_id: row for row in db.scalars(
+        select(QuestionCompetence).where(QuestionCompetence.unit_id == unit.id,
+                                         QuestionCompetence.role == "prior_check"))}
+    return {q["id"] for q in unit.questions if (binding := bindings.get(q["id"]))
+            and competences.binding_current(db, binding, unit, q)}
+
+
 def observations(db, unit):
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
@@ -621,11 +632,18 @@ def context(db, unit):
         # A fraction-only catalogue must never prescribe the entire mixed
         # fraction/geometry round. Let the same reserved review propose quoted
         # goals for the complete source instead; stored catalogues remain binding.
-        if candidates and all(fraction_task_goal(q["prompt"], candidates) in candidate_ids for q in unit.questions):
+        prior_checks = _verified_prior_checks(db, unit)
+        source_questions = [(observation, question) for observation, question in
+                            zip(completed_questions, unit.questions, strict=True)
+                            if question["id"] not in prior_checks]
+        if candidates and source_questions and all(
+            fraction_task_goal(question["prompt"], candidates) in candidate_ids
+            for _, question in source_questions
+        ):
             learning_goals = candidates
             # Assignment is based on the confirmed rule and the stored prompt,
             # restored by question ID in the adapter; no model-selected IDs.
-            for observation, question in zip(completed_questions, unit.questions, strict=True):
+            for observation, question in source_questions:
                 if observation["learning_goal_id"] is None:
                     observation["learning_goal_id"] = fraction_task_goal(question["prompt"], candidates)
     snapshot = {
@@ -914,7 +932,9 @@ def save_report(
 ):
     from .learning import record
 
-    data = s.CoachingOutput.model_validate(data).model_dump()
+    # A saved review can contain server-cleared prerequisite mappings when it
+    # is loaded again for an explicitly requested follow-up exercise.
+    data = s.StoredCoachingOutput.model_validate(data).model_dump()
     goals = data["learning_goals"]
     old_goals = goals_for(db, unit)
     prescribed_goals = context(db, unit)[1]["learning_goals"]
@@ -937,23 +957,34 @@ def save_report(
         if any(re.search(r"\b(?:verstehen|lernen|beherrschen|wissen)\s*$", goal["label"], re.I) for goal in goals):
             raise ProviderError("Ein Lernziel ist zu allgemein. Benötigt wird eine konkret prüfbare Fähigkeit.")
     observations_by_id = {q["question_id"]: q for q in observations(db, unit)}
+    prior_checks = _verified_prior_checks(db, unit)
     reviews = data["question_reviews"]
     if len(reviews) != len(observations_by_id) or {r["question_id"] for r in reviews} != set(observations_by_id):
         raise ProviderError("Die KI-Rückmeldung ist nicht vollständig den beantworteten Aufgaben zugeordnet.")
     for review in reviews:
         original = observations_by_id[review["question_id"]]
         assigned_goal = original["learning_goal_id"]
+        # A separately checked prerequisite is not evidence of the selected
+        # subject goal. It may still receive feedback, but no model-selected
+        # target may turn it into an operation mastery observation.
+        verified_prior_check = review["question_id"] in prior_checks
+        if verified_prior_check and assigned_goal is None:
+            review["learning_goal_id"] = None
         if assigned_goal is not None:
             # These assignments were checked when the questions were created.
             # Keep them authoritative even for legacy/mixed provider schemas.
             if assigned_goal not in by_goal:
                 raise ProviderError("Eine gespeicherte Aufgabe verweist auf ein unbekanntes Lernziel.")
             review["learning_goal_id"] = assigned_goal
-        if review["learning_goal_id"] not in by_goal:
+        if review["learning_goal_id"] is None and verified_prior_check and assigned_goal is None:
+            pass
+        elif review["learning_goal_id"] not in by_goal:
             raise ProviderError("Die Aufgabenrückmeldung verweist auf ein unbekanntes Lernziel.")
-        if assigned_goal is None and conflicting_fraction_goal(original["prompt"], by_goal[review["learning_goal_id"]]["label"]):
+        if (review["learning_goal_id"] is not None and assigned_goal is None
+                and conflicting_fraction_goal(original["prompt"], by_goal[review["learning_goal_id"]]["label"])):
             raise ProviderError("Die Grundlagenfrage wurde einem unpassenden Rechenziel zugeordnet. Die Antworten bleiben erhalten.")
-        goal_id = fraction_task_goal(original["prompt"], goals) if assigned_goal is None else None
+        goal_id = (fraction_task_goal(original["prompt"], goals)
+                   if assigned_goal is None and not verified_prior_check else None)
         if goal_id and goal_id != review["learning_goal_id"]:
             raise ProviderError("Die Aufgabenrückmeldung passt nicht zum erkennbaren Lernziel.")
         known = observations_by_id[review["question_id"]]["deterministic_outcome"]
@@ -994,9 +1025,10 @@ def save_report(
             weak = {
                 r["learning_goal_id"]
                 for r in reviews
-                if observations_by_id[r["question_id"]]["deterministic_outcome"] != "correct"
-                or observations_by_id[r["question_id"]]["hints_used"]
-                or any(a["assisted"] for a in observations_by_id[r["question_id"]]["attempts"])
+                if r["learning_goal_id"] is not None and (
+                    observations_by_id[r["question_id"]]["deterministic_outcome"] != "correct"
+                    or observations_by_id[r["question_id"]]["hints_used"]
+                    or any(a["assisted"] for a in observations_by_id[r["question_id"]]["attempts"]))
             }
             if not set(sorted(weak)[:2]).issubset(selected):
                 raise ProviderError("Die Anschlussübungen greifen die beobachteten Schwierigkeiten nicht auf.")

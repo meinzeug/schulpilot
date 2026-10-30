@@ -350,6 +350,16 @@ class CoachingOutput(CoachingReviewOutput):
     learning_goals: list[LearningGoal] = Field(min_length=1, max_length=6)
 
 
+class StoredQuestionReview(QuestionFeedback):
+    # Only the server may clear a goal for a verified prerequisite. Provider
+    # output continues to use the stricter QuestionReview contract above.
+    learning_goal_id: Literal["g1", "g2", "g3", "g4"] | None
+
+
+class StoredCoachingOutput(CoachingOutput):
+    question_reviews: list[StoredQuestionReview] = Field(min_length=1, max_length=8)
+
+
 class NotebookPracticeSource(Strict):
     id: str = Field(pattern=r"^[a-f0-9]{32}$")
     revision: int = Field(strict=True, ge=1)

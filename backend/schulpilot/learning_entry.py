@@ -166,6 +166,7 @@ def with_learning_entry(db, child, payload, sources, *, groups=None, enabled=Fal
         for identifier in selected:
             allowed[identifier] = {"id": identifier, "subject": group["subject"]}
         units.append({"group_id": group["id"], "subject": group["subject"], "prefix": prefix,
+            "allocation_version": 2,
             "source_refs": [competences.source_ref(db, material) for material in group_sources],
             "targets": targets, "competence_ids": selected, "evidence": observations, "probes": probes,
             "entry_mode": "existing_contract" if protected else "reuse_evidence" if reuse else "prerequisite_probe" if probes else "source_probe"})
@@ -178,10 +179,14 @@ def with_learning_entry(db, child, payload, sources, *, groups=None, enabled=Fal
 
 
 def _specs(plan, count):
-    probes = plan["probes"][:count]
+    # Preserve the contract of already reserved jobs. New short rounds reserve
+    # at least one place for applying the selected source, so a two-question
+    # round does not consist entirely of unrelated prerequisite checks.
+    limit = max(0, count - 1) if plan.get("allocation_version") == 2 else count
+    probes = plan["probes"][:limit]
     if plan["entry_mode"] == "source_probe":
         probes = [{"id": "prior_" + plan["prefix"] + "_" + str(index + 1), "role": "prior_check"}
-            for index in range(min(2, count))]
+            for index in range(min(2, limit))]
     return [*probes, *[{"id": "main_" + plan["prefix"] + "_" + str(index + 1), "role": "practice"}
         for index in range(count - len(probes))]]
 

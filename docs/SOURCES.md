@@ -3785,3 +3785,44 @@ die bereits vorhandene allgemeine Ägypten-Einführung wurde nicht umgeschrieben
 Die Anzeige des Diagnoseergebnisses wurde zusätzlich in einer ausdrücklich
 gekennzeichneten lokalen Testkopie im 390-Pixel-Browser kontrolliert; daraus
 wurden keine Antworten eingetragen und kein neuer KI-Erfolg behauptet.
+
+30.10.2026 · Isolierter Alltagstest, simulierte Schultage 30.11. und 01.12.:
+Zwei selbst erzeugte Mathematikseiten zeigten Regeln und Beispiele zur Addition
+gleichnamiger Brüche. Bei beiden stimmten die erkannten Gleichungen mit den
+Fotos überein; von der jeweiligen Zeichnung wurde die Beschriftung erkannt,
+nicht jedoch ihre vollständige räumliche Beschreibung.
+
+Im ersten Paket belegten zwei fest geplante Vorwissensfragen sämtliche Plätze
+der ersten Runde. Die Einführung zeigte die Bedeutung eines Bruchs, erklärte
+aber die Addition nicht. Der anschließende KI-Rückblick scheiterte, weil die
+Vorwissensfragen keinem passenden fachlichen Lernziel zugeordnet waren. Die
+Antworten blieben gespeichert. Bei neuen Planungen erhält eine kurze Runde nun
+mindestens einen Platz für die Anwendung des Themas; bereits reservierte
+Aufträge behalten ihre ursprüngliche Planung. Ein Rückblick ordnet eine anhand
+der eigenen Quellenrevision und Aufgabenidentität überprüfte Vorwissensfrage
+nicht automatisch einem anderen Rechenziel zu. Sie bleibt eine beobachtete
+Antwort, ist aber kein Nachweis für dieses Rechenziel. Gespeicherte Berichte
+mit solchen bewusst offenen Zuordnungen lassen sich auch für getrennt und
+ausdrücklich angeforderte Anschlussübungen wieder einlesen; das Anbieterformat
+für neu erzeugte Zuordnungen bleibt unverändert streng.
+
+Im künstlichen Konto gelang ein ausdrücklicher erneuter KI-Rückblick. Eine
+anschließend angeforderte Übung scheiterte zunächst beim Einlesen des Berichts;
+nach Korrektur und einem ausdrücklich ausgelösten weiteren Versuch entstand
+eine Runde mit einer Zählerfrage und einer Additionsaufgabe. Beide wurden im
+390-Pixel-Browser richtig beantwortet. Die Addition wiederholte allerdings ein
+Beispiel der Quellseite; ein Transfer auf unbekannte Zahlen ist dadurch für
+diese Anschlussrunde nicht belegt.
+
+Am folgenden simulierten Schultag wurde nach einem echten neuen KI-Aufruf eine
+Runde mit einer Vorwissensfrage und anschließend einer Additionsaufgabe erzeugt.
+Die textliche Erklärung nannte die Regel und ein belegtes Beispiel; die
+Additionsaufgabe verwendete neue Zahlen und wurde nach der Erklärung richtig als
+unterstützt bewertet. Der KI-Rückblick ordnete die Vorwissensfrage keinem
+Additionsziel und die Rechenaufgabe dem Additionsziel zu. Die passende Grafik
+war in diesem Durchlauf noch nicht verfügbar und muss gesondert verbessert
+werden. Ein ausdrücklich ausgelöster zusätzlicher Auftrag zur grafischen
+Erklärung scheiterte an der bestehenden Strukturprüfung; die Ursache der
+Modellausgabe ist damit noch nicht geklärt. Aufgaben, Antworten und Rückblick
+blieben erhalten. Das sind künstliche lokale Tests; keine Android-Zustellung
+wurde geprüft.

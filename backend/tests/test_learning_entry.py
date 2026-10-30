@@ -4,19 +4,42 @@ import copy
 import json
 
 import pytest
-from schulpilot import competences, learning_entry
+from schulpilot import coaching, competences, learning_entry
 from schulpilot.competence_models import CompetenceSource, QuestionCompetence
-from schulpilot.db import DB, Activity, Attempt, Child, LearningMemory, LearningUnit, Material, UnitSource, Usage, now
+from schulpilot.db import (
+    DB,
+    Activity,
+    Attempt,
+    Child,
+    LearningMemory,
+    LearningUnit,
+    Material,
+    UnitCoaching,
+    UnitSource,
+    Usage,
+    now,
+)
 from schulpilot.learning import unit_data
 from schulpilot.learning_controller import decide, projection, source_state
 from schulpilot.providers import ProviderError, indexed_choice_schema, request_provider
-from schulpilot.schemas import Question, UnitOutput
+from schulpilot.schemas import CoachingOutput, Question, StoredCoachingOutput, UnitOutput
 from schulpilot.subject_registry import identity
 from sqlalchemy import func, select
 from test_learning_scenes import _config, _transport
 from test_model_routing import setup_policy
 
 CONTENT = "Brüche erweitern: Multipliziere Zähler und Nenner mit derselben Zahl. Beispiel: 1/2 = 2/4."
+
+
+def test_new_short_entry_keeps_a_source_application_and_old_jobs_keep_their_contract():
+    plan = {"entry_mode": "prerequisite_probe", "prefix": "x", "probes": [
+        {"id": "prior_a", "role": "prior_check"}, {"id": "prior_b", "role": "prior_check"}]}
+    assert [item["role"] for item in learning_entry._specs(plan, 2)] == ["prior_check", "prior_check"]
+    plan["allocation_version"] = 2
+    assert [item["role"] for item in learning_entry._specs(plan, 2)] == ["prior_check", "practice"]
+    assert [item["role"] for item in learning_entry._specs(plan, 3)] == ["prior_check", "prior_check", "practice"]
+    plan.update(entry_mode="source_probe", probes=[])
+    assert [item["role"] for item in learning_entry._specs(plan, 2)] == ["prior_check", "practice"]
 
 
 @pytest.fixture
@@ -106,6 +129,42 @@ def test_only_three_short_prerequisites_share_the_normal_five_question_round(sou
         assert all(probe["type"] == "short" for probe in plan["probes"])
         assert len(value["learning_entry"]["references"]) == 3
         assert db.scalar(select(func.count()).select_from(Usage)) == 0
+
+
+@pytest.mark.parametrize("valid_binding", [True, False])
+def test_coach_keeps_verified_prerequisites_out_of_operation_evidence(source, valid_binding):
+    _, child, mid = source
+    with DB.begin() as db:
+        value = payload(db, child["id"], mid)
+        unit = saved(db, child["id"], mid, value)
+        unit.questions = unit.questions[:2]  # a synthetic old two-probe round
+        item = UnitCoaching(unit_id=unit.id, decision="pause", status="pending", report={})
+        db.add(item)
+        db.flush()
+        if not valid_binding:
+            db.get(QuestionCompetence, (unit.id, unit.questions[0]["id"])).question_digest = "0" * 64
+            db.flush()
+        data = {"explanation": "Die Antworten zeigen den aktuellen Stand.",
+            "learning_goals": [{"id": "g1", "label": "Brüche erweitern", "source_excerpt": CONTENT}],
+            "question_reviews": [{"question_id": q["id"], "learning_goal_id": "g1",
+                "outcome": "uncertain", "feedback": "Das kannst du weiter üben."} for q in unit.questions],
+            "next_unit": None}
+        sources = [{"id": mid, "revision": db.get(Material, mid).revision}]
+        if not valid_binding:
+            with pytest.raises(ProviderError, match="Grundlagenfrage"):
+                coaching.save_report(db, unit, item, data, sources, record_review=False)
+            return
+        coaching.save_report(db, unit, item, data, sources, record_review=False)
+        assert [row["learning_goal_id"] for row in item.report["question_reviews"]] == [None, None]
+        saved_report = {key: copy.deepcopy(item.report[key]) for key in CoachingOutput.model_fields if key != "next_unit"}
+        for review in saved_report["question_reviews"]:
+            review.pop("assessment_kind", None)
+        saved_report["next_unit"] = None
+        StoredCoachingOutput.model_validate(saved_report)  # A later follow-up can reuse this report.
+        with pytest.raises(ValueError):
+            CoachingOutput.model_validate(saved_report)  # Provider wire contract remains strict.
+        db.flush()
+        assert all(row["practice"]["practiced_tasks"] == 0 for row in coaching.goal_states(db, unit))
 
 
 @pytest.mark.parametrize("provider", ["openai", "openrouter", "codex"])
