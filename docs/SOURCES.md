@@ -3874,3 +3874,25 @@ Relationen oder zusätzliche Fakten zu erfinden. Der 390-Pixel-Browser zeigte
 beide wählbaren Lesefokusse. Zwei passende Auswahlfragen wurden nach Öffnen der
 Erklärung richtig und als unterstützt bewertet. Die Lesekarten sind keine
 geografische Karte und belegen keinen Transfer auf neue Orte.
+
+30.10.2026 · Isolierter Alltagstest, simulierte Schultage 04., 07. und
+08.12.: Bei einer künstlichen Deutschseite enthielt eine erzeugte Frage
+unnötige Wiederholungen und eine abgebrochene Formulierung. Neue Fragen für
+die versionierte Satzdarstellung sind nun längenbegrenzt und müssen den
+Originalsatz, geschlossene Anführungszeichen und die regulären Quellenprüfungen
+enthalten. Bestehende Aufgaben und Antworten werden nicht umgeschrieben. Ein
+echter Modellaufruf zur nächsten künstlichen Seite erzeugte zwei kurze,
+passende Fragen; eine selbstständige und eine nach Erklärung unterstützte
+richtige Antwort wurden im 390-Pixel-Browser entsprechend unterschieden.
+
+Die Erklärung zeigte dort aber „Wer oder was?“ als zerlegte Satzgrafik. Diese
+Textzeile war durch den Zeilenumbruch der Erkennung als Beispielsatz angeboten
+worden. Fragefragmente werden nun ausgeschlossen und vorhandene belegte
+Beispielsätze gegenüber Definitionen bevorzugt. Bei einer weiteren künstlichen
+Seite wurde „Der Vogel baut ein Nest.“ vollständig erkannt. Der erste echte
+Paketauftrag scheiterte nach Modellantwort an einer Strukturprüfung; die
+gespeicherte Diagnose benennt die genaue verletzte Regel nicht. Eine einmalige
+ausdrückliche Wiederholung gelang. Die mobile Erklärung zeigte anschließend
+den tatsächlichen Satz in Wortkästen, und zwei richtige freie Antworten wurden
+nach geöffneter Erklärung als unterstützt erfasst. Der erfolgreiche
+Wiederholungsversuch beweist keine allgemeine Behebung des ersten Fehlers.

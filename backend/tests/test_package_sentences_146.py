@@ -20,6 +20,16 @@ def fixture():
     return value
 
 
+def test_example_is_preferred_to_question_fragment_and_definition():
+    source = ("Satzglieder\nDas Subjekt beantwortet die Frage:\nWer oder was?\n"
+              "Das Prädikat sagt, was geschieht.\nDie Katze jagt die Maus.\n"
+              "Subjekt: Die Katze\nPrädikat: jagt\nObjekt: die Maus")
+    candidates = list(prepared.sentence_bases(source))
+    assert [c["source_excerpt"] for c in candidates] == ["Die Katze jagt die Maus."]
+    assert candidates[0]["title"] == "Satz zum Anschauen"
+    assert list(prepared.sentence_bases("Das Subjekt ist ein Satzglied."))[0]["source_excerpt"] == "Das Subjekt ist ein Satzglied."
+
+
 def output(value):
     _, binding = bind(value)
     intro = next(c for c in binding.candidates if c["disclosure"] == "given")
@@ -50,6 +60,20 @@ def test_only_complete_original_words_are_compiled_without_grammatical_role_clai
     with DB() as db:
         visual_references.validate_output(db, hydrated, value)
     assert value == before and schema
+
+
+@pytest.mark.parametrize("prompt", [
+    'Im Satz „Der Hund schläft.“: Welche Person? ' + 'Zusatztext ' * 20,
+    'Im Satz „Der Hund schläft.“: Frage: „Was tut der Hund?',
+    'Im Satz „Der Hund schläft.“: Die Grafik zeigt den Satz. Wer schläft?',
+])
+def test_long_incomplete_or_technical_sentence_prompt_is_rejected(prompt):
+    value = fixture()
+    _, binding = bind(value)
+    data = output(value)
+    data["units"][0]["questions"][0]["prompt"] = prompt
+    with pytest.raises(ValueError):
+        binding.hydrate(data)
 
 
 @pytest.mark.parametrize("text", ["Mila | Wer liest?", "1. Subjekt bestimmen:", "Der Hund", "Der Hund schläft. Mia liest.",
