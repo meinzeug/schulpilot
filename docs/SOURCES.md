@@ -3721,3 +3721,40 @@ dieser Runde blieb auch die letzte Rückmeldung sichtbar, bis im Browser das
 Ergebnis ausdrücklich geöffnet wurde. Die Beispiele verwenden allerdings
 weiterhin Sätze der fotografierten Seite; ein Transfer auf unbekannte Verben
 ist dadurch nicht belegt.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 26.11.: Eine selbst erzeugte
+Physikseite behandelt Licht und Schatten. Das Landesinstitut ordnet „Schatten
+und Bilder untersuchen“ dem sechsten Schuljahrgang der Sekundarschule zu:
+[Fachliche Orientierungen Physik](https://www.bildung-lsa.de/files/0cf06e8b1aa571c799b255202ea18103/Fachliche_Orientierung_Physik.pdf).
+Die Fotoerkennung erfasste Text und Bildbeschriftungen, jedoch keine räumliche
+Beschreibung der Zeichnung. Die erste Paketvorbereitung scheiterte vor dem
+Anbieteraufruf, weil für den belegten Sachverhalt keine Grafik angeboten wurde.
+
+Die neue versionierte Referenz `physics.shadow.size` zeigt ein vereinfachtes
+Lichtmodell mit fester Lampe und Wand und zwei bewusst wählbaren Positionen des
+undurchsichtigen Gegenstands. Die geometrische Projektion vergrößert den
+Schatten bei kleinerem Lampenabstand; sie nennt keine erfundenen Messwerte.
+Die Referenz wird nur bei der exakt nachweisbaren Folge der drei Quellsätze
+angeboten; widersprüchliche oder unvollständige Aussagen werden abgewiesen.
+Die Darstellung ist per Touch und Screenreader zugänglich und bleibt ein
+vereinfachtes Modell, keine vollständige optische Simulation. Sie ist auch für
+ausdrücklich angeforderte quellengebundene Folgeübungen vorgesehen.
+
+Ein realer künstlicher Folgeaufruf lieferte unsichtbare Steuerzeichen und wurde
+von der bestehenden Prüfung verworfen. Die Schutzprüfung blieb unverändert;
+der Fragevertrag akzeptiert nun mehrere im Zusammenhang tatsächlich belegte
+Begriffe im eigentlichen Fragesatz. Ein weiterer künstlicher Diagnoseaufruf
+und der einmalig auditierte, normal reservierte Reparaturauftrag wurden danach
+gültig abgeschlossen. Im 390-Pixel-Browser änderte sich die Schattengröße bei
+der Bedienung sichtbar. Zwei Aufgaben und ihre unterstützten Rückmeldungen
+wurden durchlaufen. Beide fragen vorwiegend Grundbegriffe ab und belegen noch
+nicht, dass das Kind den Größenvergleich selbstständig beherrscht. Die
+In-App-Fertigmeldung wurde gespeichert; eine Android-Pushzustellung wurde
+nicht getestet. Der 30-Tage-Test bleibt offen.
+
+Die zusätzlich ausdrücklich angeforderte Anschlussrunde wurde ebenfalls
+erzeugt und im Smartphone-Browser abgeschlossen. Ihre Fragen überprüften
+erneut, dass ein beleuchteter undurchsichtiger Gegenstand einen Schatten wirft
+und Lampe und Wand fest stehen. Auch sie fragte nicht nach der Veränderung
+der Schattengröße. Die sichtbare Interaktion hilft beim Erkunden, aber eine
+gezielte selbstständige Prüfung dieses Zusammenhangs bleibt damit offen.

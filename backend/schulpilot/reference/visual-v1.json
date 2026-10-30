@@ -284,6 +284,16 @@
       "variant": null
     },
     {
+      "id": "physics.shadow.size",
+      "version": 1,
+      "subjects": ["Physik"],
+      "kind": "shadow_size",
+      "purpose": "Ein vereinfachter Vergleich der Schattengröße bei zwei Gegenstandspositionen, ausschließlich für den belegten Zusammenhang mit feststehender Lampe und Wand.",
+      "terms": ["Lampe", "Gegenstand", "Wand", "Schatten"],
+      "interaction": "Gegenstand bewusst näher an die Lampe oder weiter von ihr weg setzen; den Schatten vergleichen.",
+      "variant": null
+    },
+    {
       "id": "biology.heart.pump",
       "version": 1,
       "subjects": ["Biologie"],

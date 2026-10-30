@@ -82,6 +82,10 @@ def reference_supported(reference, contents):
         from .package_prepared_heart import bases
 
         return any(next(bases(content), None) is not None for content in contents)
+    if reference.get("id") == "physics.shadow.size":
+        from .package_prepared_shadow import bases
+
+        return any(next(bases(content), None) is not None for content in contents)
     if reference.get("id") == REFERENCE:
         return any(next(focus_bases(content), None) is not None for content in contents)
     if reference.get("id") == SENTENCE_REFERENCE:
@@ -222,6 +226,7 @@ def bind_schema(schema, payload):
     from .package_prepared_heart import bind_schema as bind_heart
     from .package_prepared_photosynthesis import bind_schema as bind_photosynthesis
     from .package_prepared_sentences import bind_schema as bind_sentences
+    from .package_prepared_shadow import bind_schema as bind_shadow
 
     candidates = compile_candidates(payload)
     if candidates:
@@ -252,6 +257,9 @@ def bind_schema(schema, payload):
 
         return prepared.bind_candidates(schema, Binding(tuple(candidates)),
             question_kinds=("scene", "sentence", "forms"), question_binding=question_binding)
+    binding = bind_shadow(schema, payload)
+    if binding is not None:
+        return binding
     binding = bind_heart(schema, payload)
     if binding is not None:
         return binding

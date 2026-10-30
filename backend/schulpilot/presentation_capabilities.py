@@ -15,6 +15,7 @@ PURPOSES = {
     "picture_words": "Bis zu fünf vorhandene Bildwortsymbole verwenden; kein freier Bildgenerator.",
     "plant": "Blüte, Blatt, Stängel und Wurzel im vereinfachten Pflanzenaufbau zuordnen.",
     "heart_pump": "Einfaches Schema: Das Herz pumpt Blut durch den Körper, wenn die Quelle genau dies belegt.",
+    "shadow_size": "Einfaches Modell: bei feststehender Lampe und Wand den Schatten eines Gegenstands vergleichen, wenn die Quelle den Zusammenhang ausdrücklich belegt.",
     "food_chain": "Ausdrücklich belegte Nahrung-zum-Fresser-Pfeile lesen.",
     "compass": "Belegte Himmelsrichtungen räumlich einordnen.",
     "position": "Die belegte Ballposition auf, unter oder neben dem Tisch erkennen.",
@@ -67,6 +68,7 @@ ANSWER_UI = {
 
 INTERACTIONS = {
     "heart_pump": "Zwei ausdrücklich gewählte Leseschritte zeigen Herz und Weg zum Körper; keine Kreislaufsimulation.",
+    "shadow_size": "Zwei ausdrücklich gewählte Gegenstandspositionen vergleichen die Schattengröße bei fester Lampe und Wand.",
     "lab": "Nur freigegebene eigene Rezepte: physics.force_motion mit begrenzter Masse/Beschleunigung und bewusstem2s-Lauf; german.sentence_shift mit Mira-Beispiel/vier erlaubtenUmstellungen. Tippen/Tastatur/Drag/Reset; keine freienFormeln/Gruppen oder Anbieteraufrufe.",
     "function_graph": "Automatisch Erkunden ab geöffneter Hilfe/Lösung: Punkt mit x=-4..4 in 0,1-Schritten und y-Anzeige; polynomial2 numbers=[a,b,c] bleiben unverändert. Keine Koeffizientenregler.",
     "data_plot": "Automatisch Erkunden ab geöffneter Hilfe/Lösung: nur zwischen den 2..8 exakten Originalpaaren auswählen. Keine neuen Messwerte, Interpolation oder Regression.",

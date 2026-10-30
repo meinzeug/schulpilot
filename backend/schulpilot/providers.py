@@ -1285,6 +1285,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             graphic = schema.get("$defs", {}).get("Graphic", {}).get("properties", {}).get("kind", {})
             if "enum" in graphic:
                 graphic["enum"] = [kind for kind in graphic["enum"] if kind != "heart_pump"]
+        if not any(row.get("id") == "physics.shadow.size" for row in references if isinstance(row, dict)):
+            graphic = schema.get("$defs", {}).get("Graphic", {}).get("properties", {}).get("kind", {})
+            if "enum" in graphic:
+                graphic["enum"] = [kind for kind in graphic["enum"] if kind != "shadow_size"]
     if function == "coach" and payload.get("learning_goals"):
         # Partial/legacy assignment still needs a closed set. Previously only
         # fully assigned questions omitted the model-selected ID; a model could
@@ -1812,6 +1816,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             from .package_prepared_heart import bind_followup as bind_heart_followup
 
             unit_composition = bind_heart_followup(schema, payload)
+        if unit_composition is None:
+            from .package_prepared_shadow import bind_followup as bind_shadow_followup
+
+            unit_composition = bind_shadow_followup(schema, payload)
         if unit_composition is None:
             from .package_prepared_photosynthesis import bind_followup as bind_photosynthesis_followup
 

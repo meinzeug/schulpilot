@@ -76,6 +76,11 @@ def candidates(db, subject, text="", *, package_prepared=False):
 
             if not package_prepared or next(bases(text), None) is None:
                 continue
+        if row.id == "physics.shadow.size":
+            from .package_prepared_shadow import bases
+
+            if not package_prepared or next(bases(text), None) is None:
+                continue
         if row.id == "biology.photosynthesis.exchange":
             if not package_prepared:
                 continue  # This version requires the package's prepared-ID binder.
@@ -151,9 +156,9 @@ def with_visual_context(db, child, payload, sources, *, groups=None):
                   "\n".join(item["topic"] + "\n" + item["content"] for item in bindings if item["subject"] == subject),
                   package_prepared=(payload.get("function") == "package" and type(payload.get("package_partition")) is int)
                   or (payload.get("review") is True and payload.get("practice_kind") in ("repair", "check")
-                      and payload.get("required_subject") == "Biologie")
+                      and payload.get("required_subject") in ("Biologie", "Physik"))
                   or (payload.get("function") == "unit" and bool(payload.get("notebook_practice"))
-                      and payload.get("required_subject") == "Biologie"))]
+                      and payload.get("required_subject") in ("Biologie", "Physik")))]
     if not payload.get("labs_enabled"):
         references = [row for row in references if row["kind"] != "lab"]
     lab_sources = []
@@ -277,6 +282,11 @@ def _meaningful(block, recipe, *, sources=None, question=None):
             raise ValueError("Die Zeitachse benötigt mindestens zwei verschiedene, in Reihenfolge belegte Zeitpunkte.")
     if recipe.get("id") == "biology.heart.pump":
         from .package_prepared_heart import validate
+
+        validate(block, sources)
+        return
+    if recipe.get("id") == "physics.shadow.size":
+        from .package_prepared_shadow import validate
 
         validate(block, sources)
         return

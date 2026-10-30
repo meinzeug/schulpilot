@@ -38,7 +38,7 @@ def bind_coherent_graphics(schema):
     branches = {}
     numeric = {"fraction", "triangle", "reflection", "notes", "bar_chart", "place_values", "money",
                "timeline", "function_graph", "data_plot", "technical_drawing"}
-    labelled = {"forms", "sentence", "speech", "picture_words", "plant", "heart_pump", "water_cycle", "perspectives",
+    labelled = {"forms", "sentence", "speech", "picture_words", "plant", "heart_pump", "shadow_size", "water_cycle", "perspectives",
                 "statements", "flowchart", "movement", "pattern", "layers", "mindmap", "flashcard",
                 "traditions", "senses", "seasons", "fairplay", "money"}
     variants = {"position": ["above", "below", "beside"], "gears": ["clockwise", "counterclockwise"],
@@ -110,7 +110,7 @@ def bind_coherent_graphics(schema):
                 fields["unit"] = {"type": "string", "enum": units[kind]}
             if kind == "position":
                 fields["labels"].update(minItems=0, maxItems=0)
-            label_sizes = {"layers": (3, 3), "plant": (4, 4), "heart_pump": (3, 3), "flowchart": (5, 5), "gears": (2, 5),
+            label_sizes = {"layers": (3, 3), "plant": (4, 4), "heart_pump": (3, 3), "shadow_size": (4, 4), "flowchart": (5, 5), "gears": (2, 5),
                 "picture_words": (1, 5), "senses": (1, 5), "pattern": (1, 10), "mindmap": (2, 16),
                 "function_graph": (2, 2), "function_curve": (2, 2), "data_plot": (2, 2),
                 "logic_table": (2, 3), "circuit_network": (2, 2), "process_graph": (2, 8), "process_cycle": (2, 8),
