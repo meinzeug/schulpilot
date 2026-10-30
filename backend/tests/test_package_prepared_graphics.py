@@ -15,6 +15,23 @@ from test_package_part_output import part
 SOURCE = "Ein Bruch 1/2 beschreibt 1 von 2 gleich großen Teilen.\nEin Bruch 2/3 beschreibt 2 von 3 gleich großen Teilen.\nWasser → Dampf."
 
 
+def test_supported_literal_fraction_offers_existing_reference_without_the_word_bruch():
+    source = r"Dezimalzahlen: \(0{,}5 = \frac{5}{10}\)"
+    with DB() as db:
+        prepared = visual_references.candidates(db, "Mathematik", source, package_prepared=True)
+        ordinary = visual_references.candidates(db, "Mathematik", source)
+        unsupported = visual_references.candidates(db, "Mathematik", r"\(0{,}25 = \frac{25}{100}\)", package_prepared=True)
+    assert "math.fraction.part_whole" in {row["id"] for row in prepared}
+    assert "math.fraction.part_whole" not in {row["id"] for row in ordinary}
+    assert "math.fraction.part_whole" not in {row["id"] for row in unsupported}
+    payload = payload_for(source)
+    payload["visual_context"]["references"] = prepared
+    _, binding = bind(payload)
+    assert binding is not None
+    assert all(row["block"]["numbers"] == [5, 10] for row in binding.candidates)
+    assert all(row["block"]["source_excerpt"] == r"\frac{5}{10}" for row in binding.candidates)
+
+
 def payload_for(content=SOURCE, subject="Mathematik"):
     with DB() as db:
         references = visual_references.candidates(db, subject, "Bruch " + content)

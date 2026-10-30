@@ -3631,3 +3631,24 @@ Grenze; Quelltext, Aufgaben und Preisgrenze werden nicht gekürzt oder geändert
 Ein zuvor unvollständiger Strukturtest wurde an die vier festen Pflanzenlabels
 angepasst. Der 30-Tage-Test, der Dezimalzahlenfall und die allgemeine Qualität
 adaptiver Aufgaben bleiben offen. Eine Android-Zustellung wurde nicht geprüft.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 23.11.: Eine künstliche
+Dezimalzahlen-Heftseite enthielt 0,5 = 5/10, 0,25 = 25/100 und eine
+Zehnerleiste. Die echte Fotoerkennung übernahm den Text, ließ die unbeschriftete
+Zeichnung jedoch aus. Ihre Beschreibung wurde vor Quellenbestätigung im
+Testkonto manuell ergänzt. Der erste Paketaufruf wurde nach Modellantwort
+wegen `scene_label_evidence` verworfen. Ursache: Die Referenzsuche bot die
+vorhandene Bruchvorlage bei einer ausdrücklichen Formel ohne das Wort „Bruch“
+nicht an. Im vorbereiteten Paketpfad darf sie nun die bereits vorhandene
+Vorlage anbieten, wenn der bestehende strenge Compiler einen tatsächlich
+darstellbaren Originalbruch findet. Quellen, Bruchparameter und die
+nachgelagerten Prüfungen bleiben unverändert; 25/100 liegt weiterhin außerhalb
+des unterstützten Bruchmodells.
+
+Ein ausdrücklicher weiterer künstlicher Anbieteraufruf erzeugte nach 30
+Sekunden eine Runde (gemeldeter Anbieterpreis 0,0024162 USD), die im mobilen
+Browser bearbeitet wurde. Das Modell zeigte 5/10 korrekt, die Einführung
+erklärte aber den Vergleich zu 0,25 nicht; eine Auswahloption in der zweiten
+Frage war sprachlich unpassend. Dieser Einzelfall behebt weder die allgemeine
+didaktische Auswahl noch Hundertstelgrafiken oder die Erkennung unbeschrifteter
+Zeichnungen. Der 30-Tage-Test ist weiterhin nicht abgeschlossen.

@@ -98,6 +98,14 @@ def candidates(db, subject, text="", *, package_prepared=False):
             if next(bases(text), None) is None:
                 continue
         score = sum(term.casefold() in text.casefold() for term in recipe["terms"])
+        if package_prepared and row.id == "math.fraction.part_whole" and not score:
+            # A photographed page may write only a literal fraction, without
+            # the word "Bruch". Offer the existing recipe only when the same
+            # strict compiler can actually build a supported, exact model.
+            from .package_prepared_graphics import _fraction_bases
+
+            if next(_fraction_bases(text), None) is not None:
+                score = 1
         # Universal source-relation scenes remain available for every profile;
         # their mandatory relation/phase validation prevents a fake word grid.
         if recipe["terms"] and not score:
