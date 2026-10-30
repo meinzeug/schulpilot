@@ -653,6 +653,7 @@ def summary(db, child, days, *, learning_paths=None):
 def plan(db, child, *, learning_paths=None, include_language=True):
     from .coaching import paths
     from .grades import priorities, subject_key
+    from .legacy_learning_content import blocked_open_ids
     from .study_path import plan_sources_current, source_backed_blocks
 
     prefs = s.Preferences(**child.preferences)
@@ -731,11 +732,12 @@ def plan(db, child, *, learning_paths=None, include_language=True):
     assignments_by_id = {a.id: a for a in assignments}
     minutes = min(prefs.session_minutes, max(5, available))
     candidates = []
+    invalid_units = blocked_open_ids(db, child.id)
     from .learning_origins import round_days
 
     origins = round_days(db, child.id)
     for unit in units:
-        if unit.status != "completed":
+        if unit.status != "completed" and unit.id not in invalid_units:
             goal = assignments_by_id.get(unit.assignment_id)
             chain = chains.get(unit.id)
             candidates.append(
@@ -758,7 +760,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
                 }
             )
     for a in sorted(assignments, key=lambda a: (not a.mandatory, a.due or "9999", a.created)):
-        if any(u.assignment_id == a.id and u.status != "completed" for u in units):
+        if any(u.assignment_id == a.id and u.status != "completed" and u.id not in invalid_units for u in units):
             continue
         candidates.append(
             {

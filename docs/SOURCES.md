@@ -4022,3 +4022,12 @@ Der eng belegte historische interne Korrekturmarker wird auch bei offenen
 Alt-Runden rein lesend erkannt. Originale bleiben erhalten; ein klarer
 Quellen-Ausweg ersetzt das fehlerhafte Antwortformular. Keine automatische
 Neuerzeugung oder rückwirkende Änderung abgeschlossener Leistungsbelege.
+
+30.10.2026 · Tatsächlicher390px-Monatsabschluss:30bereite künstliche
+Schultage/32Seiten, je Tag mindestens eine abgeschlossene quellengebundene Runde;
+29Tage mit sämtlichen ursprünglichen Einstiegsrunden abgeschlossen. Der10.12.
+erhält eine reguläre abgeschlossene Ersatzrunde, fehlerhafte Altrunde bleibt
+pausierter Fehlerbeleg. Keine vollständige Lehrplan-, Mindestzeit- oder
+Androidabnahme. Die Heute-Empfehlung schließt konkret erkannte fehlerhafte offene
+Runden nun aus, erhält aber deren Elternpflichtauftrag.67 Plan-/Tagesfälle und
+ein ergänzender Zweierlauf bestanden, reine GETs erzeugen keine neuen Belege.

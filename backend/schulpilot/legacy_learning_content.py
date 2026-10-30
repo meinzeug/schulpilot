@@ -19,3 +19,16 @@ def issue(unit):
         if any(isinstance(text, str) and _CORRECTION.search(text) for text in texts):
             return {"code": "generated_correction_artifact", "message": MESSAGE}
     return None
+
+
+def blocked_open_ids(db, child_id):
+    """Batch prefilter; normal compact plans do not load all question bodies."""
+    from sqlalchemy import Text, cast, or_, select
+
+    from .db import LearningUnit
+
+    rows = db.execute(select(LearningUnit.id, LearningUnit.status,
+        LearningUnit.explanation, LearningUnit.questions).where(
+            LearningUnit.child_id == child_id, LearningUnit.status != "completed",
+            or_(LearningUnit.explanation.ilike("%oops%"), cast(LearningUnit.questions, Text).ilike("%oops%"))))
+    return {row.id for row in rows if issue(row)}

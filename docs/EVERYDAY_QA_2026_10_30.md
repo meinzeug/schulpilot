@@ -337,3 +337,29 @@ bestätigten Heftseite wurde über „Jetzt lernen“ genau eine reguläre Zweie
 angefordert. Die neue Runde wurde bereit; die Glocke erhöhte ihren In-App-Stand
 von16auf17. Screenshot88 hält diese Bereitschaft fest. Dies ist weiterhin kein
 Beleg einer sichtbaren FCM-Zustellung auf einem physischen Gerät.
+
+## Abschluss der vorbereiteten Schultage und nächste Empfehlung
+
+Die unabhängige rein lesende Zählung erfasst für02.11.–11.12. exakt30
+Schultage und32 bestätigte Materialseiten. Alle30 Vorbereitungen sind bereit.
+Jeder dieser Tage hat mindestens eine abgeschlossene quellengebundene Runde.
+29Tage haben sämtliche ursprünglichen gespeicherten Einstiegsrunden abgeschlossen;
+beim10.12. bleibt die fehlerhafte Altrunde absichtlich pausiert erhalten und eine
+über dieselbe bestätigte Quelle regulär angeforderte Ersatzrunde ist abgeschlossen.
+Die beiden zusätzlichen pausierten Layout-/Inhalts-Testkopien und ein Pilot vor
+dem Monat sind keine weiteren erledigten Schultage. Dies belegt weder sämtliche
+künftigen Etappen noch tägliche20Minuten an allen30Tagen oder eine Lehrplanabnahme.
+Zwei künstliche Eltern-Notenimporte sind angewendet, insgesamt vier Noteneinträge.
+
+Die reale Heute-Prüfung nach Abschluss der Ersatzrunde fand noch eine falsche
+Empfehlung: „Weiterlernen“ versuchte die gesperrte Altrunde erneut zu starten.
+Der Planer entfernt jetzt genau die offen erkannten fehlerhaften Runden aus der
+nächsten Empfehlung. Der ursprüngliche Verlauf bleibt erreichbar. Verknüpfte
+verbindliche Elternaufträge werden wieder als Auftrag angeboten, nicht erledigt
+oder unsichtbar gesetzt. Eine eigene gebündelte DB-Vorfilterung lädt nur mögliche
+Korrekturmarker statt sämtlicher Aufgaben der kompakten Startansicht. Prüfung
+und Auswahl bleiben kindgebunden und schreibfrei.67 Plan-/Tages-/Altbestandsfälle
+sowie ein zusätzlicher gezielter Zweierlauf bestanden. Der Browser zeigte danach
+eine andere tatsächlich vorhandene offene Runde; Screenshot90. Die zuvor
+gebauten204-Artefakte wurden dafür vor Veröffentlichung angehalten und werden
+vollständig aus dem abschließenden Commit neu erstellt.
