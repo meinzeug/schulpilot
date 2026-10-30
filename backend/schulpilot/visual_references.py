@@ -81,6 +81,11 @@ def candidates(db, subject, text="", *, package_prepared=False):
 
             if not package_prepared or next(bases(text), None) is None:
                 continue
+        if row.id == "math.decimal.original_addition":
+            from .package_prepared_decimals import bases
+
+            if not package_prepared or next(bases(text), None) is None:
+                continue
         if row.id == "biology.photosynthesis.exchange":
             if not package_prepared:
                 continue  # This version requires the package's prepared-ID binder.
@@ -325,6 +330,11 @@ def _meaningful(block, recipe, *, sources=None, question=None):
             prompt = " ".join(question.get("prompt", "").split())
             if not any(re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", prompt) for label in labels):
                 raise ValueError("Die Frage muss mindestens einen vollständigen Originalausdruck ihres Vergleichs nennen.")
+    if recipe.get("id") == "math.decimal.original_addition":
+        from .package_prepared_decimals import validate_decimal
+
+        validate_decimal(block, sources=sources, question=question)
+        return
     if recipe.get("id") in ("general.original_evidence.focused_list", "general.original_evidence.focused_sentences",
                             "geography.original_evidence.focused_sentences"):
         from .package_prepared_focus import validate_focus

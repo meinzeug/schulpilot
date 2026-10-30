@@ -3896,3 +3896,38 @@ ausdrückliche Wiederholung gelang. Die mobile Erklärung zeigte anschließend
 den tatsächlichen Satz in Wortkästen, und zwei richtige freie Antworten wurden
 nach geöffneter Erklärung als unterstützt erfasst. Der erfolgreiche
 Wiederholungsversuch beweist keine allgemeine Behebung des ersten Fehlers.
+
+30.10.2026 · Dezimalzahlen im isolierten Alltagstest: Ein echter Luna-Auftrag
+für eine künstliche Heftseite endete bei 8.000 Ausgabetokens mit `length`;
+7.094 Tokens waren laut Anbieter Reasoning-Tokens. Ein neuer ausdrücklich
+gestarteter Auftrag für genau dieselbe weiterhin gültige Paket-Teilrunde kann
+nun anhand dieses belegten Fehlers vor der regulären Reservierung die vorhandene
+stärkere Route wählen. Dazu müssen Kind, Quelleninhalt und -revision,
+Paketplan, Teilnummer, Elternplanung und abgerechneter Luna-Längenfehler
+übereinstimmen. Es gibt keinen automatischen Neuversuch, keinen Wechsel eines
+bereits reservierten Auftrags und keine Änderung bestehender Kontingente.
+Im künstlichen Test wurde die stärkere Route tatsächlich gewählt und lieferte
+eine vollständige Antwort; diese fiel anschließend an einer anderen
+Grafik-/Frageprüfung durch. Das ist kein Beweis, dass Längenabbrüche generell
+ausgeschlossen sind.
+
+Für belegte, rechnerisch korrekte Dezimaladditionen stehen nun eigene
+versionierte Originaldarstellungen zur Verfügung. Der private Compiler prüft
+die Rechnung mit Dezimalarithmetik und verwendet nur vollständige bestätigte
+Beispiele. Er unterstützt sowohl deutsche Kommas als auch die vom Foto-Leser
+ausgegebene LaTeX-Schreibweise `{,}`; gespeicherte Originalbelege bleiben
+unverändert, die öffentliche Grafik zeigt lesbare Kommas. Mindestens zwei
+verschiedene Rechnungen sind nötig, doppelte Aufgaben werden verworfen. Frage,
+Antwort und knappe Erklärung sind vor der Anbieteranfrage an die jeweilige
+Originalrechnung gebunden; Fehlrechnungen und unbelegte Quellen werden nicht
+repariert oder ergänzt.
+
+Ein weiterer echter künstlicher Test zeigte zunächst eine Frage mit
+Modellnotizen; genau diese Ausgabe ist als negativer Test abgedeckt und darf
+nicht übernommen werden. Nach der Bindung gelang ein erneuter Foto-zu-Runde-
+Test im 390-Pixel-Browser mit zwei unterschiedlichen Originalrechnungen. Beide
+richtigen Antworten wurden nach geöffneter Erklärung als unterstützt erfasst.
+Die Grafik hebt Aufgabe und Ergebnis in zwei Schritten hervor; sie ist keine
+vollständige schriftliche Stellenwertdarstellung. Die künstliche Seite musste
+vorher bei einem Erkennungslauf an der falsch gelesenen Überschrift korrigiert
+werden. Diese Beobachtungen gelten nur für die getesteten Beispiele.

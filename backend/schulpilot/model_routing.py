@@ -245,6 +245,58 @@ def study_length_failed(db, child_id, job):
         and planning_fingerprint(db, child) == data["planning"])
 
 
+def package_length_failed(db, child_id, job):
+    """Use a recorded Luna truncation only for the same still-current package part.
+
+    This selects a route before the normal reservation; it never enqueues or
+    retries an action. Completed output, source and budget guards are unchanged.
+    """
+    if not job or job.child_id != child_id or job.kind != "package" or job.status != "queued":
+        return False
+    data = job.payload if isinstance(job.payload, dict) else {}
+    index, digest = data.get("package_partition"), data.get("package_plan_digest")
+    if (type(index) is not int or index < 0 or not isinstance(digest, str)
+            or len(digest) != 64 or not isinstance(data.get("school_day_id"), str)):
+        return False
+    day, child = db.get(SchoolDay, data["school_day_id"]), db.get(Child, child_id)
+    if not day or not child or day.child_id != child_id:
+        return False
+    from .providers import ProviderError
+    from .school_day import validate_package_sources
+    from .school_preparation import _current_plan, _state
+
+    state = _state(day)
+    plan = state.get("package_plan") or {}
+    if (not _current_plan(db, day, child, state) or plan.get("digest") != digest
+            or index >= len(plan.get("parts", []))):
+        return False
+    part = plan["parts"][index]
+    if (data.get("package_partition_sources") != part.get("sources")
+            or data.get("groups") != [part.get("group")]):
+        return False
+    try:
+        validate_package_sources(db, job)
+    except (ProviderError, KeyError, TypeError, AttributeError):
+        return False
+    keys = ("school_day_id", "day_revision", "sources", "groups", "planning_fingerprint",
+            "package_partition", "package_plan_digest", "package_partition_sources")
+    previous = db.scalars(select(Job).where(
+        Job.child_id == child_id, Job.kind == "package", Job.status == "failed", Job.id != job.id,
+        Job.payload["school_day_id"].as_string() == day.id,
+        Job.payload["package_plan_digest"].as_string() == digest,
+        Job.payload["package_partition"].as_integer() == index,
+    ).order_by(Job.created.desc(), Job.id.desc()).limit(10))
+    for old in previous:
+        if (not isinstance(old.payload, dict) or any(old.payload.get(key) != data.get(key) for key in keys)
+                or not isinstance(old.error, str) or " ".join(old.error.split()) != _EXTRACTION_LENGTH_MESSAGE):
+            continue
+        usage = db.scalar(select(Usage).where(Usage.job_id == old.id, Usage.child_id == child_id))
+        if (usage and usage.status == "failed_billed" and (usage.route_snapshot or {}).get("tier") == "luna"
+                and (usage.telemetry or {}).get("finish_reason") == "length"):
+            return True
+    return False
+
+
 def features_for(db, child_id, job_id):
     """Use bounded recorded facts, never client-selected difficulty or model IDs."""
     job = db.get(Job, job_id) if job_id is not None else None
@@ -298,6 +350,7 @@ def features_for(db, child_id, job_id):
             material_revision=data.get("material_revision")) if material else False,
         "transcription_review": extraction_recheck(db, child_id, job) or routing_check(db, child_id, job),
         "study_length_failed": study_length_failed(db, child_id, job),
+        "package_length_failed": package_length_failed(db, child_id, job),
         "study_extended_output": study_extended_output(db, child_id, job),
         "notebook_length_failed": notebook_length_failed(db, child_id, job),
         "notebook_extended_output": notebook_extended_output(db, child_id, job),
@@ -316,6 +369,8 @@ def choose_tier(function, features, *, economy=False):
         return "sol", "recorded_transcription_failure"
     if function == "extract" and features.get("transcription_review"):
         return "sol", "recorded_transcription_review"
+    if function == "package" and features.get("package_length_failed"):
+        return "sol", "recorded_package_output_length"
     if function in ("unit", "study_block") and features.get("study_length_failed"):
         return "sol", "recorded_study_output_length"
     if function == "unit" and features.get("notebook_length_failed"):
