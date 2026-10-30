@@ -105,6 +105,16 @@
       "variant": null
     },
     {
+      "id": "physics.circuit.confirmed_states",
+      "version": 1,
+      "subjects": ["Physik"],
+      "kind": "circuit",
+      "purpose": "Einen ausdrücklich belegten Stromkreis mit offenem oder geschlossenem Schalter zeigen.",
+      "terms": ["stromkreis", "schalter", "lampe", "batterie"],
+      "interaction": "Belegten Schalterzustand betrachten.",
+      "variant": null
+    },
+    {
       "id": "chemistry.particles.state",
       "version": 1,
       "subjects": [

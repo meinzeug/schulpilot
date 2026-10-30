@@ -3530,3 +3530,16 @@ Test wurde wegen erneut unpassender beziehungsweise unverständlicher Fragen
 abgewiesen; die erfolgreiche zuverlässige Paketgenerierung ist für diesen
 Fall deshalb noch nicht belegt. Die Sicherheitsprüfung darf kein falsches
 Lernpaket als Erfolg ausgeben. Der 30-Tage-Alltagstest bleibt offen.
+
+30.10.2026 · Im simulierten Physiktag wurde eine künstliche Stromkreisseite
+richtig abgeschrieben, aber die generierte Grafik zunächst wegen fehlender
+wörtlicher Beschriftung abgewiesen. Eine neue versionierte Vorlage bindet die
+bereits vorhandene Stromkreiszeichnung für offene und geschlossene Schalter an
+vollständig und ausdrücklich belegte Quellsätze. Ein bewusst gestarteter
+erneuter Testauftrag erzeugte mit echtem Anbieteraufruf die Runde; das
+Schaltbild und zwei inhaltlich passende Fragen wurden im 390-Pixel-Browser
+geprüft. Die Vorlage unterstützt ausschließlich diese präzise belegte
+Quellform, nicht beliebige Schaltungen. Eine sinngemäß richtige freie Antwort
+„Er unterbricht den Stromkreis“ blieb bei der hinterlegten Kurzlösung
+„unterbricht“ unklar. Sie wurde nicht als falsch bewertet, bedarf aber einer
+besser verständlichen und verlässlichen Klärung. Der 30-Tage-Test bleibt offen.
