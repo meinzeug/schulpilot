@@ -10,7 +10,7 @@ from . import package_prepared_graphics as prepared
 from .subject_content import PROFILES, Graphic, validate_question
 
 REFERENCE = "biology.photosynthesis.exchange"
-REVISION = "photosynthesis-exchange-2"
+REVISION = "photosynthesis-exchange-3"
 PROMPT_PATTERN = r"([Pp]flanzen.*(?:[Ff]oto|[Pp]hoto)synthese|(?:[Ff]oto|[Pp]hoto)synthese.*[Pp]flanzen)"
 TERM = re.compile(r"\b(?:foto|photo)synthese\b", re.IGNORECASE)
 _SOURCE = re.compile(
@@ -24,11 +24,19 @@ _SOURCE_PARTS = re.compile(
     r"Mit\s+(Licht)\s+bilden\s+(Pflanzen)\s+(Zucker)\s+und\s+geben\s+(Sauerstoff)\s+ab\s*\.",
     re.IGNORECASE,
 )
+_SOURCE_SPLIT = re.compile(
+    r"\b(Pflanzen)\s+nehmen\s+(Wasser)\s+über\s+die\s+Wurzeln\s+auf\s*\.\s*"
+    r"Die\s+Blätter\s+nehmen\s+(Kohlenstoffdioxid)\s+aus\s+der\s+Luft\s+auf\s*\.\s*"
+    r"Mit\s+(Licht)\s+können\s+grüne\s+Pflanzen\s+(Zucker)\s+bilden\s*\.\s*"
+    r"Dabei\s+entsteht\s+(Sauerstoff)\s*\.",
+    re.IGNORECASE,
+)
 
 
 def bases(content):
     matches = [(match, False) for match in _SOURCE.finditer(content)]
     matches.extend((match, True) for match in _SOURCE_PARTS.finditer(content))
+    matches.extend((match, False) for match in _SOURCE_SPLIT.finditer(content))
     for match, parts in sorted(matches, key=lambda row: row[0].start()):
         quote = match.group(0)
         if parts:
@@ -99,7 +107,7 @@ def compile_candidates(payload):
 class Binding(prepared.Binding):
     @property
     def rules(self):
-        return ("\nphotosynthesis-exchange-2: Wähle eine angebotene Grafik-ID derselben Quelle und Aufdeckstufe. "
+        return ("\nphotosynthesis-exchange-3: Wähle eine angebotene Grafik-ID derselben Quelle und Aufdeckstufe. "
                 "Die Grafik hebt die im Original ausdrücklich aufgenommenen beziehungsweise gebildeten "
                 "oder abgegebenen Stoffe hervor. Keine neuen Stoffe oder Pfeile erfinden. "
                 "Übernimm den mitgelieferten quellengebundenen Erklärungstext unverändert; er gilt für beide Bildzustände. "

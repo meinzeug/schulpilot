@@ -3822,7 +3822,32 @@ unterstützt bewertet. Der KI-Rückblick ordnete die Vorwissensfrage keinem
 Additionsziel und die Rechenaufgabe dem Additionsziel zu. Die passende Grafik
 war in diesem Durchlauf noch nicht verfügbar und muss gesondert verbessert
 werden. Ein ausdrücklich ausgelöster zusätzlicher Auftrag zur grafischen
-Erklärung scheiterte an der bestehenden Strukturprüfung; die Ursache der
-Modellausgabe ist damit noch nicht geklärt. Aufgaben, Antworten und Rückblick
+Erklärung scheiterte an der visuellen Zahlenbelegprüfung (`number_evidence`);
+die konkrete Stelle der Modellausgabe ist damit noch nicht geklärt. Aufgaben, Antworten und Rückblick
 blieben erhalten. Das sind künstliche lokale Tests; keine Android-Zustellung
 wurde geprüft.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 02.12.: Eine neue künstliche
+Biologieseite zu Wasseraufnahme, Kohlenstoffdioxid und Zuckerbildung wurde im
+Fotoassistenten mit sämtlichen Sätzen und den drei Bildbeschriftungen erkannt.
+Der erste Paketauftrag scheiterte vor dem KI-Aufruf, weil die bereits geprüfte
+Pflanzengrafik nur zwei andere, sehr enge Formulierungen akzeptierte. Das
+versionierte Auswahlverfahren unterstützt nun zusätzlich die vollständig
+belegte vierteilige Formulierung; Negationen, fehlende Aussagen und vertauschte
+Stoffe werden weiterhin abgewiesen. Eine ausdrückliche Wiederholung erzeugte
+mit echtem Modellaufruf ein Paket mit zwei Fragen und der vorhandenen Grafik.
+
+Die Seite sagt, dass Sauerstoff entsteht, nicht dass er abgegeben wird. Für
+diesen geprüften Quellenfall zeigt die Grafik daher „Bildung“ und verwendet
+keinen Abgabepfeil. Der Server überträgt dafür nur ein abgeleitetes Merkmal;
+der private Quellenwortlaut bleibt aus der Grafikprojektion entfernt. Beide
+Grafikzustände wurden im 390-Pixel-Browser geprüft. Eine absichtlich falsche
+Antwort wurde nach einem lokalen Verbindungsabbruch wiederhergestellt, beim
+zweiten Versuch richtig beantwortet und als unterstützt gezählt; die zweite
+Aufgabe zur Sauerstoffentstehung wurde nach geöffneter Erklärung ebenfalls als
+unterstützt bewertet. Beide Fragen sind auf der künstlichen Seite belegt. Ein
+selbstständiger Transfer auf unbekannte Beispiele ist damit nicht nachgewiesen.
+Die ausdrücklich angeforderte Anschlussrunde griff die zuvor verwechselte
+Wasseraufnahme sowie die Sauerstoffentstehung erneut auf; beide Antworten wurden
+ohne zusätzliche Hilfe richtig bewertet. Die Fragen bleiben eng an den Sätzen
+der Quelle und belegen deshalb noch keinen breiten fachlichen Transfer.

@@ -12,6 +12,47 @@ SOURCE = ("Pflanzen und Photosynthese\n\nPflanzen nehmen Wasser und Kohlenstoffd
           "Mit Licht bilden sie Zucker und geben Sauerstoff ab.")
 SOURCE_PARTS = ("Pflanzen brauchen Licht\n\nBlätter nehmen Kohlenstoffdioxid aus der Luft auf.\n"
                 "Die Wurzeln nehmen Wasser auf.\nMit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.")
+SOURCE_SPLIT = ("Pflanzen brauchen Licht.\nPflanzen nehmen Wasser über die Wurzeln auf.\n"
+                "Die Blätter nehmen Kohlenstoffdioxid aus der Luft auf.\n"
+                "Mit Licht können grüne Pflanzen Zucker bilden.\nDabei entsteht Sauerstoff.")
+
+
+def test_split_original_sentences_offer_the_existing_source_bound_scene(api):
+    selected = list(bases(SOURCE_SPLIT))
+    assert len(selected) == 1
+    block = selected[0]
+    assert block["source_excerpt"] in SOURCE_SPLIT
+    assert block["labels"] == ["Wasser", "Kohlenstoffdioxid", "Zucker", "Sauerstoff"]
+    assert [phase["highlight"] for phase in block["scene"]["steps"]] == [["o0", "o1"], ["o2", "o3"]]
+    assert all(not phase["edges"] for phase in block["scene"]["steps"])
+    from schulpilot.subject_content import public_presentation
+
+    public = public_presentation({"version": 1, "evidence_kind": "knowledge",
+                                  "blocks": [{**block, "disclosure": "given"}]})["blocks"][0]
+    assert public["photosynthesis_formation_only"] is True
+    assert "source_excerpt" not in public
+    original = list(bases(SOURCE))[0]
+    original_public = public_presentation({"version": 1, "evidence_kind": "knowledge",
+        "blocks": [{**original, "disclosure": "given"}]})["blocks"][0]
+    assert "photosynthesis_formation_only" not in original_public
+    payload = payload_for(SOURCE_SPLIT, "Biologie")
+    with DB() as db:
+        payload["visual_context"]["references"] = visual_references.candidates(
+            db, "Biologie", SOURCE_SPLIT, package_prepared=True)
+    _, binding = bind(payload)
+    assert binding is not None
+    assert all(not row["term_in_source"] for row in binding.candidates)
+
+
+@pytest.mark.parametrize("source", [
+    SOURCE_SPLIT.replace("nehmen Wasser über", "nehmen kein Wasser über"),
+    SOURCE_SPLIT.replace("nehmen Kohlenstoffdioxid", "nehmen Sauerstoff"),
+    SOURCE_SPLIT.replace("können grüne Pflanzen Zucker bilden", "können grüne Pflanzen keinen Zucker bilden"),
+    SOURCE_SPLIT.replace("Dabei entsteht Sauerstoff.", "Dabei entsteht Kohlenstoffdioxid."),
+    SOURCE_SPLIT.replace("Dabei entsteht Sauerstoff.", ""),
+])
+def test_split_original_sentences_reject_missing_or_contradictory_claims(source):
+    assert not list(bases(source))
 
 
 def test_leaf_and_root_wording_compiles_the_exact_three_source_sentences():

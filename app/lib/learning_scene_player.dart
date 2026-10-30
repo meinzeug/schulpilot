@@ -382,6 +382,9 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
         ? labels.join(' ')
         : model.objects.map((object) => object.label).join('; ');
     final simpleFocus = _isOriginalListFocus(model);
+    // Source quotes stay private; the server derives this flag after checking
+    // the presentation against its source.
+    final formationOnly = widget.block['photosynthesis_formation_only'] == true;
     return LearningGraphicFrame(
       title: title,
       action: widget.action,
@@ -402,6 +405,8 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                   label: _isPhotosynthesisScene(model)
                       ? (index == 0
                             ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
+                            : formationOnly
+                            ? 'Mit Licht bilden Pflanzen Zucker. Dabei entsteht Sauerstoff.'
                             : 'Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.')
                       : _isAtlanticBetweenScene(model)
                       ? 'Der Atlantische Ozean liegt zwischen Amerika und Europa.'
@@ -416,6 +421,7 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                               key: ValueKey('photosynthesis-step-$index'),
                               scene: model,
                               step: index,
+                              formationOnly: formationOnly,
                             ),
                           )
                         : _isAtlanticBetweenScene(model)
@@ -441,6 +447,8 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                 _isPhotosynthesisScene(model)
                     ? (index == 0
                           ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
+                          : formationOnly
+                          ? 'Mit Licht bilden Pflanzen Zucker. Dabei entsteht Sauerstoff.'
                           : 'Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.')
                     : step.caption,
                 key: const ValueKey('scene-caption'),
@@ -828,10 +836,12 @@ bool _isPhotosynthesisScene(_Scene scene) {
 class _PhotosynthesisScene extends StatelessWidget {
   final _Scene scene;
   final int step;
+  final bool formationOnly;
   const _PhotosynthesisScene({
     super.key,
     required this.scene,
     required this.step,
+    required this.formationOnly,
   });
 
   @override
@@ -869,13 +879,20 @@ class _PhotosynthesisScene extends StatelessWidget {
         Center(
           child: Text('Licht', style: TextStyle(color: context.palette.ink)),
         ),
-        SizedBox(height: 160, child: CustomPaint(painter: _PlantPainter(step))),
+        SizedBox(
+          height: 160,
+          child: CustomPaint(painter: _PlantPainter(step, formationOnly)),
+        ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             group('Aufnahme', 0, step == 0),
             const SizedBox(width: 12),
-            group('Bildung und Abgabe', 2, step == 1),
+            group(
+              formationOnly ? 'Bildung' : 'Bildung und Abgabe',
+              2,
+              step == 1,
+            ),
           ],
         ),
       ],
@@ -885,7 +902,8 @@ class _PhotosynthesisScene extends StatelessWidget {
 
 class _PlantPainter extends CustomPainter {
   final int step;
-  _PlantPainter(this.step);
+  final bool formationOnly;
+  _PlantPainter(this.step, this.formationOnly);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -941,14 +959,14 @@ class _PlantPainter extends CustomPainter {
     final near = math.min(65.0, size.width * .28);
     if (step == 0) {
       line(center.dx - far, center.dx - near, size.height * .62);
-    } else {
+    } else if (!formationOnly) {
       line(center.dx + near, center.dx + far, size.height * .62);
     }
   }
 
   @override
   bool shouldRepaint(covariant _PlantPainter oldDelegate) =>
-      oldDelegate.step != step;
+      oldDelegate.step != step || oldDelegate.formationOnly != formationOnly;
 }
 
 /// A local inspection of an existing process, never a new process or relation.

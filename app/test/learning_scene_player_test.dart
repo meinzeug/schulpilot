@@ -198,6 +198,27 @@ void main() {
         find.text('Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.'),
         findsOneWidget,
       );
+      block['photosynthesis_formation_only'] = true;
+      await tester.pumpWidget(
+        host(LearningScenePlayer(block), size: const Size(320, 844), scale: 2),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Bildung'), findsOneWidget);
+      expect(find.text('Bildung und Abgabe'), findsNothing);
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('scene-direct-step-1')),
+      );
+      expect(
+        find.text(
+          'Mit Licht bilden Pflanzen Zucker. Dabei entsteht Sauerstoff.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.'),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
     },
   );
