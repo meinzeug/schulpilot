@@ -15,6 +15,7 @@ from .checks import expanded_fraction, fraction_instruction, fraction_parts, fra
 VERSION = "subject_rules_v6"
 FRACTION_COMPONENT_VERSION = "fraction_components_v1"
 FRACTION_MEANING_VERSION = "fraction_meaning_v1"
+FRACTION_COMPARISON_VERSION = "fraction_comparison_v1"
 LCM_VERSION = "lcm_numeric_v1"
 
 
@@ -45,6 +46,33 @@ def normalized(value):
 def result(outcome, reason, *, content=None, form=None, method=VERSION):
     return {"version": 2, "outcome": outcome, "reason": reason, "method": method,
             "dimensions": {"content": content or outcome, "form": form or "not_requested"}}
+
+
+def fraction_comparison(question, answer):
+    """Evaluate only the fixed, two-option source-comparison template."""
+    if question.get("type") != "short" or question.get("language"):
+        return None
+    prompt = " ".join(unicodedata.normalize("NFC", question.get("prompt", "")).casefold().split())
+    match = re.fullmatch(
+        r"welcher bruch ist grösser: (\d{1,2})/([1-9]\d?) oder (\d{1,2})/([1-9]\d?)\? gib den grösseren bruch an\.",
+        prompt,
+    )
+    if not match:
+        return None
+    a, b, c, d = map(int, match.groups())
+    left, right = (a, b), (c, d)
+    if not (0 < a < b <= 24 and 0 < c < d <= 24) or Fraction(*left) == Fraction(*right):
+        return result("uncertain", "Dieser Vergleich muss noch geprüft werden.", method=FRACTION_COMPARISON_VERSION)
+    expected = left if Fraction(*left) > Fraction(*right) else right
+    if fraction_parts(question.get("answer", "")) != expected:
+        return result("uncertain", "Die gespeicherte Lösung dieses Vergleichs muss noch geprüft werden.",
+                      method=FRACTION_COMPARISON_VERSION)
+    supplied = fraction_parts(answer)
+    if supplied not in (left, right):
+        return result("uncertain", "Schreibe einen der beiden Brüche als Antwort auf.", method=FRACTION_COMPARISON_VERSION)
+    return result("correct" if supplied == expected else "incorrect",
+                  "Du hast den größeren Bruch gefunden." if supplied == expected else
+                  "Schau dir beide Anteile noch einmal an. Welcher ist größer?", method=FRACTION_COMPARISON_VERSION)
 
 
 
@@ -386,6 +414,8 @@ def evaluate(question, answer):
 
         return language_evaluate(question, answer)
     if checked := lcm_short_answer(question, answer):
+        return checked
+    if checked := fraction_comparison(question, answer):
         return checked
     if checked := fraction_component(question, answer):
         return checked

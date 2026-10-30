@@ -500,6 +500,41 @@ void main() {
     },
   );
 
+  testWidgets('Photo entry returns to a ready day without changing its stage', (
+    tester,
+  ) async {
+    mobile(tester);
+    final server = PreparationServer(
+      pages: [source(1, confirmed: true)],
+      stage: 'ready',
+      preparation: {'status': 'completed', 'phase': null},
+    )..realUploads = true;
+    final state = server.state();
+    final navigation = GoRouter(
+      initialLocation: '/after-school/child',
+      routes: [
+        GoRoute(
+          path: '/after-school/:id',
+          builder: (_, _) =>
+              SchoolDayScreen(state, childId: 'child', startWithPhotos: true),
+        ),
+      ],
+    );
+    addTearDown(navigation.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+    );
+    await settleUi(tester);
+    expect(find.text('Mit diesen Seiten weiter'), findsOneWidget);
+    await tapText(tester, 'Mit diesen Seiten weiter');
+    expect(find.text('Zeig mir deine Heftseiten'), findsNothing);
+    expect(find.text('Heftseiten und bisherige Runden'), findsOneWidget);
+    expect(server.stage, 'ready');
+    expect(server.requests.where((r) => r.startsWith('PUT ')), isEmpty);
+    expect(server.submissions, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'Persisted preparation stops reads in background and resumes without a POST',
     (tester) async {

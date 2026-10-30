@@ -222,6 +222,29 @@ void main() {
   );
 
   testWidgets(
+    'ready learning path does not repeat its published rounds underneath',
+    (tester) async {
+      final server = PrefixServer()
+        ..stage = 'ready'
+        ..realUploads = true;
+      server.preparation = {
+        ...server.preparation,
+        'status': 'completed',
+        'can_publish_parts': false,
+        'published_unit_ids': [firstUnit],
+      };
+      await open(tester, server.account());
+      expect(find.text('Weitere Runden'), findsOneWidget);
+      expect(find.text('Verfügbare Runden'), findsNothing);
+      expect(find.text('Runde 1 öffnen'), findsNothing);
+      await background.tapText(tester, 'Weitere Runden');
+      expect(find.text('Runde 1 öffnen'), findsOneWidget);
+      expect(server.publishRequests, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     '125 missing stale or malformed publication metadata never offers a write',
     (tester) async {
       final server = PrefixServer();
@@ -258,7 +281,7 @@ void main() {
     final server = PrefixServer();
     await open(tester, server.account(role: 'parent'));
     expect(find.text('Fertige Runden nutzen'), findsNothing);
-    expect(find.text('Fertige Runden'), findsNothing);
+    expect(find.text('Verfügbare Runden'), findsNothing);
     expect(server.publishRequests, isEmpty);
     expect(server.submissions, 0);
     expect(tester.takeException(), isNull);

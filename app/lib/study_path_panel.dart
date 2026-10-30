@@ -795,6 +795,23 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                     ),
                   ),
                 ],
+              ] else if (current == null &&
+                  blocks.isNotEmpty &&
+                  data?['application_missing'] == true &&
+                  editable &&
+                  !hasBlocker) ...[
+                Text(
+                  'Die Grundlagen hast du angeschaut. Jetzt kannst du den Stoff aus deinen Heftseiten anwenden.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: posting ? null : createPlan,
+                  icon: Icon(Icons.arrow_forward_rounded),
+                  label: Text(
+                    posting ? 'Einen Moment …' : 'Mit dem Thema weiter',
+                  ),
+                ),
               ] else if (current == null && blocks.isNotEmpty)
                 Text(
                   'Alle Etappen sind bearbeitet. Gut gemacht!',

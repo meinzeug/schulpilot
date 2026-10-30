@@ -150,6 +150,39 @@ void _pause(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('A completed prior check offers the actual topic explicitly', (
+    tester,
+  ) async {
+    _viewport(tester);
+    final requests = <String>[];
+    final before = _path(
+      blocks: [_block('first', status: 'completed', unit: 'u')],
+    )..['application_missing'] = true;
+    final after = _path(
+      blocks: [
+        _block('first', status: 'completed', unit: 'u'),
+        _block('apply', phase: 'apply'),
+      ],
+    );
+    final state = _state(
+      MockClient((request) async {
+        requests.add(request.method);
+        return _json(request.method == 'POST' ? after : before);
+      }),
+    );
+    final router = await _open(tester, state);
+    expect(
+      find.text('Alle Etappen sind bearbeitet. Gut gemacht!'),
+      findsNothing,
+    );
+    expect(find.text('Mit dem Thema weiter'), findsOneWidget);
+    expect(requests.where((method) => method == 'POST'), isEmpty);
+    await _tap(tester, 'Mit dem Thema weiter');
+    expect(requests.where((method) => method == 'POST'), hasLength(1));
+    expect(find.text('Mit dem Thema weiter'), findsNothing);
+    await _dispose(tester, router);
+  });
+
   for (final available in [false, true]) {
     testWidgets(
       'Pending source review replaces impossible planning: $available',

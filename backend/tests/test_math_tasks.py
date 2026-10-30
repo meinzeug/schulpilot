@@ -34,6 +34,57 @@ def tasks(*, materials=None, previous=(), phase="understand", count=4, seed="syn
     )
 
 
+@pytest.mark.parametrize("examples", [
+    "Gleicher Nenner: 2/7 < 5/7\nGleicher Zähler: 3/8 < 3/5",
+    r"Gleicher Nenner: \(\frac{2}{7} < \frac{5}{7}\)" + "\n" + r"Gleicher Zähler: \(\frac{3}{8} < \frac{3}{5}\)",
+])
+def test_comparison_topic_uses_only_correct_literal_source_comparisons(examples):
+    materials = [{"content": "Brüche vergleichen\n" + examples}]
+    planned = fraction_tasks(materials, "Mathematik", "Brüche vergleichen", [], "apply", 2, "synthetic")
+    assert len(planned) == 2
+    goals = source_goals(materials, "Mathematik", "Brüche vergleichen")
+    for task in planned:
+        signature = fraction_task_signature(task["prompt"])
+        assert signature[0] == "compare"
+        fractions = [Fraction(int(n), int(d)) for n, d in signature[1]]
+        assert Fraction(task["answer"]) == max(fractions)
+        assert task["source_excerpt"] in materials[0]["content"]
+        assert next(goal for goal in goals if goal["id"] == fraction_task_goal(task["prompt"], goals))["label"] == "Brüche vergleichen"
+    assert len({fraction_task_signature(task["prompt"]) for task in planned}) == 2
+
+
+def test_comparison_does_not_treat_wrong_or_unconfirmed_examples_as_rules():
+    material = {"content": "Brüche vergleichen\nFalsch: 2/7 > 5/7\n1/2 > 3/4"}
+    assert fraction_tasks([material], "Mathematik", "Brüche vergleichen", [], "apply", 2, "x") == []
+    assert fraction_tasks([{**material, "confirmed": False}], "Mathematik", "Brüche vergleichen", [], "apply", 2, "x") == []
+
+
+def test_comparison_stage_rejects_component_questions_and_wrong_answers():
+    from schulpilot.study_path import validate_fraction_comparison_application
+
+    content = "Brüche vergleichen\nGleicher Nenner: 2/7 < 5/7\nGleicher Zähler: 3/8 < 3/5"
+    planned = fraction_tasks([{"content": content}], "Mathematik", "Brüche vergleichen", [], "apply", 2, "x")
+    validate_fraction_comparison_application("Mathematik", "Brüche vergleichen", "apply", [content], planned)
+    wrong = copy.deepcopy(planned)
+    wrong[0]["answer"] = "1/9"
+    with pytest.raises(ProviderError):
+        validate_fraction_comparison_application("Mathematik", "Brüche vergleichen", "apply", [content], wrong)
+    wrong[0]["prompt"] = "Welche Zahl ist der Zähler von 5/7?"
+    with pytest.raises(ProviderError):
+        validate_fraction_comparison_application("Mathematik", "Brüche vergleichen", "apply", [content], wrong)
+
+
+def test_fixed_comparison_distinguishes_correct_wrong_and_unknown_answers():
+    from schulpilot.answer_evaluation import evaluate
+
+    q = {"type": "short", "prompt": "Welcher Bruch ist größer: 3/6 oder 2/6? Gib den größeren Bruch an.",
+         "answer": "3/6", "accepted": [], "options": []}
+    assert evaluate(q, "3/6")["outcome"] == "correct"
+    assert evaluate(q, "2/6")["outcome"] == "incorrect"
+    assert evaluate(q, "1/2")["outcome"] == "uncertain"
+    assert evaluate({**q, "answer": "2/6"}, "3/6")["outcome"] == "uncertain"
+
+
 def assert_mathematically_correct(task):
     signature = fraction_task_signature(task["prompt"])
     assert signature is not None

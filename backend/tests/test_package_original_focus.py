@@ -132,6 +132,23 @@ def test_history_prose_uses_separate_exact_sentence_reference(api):
             {"id": focus.SENTENCE_REFERENCE, "kind": "scene"}, sources=[source])
 
 
+def test_wrapped_ocr_sentences_keep_exact_source_and_no_invented_relations(api):
+    source = ("Geschichte: Quellen\n\n"
+              "Sachquellen sind Gegenstände aus früherer\nZeit, zum Beispiel ein Werkzeug.\n\n"
+              "Schriftquellen sind geschriebene Texte, zum\nBeispiel ein Brief.\n\n"
+              "Bildquellen zeigen Bilder aus früherer Zeit,\nzum Beispiel eine Zeichnung.")
+    payload = payload_for(source, "Geschichte")
+    candidates = focus.compile_candidates(payload)
+    row = next(row for row in candidates if row["reference"]["id"] == focus.SENTENCE_REFERENCE)
+    block = Graphic.model_validate(row["block"])
+    assert block.source_excerpt in source
+    assert len(block.labels) == 3
+    assert all(label in " ".join(source.split()) for label in block.labels)
+    assert all(not step.edges for step in block.scene.steps)
+    visual_references._meaningful(block, {"id": focus.SENTENCE_REFERENCE, "kind": "scene"}, sources=[source])
+    assert "Geschichte: Quellen" not in " ".join(block.labels)
+
+
 @pytest.mark.parametrize("change", ["edges", "label", "phase", "quote"])
 def test_new_reference_proves_exact_compile_shape_instead_of_relaxing_scene_rules(change):
     payload, _, binding, _ = fixture()

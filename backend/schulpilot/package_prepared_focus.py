@@ -82,19 +82,41 @@ def focus_bases(content):
 
 
 def sentence_bases(content):
-    """Whole, consecutive source lines ending in sentence punctuation only."""
+    """Whole source sentences, including OCR line wraps within a paragraph."""
     runs, current, offset = [], [], 0
+    pending, start = [], None
     for line in content.splitlines(keepends=True):
         text = line.rstrip("\r\n")
         stripped = text.strip()
-        if (15 <= len(stripped) <= 160 and re.search(r"[.!?]$", stripped)
-                and not _LIST.fullmatch(text) and not re.search(r"[.!?]\s+\S", stripped)):
-            start = offset + len(text) - len(text.lstrip())
-            current.append((start, offset + len(text.rstrip()), stripped))
-        elif stripped:
+        if not stripped:
+            # Blank space can separate complete sentences, but never join an
+            # unfinished heading or partial sentence to the next paragraph.
+            if pending and current:
+                runs.append(current)
+                current = []
+            pending, start = [], None
+        elif _LIST.fullmatch(text) or (not pending and ":" in stripped and not re.search(r"[.!?]$", stripped)):
             if current:
                 runs.append(current)
             current = []
+            pending, start = [], None
+        else:
+            if start is None:
+                start = offset + len(text) - len(text.lstrip())
+            pending.append(stripped)
+            sentence = " ".join(pending)
+            if re.search(r"[.!?]$", stripped):
+                if 15 <= len(sentence) <= 160 and not re.search(r"[.!?]\s+\S", sentence):
+                    current.append((start, offset + len(text.rstrip()), sentence))
+                else:
+                    if current:
+                        runs.append(current)
+                    current = []
+                pending, start = [], None
+            elif len(sentence) > 160:
+                if current:
+                    runs.append(current)
+                current, pending, start = [], [], None
         offset += len(line)
     if current:
         runs.append(current)

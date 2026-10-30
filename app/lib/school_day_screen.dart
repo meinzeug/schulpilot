@@ -1006,6 +1006,15 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
 
   Widget readyParts() {
     if (!state.isChild) return const SizedBox.shrink();
+    // The normal learning path already lists these rounds. Keep a compact
+    // fallback in case the path cannot be loaded, without duplicating cards.
+    final collapsePublished =
+        day?['stage'] == 'ready' &&
+        day?['synthetic'] != true &&
+        !canPublishParts &&
+        !waiting &&
+        !['failed', 'blocked'].contains(preparation?['status']) &&
+        !isTechnicalPreparationFailure(error);
     final rawIds = preparation?['published_unit_ids'];
     final ids = rawIds is List
         ? rawIds
@@ -1015,7 +1024,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               .toList()
         : <String>[];
     if (!canPublishParts && ids.isEmpty) return const SizedBox.shrink();
-    return Padding(
+    final panel = Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Panel(
         padding: const EdgeInsets.all(16),
@@ -1023,7 +1032,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Fertige Runden',
+              'Verfügbare Runden',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             if (canPublishParts) ...[
@@ -1053,6 +1062,13 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
         ),
       ),
     );
+    if (collapsePublished) {
+      return ExpansionTile(
+        title: const Text('Weitere Runden'),
+        children: [panel],
+      );
+    }
+    return panel;
   }
 
   Future<void> ensureCollecting() async {
@@ -1946,9 +1962,11 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               label: 'Mit diesen Seiten weiter',
               icon: Icons.arrow_forward_rounded,
               onPressed: () => run(() async {
-                await state.api.put('/school-days/${day!['id']}/stage', {
-                  'stage': 'review',
-                });
+                if (day!['stage'] != 'ready') {
+                  await state.api.put('/school-days/${day!['id']}/stage', {
+                    'stage': 'review',
+                  });
+                }
                 if (mounted) setState(() => captureRequested = false);
               }),
             ),

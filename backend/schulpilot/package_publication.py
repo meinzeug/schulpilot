@@ -204,6 +204,8 @@ def publish_prefix(db, day, child, plan, *, complete=False):
         record(db, child.id, "school_day_ready", {"page_count": len(plan["parts"]), "unit_count": len(published),
             "package_parts": len(published)})
     _write(day, state)
+    # The path must see the persisted, server-generated prerequisite roles.
+    db.flush()
     _attach_path(db, day, units)
     return {"unit_ids": [unit.id for unit in units], "all_unit_ids": [published[str(i)]["unit_id"]
             for i in range(len(plan["parts"])) if str(i) in published and not published[str(i)].get("deleted")],

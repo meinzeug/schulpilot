@@ -117,6 +117,26 @@ void main() {
     }
   }
 
+  testWidgets('independent results do not suggest that help was needed', (
+    tester,
+  ) async {
+    final unit = round('check');
+    for (final question in unit['questions'] as List) {
+      question['attempts'] = [
+        {'answer': 'eigene Antwort', 'outcome': 'correct', 'assisted': false},
+      ];
+    }
+    final h = saved.Harness(data: unit);
+    await h.open(tester, width: 390);
+    expect(find.text('2 selbstständig'), findsOneWidget);
+    expect(find.text('Weitere Übung vorbereiten'), findsOneWidget);
+    expect(find.text('Ohne Hilfe ausprobieren'), findsNothing);
+    expect(h.calls, isEmpty);
+    await saved.click(tester, 'Weitere Übung vorbereiten');
+    expect(h.calls.single.url.path, '/api/units/saved-round/practice');
+    await h.close(tester);
+  });
+
   testWidgets(
     '141 changing report length cannot change the primary result card height',
     (tester) async {

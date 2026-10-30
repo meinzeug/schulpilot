@@ -202,6 +202,7 @@ def source_goals(materials, subject, topic):
         (r"kürz", "Brüche kürzen"),
         (r"erweit", "Brüche erweitern"),
         (r"gleichwert", "Gleichwertige Brüche erkennen"),
+        (r"brüche\s+vergleich", "Brüche vergleichen"),
     ):
         for material in materials:
             match = re.search(pattern, material["content"], re.I)
@@ -823,6 +824,8 @@ def fraction_task_signature(prompt):
             factor = re.search(r"mit\s+(?:(?:dem\s+)?faktor\s+)?([1-9]\d{0,3})\b", lower)
             return ("expand", parts[0], factor[1]) if factor else None
         return "reduce", parts[0]
+    if len(parts) == 2 and re.search(r"\b(?:vergleich\w*|grösser|groesser|kleiner)\b", lower):
+        return "compare", tuple(sorted(parts))
     if "zähler" in lower or "nenner" in lower:
         return "component", "zähler" if "zähler" in lower else "nenner", parts[0]
     return None
@@ -836,7 +839,7 @@ def fraction_task_goal(prompt, goals):
         return geometry
     if re.search(r"dieselbe Menge|gleichwertig", prompt, re.I):
         return next((g["id"] for g in goals if g["label"] == "Gleichwertige Brüche erkennen"), None)
-    labels = ("Zähler und Nenner benennen", "Brüche addieren", "Brüche kürzen", "Brüche erweitern")
+    labels = ("Zähler und Nenner benennen", "Brüche addieren", "Brüche kürzen", "Brüche erweitern", "Brüche vergleichen")
     known = {g["label"]: g["id"] for g in goals if g["label"] in labels}
     if not known:
         return None
@@ -844,7 +847,7 @@ def fraction_task_goal(prompt, goals):
     label = None
     signature = fraction_task_signature(prompt)
     if signature:
-        label = labels[{"component": 0, "add": 1, "reduce": 2, "expand": 3}[signature[0]]]
+        label = labels[{"component": 0, "add": 1, "reduce": 2, "expand": 3, "compare": 4}[signature[0]]]
     elif "kürz" in lower or "einfachste form" in lower:
         label = labels[2]
     elif "erweit" in lower:
@@ -870,7 +873,7 @@ def conflicting_fraction_goal(prompt, label):
         or bool(re.search(r"welchen bruch beschreibt das", question) and "teile" in question)
     )
     operation_question = bool(re.search(r"addier|subtrahier|erweit|kürz|\d\s*/\s*\d\s*[+−-]\s*\d\s*/", question))
-    operation_goal = bool(re.search(r"addier|subtrahier|erweit|kürz", goal))
+    operation_goal = bool(re.search(r"addier|subtrahier|erweit|kürz|vergleich", goal))
     return prerequisite and not operation_question and operation_goal
 
 

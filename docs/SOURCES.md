@@ -3429,3 +3429,38 @@ Einführung und zwei Fragen ohne das fehlende Fachwort (0,025276 USD gemeldet).
 Bestehende Aufgaben und Antworten werden nicht verändert. Zweistufige Grafiken
 ohne Abspielbewegung zeigen außerdem keine deaktivierten Wiedergabeknöpfe mehr;
 beide Schritte und weitere Werkzeuge bleiben erreichbar.
+
+30.10.2026 · Mobiler Alltagstest mit ausschließlich künstlichem Material:
+Eine kurze Seite „Brüche vergleichen“ führte zuerst zu zwei Vorwissensfragen
+und danach fälschlich zur Meldung, alle Etappen seien bearbeitet. Der Lernweg
+ergänzt jetzt bei serverseitig belegten reinen Vorwissensrunden eine begrenzte
+Anwendungsetappe pro Fach. Bei bereits bestehenden Plänen erfolgt die
+Ergänzung nach ausdrücklicher Auswahl; gespeicherte Runden und Antworten bleiben
+unverändert. Eine Etappe wird weiterhin erst nach eigener Aktion erzeugt.
+
+Der Mathematikplaner verwechselte darüber hinaus ein Vergleichsthema mit
+dem Benennen von Zähler und Nenner. Für das ausdrücklich erkannte Thema
+verwendet er korrekte, wörtlich belegte Vergleichspaare, einschließlich der
+bei der OCR verwendeten LaTeX-Bruchschreibweise. Er leitet daraus keine
+unbelegte allgemeine Rechenregel ab. Eine zusätzliche Prüfung hält Aufgaben
+zurück, die bei dieser belegten Anwendung keine Vergleiche oder keine
+passende Lösung enthalten. Ein echter, separat reservierter künstlicher
+Modellaufruf erzeugte zwei geprüfte Vergleichsfragen; gemeldete Kosten:
+0,049122 USD. Eine vorherige Probe ohne LaTeX-Erkennung erzeugte zwar
+Vergleichsfragen, belegte aber die neue feste Zuordnung noch nicht
+(0,052710 USD). Das ist keine Garantie für andere Themen oder Anbieterantworten.
+Für den festen Fragetyp werden die beiden angebotenen Brüche und der
+gespeicherte Lösungsschlüssel außerdem rechnerisch geprüft: Die falsche Wahl
+erhält eine kindgerechte Rückmeldung; andere Eingaben bleiben unklar.
+
+Bei einer weiteren künstlichen Geschichtsseite wurde ein ungeeigneter
+Zeitstrahl zurückgewiesen. Die belegten Sätze waren innerhalb von Absätzen
+über mehrere OCR-Zeilen umgebrochen und wurden deshalb nicht als Vorlage
+angeboten. Der bestehende Originalsatz-Renderer erkennt diese Umbrüche nun,
+ohne Sätze oder Beziehungen hinzuzuerfinden. Ein gesonderter, regulär
+reservierter Kontrollaufruf mit demselben künstlichen Inhalt bestand die
+Grafikprüfung; gemeldete Kosten: 0,032758 USD. Der ursprüngliche fehlgeschlagene
+Testauftrag bleibt erhalten. Der Fotoeinstieg führt bei bereits fertigem
+Tagespaket wieder zum Lernweg. Doppelte Rundenlinks stehen dort platzsparend
+hinter „Weitere Runden“; die Beschriftung des Rückblicks berücksichtigt, ob
+die Aufgaben bereits selbstständig gelöst wurden.

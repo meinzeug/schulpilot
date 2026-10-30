@@ -17,6 +17,7 @@ from schulpilot.db import (
     Child,
     Family,
     Job,
+    LearningMemory,
     LearningUnit,
     Material,
     ProviderConfig,
@@ -41,6 +42,99 @@ def test_large_dense_batches_keep_every_page_inside_the_total_cap():
     assert len(extents) == 24
     assert sum(e["target_questions"] for e in extents) == 120
     assert all(e["target_questions"] == 5 for e in extents)
+
+
+@pytest.mark.parametrize("role", ["prior_check", "practice", "unknown"])
+def test_short_source_prior_check_does_not_replace_application(study, role):
+    from schulpilot.synthetic import sample_unit
+
+    with DB.begin() as db:
+        day = db.get(SchoolDay, study["day_id"])
+        for material_id in study["materials"][1:]:
+            db.delete(db.get(Material, material_id))
+        page = db.get(Material, study["materials"][0])
+        page.content = "Die Sonne ist ein Stern."
+        data = sample_unit()
+        unit = LearningUnit(child_id=day.child_id, school_day_id=day.id,
+            subject=page.subject, topic=page.topic, explanation=data["explanation"],
+            questions=data["questions"][:2], synthetic=False, provider="fixture")
+        db.add(unit)
+        db.flush()
+        db.add(UnitSource(unit_id=unit.id, material_id=page.id, revision=page.revision))
+        db.add(LearningMemory(unit_id=unit.id, child_id=day.child_id, source_signature="x" * 64,
+            working={"entry_plan": {"questions": [
+                {"id": question["id"], "role": role} for question in unit.questions
+            ]}}, decision={}))
+        db.flush()
+        result = study_path.ensure_plan(db, day)
+        assert [b["question_count"] for b in result["blocks"]] == ([2, 2] if role == "prior_check" else [2])
+        if role == "prior_check":
+            extra = result["blocks"][1]
+            assert extra["phase"] == "apply" and extra["material_ids"] == [page.id]
+            original = copy.deepcopy(result)
+            assert study_path.ensure_plan(db, day) == original
+
+
+def test_existing_check_only_path_is_read_only_until_child_extends_it(study):
+    from schulpilot.synthetic import sample_unit
+
+    with DB.begin() as db:
+        day = db.get(SchoolDay, study["day_id"])
+        for material_id in study["materials"][1:]:
+            db.delete(db.get(Material, material_id))
+        page = db.get(Material, study["materials"][0])
+        page.content = "Die Sonne ist ein Stern."
+        data = sample_unit()
+        unit = LearningUnit(child_id=day.child_id, school_day_id=day.id,
+            subject=page.subject, topic=page.topic, explanation=data["explanation"],
+            questions=data["questions"][:2], synthetic=False, provider="fixture")
+        db.add(unit)
+        db.flush()
+        db.add(UnitSource(unit_id=unit.id, material_id=page.id, revision=page.revision))
+        db.flush()
+        original = copy.deepcopy(study_path.ensure_plan(db, day))
+        db.add(LearningMemory(unit_id=unit.id, child_id=day.child_id, source_signature="x" * 64,
+            working={"entry_plan": {"questions": [
+                {"id": question["id"], "role": "prior_check"} for question in unit.questions
+            ]}}, decision={}))
+    with DB() as db:
+        day = db.get(SchoolDay, study["day_id"])
+        projection = study_path.path_data(db, day, db.get(Child, day.child_id))
+        assert projection["application_missing"] is True
+        assert day.learning_plan == original
+        assert not db.dirty and not db.new
+    result = create(study)
+    assert [b["question_count"] for b in result["blocks"]] == [2, 2]
+    assert result["application_missing"] is False
+    assert create(study)["blocks"] == result["blocks"]
+
+
+def test_prior_check_in_one_subject_does_not_get_hidden_by_other_subject(study):
+    from schulpilot.synthetic import sample_unit
+
+    with DB.begin() as db:
+        day = db.get(SchoolDay, study["day_id"])
+        for material_id in study["materials"][2:]:
+            db.delete(db.get(Material, material_id))
+        first, second = (db.get(Material, ident) for ident in study["materials"][:2])
+        first.content, first.subject, first.topic = "Brüche vergleichen: 1/3 < 2/3.", "Mathematik", "Brüche vergleichen"
+        second.content, second.subject, second.topic = "Ein Werkzeug ist eine Sachquelle.", "Geschichte", "Quellen"
+        data = sample_unit()
+        for page, role in ((first, "prior_check"), (second, "practice")):
+            unit = LearningUnit(child_id=day.child_id, school_day_id=day.id, subject=page.subject,
+                topic=page.topic, explanation=data["explanation"], questions=data["questions"][:2],
+                synthetic=False, provider="fixture")
+            db.add(unit)
+            db.flush()
+            db.add(UnitSource(unit_id=unit.id, material_id=page.id, revision=page.revision))
+            db.add(LearningMemory(unit_id=unit.id, child_id=day.child_id, source_signature="x" * 64,
+                working={"entry_plan": {"questions": [{"id": q["id"], "role": role} for q in unit.questions]}},
+                decision={}))
+        db.flush()
+        plan = study_path.ensure_plan(db, day)
+        new = [block for block in plan["blocks"] if block["unit_id"] is None]
+        assert len(new) == 1 and new[0]["subject"] == "Mathematik"
+        assert new[0]["material_ids"] == [first.id]
 
 
 def test_existing_five_question_intro_leaves_one_three_question_stage_for_two_pages(study):

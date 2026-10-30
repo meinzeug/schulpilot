@@ -11,6 +11,7 @@ from fractions import Fraction
 
 MAX_CANDIDATES = 256
 COMPONENT_LABEL = "Zähler und Nenner benennen"
+COMPARISON_LABEL = "Brüche vergleichen"
 PHASE_TEXT = {
     "understand": "Neues Übungsbeispiel zum Verstehen",
     "detective": "Neues Übungsbeispiel zum Fehlerkorrigieren",
@@ -192,7 +193,41 @@ def _catalog(materials, subject, topic):
             if quote:
                 operation = {"Brüche addieren": "add", "Brüche kürzen": "reduce", "Brüche erweitern": "expand"}[label]
                 catalog[label] = {operation: quote}
+    if re.search(r"brüche\s+vergleich", topic, re.I):
+        examples = _comparison_examples(sources)
+        # A requested comparison must not silently become another lesson on
+        # naming components just because the page mentions 'Nenner:'. If no
+        # safe examples exist, leave the generic source-bound path intact.
+        catalog = {COMPARISON_LABEL: {"compare": examples}} if examples else {}
     return catalog
+
+
+def _comparison_examples(sources):
+    """Use only correct, literal comparisons; never infer a general rule."""
+    fraction = (r"(?:(?P<{p}n>\d{{1,2}})\s*/\s*(?P<{p}d>[1-9]\d?)"
+                r"|\\(?:d?frac)\s*\{{\s*(?P<{p}tn>\d{{1,2}})\s*\}}\s*\{{\s*(?P<{p}td>[1-9]\d?)\s*\}})")
+    pattern = re.compile(r"(?<![\w/])" + fraction.format(p="a") + r"\s*(?P<sign>[<>])\s*"
+                         + fraction.format(p="b") + r"(?![\w/])")
+    result, seen = [], set()
+    for source in sources:
+        for line in source["content"].splitlines():
+            if re.search(r"\b(?:falsch\w*|nicht|fehler\w*)\b", line, re.I):
+                continue
+            for match in pattern.finditer(line):
+                a, b = match["an"] or match["atn"], match["ad"] or match["atd"]
+                c, d = match["bn"] or match["btn"], match["bd"] or match["btd"]
+                sign = match["sign"]
+                numbers = tuple(map(int, (a, b, c, d)))
+                a, b, c, d = numbers
+                if not (0 < a < b <= 24 and 0 < c < d <= 24):
+                    continue
+                if (Fraction(a, b) < Fraction(c, d)) != (sign == "<") or Fraction(a, b) == Fraction(c, d):
+                    continue
+                identity = tuple(sorted(((a, b), (c, d))))
+                if identity not in seen:
+                    seen.add(identity)
+                    result.append((numbers, match.group()))
+    return result
 
 
 def _numbers(operation):
@@ -225,6 +260,10 @@ def _numbers(operation):
 def _task(operation, numbers, phase):
     numerator, denominator = numbers[:2]
     prefix = PHASE_TEXT[phase]
+    if operation == "compare":
+        other, other_denominator = numbers[2:]
+        answer = f"{numerator}/{denominator}" if Fraction(numerator, denominator) > Fraction(other, other_denominator) else f"{other}/{other_denominator}"
+        return f"Welcher Bruch ist größer: {numerator}/{denominator} oder {other}/{other_denominator}? Gib den größeren Bruch an.", answer
     if operation == "add_unlike":
         second, other_denominator = numbers[2:]
         common = math.lcm(denominator, other_denominator)
@@ -338,7 +377,8 @@ def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, se
         operation = min(available, key=lambda kind: component_counts.get(kind, 0))
         if operation in component_counts:
             component_counts[operation] += 1
-        candidates = [numbers for numbers in _numbers(operation)
+        examples = catalog[label][operation] if operation == "compare" else None
+        candidates = [entry[0] for entry in examples] if examples is not None else [numbers for numbers in _numbers(operation)
             if operation != "expand" or expansion_denominator_limit is None
             or numbers[1] * numbers[2] <= expansion_denominator_limit][:MAX_CANDIDATES]
         candidates.sort(key=lambda numbers: hashlib.sha256(f"{seed}|{phase}|{operation}|{numbers}".encode()).digest())
@@ -356,7 +396,7 @@ def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, se
                     "answer": answer,
                     "options": [],
                     "accepted": [],
-                    "source_excerpt": catalog[label][operation],
+                    "source_excerpt": next(quote for values, quote in examples if values == numbers) if examples is not None else catalog[label][operation],
                 }
             )
             used_prompts.add(normalized)

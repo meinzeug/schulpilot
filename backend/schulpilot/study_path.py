@@ -21,6 +21,7 @@ from .db import (
     Child,
     Family,
     Job,
+    LearningMemory,
     LearningUnit,
     ProviderConfig,
     SchoolDay,
@@ -102,6 +103,39 @@ def task_briefs(items, previous_prompts, phase, count, *, contents=None):
     return result
 
 
+def validate_fraction_comparison_application(subject, topic, phase, contents, questions):
+    """Do not present component-only questions as a sourced comparison stage."""
+    from fractions import Fraction
+
+    from .coaching import fraction_task_signature
+    from .math_tasks import _comparison_examples
+
+    if subject != "Mathematik" or phase != "apply" or not re.search(r"brüche\s+vergleich", topic, re.I):
+        return
+    examples = _comparison_examples([{"content": text} for text in contents])
+    if not examples:
+        return  # No claim that an arbitrary source teaches a comparison rule.
+    allowed = {tuple(sorted(((str(n), str(d)), (str(a), str(b))))) for (n, d, a, b), _ in examples}
+    for question in questions:
+        signature = fraction_task_signature(question.get("prompt", ""))
+        if not signature or signature[0] != "compare" or signature[1] not in allowed:
+            raise ProviderError("Die Aufgaben passen noch nicht zum Bruchvergleich.", code="invalid_output")
+        prompt = question["prompt"].casefold()
+        larger = bool(re.search(r"\b(?:grösser|groesser)\b", prompt))
+        smaller = bool(re.search(r"\bkleiner\b", prompt))
+        if larger == smaller or question.get("type") != "short":
+            raise ProviderError("Die Vergleichsaufgabe ist nicht eindeutig.", code="invalid_output")
+        candidates = [Fraction(int(n), int(d)) for n, d in signature[1]]
+        expected = max(candidates) if larger else min(candidates)
+        answer = question.get("answer", "")
+        try:
+            correct = bool(re.fullmatch(r"\d{1,2}/[1-9]\d?", answer)) and Fraction(answer) == expected
+        except (TypeError, ValueError, ZeroDivisionError):
+            correct = False
+        if not correct:
+            raise ProviderError("Die Lösung des Bruchvergleichs ist nicht eindeutig.", code="invalid_output")
+
+
 def sources(db, day):
     from .material_review import held
 
@@ -163,11 +197,73 @@ def bounded_extents(items, db=None):
     return extents
 
 
+def prerequisite_only_sources(db, day, blocks, items):
+    """Find a fully evidenced check-only path without altering any learner data.
+
+    Unknown/legacy question roles are deliberately not guessed from IDs or
+    text. Pending stages, unrelated units and stale source links also make
+    this conservative projection inapplicable.
+    """
+    if not blocks:
+        return []
+    if sum(block.get("question_count", 0) for block in blocks) + 2 > 120:
+        return []
+    allowed = {item.id: item for item in items}
+    grouped = {}
+    for block in blocks:
+        grouped.setdefault(block.get("subject"), []).append(block)
+    chosen = []
+    for subject, subject_blocks in grouped.items():
+        if not subject or any(not block.get("unit_id") for block in subject_blocks):
+            continue
+        matched = None
+        for block in subject_blocks:
+            unit = db.get(LearningUnit, block["unit_id"])
+            memory = db.get(LearningMemory, block["unit_id"])
+            if not unit or unit.child_id != day.child_id or unit.subject != subject or not unit.questions or not memory or memory.child_id != day.child_id:
+                break
+            entry = (memory.working or {}).get("entry_plan") or {}
+            roles = {question.get("id"): question.get("role") for question in entry.get("questions", [])}
+            if any(roles.get(question.get("id")) != "prior_check" for question in unit.questions):
+                break
+            links = list(db.scalars(select(UnitSource).where(UnitSource.unit_id == unit.id)))
+            if not links or any(link.material_id not in allowed or allowed[link.material_id].revision != link.revision for link in links):
+                break
+            source = next((allowed[link.material_id] for link in links if allowed[link.material_id].subject == subject), None)
+            if not source:
+                break
+            matched = matched or source
+        else:
+            if matched:
+                chosen.append(matched)
+    return chosen
+
+
+def append_application_stages(db, day, items, plan):
+    """Append bounded planned work only; retain every existing block and job."""
+    candidates = prerequisite_only_sources(db, day, plan.get("blocks", []), items)
+    if not candidates:
+        return plan
+    value = copy.deepcopy(plan)
+    remaining = 120 - sum(block.get("question_count", 0) for block in value["blocks"])
+    for material in candidates:
+        if remaining < 2:
+            break
+        value["blocks"].append({
+            "id": uid(), "title": material.topic or f"Seite {material.page_number or 1}",
+            "phase": "apply", "label": "Anwenden", "subject": material.subject,
+            "material_ids": [material.id], "question_count": 2, "unit_id": None, "job_id": None,
+        })
+        remaining -= 2
+    return value
+
+
 def ensure_plan(db, day):
     items = sources(db, day)
     source_hash = fingerprint(items, db)
     if day.learning_plan and day.learning_plan.get("source_hash") in compatible_fingerprints(items, db):
-        day.learning_plan = {**day.learning_plan, "source_hash": source_hash, "fingerprint_version": 2}
+        current = {**day.learning_plan, "source_hash": source_hash, "fingerprint_version": 2}
+        day.learning_plan = append_application_stages(db, day, items, current)
         return day.learning_plan
     material_ids = {m.id for m in items}
     revisions = {m.id: m.revision for m in items}
@@ -242,6 +338,7 @@ def ensure_plan(db, day):
             count = max(0, count - take)
             remaining = max(0, remaining - take)
     day.learning_plan = {"version": 1, "fingerprint_version": 2, "source_hash": source_hash, "extents": extents, "blocks": blocks}
+    day.learning_plan = append_application_stages(db, day, items, day.learning_plan)
     return day.learning_plan
 
 
@@ -308,10 +405,13 @@ def path_data(db, day, child):
         "stale": False,
         "pending_review_count": len(pending_review),
         "next_review_material_id": pending_review[0].id if pending_review else None,
+        "application_missing": False,
     }
     if not value:
         return result
     result["stale"] = not plan_sources_current(db, day)
+    if not result["stale"]:
+        result["application_missing"] = bool(prerequisite_only_sources(db, day, value.get("blocks", []), sources(db, day)))
     from .learning_origins import open_rounds
 
     result["related_rounds"] = open_rounds(db, child.id, day.id)
@@ -608,6 +708,10 @@ def process(job_id):
         request_config._selected_route = route_snapshot
         result = request_provider(request_config, "unit", payload)
         data = s.UnitOutput.model_validate(result.data).model_dump()
+        validate_fraction_comparison_application(
+            payload["required_subject"], payload["required_topic"], payload["study_block"]["mode"],
+            [value["content"] for value in safe], data["questions"],
+        )
         from .coaching import normalized_prompt
 
         if (

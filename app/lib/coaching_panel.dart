@@ -423,6 +423,10 @@ class _ChildCoachingPanel extends StatelessWidget {
     final childId = unit['child_id'] ?? state.user?['child_id'];
     final questions = unit['questions'] as List? ?? [];
     final facts = _RoundFacts(questions);
+    final allIndependent =
+        facts.answered > 0 &&
+        facts.answered == questions.length &&
+        facts.independent == facts.answered;
     final practicePending = [
       'queued',
       'running',
@@ -614,7 +618,9 @@ class _ChildCoachingPanel extends StatelessWidget {
                   if (coach?['next_unit_id'] != null)
                     ActionButton(
                       label: decision == 'check'
-                          ? 'Selbst ausprobieren'
+                          ? allIndependent
+                                ? 'Weitere Übung öffnen'
+                                : 'Selbst ausprobieren'
                           : 'Weiter üben',
                       icon: Icons.arrow_forward_rounded,
                       onPressed: () async {
@@ -671,7 +677,9 @@ class _ChildCoachingPanel extends StatelessWidget {
                         label: coach?['practice_status'] == 'failed'
                             ? 'Übung erneut vorbereiten'
                             : decision == 'check'
-                            ? 'Ohne Hilfe ausprobieren'
+                            ? allIndependent
+                                  ? 'Weitere Übung vorbereiten'
+                                  : 'Ohne Hilfe ausprobieren'
                             : 'Gezielt weiterüben',
                         secondary: practiceFailed,
                         icon: Icons.auto_fix_high_rounded,
