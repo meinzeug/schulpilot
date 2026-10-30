@@ -24,9 +24,16 @@ unverändert. Erstelle weiterhin kurze verständliche Erklärtexte zur gewählte
 def bind_schema(schema, payload):
     context = payload.get("visual_context") or {}
     subject = payload.get("required_subject") or (payload.get("material") or {}).get("subject")
+    tasks = payload.get("practice_tasks")
+    # Explicit coach follow-ups have two server-bound task/goal pairs. Keep the
+    # ordinary review contract unchanged for every other kind of review.
+    coach_practice = (payload.get("review") is True and isinstance(tasks, list) and len(tasks) == 2
+                      and all(isinstance(task, dict) and isinstance(task.get("id"), str)
+                              and isinstance(task.get("learning_goal_id"), str) for task in tasks))
     if (not context.get("required") or not isinstance(subject, str) or subject not in PROFILES
             or subject == "Mathematik" or payload.get("selected_groups")
-            or any(payload.get(key) for key in ("review", "homework_practice",
+            or (payload.get("review") and not coach_practice)
+            or any(payload.get(key) for key in ("homework_practice",
                 "exam_preparation", "exam_review_practice"))):
         return False
     _bind_references(schema, payload, unit_subject=subject)

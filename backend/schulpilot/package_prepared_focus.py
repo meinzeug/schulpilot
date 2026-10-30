@@ -28,6 +28,12 @@ Schreibweise generell richtig/falsch sei oder welche Listennummer/alte Markierun
 Nenne die richtige vollständige Option nicht bereits im Frageprompt. Gib nötigen Kontext,
 ohne neue Tatsachen einzuführen. Die Grafik öffnet nur über ihre gebundene Hilfestufe.
 Schreibe explanation_steps.text verständlich nach explanation-guidance-1, maximal350Zeichen.
+Erkläre den konkreten Inhalt und seine im Beleg sichtbare Bedeutung in einfachen Worten;
+greife mindestens einen vollständigen fachlichen Begriff aus der Quelle auf. Ein Hinweis
+wie „Die Grafik zeigt zwei Sätze“ oder „Jeder Satz erklärt einen Teil des Themas“ erklärt
+den Stoff allein nicht. Keine unbelegten Ursachen, Details oder zusätzlichen Beispiele
+erfinden. Wenn die Quelle nur wenig aussagt, erkläre diesen belegten Ausschnitt statt
+eine allgemeine Aussage über Texte oder Satzanzahl zu schreiben.
 Die sichtbaren Originalbeschriftungen/Quellen/Referenz/Stufe bleiben unverändert.
 """
 
@@ -120,6 +126,22 @@ def sentence_bases(content):
         offset += len(line)
     if current:
         runs.append(current)
+    # OCR can join several complete sentences into one line. Only split lines
+    # whose complete contents match simple, unambiguous sentence boundaries.
+    # Periods within numbers, abbreviations and initials make the whole line
+    # ineligible rather than guessing at source text or moving punctuation.
+    offset = 0
+    for line in content.splitlines(keepends=True):
+        text = line.rstrip("\r\n")
+        matches = list(re.finditer(r"[A-ZÄÖÜ][^.!?\r\n]*[.!?]", text))
+        if (2 <= len(matches) <= 4 and not text[:matches[0].start()].strip()
+                and not text[matches[-1].end():].strip()
+                and all(text[a.end():b.start()].isspace() for a, b in zip(matches, matches[1:]))
+                and all(15 <= len(m.group()) <= 160 for m in matches)
+                and not any(re.search(r"(?:\b\d+|\b(?:bzw|usw|bspw|abb|prof|dr|nr|st))\.$",
+                                      m.group(), re.IGNORECASE) for m in matches)):
+            runs.append([(offset + m.start(), offset + m.end(), m.group()) for m in matches])
+        offset += len(line)
     for run in runs:
         for start in range(len(run) - 1):
             selected = run[start:start + min(4, len(run) - start)]
@@ -279,6 +301,9 @@ def _question_schema(branch, candidate):
     else:
         return None
     props["accepted"].update(maxItems=0)
+    # The prepared explanation is the only graphic panel for this question.
+    # An unconstrained second Graphic invokes an incompatible table transport.
+    props["presentation"] = {"type": "null"}
     props["field_group"] = {"type": "null"}
     return branch
 

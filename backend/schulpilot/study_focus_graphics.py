@@ -31,7 +31,13 @@ class StudyFocusBinding:
 def bind_schema(schema, payload):
     context = payload.get('visual_context') or {}
     subject = payload.get('required_subject')
-    if (not payload.get('study_block') or subject not in focus.SUBJECTS
+    tasks = payload.get('practice_tasks')
+    coach_practice = (payload.get('review') is True and isinstance(tasks, list) and len(tasks) == 2
+                      and all(isinstance(task, dict) and isinstance(task.get('id'), str)
+                              and isinstance(task.get('learning_goal_id'), str)
+                              and isinstance(task.get('source_excerpt'), str)
+                              and len(task['source_excerpt'].strip()) >= 3 for task in tasks))
+    if (not (payload.get('study_block') or coach_practice) or subject not in focus.SUBJECTS
             or not context.get('required') or payload.get('selected_groups')):
         return None
     # Compile from precisely the current source snapshot. The wrapper only
@@ -41,9 +47,26 @@ def bind_schema(schema, payload):
     candidates = focus.compile_candidates(probe)
     if not candidates:
         return None
+    if coach_practice and any(not any(
+            ' '.join(task['source_excerpt'].casefold().split()) in
+            ' '.join(row['block']['source_excerpt'].casefold().split())
+            for row in candidates if row['disclosure'] != 'given') for task in tasks):
+        # Do not silently drop a fixed goal when no offered picture covers it.
+        return None
     binding = focus.Binding(tuple(candidates))
     unit = {key: copy.deepcopy(value) for key, value in schema.items() if key != '$defs'}
     wrapper = {'$defs': schema['$defs'], 'properties': {'units': {'items': unit}}}
-    prepared.bind_candidates(wrapper, binding, question_kinds=('scene',), question_binding=focus._question_schema)
+    tasks_by_id = {task['id']: task for task in tasks} if coach_practice else {}
+    def question_binding(branch, candidate):
+        if coach_practice:
+            ids = branch.get('properties', {}).get('id', {}).get('enum', [])
+            task = tasks_by_id.get(ids[0]) if len(ids) == 1 else None
+            quote = ' '.join(candidate['block']['source_excerpt'].casefold().split())
+            excerpt = ' '.join(task['source_excerpt'].casefold().split()) if task else ''
+            if not excerpt or excerpt not in quote:
+                return None
+        return focus._question_schema(branch, candidate)
+
+    prepared.bind_candidates(wrapper, binding, question_kinds=('scene',), question_binding=question_binding)
     schema['properties'] = wrapper['properties']['units']['items']['properties']
     return StudyFocusBinding(binding)

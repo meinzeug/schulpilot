@@ -149,6 +149,29 @@ def test_wrapped_ocr_sentences_keep_exact_source_and_no_invented_relations(api):
     assert "Geschichte: Quellen" not in " ".join(block.labels)
 
 
+def test_multiple_full_ocr_sentences_on_one_line_preserve_literal_evidence():
+    source = ("Leben am Nil\nDie Menschen wohnten in Dörfern am Nil. "
+              "Sie bauten Getreide auf den Feldern an. Der Fluss versorgte die Felder mit Wasser.")
+    bases = list(focus.sentence_bases(source))
+    assert len(bases) == 2
+    assert bases[0]['labels'] == ["Die Menschen wohnten in Dörfern am Nil.",
+                                 "Sie bauten Getreide auf den Feldern an.",
+                                 "Der Fluss versorgte die Felder mit Wasser."]
+    assert bases[0]['source_excerpt'] in source
+    block = Graphic.model_validate({**bases[0], 'disclosure': 'solution'})
+    focus.validate_focus(block, sources=[source], sentences=True)
+
+
+@pytest.mark.parametrize('line', [
+    "Die Messung beträgt 1.5 Meter. Danach wurde weitergemessen.",
+    "Die Kinder besuchten z.B. alte Bauwerke. Danach gingen sie weiter.",
+    "Der Aufsatz ist für die 6. Klasse gedacht. Danach folgt eine Übung.",
+    "Die Klasse traf Prof. Müller im Museum. Danach ging sie weiter.",
+])
+def test_inline_sentence_focus_does_not_guess_at_ambiguous_periods(line):
+    assert list(focus.sentence_bases(line)) == []
+
+
 @pytest.mark.parametrize("change", ["edges", "label", "phase", "quote"])
 def test_new_reference_proves_exact_compile_shape_instead_of_relaxing_scene_rules(change):
     payload, _, binding, _ = fixture()
@@ -177,6 +200,8 @@ def test_actual_http_schema_has_finite_slot_and_unchanged_cost_source_bounds(mon
         assert focus.options_slot(binding.candidates[0]) in encoded
         assert body["max_tokens"] == 8000 and body["reasoning"]["effort"] == "medium"
         assert "package-original-focus-1" in body["messages"][0]["content"]
+        assert "Erkläre den konkreten Inhalt" in body["messages"][0]["content"]
+        assert "eine allgemeine Aussage über Texte" in body["messages"][0]["content"]
         wire = capture.wire(model)
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(wire, ensure_ascii=False)}}],
             "usage": {"prompt_tokens": 100, "completion_tokens": 100, "cost": 0.01}})

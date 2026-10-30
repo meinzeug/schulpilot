@@ -3558,3 +3558,31 @@ Kindermeldung unterscheidet nun diese Verbindungslage von einer fehlerhaften
 Aufgabe; die Ursache des Verbindungsabbruchs und eine zuverlässige Verarbeitung
 dieses Fotos sind damit noch nicht nachgewiesen. Keine automatischen erneuten
 Anbieteraufrufe wurden ergänzt. Der 30-Tage-Alltagstest bleibt unvollständig.
+
+30.10.2026 · In einem weiteren isolierten 390-Pixel-Alltagstest wurde eine
+künstliche Geschichteseite zum Nil erkannt. Ein zunächst falsch zugeordnetes
+Fach ließ sich vor Bestätigung ändern. Die beschriftete Fachauswahl hat nun
+eine direkt ausführbare Bedienhilfe-Aktion für Screenreader; bestehende
+Tastatur- und Touchbedienung bleiben erhalten.
+
+Die erste Anschlussübung scheiterte an einer Kombination aus falschem
+Grafiktyp und Referenz. Ein erneuter Versuch verwendete den passenden Typ,
+veränderte jedoch die geforderte Originaldarstellung. Für geeignete deutsche
+und historische Quellen können ausdrücklich angeforderte Anschlussübungen nun
+die bereits geprüfte Originalgrafik auswählen. Ihre zwei festen Aufgaben- und
+Lernzielpaare bleiben gebunden, und die jeweilige Grafik muss den Beleg des
+Lernziels enthalten. Andere Pfade und alle Quell- und Antwortprüfungen bleiben
+bestehen. Eine zusätzliche einzelne Fragegrafik wird für diesen vorbereiteten
+Vertrag ausgeschlossen; sie hatte zwei inkompatible Grafiktransporte aktiviert.
+
+Eine zweite künstliche Seite enthielt drei von der Erkennung zu einer Zeile
+verbundene Sätze. Der Compiler erkennt solche vollständigen, einfachen Sätze
+nun auch in einer Zeile; mehrdeutige Punkte wie bei Abkürzungen, Zahlen und
+Klassenangaben werden nicht erraten. Das echte Lernpaket wurde erstellt; nach
+einem abgelehnten Anschlussauftrag gelang der ausdrücklich gestartete erneute
+Versuch und beide Aufgaben ließen sich im Smartphone-Browser beantworten.
+Die neue Erklärung nannte den Inhalt der Seite. Die Anschlussfragen waren
+allerdings vor allem Umformulierungen der vorherigen Fragen. Damit ist eine
+anspruchsvolle adaptive Förderung nicht nachgewiesen. Der Fehler bei der
+Dezimalzahlen-Grafik und die generelle Vermeidung von Ausgabelängen-Abbrüchen
+sind weiterhin offen; der 30-Tage-Alltagstest ist nicht abgeschlossen.

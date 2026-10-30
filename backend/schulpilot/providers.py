@@ -1805,7 +1805,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             from .package_prepared_photosynthesis import bind_followup as bind_photosynthesis_followup
 
             unit_composition = bind_photosynthesis_followup(schema, payload)
-        if unit_composition is None and payload.get("study_block"):
+        if unit_composition is None and (payload.get("study_block")
+                or (payload.get("review") and payload.get("practice_tasks"))):
             from .study_focus_graphics import bind_schema as bind_study_focus
 
             unit_composition = bind_study_focus(schema, payload)
@@ -1818,7 +1819,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             from .unit_reference_graphics import RULES as UNIT_REFERENCE_RULES
             from .unit_reference_graphics import bind_schema as bind_unit_references
 
-            if (payload.get("study_block") or selection(config).get("reason") in
+            if (payload.get("study_block") or (payload.get("review") and payload.get("practice_tasks"))
+                    or selection(config).get("reason") in
                     {"material_graphic_teaching", "notebook_graphic_teaching"}):
                 try:
                     if bind_unit_references(schema, payload):

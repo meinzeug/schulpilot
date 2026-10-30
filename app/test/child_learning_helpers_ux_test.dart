@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' show Tristate;
+import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -216,6 +216,44 @@ void main() {
       expect(controller.text, 'Eigener Anfang');
       expect(adapter.listens, 1);
       await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'subject selector exposes one named actionable accessibility node',
+    (tester) async {
+      final controller = TextEditingController(text: 'Sachunterricht');
+      addTearDown(controller.dispose);
+      final state = account(
+        MockClient(
+          (_) async => reply({
+            'items': [
+              {'id': 'history', 'title': 'Geschichte'},
+            ],
+          }),
+        ),
+      );
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        home(
+          SubjectField(
+            state,
+            childId: 'child',
+            controller: controller,
+            enabled: true,
+            changed: () {},
+          ),
+        ),
+      );
+      final node = tester.getSemantics(find.byType(SubjectField));
+      expect(node.getSemanticsData().label, 'Fach auswählen');
+      expect(node.getSemanticsData().value, 'Sachunterricht');
+      expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+      node.owner!.performAction(node.id, SemanticsAction.tap);
+      await tester.pumpAndSettle();
+      expect(find.text('Geschichte'), findsOneWidget);
+      await tap(tester, find.text('Geschichte'));
+      expect(controller.text, 'Geschichte');
+    semantics.dispose();
     },
   );
   testWidgets(

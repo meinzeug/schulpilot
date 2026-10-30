@@ -70,6 +70,8 @@ class SubjectField extends StatelessWidget {
     enabled: enabled,
     label: 'Fach auswählen',
     value: controller.text.isEmpty ? 'Noch nicht ausgewählt' : controller.text,
+    onTap: enabled ? () => choose(context) : null,
+    excludeSemantics: true,
     child: OutlinedButton(
       onPressed: enabled ? () => choose(context) : null,
       style: OutlinedButton.styleFrom(

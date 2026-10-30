@@ -103,6 +103,58 @@ def test_specialized_contracts_are_not_rebound(special):
     assert schema == {"unchanged": True}
 
 
+def test_explicit_coach_practice_binds_graphic_kind_without_changing_task_goals():
+    from schulpilot.graphic_schema import bind_coherent_graphics
+    from schulpilot.schemas import PracticeUnitOutput
+    from schulpilot.subject_content import bind_graphic_schema
+
+    schema = providers.strict_schema(PracticeUnitOutput, preserve_limits=True)
+    bind_graphic_schema(schema, ["Deutsch"])
+    bind_coherent_graphics(schema)
+    providers.indexed_choice_schema(schema, bounded_matches=True)
+    tasks = [{"id": "q1", "learning_goal_id": "g1"}, {"id": "q2", "learning_goal_id": "g2"}]
+    providers.bind_practice_tasks(schema, tasks)
+    payload = {"material": {"subject": "Deutsch", "content": SOURCE}, "required_subject": "Deutsch",
+               "review": True, "practice_tasks": tasks, "visual_context": context()}
+    assert unit_reference_graphics.bind_schema(schema, payload)
+    questions = list(branches(schema, schema["properties"]["questions"]["items"]))
+    assert {(q["properties"]["id"]["enum"][0], q["properties"]["learning_goal_id"]["enum"][0])
+            for q in questions} == {("q1", "g1"), ("q2", "g2")}
+    for question in questions:
+        for step in branches(schema, question["properties"]["explanation_steps"]["items"]):
+            ref = next(branches(schema, step["properties"]["reference"]))["properties"]
+            panel = next(branches(schema, step["properties"]["presentation"]))["properties"]
+            for graphic in branches(schema, panel["blocks"]["items"]):
+                assert ref["id"]["enum"] == [REFERENCE]
+                assert graphic["properties"]["kind"]["enum"] == ["sentence"]
+
+
+def test_coach_practice_adapter_requests_bound_graphics_and_preserves_goal_pairs(monkeypatch):
+    value = output()["units"][0]
+    value.pop("group_id")
+    goals = [
+        {"id": "g1", "label": "Verbform finden", "source_excerpt": EXAMPLES[1]},
+        {"id": "g2", "label": "Nomen finden", "source_excerpt": EXAMPLES[0]},
+    ]
+    for question, goal in zip(value["questions"], goals, strict=True):
+        question["learning_goal_id"] = goal["id"]
+    payload = {"material": {"subject": "Deutsch", "topic": "Originalbeispiele", "content": SOURCE},
+               "required_subject": "Deutsch", "review": True, "practice_kind": "repair",
+               "learning_goals": goals, "focus_goal_ids": ["g1", "g2"], "visual_context": context()}
+    calls = _transport(monkeypatch, "openrouter", value)
+    config = _config("openrouter")
+    config.max_output_tokens, config.reserve_micros = 8000, 250000
+    approved = policy()
+    config._selected_route = {"reason": "material_or_new_teaching", "tier": "sol", "region": "standard",
+        "route": {**approved["routes"]["sol"], "upstreams": ["fixture-upstream"]}, "budget": approved["budget"]}
+    result = providers.request_provider(config, "unit", payload)
+    assert [(q["id"], q["learning_goal_id"]) for q in result.data["questions"]] == [("q1", "g1"), ("q2", "g2")]
+    assert len(calls) == 1
+    _, schema, instructions = _submitted("openrouter", calls[0])
+    assert "unit-reference-graphics-1" in instructions
+    assert REFERENCE in json.dumps(schema)
+
+
 def test_scene_evidence_guard_remains_independent_and_strict():
     from schulpilot.learning_scenes import validate
 
