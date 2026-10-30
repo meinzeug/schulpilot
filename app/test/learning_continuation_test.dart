@@ -316,48 +316,50 @@ void main() {
     },
   );
 
-  testWidgets(
-    'job screen polls reads only and needs explicit press when ready',
-    (tester) async {
-      var ready = false, starts = 0, reads = 0;
-      final state = stateFor((r) async {
-        if (r.method == 'POST') {
-          starts++;
-          return response({});
-        }
-        reads++;
-        return response({
-          'id': 'job',
-          'kind': 'unit',
-          'status': ready ? 'completed' : 'running',
-          'result': ready ? {'unit_id': 'ready'} : null,
+  for (final kind in ['unit', 'study_block']) {
+    testWidgets(
+      '$kind job screen polls reads only and needs explicit press when ready',
+      (tester) async {
+        var ready = false, starts = 0, reads = 0;
+        final state = stateFor((r) async {
+          if (r.method == 'POST') {
+            starts++;
+            return response({});
+          }
+          reads++;
+          return response({
+            'id': 'job',
+            'kind': kind,
+            'status': ready ? 'completed' : 'running',
+            'result': ready ? {'unit_id': 'ready'} : null,
+          });
         });
-      });
-      final router = routerFor(
-        state,
-        LearningPreparationScreen(state, childId: 'child', jobId: 'job'),
-      );
-      await tester.pumpWidget(
-        MaterialApp.router(theme: appTheme(), routerConfig: router),
-      );
-      await tester.pump();
-      await tester.pump();
-      expect(find.text('Deine Runde entsteht …'), findsOneWidget);
-      expect(starts, 0);
-      ready = true;
-      await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
-      expect(find.text('Deine Runde ist bereit.'), findsOneWidget);
-      expect(starts, 0);
-      expect(reads, 2);
-      await tester.ensureVisible(find.text('Los geht’s'));
-      await tester.tap(find.text('Los geht’s'));
-      await tester.pumpAndSettle();
-      expect(starts, 1);
-      await tester.pumpWidget(const SizedBox());
-      router.dispose();
-    },
-  );
+        final router = routerFor(
+          state,
+          LearningPreparationScreen(state, childId: 'child', jobId: 'job'),
+        );
+        await tester.pumpWidget(
+          MaterialApp.router(theme: appTheme(), routerConfig: router),
+        );
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Deine Runde entsteht …'), findsOneWidget);
+        expect(starts, 0);
+        ready = true;
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+        expect(find.text('Deine Runde ist bereit.'), findsOneWidget);
+        expect(starts, 0);
+        expect(reads, 2);
+        await tester.ensureVisible(find.text('Los geht’s'));
+        await tester.tap(find.text('Los geht’s'));
+        await tester.pumpAndSettle();
+        expect(starts, 1);
+        await tester.pumpWidget(const SizedBox());
+        router.dispose();
+      },
+    );
+  }
 
   testWidgets('failed job never auto retries and keeps a way home', (
     tester,

@@ -133,7 +133,12 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
           sameOwner) {
         result = await widget.state.api.get('/jobs/$recovery');
       }
-      if (!['unit', 'controller_check', 'decision'].contains(result['kind'])) {
+      if (![
+        'unit',
+        'study_block',
+        'controller_check',
+        'decision',
+      ].contains(result['kind'])) {
         throw ApiError('Diese Vorbereitung gehört zu einem anderen Schritt.');
       }
       if (mounted && sameOwner && id == widget.jobId) {

@@ -1,3 +1,9 @@
+## 30.10.2026 · Vorbereitungsstatus von Lernweg-Etappen · Version 1.38.20
+
+Der Live-Test von 1.38.19 zeigte, dass die Statusseite `study_block`-Aufträge
+nicht akzeptierte. Sie liest nun auch diesen Auftragstyp und öffnet nach
+Abschluss die gespeicherte Runde; reines Abfragen startet keinen neuen Auftrag.
+
 ## 30.10.2026 · Gewähltes Lernthema öffnen · Version 1.38.19
 
 Ein ausgewählter geplanter Themenbaustein öffnet seine eigene Vorbereitung.
