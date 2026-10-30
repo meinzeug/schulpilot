@@ -241,6 +241,13 @@ def _meaningful(block, recipe, *, sources=None, question=None):
         raise ValueError("Grafik passt nicht zur gewählten Referenz.")
     if block.kind == "lab" and block.lab.recipe_id != recipe.get("lab_recipe_id"):
         raise ValueError("Laborparameter passen nicht zur gewählten Referenz.")
+    if block.kind == "timeline" and block.variant == "calendar":
+        labels = [" ".join(label.split()) for label in block.labels]
+        quote = " ".join(block.source_excerpt.split())
+        positions = [quote.find(label) for label in labels]
+        if (len(labels) < 2 or len(set(labels)) != len(labels)
+                or any(position < 0 for position in positions) or positions != sorted(positions)):
+            raise ValueError("Die Zeitachse benötigt mindestens zwei verschiedene, in Reihenfolge belegte Zeitpunkte.")
     if recipe.get("id") == "biology.photosynthesis.exchange":
         from .package_prepared_photosynthesis import validate
 
@@ -266,10 +273,11 @@ def _meaningful(block, recipe, *, sources=None, question=None):
             prompt = " ".join(question.get("prompt", "").split())
             if not any(re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", prompt) for label in labels):
                 raise ValueError("Die Frage muss mindestens einen vollständigen Originalausdruck ihres Vergleichs nennen.")
-    if recipe.get("id") == "general.original_evidence.focused_list":
+    if recipe.get("id") in ("general.original_evidence.focused_list", "general.original_evidence.focused_sentences"):
         from .package_prepared_focus import validate_focus
 
-        validate_focus(block, sources=sources, question=question)
+        validate_focus(block, sources=sources, question=question,
+                       sentences=recipe["id"] == "general.original_evidence.focused_sentences")
         return  # Only this immutable recipe permits a noncausal reading focus.
     if block.kind == "scene":
         scene = block.scene

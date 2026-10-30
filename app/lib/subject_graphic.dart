@@ -233,6 +233,36 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
+    if (kind == 'timeline' && block['variant'] == 'calendar') {
+      return LearningGraphicFrame(
+        title: block['title'] ?? 'Zeitfolge',
+        action: labels.length < 2 ? null : action,
+        child: labels.length < 2
+            ? const Text('Diese Grafik kann gerade nicht angezeigt werden.')
+            : Semantics(
+                image: true,
+                label: 'Zeitfolge: ${labels.join(' → ')}',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final entry in labels.indexed) ...[
+                      if (entry.$1 > 0)
+                        const Icon(Icons.arrow_downward_rounded, size: 20),
+                      SurfaceInset(child: Text(entry.$2)),
+                    ],
+                  ],
+                ),
+              ),
+      );
+    }
+    if (kind == 'timeline' &&
+        block['variant'] == 'centuries' &&
+        numbers.length < 2) {
+      return LearningGraphicFrame(
+        title: block['title'] ?? 'Zeitfolge',
+        child: const Text('Diese Grafik kann gerade nicht angezeigt werden.'),
+      );
+    }
     if ((kind == 'forms' || kind == 'sentence') &&
         block['variant'] == 'classification') {
       return LanguageComparisonWidget(block, state: state, action: action);

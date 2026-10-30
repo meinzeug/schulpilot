@@ -22,6 +22,21 @@ from schulpilot.visual_references import (
 SOURCE = "Ein Bruch 1/2 beschreibt 1 von 2 gleich großen Teilen."
 
 
+def test_new_calendar_graphics_need_two_distinct_ordered_source_labels():
+    from schulpilot.subject_content import Graphic
+    from schulpilot.visual_references import _meaningful
+
+    source = "Gestern und heute im Vergleich."
+    value = {"kind": "timeline", "title": "Zeit", "disclosure": "given",
+             "source_excerpt": source, "labels": [], "numbers": [], "connections": [],
+             "marks": [], "unit": "", "variant": "calendar"}
+    recipe = {"kind": "timeline", "id": "history.timeline.events"}
+    for labels in ([], ["Gestern"], ["heute", "Gestern"], ["Gestern", "Gestern"], ["Gestern", "morgen"]):
+        with pytest.raises(ValueError, match="Zeitachse"):
+            _meaningful(Graphic.model_validate({**value, "labels": labels}), recipe)
+    _meaningful(Graphic.model_validate({**value, "labels": ["Gestern", "heute"]}), recipe)
+
+
 def block(stage="given"):
     return {"kind": "fraction", "title": "1/2", "disclosure": stage,
             "source_excerpt": SOURCE, "labels": [], "numbers": [1, 2], "connections": [], "unit": "", "variant": ""}

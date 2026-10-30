@@ -112,6 +112,26 @@ def test_old_arrow_reference_stays_strict_and_sport_has_no_focus_candidate():
     assert payload["visual_context"]["sources"][0]["content"] == SOURCES["Deutsch"]
 
 
+def test_history_prose_uses_separate_exact_sentence_reference(api):
+    source = ("Geschichte und Quellen\n\n"
+              "Quellen sind Überreste oder Berichte aus der Vergangenheit.\n\n"
+              "Ein altes Werkzeug ist eine Sachquelle.\n\n"
+              "Ein Brief ist eine schriftliche Quelle.")
+    payload = payload_for(source, "Geschichte")
+    candidates = focus.compile_candidates(payload)
+    rows = [row for row in candidates if row["reference"]["id"] == focus.SENTENCE_REFERENCE]
+    assert rows
+    block = Graphic.model_validate(rows[0]["block"])
+    assert len(block.labels) >= 2 and all(label in source for label in block.labels)
+    assert all(not phase.edges for phase in block.scene.steps)
+    visual_references._meaningful(block, {"id": focus.SENTENCE_REFERENCE, "kind": "scene"}, sources=[source])
+    altered = block.model_dump(mode="json")
+    altered["labels"][0] = "Erfundener Satz."
+    with pytest.raises(ValueError):
+        visual_references._meaningful(Graphic.model_validate(altered),
+            {"id": focus.SENTENCE_REFERENCE, "kind": "scene"}, sources=[source])
+
+
 @pytest.mark.parametrize("change", ["edges", "label", "phase", "quote"])
 def test_new_reference_proves_exact_compile_shape_instead_of_relaxing_scene_rules(change):
     payload, _, binding, _ = fixture()

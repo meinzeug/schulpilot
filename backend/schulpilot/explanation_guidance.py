@@ -31,6 +31,8 @@ freigegebenen kuratierten Grundlagen oder bereits serverseitig geplanten Rechenb
 keine zusätzliche Fachregel, Übersetzung, Unterrichtsthematik oder erfundene Quellenbehauptung.
 Grafikzitate, Objekt-/Originalbeschriftungen und Referenzen bleiben wörtlich und belegt. Eine
 verständliche Erläuterung steht im Erklärungstext, nicht als umgeschriebenes Quellenlabel.
+Sprich zum Kind über den Stoff. Keine internen Begriffe wie Grafiktyp, Schema,
+Referenz-ID, Freigabe oder technische Gründe für fehlende Darstellungen erwähnen.
 
 SELBSTVERSTÄNDLICHE FRAGEN: Gib nötigen kurzen Kontext im Prompt oder in einer erlaubten
 gegebenen Darstellung mit. Das Kind muss die Frage ohne ein unsichtbares altes Arbeitsblatt

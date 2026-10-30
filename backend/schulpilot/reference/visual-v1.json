@@ -344,6 +344,16 @@
       "variant": null
     },
     {
+      "id": "general.original_evidence.focused_sentences",
+      "version": 1,
+      "subjects": ["Geschichte"],
+      "kind": "scene",
+      "purpose": "Zwei bis vier vollständige aufeinanderfolgende Originalsätze betrachten und vergleichen. Die Hervorhebung ist ein Lesefokus, keine zeitliche oder kausale Folge. Frageoptionen bleiben die Originalaussagen in Originalreihenfolge; die Frage nennt ihre Antwort nicht vorweg.",
+      "terms": [],
+      "interaction": "Vollständige Originalsätze einzeln hervorheben und vergleichen.",
+      "variant": null
+    },
+    {
       "id": "math.fraction.wholes_remainder",
       "version": 1,
       "subjects": [

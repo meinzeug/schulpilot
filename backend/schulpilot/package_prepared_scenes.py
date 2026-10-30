@@ -50,10 +50,12 @@ def word_part_bases(content):
 
 
 def reference_supported(reference, contents):
-    from .package_prepared_focus import REFERENCE, focus_bases
+    from .package_prepared_focus import REFERENCE, SENTENCE_REFERENCE, focus_bases, sentence_bases
 
     if reference.get("id") == REFERENCE:
         return any(next(focus_bases(content), None) is not None for content in contents)
+    if reference.get("id") == SENTENCE_REFERENCE:
+        return any(next(sentence_bases(content), None) is not None for content in contents)
     if reference.get("id") == "general.source_relation.phases":
         return any(next(prepared._scene_bases(content), None) is not None for content in contents)
     if reference.get("id") == WORD_PARTS_REFERENCE:

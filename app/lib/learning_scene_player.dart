@@ -568,6 +568,25 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                       spacing: 8,
                       runSpacing: 8,
                       children: [
+                        if (model.transitionMs > 0)
+                          FilledButton.icon(
+                            key: const ValueKey('scene-play-pause'),
+                            onPressed: controller.isAnimating
+                                ? pause
+                                : motion
+                                ? play
+                                : null,
+                            icon: Icon(
+                              controller.isAnimating
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                            ),
+                            label: Text(
+                              controller.isAnimating
+                                  ? 'Pausieren'
+                                  : 'Abspielen',
+                            ),
+                          ),
                         OutlinedButton.icon(
                           key: const ValueKey('scene-compare'),
                           onPressed: active ? compare : null,
@@ -680,18 +699,20 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
   }
 }
 
-// A source-list focus has no movement or relation: the two states merely
-// highlight one original entry each. Direct step chips are sufficient; keep
-// optional comparison and inspection available without crowding the lesson.
+// A two-state reading focus leaves positions and relationships unchanged.
+// Direct steps stay visible; playback and inspection remain available on demand.
 bool _isOriginalListFocus(_Scene scene) {
-  if (scene.layout != 'grid' ||
-      scene.transitionMs != 0 ||
+  if (!{'grid', 'row'}.contains(scene.layout) ||
       scene.steps.length != 2 ||
       scene.objects.length < 2 ||
       scene.objects.any((object) => object.shape != 'box') ||
-      scene.steps.any(
-        (step) => step.edges.isNotEmpty || step.highlight.length != 1,
-      )) {
+      scene.steps.any((step) => step.highlight.length != 1)) {
+    return false;
+  }
+  final firstEdges = scene.steps[0].edges.map((edge) => edge.key).toSet();
+  final secondEdges = scene.steps[1].edges.map((edge) => edge.key).toSet();
+  if (firstEdges.length != secondEdges.length ||
+      !firstEdges.containsAll(secondEdges)) {
     return false;
   }
   return scene.steps[0].highlight.single != scene.steps[1].highlight.single &&

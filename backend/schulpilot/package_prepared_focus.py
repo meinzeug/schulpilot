@@ -11,12 +11,13 @@ from . import package_prepared_graphics as prepared
 from .subject_content import PROFILES, Graphic, validate_question
 
 REFERENCE = "general.original_evidence.focused_list"
+SENTENCE_REFERENCE = "general.original_evidence.focused_sentences"
 REVISION = "package-original-focus-1"
 SUBJECTS = ("Deutsch", "Geschichte")
 _LIST = re.compile(r"^[ \t]*(?:[0-9]{1,3}[.)]|\([0-9]{1,3}\)|[-*•])[ \t]+(.+?)[ \t]*$")
 RULES = """
 package-original-focus-1: Die angebotenen Szenen zeigen ausschließlich vollständige
-Originaleinträge einer Liste. Die zwei Hervorhebungen sind bewusste Lesefokusse,
+Originaleinträge einer Liste oder vollständige Originalsätze. Die zwei Hervorhebungen sind bewusste Lesefokusse,
 KEINE zeitliche oder kausale Folge; keine Pfeile oder Grammatikurteile ergänzen.
 Fragen sind type=choice. options ist im angeforderten Wireformat der eine angebotene
 options_slot-String; der Server stellt daraus unverändert die zugehörigen original_options
@@ -80,11 +81,48 @@ def focus_bases(content):
                 break
 
 
-def validate_focus(block, *, sources=None, question=None):
+def sentence_bases(content):
+    """Whole, consecutive source lines ending in sentence punctuation only."""
+    runs, current, offset = [], [], 0
+    for line in content.splitlines(keepends=True):
+        text = line.rstrip("\r\n")
+        stripped = text.strip()
+        if (15 <= len(stripped) <= 160 and re.search(r"[.!?]$", stripped)
+                and not _LIST.fullmatch(text) and not re.search(r"[.!?]\s+\S", stripped)):
+            start = offset + len(text) - len(text.lstrip())
+            current.append((start, offset + len(text.rstrip()), stripped))
+        elif stripped:
+            if current:
+                runs.append(current)
+            current = []
+        offset += len(line)
+    if current:
+        runs.append(current)
+    for run in runs:
+        for start in range(len(run) - 1):
+            selected = run[start:start + min(4, len(run) - start)]
+            labels = [row[2] for row in selected]
+            quote = content[selected[0][0]:selected[-1][1]]
+            if len(quote) > 500 or len(set(map(_normal, labels))) != len(labels):
+                continue
+            title = labels[0] if len(labels[0]) <= 100 else labels[0].split()[0]
+            objects = [{"id": f"o{i}", "label": label, "shape": "box", "tone": "neutral"}
+                       for i, label in enumerate(labels)]
+            placements = [{"object_id": row["id"], "slot": i} for i, row in enumerate(objects)]
+            phases = [{"caption": labels[i], "source_excerpt": quote, "placements": placements,
+                       "highlight": [objects[i]["id"]], "edges": []} for i in (0, 1)]
+            yield {"kind": "scene", "title": title, "source_excerpt": quote, "labels": labels,
+                "numbers": [], "connections": [], "marks": [], "unit": "", "variant": "",
+                "scene": {"version": 1, "layout": "grid", "objects": objects, "steps": phases, "transition_ms": 0},
+                "text_probe": None, "lab": None}
+
+
+def validate_focus(block, *, sources=None, question=None, sentences=False):
     """New-reference-only exact compilation proof; old scenes still need edges."""
     actual = block.model_dump(mode="json")
     actual.pop("disclosure")
-    if not any(actual == base for base in focus_bases(block.source_excerpt)):
+    bases = sentence_bases if sentences else focus_bases
+    if not any(actual == base for base in bases(block.source_excerpt)):
         raise ValueError("Der Originalfokus benötigt eine unveränderte vollständige Original-Liste ohne erfundene Beziehungen.")
     if sources is not None and not any(block.source_excerpt in source for source in sources):
         raise ValueError("Der Originalfokus benötigt den exakt bestätigten Quellenbeleg.")
@@ -103,29 +141,33 @@ def compile_candidates(payload):
     subject, group = groups[0].get("subject"), groups[0].get("id")
     if subject not in SUBJECTS:
         return []
-    references = [row for row in context.get("references", []) if row.get("id") == REFERENCE
+    references = [row for row in context.get("references", []) if row.get("id") in (REFERENCE, SENTENCE_REFERENCE)
                   and row.get("subject") == subject and type(row.get("version")) is int and row.get("digest")]
     result, bases = [], set()
     for source in context.get("sources", []):
         if source.get("subject") != subject or source.get("group_id") != group or not isinstance(source.get("content"), str):
             continue
-        for base in focus_bases(source["content"]):
+        source_bases = [(REFERENCE, base) for base in focus_bases(source["content"])]
+        source_bases += [(SENTENCE_REFERENCE, base) for base in sentence_bases(source["content"])]
+        for reference_id, base in source_bases:
             identity = prepared._digest({"base": base, "source": source})
             if identity in bases or len(bases) >= 4:
                 continue
             added = False
             for reference in references:
+                if reference["id"] != reference_id:
+                    continue
                 for stage in prepared.STAGES:
                     try:
                         block = Graphic.model_validate({**base, "disclosure": stage})
-                        validate_focus(block, sources=[source["content"]])
+                        validate_focus(block, sources=[source["content"]], sentences=reference_id == SENTENCE_REFERENCE)
                         validate_question({"version": 1, "evidence_kind": "knowledge", "blocks": [block.model_dump()]},
                             {"prompt": "", "type": "short", "answer": "", "accepted": []},
                             [source["content"]], PROFILES[subject], structured=True, subject=subject)
                     except ValueError:
                         continue
                     row = {"subject": subject, "group_id": group,
-                        "reference": {"id": REFERENCE, "version": reference["version"]}, "disclosure": stage,
+                        "reference": {"id": reference["id"], "version": reference["version"]}, "disclosure": stage,
                         "source_refs": [source["ref"]], "text": "Vergleiche die vollständig belegten Originaleinträge.",
                         "kind": "scene", "block": block.model_dump(mode="json")}
                     row["id"] = "pf_" + prepared._digest({"revision": REVISION, "plan": payload.get("package_plan_digest"),
@@ -152,7 +194,7 @@ class Binding(prepared.Binding):
         return RULES
 
     def offered(self, candidate):
-        return candidate["reference"]["id"] == REFERENCE
+        return candidate["reference"]["id"] in (REFERENCE, SENTENCE_REFERENCE)
 
     @property
     def context(self):

@@ -3372,3 +3372,24 @@ bietet bei geänderter Quelle nun den bewussten Neustart an, sofern der Server
 Quellenrevisionen, Versuchsgrenzen und der explizite einzelne POST bleiben erhalten.
 Die mobile Prüfung verwendet ausschließlich die getrennte künstliche Familie;
 die simulierte Uhr gilt nur für deren Testprozesse.
+
+30.10.2026 · Geschichtsprobe im isolierten 390-Pixel-Alltagstest: Bei einer
+bestätigten künstlichen Quelle ohne Datumsangaben wurde eine leere Kalendergrafik
+mit dem Status bereit gespeichert; die App zeigte keine brauchbare Darstellung.
+Die beiden dazugehörigen Fragen blieben quellengerecht, die Grafik war es nicht.
+Ein neuer Kalender-Erklärschritt benötigt mindestens zwei unterschiedliche, im
+wörtlichen Beleg geordnete Einträge. Bestehende unvollständige Kalendergrafiken
+werden im Client mit einem Hinweis statt einer leeren oder abstürzenden Grafik
+gezeigt; gespeicherte Antworten und Quellen bleiben erhalten.
+
+Ein neues versioniertes eigenes Geschichtsrezept erlaubt außerdem den Vergleich
+von zwei bis vier vollständigen, aufeinanderfolgenden Originalsatzzeilen ohne
+hinzuerfundene Pfeile oder Chronologie. Quelle, Reihenfolge und auswählbare
+Originalaussagen werden vor und nach dem KI-Transport geprüft. Die erste echte
+künstliche Probe wurde wegen einer falschen Referenzzuordnung zurückgewiesen
+(0,032171 USD gemeldet); nach der Codekorrektur lieferte ein separater regulär
+reservierter künstlicher Auftrag eine validierte Satzszene und zwei Fragen
+(0,030512 USD gemeldet). Der Test beweist nicht, dass beliebige Seiten oder
+alle zukünftigen Modellantworten gelingen. Einfache Zweischritt-Grafiken mit
+unveränderter Position und Beziehung zeigen die Schritte direkt; Wiedergabe und
+weitere Werkzeuge bleiben bei Bedarf erreichbar.
