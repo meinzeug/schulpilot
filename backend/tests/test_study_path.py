@@ -310,6 +310,38 @@ def test_one_small_stage_is_persisted_and_progress_comes_from_saved_answers(api,
         assert db.scalar(select(func.count()).select_from(Attempt)) == 4
 
 
+def test_selecting_another_subject_does_not_bypass_its_own_previous_stage(study, stage_transport, monkeypatch):
+    with DB.begin() as db:
+        for material_id in study["materials"][3:]:
+            material = db.get(Material, material_id)
+            material.subject = "Geschichte"
+    planned = create(study)
+    with DB() as db:
+        blocks = copy.deepcopy(db.get(SchoolDay, study["day_id"]).learning_plan["blocks"])
+    first_subject = [b for b in blocks if b["subject"] == "Sachunterricht"]
+    other_subject = [b for b in blocks if b["subject"] == "Geschichte"]
+    assert len(first_subject) >= 2 and len(other_subject) >= 2
+    assert planned["next_block_id"] == first_subject[0]["id"]
+    assert generate(study, first_subject[1]["id"]).status_code == 409
+    assert generate(study, other_subject[1]["id"]).status_code == 409
+    def fail(*_args):
+        raise ProviderError("Künstlicher Testfehler.")
+
+    monkeypatch.setattr(study_path, "request_provider", fail)
+    for _ in range(3):
+        assert generate(study, first_subject[0]["id"]).status_code == 202
+        finish()
+    blocked = study["client"].get(path(study)).json()
+    assert blocked["technical_review_required"] is True
+    assert generate(study, first_subject[0]["id"]).status_code == 409
+    response = generate(study, other_subject[0]["id"])
+    assert response.status_code == 202, response.text
+    with DB() as db:
+        job = db.get(Job, response.json()["id"])
+        assert job.payload["block_id"] == other_subject[0]["id"]
+        assert db.scalar(select(func.count()).select_from(Usage)) == 4
+
+
 @pytest.mark.parametrize("when", ["before", "during"])
 @pytest.mark.parametrize("change", ["source", "planning"])
 def test_sources_and_parent_planning_are_checked_before_and_after_generation(api, study, stage_transport, when, change):

@@ -80,10 +80,26 @@ Future<void> openPlanItem(
     throw ApiError('Dieser Lernauftrag ist für einen späteren Tag eingeplant.');
   }
   if (item['kind'] == 'study_path') {
-    openRoute(
-      context,
-      '/after-school/${data['child']['id']}?day=${item['id']}',
+    final dayId = item['id'], blockId = item['block_id'];
+    if (dayId is! String || blockId is! String || blockId.isEmpty) {
+      throw ApiError(
+        'Diese Etappe ist nicht mehr verfügbar. Bitte lade die Themen erneut.',
+      );
+    }
+    final queued = await state.api.post(
+      '/school-days/$dayId/blocks/$blockId',
+      {},
+      {
+        'Idempotency-Key':
+            'learn-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}',
+      },
     );
+    if (context.mounted && currentAccount() && currentRoute()) {
+      openRoute(
+        context,
+        '/learning-preparation/${data['child']['id']}/${queued['id']}',
+      );
+    }
     return;
   }
   if (item['kind'] == 'vocabulary') {

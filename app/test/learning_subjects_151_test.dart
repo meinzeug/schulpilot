@@ -212,6 +212,45 @@ void main() {
     );
   });
 
+  testWidgets('A topic card opens its saved round', (t) async {
+    final calls = <http.Request>[];
+    await open(t, calls, initial: '/learn/child/subject/$math');
+    await tap(t, find.text('Brüche'));
+    expect(find.text('Gespeicherte Runde round'), findsOneWidget);
+    expect(calls.where((q) => q.url.path.endsWith('/round/start')).length, 1);
+  });
+
+  testWidgets('A planned topic prepares its specific stage', (t) async {
+    final calls = <http.Request>[];
+    await open(
+      t,
+      calls,
+      initial: '/learn/child/subject/$math',
+      respond: (q) async {
+        if (q.url.path.endsWith('/learning/subjects')) {
+          return response(catalog());
+        }
+        if (q.url.path.endsWith('/learning')) {
+          final data = listing();
+          (data['items'] as List).first['entries'] = [
+            round(kind: 'study_path'),
+          ];
+          return response(data);
+        }
+        if (q.method == 'POST') return response({'id': 'chosen-job'});
+        return response({'items': []});
+      },
+    );
+    await tap(t, find.text('Brüche'));
+    expect(find.text('Vorbereitung chosen-job'), findsOneWidget);
+    final post = calls.where((q) => q.method == 'POST').single;
+    expect(post.url.path, '/api/school-days/day/blocks/block');
+    expect(
+      post.headers['Idempotency-Key'] ?? post.headers['idempotency-key'],
+      isNotEmpty,
+    );
+  });
+
   testWidgets('Random planned stage reserves once then opens status page', (
     t,
   ) async {

@@ -452,9 +452,19 @@ def generate(
             raise HTTPException(409, "Dieser Anfrageschlüssel gehört zu einer anderen Etappe.")
         return {"id": previous.id, "status": previous.status}
     state = path_data(db, day, child)
-    if state["stale"] or state["next_block_id"] != block_id or block.get("unit_id"):
-        raise HTTPException(409, state["block_reason"] or "Bitte zuerst die aktuelle Etappe abschließen.")
-    if state["block_reason"]:
+    if state["stale"] or block.get("unit_id"):
+        raise HTTPException(409, state["block_reason"] or "Diese Etappe ist nicht mehr verfügbar.")
+    # The learner can explicitly choose the first available stage of another
+    # subject. The planner's voluntary list retains source order within each
+    # subject and excludes future or unavailable stages.
+    if state["next_block_id"] != block_id:
+        from .learning import plan
+
+        current = plan(db, child)
+        if not any(item.get("kind") == "study_path" and item.get("id") == day.id
+                   and item.get("block_id") == block_id for item in current.get("voluntary", [])):
+            raise HTTPException(409, "Bitte zuerst die vorherige Etappe dieses Fachs abschließen.")
+    elif state["block_reason"]:
         raise HTTPException(409, state["block_reason"])
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"]))):
         raise HTTPException(409, "Eine Vorbereitung läuft noch. Bitte kurz warten.")

@@ -136,26 +136,10 @@ class _LearningSubjectsState extends State<LearningSubjectsScreen> {
       );
       if (!mounted || !stillHere()) return;
       final item = Json.from(choice['item']);
-      if (item['kind'] == 'study_path') {
-        final job = await state.api.post(
-          '/school-days/${item['id']}/blocks/${item['block_id']}',
-          {},
-          {
-            'Idempotency-Key':
-                'random-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}',
-          },
-        );
-        if (!mounted || !stillHere()) return;
-        openRoute(
-          context,
-          '/learning-preparation/${widget.childId}/${job['id']}',
-        );
-      } else {
-        await openPlanItem(context, state, {
-          'child': {'id': widget.childId},
-          'plan': {'date': choice['date']},
-        }, item);
-      }
+      await openPlanItem(context, state, {
+        'child': {'id': widget.childId},
+        'plan': {'date': choice['date']},
+      }, item);
     } catch (e) {
       if (mounted && stillHere()) showError(context, e);
     } finally {

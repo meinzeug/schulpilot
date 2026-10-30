@@ -1,3 +1,11 @@
+## 30.10.2026 · Gewähltes Lernthema öffnen · Version 1.38.19
+
+Ein ausgewählter geplanter Themenbaustein öffnet seine eigene Vorbereitung.
+Die vorhandene Planung gibt pro Fach nur die jeweils erste freiwillig
+verfügbare Etappe frei; eine fehlgeschlagene Etappe eines anderen Fachs
+blockiert diese Auswahl nicht. Quellenprüfung, Reihenfolge innerhalb des
+Fachs, Reservierungen und Wiederholungsgrenzen bleiben erhalten.
+
 ## 29.10.2026 · Begrenzter Pakettransport · Version 1.38.18
 
 Die [Azure-Dokumentation zu strukturierten Ausgaben](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs)
