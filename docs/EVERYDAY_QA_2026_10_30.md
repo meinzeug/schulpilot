@@ -39,8 +39,8 @@ entstand keine ersatzweise erfundene Abschrift und keine zweite Fotoquelle.
 Anschließend wurde der alte Schultag über seine normale Oberfläche neu
 vorbereitet. Ein Lernweg mit zwei Aufgaben zu Subjekt und Prädikat wurde bereit.
 
-Die echte OCR meldete laut Generierungsbeleg 11.403ms und 0,000853USD; die
-Paketantwort 24.558ms und 0,002462USD, jeweils Abschlussgrund `stop` und
+Die echte OCR meldete laut Generierungsbeleg 11.403 ms und 0,000853 USD; die
+Paketantwort 24.558 ms und 0,002462 USD, jeweils Abschlussgrund `stop` und
 `verified_generation`. Die Zeiten sind Anbieterzeiten einzelner Aufrufe,
 keine allgemeine Laufzeitzusage. Die frühere Fehlergeschichte bleibt erhalten.
 
@@ -65,10 +65,10 @@ Weiterüben. Der offene Zeit-Mindestwert verhinderte den Ergebniszugang nicht.
   umbrochene Gruppe dar. Die bisherige hohe nummerierte Liste und die doppelte
   Punktliste entfallen. Ausschließlich bereits freigegebene Markierungen werden
   beschriftet; Grammatikrollen werden nicht im Client erraten.
-- Der Hinweis auf Zifferntasten erscheint ab 720px. Die Tastaturbedienung bleibt
+- Der Hinweis auf Zifferntasten erscheint ab 720 px. Die Tastaturbedienung bleibt
   erhalten; schmale Touchansichten verlieren diese unnötigen Textzeilen.
 
-Die direkte Dezimalgrafik wurde bei 390px geöffnet und schrittweise bedient;
+Die direkte Dezimalgrafik wurde bei 390 px geöffnet und schrittweise bedient;
 lokaler Screenshot: `artifacts/monthly-qa-20261030/75-rueckblick-direkte-grafik-390.png`.
 Weitere nach dem endgültigen Build geprüfte Ansichten werden im lokalen
 Testverzeichnis festgehalten. Bilder werden nicht als private Uploads ins Git
@@ -95,9 +95,9 @@ Rollenmarkierungen in ungesehener Einführung bleibt erhalten.
 Die vollständige tatsächliche künstliche Fehlantwort bestand nach diesem Fix
 eine rein lesende Gegenprüfung. Danach wurde der vorhandene reguläre einmalige
 Wiederholungsbutton im Browser verwendet. Der echte Folgeauftrag gelang in
-27.217ms mit zwei Aufgaben und den unveränderten Zielkennungen g1/g2; die Grafik
+27.217 ms mit zwei Aufgaben und den unveränderten Zielkennungen g1/g2; die Grafik
 enthält die belegten Wortgruppen und passenden Rollen. Gemeldete Auftragskosten
-0,044196USD. Der alte Fehlversuch und sein Verbrauch wurden nicht überschrieben.
+0,044196 USD. Der alte Fehlversuch und sein Verbrauch wurden nicht überschrieben.
 
 171 Prüfungen für Rollenbelege, Fachgrafiken und Referenzen bestanden. Die
 Gesamt-CI des Zwischenstands202 wies außerdem fünf vorhandene Importformatierungen
@@ -115,7 +115,7 @@ Regressionsprüfungen decken Auftrags-/Kostenbelege, alte offene Schultage,
 unveränderte Fehlversuchszähler, schreibfreie Statusabrufe, fremde Kinder,
 normale Ablauffristen und die 365-Tage-Grenze ab. Flutter prüft den direkten
 Aufgabengrafikzugang einschließlich später Sitzungs-/Quellenwechsel und die
-Wortdarstellung bei 320/390px mit einfacher und doppelter Schriftgröße.
+Wortdarstellung bei 320/390 px mit einfacher und doppelter Schriftgröße.
 Der endgültige Backendumfang bestand mit 69 erfolgreichen SQLite-Fällen und
 einem PostgreSQL-spezifisch übersprungenen Fall; dieselben 70 Fälle bestanden
 anschließend vollständig mit einem separaten PostgreSQL16 über einen privaten
@@ -187,7 +187,7 @@ Gezielte lokale Prüfungen: 416 Tests für Transport, Grafikschemata, Profile,
 Referenzen, öffentliche Bausteine und Auswahlindizes; 33 für adaptive Abläufe,
 Modellkurzpläne, Lernwissen und Lösungsoffenlegung; weitere 88 für
 Offenlegungsgrenzen, Wortschatzschutz, Fachaliase und Tagesprioritäten bestanden.
-Die neuen Lesekarten wurden zusätzlich mit realen Fonts bei 390px sowie 320px
+Die neuen Lesekarten wurden zusätzlich mit realen Fonts bei 390 px sowie 320 px
 und doppelter Textgröße im Widgettest geprüft. Dies ist keine abgeschlossene
 30-Tage- oder Android-Geräteabnahme.
 
@@ -223,7 +223,7 @@ Quellen-/Teilplanung wurde geprüft, beide Fehlversuchszähler erhalten und eine
 aktuelle gültige Kindersitzung verwendet. Keine alte Sitzung reaktiviert,
 keine echte Quelle oder Antwort verändert und kein öffentlicher Retry-Bypass.
 Die echte Anbieterantwort lieferte zwei vollständige Aufgaben mit `stop`,
-22.175ms gemeldeter Anbieterzeit und0,002125USD zunächst gemeldeten Kosten.
+22.175 ms gemeldeter Anbieterzeit und0,002125 USD zunächst gemeldeten Kosten.
 Der Lernweg wurde bereitgestellt und im390px-Browser geöffnet. Die erste
 ununterstützte Antwort1,5 wurde richtig gewertet. Screenshot der tatsächlich
 geöffneten Grafik: `82-zahlenstrahl-echte-ki-390.png` im lokalen Testverzeichnis.
@@ -238,7 +238,7 @@ Prüfungen:221 gezielte Backendfälle für die neue Bindung, alte vorbereitete
 Grafiken, Referenzen und Paketausgabe sowie28 Flutterfälle für Zahlenstrahl,
 Übergang und gespeicherte Aufgabenerklärungen bestanden. Die zuvor geprüften
 26 Szenen-/Lesekartenfälle blieben erhalten; beide neuen Zahlenstrahlansichten
-bestehen bei390px sowie320px mit doppelter Schrift und reduzierter Bewegung.
+bestehen bei390 px sowie320 px mit doppelter Schrift und reduzierter Bewegung.
 
 ## Zahlenstrahl: Bewertung und gezieltes Nachlernen
 
@@ -266,8 +266,8 @@ Ein weiterer fehlgeschlagener Versuch überschritt die alte500KB-Gesamtgrenze;
 sein ursprünglicher Antwortkörper wurde nicht erhalten. Seine konkrete Ursache
 und tatsächlichen Kosten sind unbekannt, die Reservierung bleibt erhalten.
 Nach nachgewiesenem Fix gelang genau ein auditierter, normal reservierter
-synthetischer Reparaturauftrag:13.038ms,0,001707USD gemeldet, vollständige
-Antwort von12.084Bytes. Die beiden richtigen Antworten wurden im390px-Browser
+synthetischer Reparaturauftrag:13.038 ms,0,001707 USD gemeldet, vollständige
+Antwort von12.084 Bytes. Die beiden richtigen Antworten wurden im390px-Browser
 abgegeben und der Rückblick abgeschlossen. Screenshot84 im lokalen Testordner.
 
 ## Antwortumschlag und Kostenbeleg
@@ -295,7 +295,7 @@ verstümmelte Frage mit einem anderen Ergebnis; er wird nicht nachträglich gül
 umgeschrieben. Nach dem gesondert belegten Fix der festen Fragekerne wurde genau
 ein weiterer lokaler Reparaturauftrag für diesen konkreten Fehler auditiert und
 regulär reserviert. Alle drei früheren Versuche bleiben erhalten, Zähler3→4.
-Die neue Antwort war vollständig (`stop`),16.339ms und0,024816USD gemeldet.
+Die neue Antwort war vollständig (`stop`),16.339 ms und0,024816 USD gemeldet.
 Sie erzeugte zwei verschiedene neue Aufgaben; weder fotografierte Beispiele
 noch ältere Aufgaben wurden wiederholt.
 
@@ -340,11 +340,11 @@ Beleg einer sichtbaren FCM-Zustellung auf einem physischen Gerät.
 
 ## Abschluss der vorbereiteten Schultage und nächste Empfehlung
 
-Die unabhängige rein lesende Zählung erfasst für02.11.–11.12. exakt30
+Die unabhängige rein lesende Zählung erfasst für02.11.–11.12. exakt 30
 Schultage und32 bestätigte Materialseiten. Alle30 Vorbereitungen sind bereit.
 Jeder dieser Tage hat mindestens eine abgeschlossene quellengebundene Runde.
-29Tage haben sämtliche ursprünglichen gespeicherten Einstiegsrunden abgeschlossen;
-beim10.12. bleibt die fehlerhafte Altrunde absichtlich pausiert erhalten und eine
+29 Tage haben sämtliche ursprünglichen gespeicherten Einstiegsrunden abgeschlossen;
+beim 10.12. bleibt die fehlerhafte Altrunde absichtlich pausiert erhalten und eine
 über dieselbe bestätigte Quelle regulär angeforderte Ersatzrunde ist abgeschlossen.
 Die beiden zusätzlichen pausierten Layout-/Inhalts-Testkopien und ein Pilot vor
 dem Monat sind keine weiteren erledigten Schultage. Dies belegt weder sämtliche
@@ -363,3 +363,73 @@ sowie ein zusätzlicher gezielter Zweierlauf bestanden. Der Browser zeigte danac
 eine andere tatsächlich vorhandene offene Runde; Screenshot90. Die zuvor
 gebauten204-Artefakte wurden dafür vor Veröffentlichung angehalten und werden
 vollständig aus dem abschließenden Commit neu erstellt.
+
+## Veröffentlichung und zusätzlicher öffentlicher Live-Test
+
+Release `20261030T224607Z-4d33e10`, Code 4d33e1094616d70509e8749c82f43b8a957d359b,
+Version 1.38.49+204 ist aktiv. Der vollständige
+[CI-Lauf 41131330744](https://github.com/meinzeug/schulpilot/actions/runs/41131330744)
+ist erfolgreich: drei Backendteile, drei Flutter-Testteile, Analyse/Webbuild und
+Flutter-Gesamtprüfung. Die zuvor erfolgreichen lokalen Serien sind keine
+zusätzlichen unabhängigen Vollabnahmen. Releasebuild 211,8s erfolgreich; die
+vorher angehaltenen Builds wurden nicht veröffentlicht.
+
+Vor Aktivierung wurden betroffene Konfigurationen gesichert; die reguläre
+Datenbanksicherung wurde ausgeführt. API, Worker, Codex-Isolation, Reparaturdienst,
+Reparaturdispatcher und TURN sind aktiv. Das vorherige Release bleibt verfügbar.
+Der Quellen-Reparaturtar wurde gegen den tatsächlichen Commit geprüft. Öffentlich
+ausgeliefertes Web-JavaScript stimmt mit dem gebauten Artefakt überein:
+`adff97f95beff829889fc82b37eac66796c523759b5d1b1797b9f1c8fd7765db`.
+Die APK hat 137.507.156 Bytes undSHA256
+`1d669bb693ccf560f0e2618bf428e24a11be671a49511f49524ff878186ae1da`.
+Public `/api/app-release` meldetstable/204; Signierer, Paket, Version, Zipalignment
+und fehlender Debugstatus wurden geprüft. Play-AAB 111.207.750 Bytes ist ebenfalls
+mit dem Release-Zertifikat signiert. Dies ersetzt keinen Android-Gerätetest.
+
+Der zusätzliche öffentliche Test verwendete ausschließlich das schon bestehende
+reguläre künstliche Kinderkonto. Juna wurde lediglich für den ausdrücklich
+freigegebenen Kontowechsel abgemeldet; keine neuen echten Kinderantworten wurden
+eingetragen. Der30-Tage-Test und seine Uhr bleiben isoliert; Produktionszeit
+wurde nicht verändert.
+
+Das vorhandene eigene künstliche Zahlenstrahlfoto wurde über „Fotos auswählen“
+importiert, der leere untere Rand mit dem normalen Zuschnitt-Regler entfernt und
+der Zuschnitt übernommen. Der öffentliche Blob-Lesezugriff funktionierte;
+`connect-src` enthält weiterhin `blob:`. Nach Neuladen der neuen Version blieb
+die eigene ungesendete Seite erhalten. „Fotos abgeben“ startete genau die
+reguläre gespeicherte Verarbeitung mit dem produktiv gewählten automatischen
+Seitenprüfmodus. Keine Wiederholungsfreigabe oder Quellenkorrektur per Operator.
+
+Die drei tatsächlichen Aufträge endeten mit `stop`:
+
+| Schritt | Route | Anbieterzeit | Abgeglichene Kosten |
+|---|---|---:|---:|
+| Erkennung | Luna |7.349ms|0,000880USD|
+| Zweiter Gegencheck | Sol |9.133ms|0,013445USD|
+| Neues Paket | Luna |23.047ms|0,002284USD|
+
+Alle Kosten haben anschließend `cost_source=generation`. Die gespeicherte
+Serverzeitspanne vom ersten Auftrag bis zur fertigen Paketerstellung beträgt
+43 Sekunden; sie enthält nicht den vorherigen manuellen Bildzuschnitt und ist
+keine allgemeine Laufzeitzusage. Gesamtkosten 0,016609 USD beziehen sich auf diese
+drei Generierungen, nicht auf den ganzen Monatstest oder zusätzliche Gebühren.
+Ein auditierter Metadatenabruf war auf dieses künstliche Konto beschränkt und
+gab keine Originaltexte, Antworten oder Zugangsdaten aus. Ein nicht
+angemeldeter Fotoabruf lieferteHTTP 401.
+
+Im390×844px-Browser erschien die fertige Zahlenstrahlrunde. Die Glocke markierte
+den sichtbaren Eintrag als gelesen; „Lernrunde ansehen“ öffnete exakt die neue
+Runde. Die erste Antwort1,5 wurde selbstständig richtig bewertet. Der echte
+Erklärdialog zeigt1,1,5,2 auf einem lokal berechneten Zahlenstrahl; Schritt 1
+markiert die Mitte, Schritt 2 die beiden Ränder. Danach wurde absichtlich0,6
+statt0,5 eingegeben: sofort falsches Urteil mit verständlichem Abstandshinweis,
+kein erneutes unklar und keine Elternpflicht zur Fehlerbehebung. Der bewusste
+zweite Versuch0,5 wurde richtig und unterstützt/erneut gewertet. Die Runde wurde
+bei weiterhin offenem 20-Minuten-Mindestziel zum Ergebnis abgeschlossen.
+Gespeichert: zwei Aufgaben, drei Versuche, unveränderter Fehlversuch; der echte
+Coach-Rückblick ist bereit. Keine weitere Runde wurde automatisch erzeugt.
+
+Lokale Screenshots 93–98 belegen Import, Bereitschaft, Glockenlink, tatsächliche
+Grafik, falsche Antwort und abgeschlossenen Rückblick. In-App-Neuigkeit und
+signierte Builds sind kein Nachweis sichtbarer FCM-/Android-Hintergrundzustellung;
+der physische Androidtest bleibt wie beauftragt ausgenommen.

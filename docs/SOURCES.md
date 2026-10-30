@@ -107,13 +107,13 @@ höherer Reservierung verarbeitet; ihre dokumentierten Textanker wurden gefunden
 
 Ausgeliefert und öffentlich bytegeprüft: `20261028T144255Z-6bf8784`, Quellstand `6bf87846fdc174104dda321556d44a35aca95c50`, Schema0042.210SQLite-/210PostgreSQL- und43Flutterfälle bestanden. Der Gesamt-CI-Lauf40697583737 fand einen veralteten künstlichen Inline-Grafiktest; dessen Anpassung besteht danach in allen32Fällen mit RAM-SQLite und Unix-PostgreSQL und ändert keinen ausgelieferten Laufzeitcode.
 
-Ein einzelner auditierter realer Reparaturaufruf mit neuer Grafiktransportversion wurde normal mit0,25USD reserviert und scheiterte erneut mit Anbieterfehler502. Ursprünglicher Fehler und unbekannte Kosten bleiben erhalten. Keine neue Grafik, Runde, Antwort oder sichtbare Firebase-Zustellung als erfolgreich behauptet.
+Ein einzelner auditierter realer Reparaturaufruf mit neuer Grafiktransportversion wurde normal mit0,25 USD reserviert und scheiterte erneut mit Anbieterfehler502. Ursprünglicher Fehler und unbekannte Kosten bleiben erhalten. Keine neue Grafik, Runde, Antwort oder sichtbare Firebase-Zustellung als erfolgreich behauptet.
 
 - [Offizieller Modell-Endpunktkatalog](https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol/endpoints): für `azure` Status−5/0% und für `azure/eu` Status0/100% in den gelesenen Zeitfenstern, geprüft28.10.2026.
 - [ZDR-Katalogdokumentation](https://openrouter.ai/docs/api/api-reference/endpoints/list-endpoints-zdr): authentifizierter GET bestätigte Azure/EU für dasselbe Modell; reine OpenAI-Route nicht unter den gelesenen passenden ZDR-Einträgen. Kein genereller Datenschutzvergleich daraus abgeleitet.
-- Beobachtete Sol-Tokenpreise Azure2/10USD pro Million Eingabe/Ausgabe, Azure/EU2,2/11USD. Bisherige maximale Reservierung0,25USD und8000Ausgabetokens unverändert. Kein freigegebener automatischer Fallback.
+- Beobachtete Sol-Tokenpreise Azure2/10 USD pro Million Eingabe/Ausgabe, Azure/EU2,2/11 USD. Bisherige maximale Reservierung0,25 USD und8000Ausgabetokens unverändert. Kein freigegebener automatischer Fallback.
 
-Die Betreiberentscheidung für einen geprüften Sol-Wechsel und höchstens1USD zusätzliche Tests/eine weitere reale Vorbereitung ist angefragt und noch offen. [Details und Rückweg](GRAPHIC_TRANSPORT_RELIABILITY.md).
+Die Betreiberentscheidung für einen geprüften Sol-Wechsel und höchstens1 USD zusätzliche Tests/eine weitere reale Vorbereitung ist angefragt und noch offen. [Details und Rückweg](GRAPHIC_TRANSPORT_RELIABILITY.md).
 
 ## 28.10.2026 · Grafiktransport und fehlgeschlagene Lernrunden (152)
 
@@ -127,7 +127,7 @@ Quellen-/Fach-/Antwortprüfungen, Providerroute und Budgets bleiben erhalten. Di
 
 Interaktiver Ausbau23.10.2026 · veröffentlicht als1.26.0+97:
 Die öffentliche und ausdrücklich bereitgestellte angemeldete simpleclub-App
-wurde im Browser auf Desktop und bei390×844px untersucht. Anfangs waren
+wurde im Browser auf Desktop und bei390×844 px untersucht. Anfangs waren
 Übungen gesperrt; nach der mitgeteilten Unlimited-Plus-Freischaltung wurden
 sie erneut geöffnet. Neun im Profil sichtbare Fachkataloge, tatsächliche
 Aufgaben aus Mathematik, Physik, Biologie, Chemie, Englisch, Informatik,
@@ -170,7 +170,7 @@ maßgeblich; keine weiteren Dienstinstanzen oder Bilddienste. Technische Bezüge
 [W3C Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html).
 
 Die einmalige echte synthetische Modellprobe wurde wegen ungültiger Struktur
-verworfen, normal mit0,001436USD abgerechnet; kein Retry und kein erfolgreicher
+verworfen, normal mit0,001436 USD abgerechnet; kein Retry und kein erfolgreicher
 echter KI-Szenennachweis. Künstliche Rendererfixtures sind keine Modell-, OCR-,
 Handschrift- oder Lernwirkungsabnahme. Finale Prüf-/Build-/Betriebsnachweise:
 [RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
@@ -451,8 +451,8 @@ Direkt geprüfte angemeldete OpenRouter-Kontoseiten20.10.2026:
 Betreiber beauftragte Einsicht und Änderung; tatsächliche Schalter/Prüfgrenzen
 in [OPENROUTER_ACTIVATION_2026_10_20.md](OPENROUTER_ACTIVATION_2026_10_20.md).
 Ein zusätzlicher künstlicher normal reservierter Planungsauftrag erfolgreich,
-erfasste Anbieter-Kosten0,000514USD; gesamte bisherige künstliche Abnahme
-0,238013USD innerhalb0,25USD. Kein Test mit echten Kinderinhalten.
+erfasste Anbieter-Kosten0,000514 USD; gesamte bisherige künstliche Abnahme
+0,238013 USD innerhalb0,25 USD. Kein Test mit echten Kinderinhalten.
 
 Kinder-Funktionsprüfung20.10.2026, Zielversion1.14.4+64:
 
@@ -764,7 +764,7 @@ Benachrichtigungsglocke und Android-Zustellung, geprüft am 17.10.2026:
   [Response-Caching](https://openrouter.ai/docs/guides/features/response-caching):
   konkrete Anfragevorgaben getrennt von nicht eingesehenem Konto-Logging führen.
 - [ECB-Referenzkurse](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml),
-  Datenstand19.10.2026:1EUR=1,1225USD. Konservativ gerundete Umrechnung und
+  Datenstand19.10.2026:1EUR=1,1225 USD. Konservativ gerundete Umrechnung und
   tatsächliche dreiteilige Probe in OPENROUTER_ACTIVATION_2026_10_20.md.
 - Neun künstliche Heftbilder mit eingebautem image_gen, je drei Abschnitte in
   Mathematik, Deutsch und Englisch. Prompts/Herkunft:
@@ -777,7 +777,7 @@ Eigene bestehende Flutter-Bausteine in child_section_ui.dart, ui.dart,
 homework_screen.dart, collection_screen.dart, notebook_shelf.dart und
 notebook_screen.dart geprüft und gemeinsam verwendet. Keine neuen Pakete,
 Bildanbieter oder externen Designassets.130 gemeinsame Flutterfälle bestanden,
-einschließlich320px/zweifacher Schrift, hell/dunkel, Rollen und verspäteter
+einschließlich320 px/zweifacher Schrift, hell/dunkel, Rollen und verspäteter
 Abmeldung. Tatsächliche Browserprüfung mit ausschließlich künstlichem lokalem
 Kind/Elternzugang ohne KI-Schlüssel: Seitenköpfe, Hefterdetail, Filter, Glocke,
 Alle anzeigen, explizite Lesemarkierung, Einstellungen und Abmelden.
@@ -794,7 +794,7 @@ Ausgabeschema-/Validatorlücke ist durch synthetische Fälle unabhängig belegt.
 Providerrevision, Modellmix, Budget und Datenschutzeinstellungen unverändert.
 Nach dem geprüften Deployment ein ausdrücklich beauftragter, normal reservierter
 Reparaturbericht über die bestehende gültige Elternsitzung:1Aufruf/1Jobversuch,
-0,001337USD, Bericht ready und aktuelle Eltern-/Lernplanansicht bestätigt.
+0,001337 USD, Bericht ready und aktuelle Eltern-/Lernplanansicht bestätigt.
 Alte Antworten, Fehlerbericht und0,001201USD-Verbrauch unverändert; keine neuen
 Kinderantworten. Private Operatorhilfen und Diagnosekopien anschließend entfernt.
 ## Familienanrufe und Android-Push ·21.10.2026 ·1.19.0+79
@@ -1031,7 +1031,7 @@ Nachweise und Grenzen: [RELEASE_101_2026_10_23.md](RELEASE_101_2026_10_23.md).
 ### Rollenübergreifender Designumbau102 ·23.10.2026
 
 Erneut tatsächlich im angemeldeten Browser betrachtet: Simpleclub-Home bei
-1280×800 und390×844px, mobile Bibliothek und mobiler Lernplandialog. Letzterer
+1280×800 und390×844 px, mobile Bibliothek und mobiler Lernplandialog. Letzterer
 wurde ohne Speicherung geschlossen. Referenzen: https://app.simpleclub.com/home
 und https://app.simpleclub.com/library. Kompakte Kopf-/Such-/Aktionszeilen und
 offene Abschnittshierarchie dienen als Muster für eigene Komponenten; keine
@@ -1163,7 +1163,7 @@ Am24.10.2026 tatsächlich gelesene Primärquellen:
 Die geladene Bildregel-Tabelle enthält keine explizite GPT-6.1-Sol-/GPT-6-Luna-
 Tokenformel. Die Regel eines anderen Modells wurde deshalb nicht als ihre
 Preisgarantie übernommen. Der aktuelle ausgewählte Azure-Endpunkt weist
-2USD/Million Eingabe- und10USD/Million Ausgabetokens aus; dies sind Metadaten,
+2 USD/Million Eingabe- und10 USD/Million Ausgabetokens aus; dies sind Metadaten,
 kein praktischer Erkennungsqualitätsnachweis.
 
 Neue OCR-Aufträge verwenden kompakte Metadatenschlüssel und zusammenhängende
@@ -1508,7 +1508,7 @@ vollständige Sammlungsbeleg kann damit weiterhin ohne zusätzlichen
 Kompressions-/Transportweg exportiert und exakt verglichen werden.
 Die beiden betroffenen gültigen/ungültigen Tagespaketfixtures wurden zunächst
 mit zwei Fehlern reproduziert und nach der reinen Mockkorrektur gemeinsam
-erfolgreich ausgeführt:2bestanden in31,94Sekunden auf isoliertemSQLite.
+erfolgreich ausgeführt:2bestanden in31,94 Sekunden auf isoliertemSQLite.
 Der gültige Fall prüft das erhaltene Fach, die Gruppe und genau beide
 Fragen/Antworten; der ungültige Fall bleibt ausdrücklich abgewiesen und
 sanitisiert. Provider und Codec sind bytegleich zum bereits geprüften Produktstand.
@@ -1532,8 +1532,8 @@ prüft normale,23- und25-Stundentage. Die vollständige Backendmatrix behält
 Tests aus, damit keine Folgefehler erst in weiteren kompletten Läufen sichtbar
 werden. Ein Sammlungsbeleg allein wird weiterhin nicht als Testerfolg gewertet.
 Der ursprüngliche Zeitumstellungsfehler wurde mit ausschließlich im Testmodul
-fixierter Zeit exakt reproduziert:1Fehler in16,96Sekunden. Die drei neuen
-Kalenderfälle bestanden anschließend auf isoliertemSQLite:3/3 in46,39Sekunden.
+fixierter Zeit exakt reproduziert:1Fehler in16,96 Sekunden. Die drei neuen
+Kalenderfälle bestanden anschließend auf isoliertemSQLite:3/3 in46,39 Sekunden.
 Deduplication am gleichen Tag, getrennte Aufgaben am Folgetag, Quellenherkunft
 und die bestehende409-Sperre nach Quellkorrektur werden weiterhin geprüft.
 Danach wurden ausschließlich zwei Importzeilen sortiert; sämtliche
@@ -2163,7 +2163,7 @@ Aufdeckungsprüfungen. Eine passende Ganzes-Rest-Komposition erscheint gemeinsam
 mit einer aus denselben Zahlen gebildeten Gleichung. Der bewusste Wechsel
 zwischen gebündelten Ganzen und einzelnen gleich großen Teilen verändert weder
 Bruchwert noch Antwort oder Lernstand. Reduzierte Bewegung schaltet sofort um;
-ansonsten bleibt der einmalige Übergang auf180ms begrenzt. Andere Referenzen
+ansonsten bleibt der einmalige Übergang auf180 ms begrenzt. Andere Referenzen
 und Einführungen verwenden weiterhin ihre vorhandenen Renderer.
 
 Nach einer Quellenkorrektur meldet der lesende Tagesstatus ausdrücklich, dass
@@ -2453,7 +2453,7 @@ beendete neue allgemeine Bruchrunde auf130. Die gespeicherte Rückmeldung
 unterscheidet selbstständige Erstlösung und erfolgreichen weiteren Versuch;
 ein gleichwertiger, aber nicht verlangter Erweiterungsbruch wird abgewiesen.
 Die neue Grafik zeigt die passenden neun Teile, davon sieben markiert, und
-passt in390px Breite. Eine neue allgemeine Simple-Past-Runde wurde erfolgreich
+passt in390 px Breite. Eine neue allgemeine Simple-Past-Runde wurde erfolgreich
 erzeugt; dies allein ist noch kein vollständiger Rundendurchlauf. Reale
 Antwortversuche erfolgen ausschließlich im ausdrücklich freigegebenen Haushalt.
 Der private Rundennachweis zählt zu diesem Zeitpunkt acht vollständige
@@ -2548,7 +2548,7 @@ Der unveränderte Routing-Nachlauf in RAM bestand104 SQLite-Fälle ohne Skip.
 Die94 Deutsch-/Paketfälle bestanden außerdem auf einer frischen PostgreSQL16-
 Instanz; Quellen und Manifest blieben unverändert, Cluster und Testdaten wurden
 entfernt.22 Flutterfälle für den neuen Deutsch-Satzvergleich und die vorhandene
-Vergleichskomponente bestanden, einschließlich320/390px und großer Schrift.
+Vergleichskomponente bestanden, einschließlich320/390 px und großer Schrift.
 Die vollständige Analyse der gemeinsamen App meldete keine Befunde. Der erste
 neue Renderer-Test zeigte korrekt, dass neben dem äußeren Dispatcher auch die
 innere Kindprüfung der Vergleichskomponente ergänzt werden musste. Beide
@@ -2689,7 +2689,7 @@ Referenzkopplung26.10.2026 ·1.36.23+135:
 134 wurde nach4.423 bestandenen Backend- und4.024 bestandenen Fluttertests
 veröffentlicht;44 Backend- und19 Flutterfälle sind ausgewiesene Ausnahmen.
 Die öffentlichen Web-/APK-Hashes entsprechen dem signierten Quellstand. Der
-ursprünglich geöffnete ältere Schultag zeigt auf Desktop und390px mobil die
+ursprünglich geöffnete ältere Schultag zeigt auf Desktop und390 px mobil die
 sechs offenen Quellen und die direkte Seitenprüfung. Ihr Button wurde bis zur
 tatsächlich offenen Materialansicht bedient; keine Quelle wurde dabei bestätigt.
 
@@ -2874,7 +2874,7 @@ wird dabei als abgebrochen und kostenfrei aufgelöst.
 Öffentliche künstliche Renderer-Vorlage `testdata/multiples_common_v1.json`,
 SHA256 `76182c1f185ef137a97a281a37f315f8b4ea0094c35940df78a7c317c6e30252`.
 Die lokale Sichtprüfung verwendet echte gebündelte Schrift und SDK-Icons bei
-320px/200%,390px,768px und1100px. Beobachtete Pfeilüberschneidungen wurden aus
+320 px/200%,390 px,768 px und1100 px. Beobachtete Pfeilüberschneidungen wurden aus
 diesem neuen Rezept entfernt; ein kurzer Titel verhindert einen unnötigen
 Wortbruch. Diese künstliche Vorlage ist kein echter Modell- oder OCR-Beleg.
 50 gezielte Flutterfälle bestanden; der anschließende reine Titel-Nachlauf
@@ -2907,7 +2907,7 @@ Grafikerklärung geöffnet, einmaliger weiterer Versuch korrekt unterstützt.
 Die zweite Aufgabe wurde ohne Hilfe korrekt gelöst. Ergebnis sichtbar, Einheit
 serverseitig vollständig abgeschlossen, drei Attempts erhalten. 20 allgemeine
 Heftrunden sind damit persönlich belegt, Ziel 100 noch nicht erreicht.
-Desktop 1100px, Tablet 768px und Smartphone 390px wurden tatsächlich im Live-Browser
+Desktop 1100 px, Tablet 768 px und Smartphone 390 px wurden tatsächlich im Live-Browser
 bedient; der Grafikschritt blieb beim Breitenwechsel erhalten. Private Screenshots
 und Metadatennachweise liegen außerhalb der versionierten Quellen.
 Der lesende Live-Nachweis bestätigt einen bereiten Grafiksnapshot, eine Einführung,
@@ -3240,13 +3240,13 @@ werden nicht zu einer angeblich vollständig grünen ersten CI addiert.
 
 ## Alltagstest143 · 26.10.2026
 
-Eigener regulärer künstlicher Haushalt, Klasse6, vier eigens erzeugte und visuell geprüfte Fotos (Mathematikheft, seitliches Arbeitsblatt mit roten Korrekturen, Deutsch/Satzglieder, Englisch/Simple past). Keine echten Kinderantworten. Nutzerfreigabe15USD für diesen Test; bestehende Anbieter-/Familiengrenzen bleiben aktiv. Erstlauf: sieben OCR-/Gegenprüfungsaufträge und ein Paketauftrag,257Sekunden vom ersten Claim bis zum Paketabschluss; eine Seite scheiterte an Markierungsmetadaten. Gemeldete Kosten0,124230USD, keine offene Reservierung zu diesem Zwischenstand. Kein vollständiger Vierseiten-Erfolg behauptet.
+Eigener regulärer künstlicher Haushalt, Klasse6, vier eigens erzeugte und visuell geprüfte Fotos (Mathematikheft, seitliches Arbeitsblatt mit roten Korrekturen, Deutsch/Satzglieder, Englisch/Simple past). Keine echten Kinderantworten. Nutzerfreigabe15 USD für diesen Test; bestehende Anbieter-/Familiengrenzen bleiben aktiv. Erstlauf: sieben OCR-/Gegenprüfungsaufträge und ein Paketauftrag,257 Sekunden vom ersten Claim bis zum Paketabschluss; eine Seite scheiterte an Markierungsmetadaten. Gemeldete Kosten0,124230 USD, keine offene Reservierung zu diesem Zwischenstand. Kein vollständiger Vierseiten-Erfolg behauptet.
 
 143 erhält den wörtlichen OCR-Text bei unzuverlässigen Zusatzannotationen: unbelegte Autorenschaft wird unbekannt, nicht verankerte Zitate werden entfernt und der betroffene Abschnitt ausdrücklich unsicher/vom bewerteten Lernen ausgeschlossen. Der bestehende Zweitleseauftrag kann ihn am Original klären. Quell- und Aufgabenvalidierung bleiben streng. Fertigmeldungen nennen bei offenen Fotos den tatsächlich bestätigten Teilumfang. Schulbuddy verwendet das aktuelle Betreiber-Systembudget statt einer veralteten Kopie der Modellbindung; keine Budgetkonfiguration geändert.
 
 Fotoauswahl ohne doppelten Bestätigungsdialog; Zuschnitt zeigt das Foto vor optionalen Werkzeugen; Abgabe liegt vor der Fotoliste. Ausbleibende Browserfreigabe bleibt abbrechbar, verspätete Zustimmung registriert kein Gerät. Lokale Nachweise:55SQLite- und164Unix-PostgreSQL16-Fälle;77betroffene Flutterfälle plus21erneute Fotoassistentfälle einschließlich sichtbarer Hauptaktion bei vier Fotos; Flutteranalyse ohne Befund. PostgreSQL-Runner übernahm lediglich ein historisches base_commit-Textlabel; die tatsächlichen unveränderten Quelldateien sind durch Manifest1b7e6de3e39c76ec644a6ccc34ebb819043fe47f04564498692e900cf6541830 gebunden. Native Zustellung auf einem Smartphone ist damit nicht abgenommen.
 
-Private Testzugänge, künstliche Fotos, genaue Prompts, Hashes, Messungen und Screenshots liegen außerhalb von Git unter artifacts/elements143/everyday. Der lokale Testhaushalt ist auf24Stunden,30Aufrufe und15USD begrenzt. Laufende Alltagstest-Abnahme und tatsächlicher Produktionsstand werden nach dem Deployment ergänzt; diese Zeilen behaupten noch keine143-Auslieferung.
+Private Testzugänge, künstliche Fotos, genaue Prompts, Hashes, Messungen und Screenshots liegen außerhalb von Git unter artifacts/elements143/everyday. Der lokale Testhaushalt ist auf24Stunden,30Aufrufe und15 USD begrenzt. Laufende Alltagstest-Abnahme und tatsächlicher Produktionsstand werden nach dem Deployment ergänzt; diese Zeilen behaupten noch keine143-Auslieferung.
 
 
 Zusätzlicher belegter Alltagstest-Befund143: Die erste KI-Abschrift hatte gewöhnliche blaue Tinte flächendeckend als annotations.kind=unknown geliefert. Der unverändert konservative Quellenfilter schloss dadurch Mathematik und Deutsch vollständig aus. Das erweiterte endliche Schema unterscheidet nun ink (nur Schriftfarbe) von wirklichen Sondermarkierungen; die OCR-/Gegenprüfungsanweisung benennt diesen Unterschied ausdrücklich. Quellenpolicy literal-safety-2 lässt ink nicht als Korrektur gelten, behält unbekannte echte Markierungen, Schülerantworten und falsche Gleichungen weiterhin gesperrt. Alte unknown-Angaben werden nicht ungeprüft umetikettiert; ihre erneute Bildlesung bleibt eine ausdrückliche Aktion. Der erste143-Build wurde vor Auslieferung gestoppt, um diesen Befund gemeinsam zu korrigieren.
@@ -3256,7 +3256,7 @@ Der zusätzliche Tintenfix wurde mit131SQLitefällen (zwei ausschließlich aufPo
 
 ## Alltagstest144 · nächste Korrekturstufe
 
-143 wurde als20261026T202130Z-560985c (Produktcommit560985cdb8f080527cbe599bb45eaef8ade7b23d) ausgeliefert und öffentlich gegen die tatsächlich gebauten Web-/APK-Bytes geprüft. Alle fünf Appdienste aktiv, Schema0042,17Konfigurationen erhalten. Direct-APK137162432Bytes/SHA2564b17c7fc3ab9afaec2ba5ea83a79836dc2c6e88674d236d2af8e1b8ea96cb533; Play-AAB110871784Bytes/SHA256aa11defda8cb02f35172f221a1d577e1233011f06634457b6e000e7d8531c79b.
+143 wurde als20261026T202130Z-560985c (Produktcommit560985cdb8f080527cbe599bb45eaef8ade7b23d) ausgeliefert und öffentlich gegen die tatsächlich gebauten Web-/APK-Bytes geprüft. Alle fünf Appdienste aktiv, Schema0042,17Konfigurationen erhalten. Direct-APK 137162432 Bytes/SHA2564b17c7fc3ab9afaec2ba5ea83a79836dc2c6e88674d236d2af8e1b8ea96cb533; Play-AAB110871784 Bytes/SHA256aa11defda8cb02f35172f221a1d577e1233011f06634457b6e000e7d8531c79b.
 
 Der erneute echte Leseauftrag des seitlichen künstlichen Arbeitsblatts lieferte einen vollständigen ersten und zweiten Durchgang (je348Zeichen/8Blöcke). Die lokale Schutz-Zusammenführung verkürzte dies jedoch auf201Zeichen/5Blöcke: spätere grobe Bildüberlappungen entfernten bereits erhaltene frühere Abschnitte.144 sammelt geschützte Repräsentanten getrennt und fügt sie erst nach dem Vergleich ein. Bildkoordinaten allein löschen keinen Abschnitt mehr; lediglich eindeutige sichtbare Aufgabennummern können einen Ersatzblock zuordnen. Unzuordenbare Alternativen bleiben unsicher. Beide Rohlesungen und der ursprüngliche Wortlaut bleiben erhalten, check_contract_revision wird literal-image-countercheck-2. Bloße Tintenmetadaten frieren normale Lesefehler nicht ein.
 
@@ -3264,10 +3264,10 @@ Die Quellenansicht hatte außerdem gestrichene60und ergänzte40nebeneinander als
 
 Der offene Materialscreen beobachtet ausschließlich seine bereits laufende automatische Gegenprüfung mit GET, ohne Route-/Dokumentneuladen oder erneute KI. Aktualisiert wird der bestehende Editor; ein eigener Entwurf wird bei neuer Quellrevision erhalten und als Konflikt gezeigt. Beobachtung endet bei Fertigstellung, verdeckter Route, Hintergrund, Abmeldung oder Dispose. Der weitergehende SSE-/Lazy-Ausbau bleibt auf ausdrücklichen Prioritätswechsel hin pausiert.
 
-Vorbereitende lokale Abnahme:92SQLitefälle bestanden, zwei PostgreSQLfälle dort übersprungen;81PostgreSQLfälle bestanden.42integrierte UI-Fälle und drei zusätzliche Entwurfs-/Statusfälle bestanden; drei Korrektur-Kartenfälle auf320/1024px bestanden. Die bereits bestandenen weiteren Formelsatz-/Quellenfälle wurden getrennt ausgeführt; erste Testlocatorfehler sind in den lokalen Logs erhalten. Flutteranalyse ohne Befund. Tatsächliche144-Auslieferung und neue Foto-Abnahme werden erst nach Prüfung ergänzt.
+Vorbereitende lokale Abnahme:92SQLitefälle bestanden, zwei PostgreSQLfälle dort übersprungen;81PostgreSQLfälle bestanden.42integrierte UI-Fälle und drei zusätzliche Entwurfs-/Statusfälle bestanden; drei Korrektur-Kartenfälle auf320/1024 px bestanden. Die bereits bestandenen weiteren Formelsatz-/Quellenfälle wurden getrennt ausgeführt; erste Testlocatorfehler sind in den lokalen Logs erhalten. Flutteranalyse ohne Befund. Tatsächliche144-Auslieferung und neue Foto-Abnahme werden erst nach Prüfung ergänzt.
 
 
-144 tatsächlich ausgeliefert: `20261026T205002Z-70225d4`, Quellcommit `70225d43fcb084c8e5bf274438de36b87accd74b`, Version1.36.32+144, Schema0042. Fünf Dienste aktiv,17Konfigurationen erhalten, öffentliche Web-/APK-Bytes abgeglichen. Direct-APK137178832Bytes/SHA256442244391c3491609abe0e38f904a94f932c53827b96228e752245cfbe494e1d. Vollständige CI40389201927 erfolgreich; ebenso die vorherige143-CI40385119478.
+144 tatsächlich ausgeliefert: `20261026T205002Z-70225d4`, Quellcommit `70225d43fcb084c8e5bf274438de36b87accd74b`, Version1.36.32+144, Schema0042. Fünf Dienste aktiv,17Konfigurationen erhalten, öffentliche Web-/APK-Bytes abgeglichen. Direct-APK 137178832 Bytes/SHA256442244391c3491609abe0e38f904a94f932c53827b96228e752245cfbe494e1d. Vollständige CI40389201927 erfolgreich; ebenso die vorherige143-CI40385119478.
 
 Drei echte Browserimporte der künstlichen Mathematik-/Deutschfotos mit Drehung und Zuschnitt wurden unter144 erneut normal abgegeben. Alle drei OCR-/Zweitlesungen erfolgreich; ein zeitweise auf about:blank geschlossenes Appdokument hielt den Serverablauf nicht an. Das seitliche Arbeitsblatt behält8Blöcke/348Zeichen einschließlich der geprüften Originalgleichungen und getrennten Korrekturmarkierungen. Keine stillen Ersatzgleichungen. Die leistungssichere Projektion schließt weiterhin unleserliche/markierte Schülerantworten aus. Screenshot14-korrekturkarten-mobil.png und eigene Quellenprojektionen liegen unter artifacts/elements143/everyday; keine echten Kinderdaten in diesen Testbelegen.
 
@@ -3280,20 +3280,20 @@ Die Korrektur bindet solche festen Fragen über vollständigen unveränderten Ke
 Lokale145-Abnahme:231Fälle auf isoliertem RAM-SQLite bestanden, darunter der echte Adapter mit vollständiger künstlicher Antwort sowie ein Versandgrenzen-Replay des exakt gescheiterten eigenen Payloads.55betroffene Fälle zusätzlich auf einem separaten Unix-PostgreSQL16 bestanden. Keine externe KI, keine übernommenen Anbieterumgebungen, beide temporären Datenbanken entfernt, Quellmanifest während der Läufe unverändert. Ruff und Diffprüfung ohne Befund. Ein anfänglicher Sandboxlauf hing beim ASGI-Teststart und wurde abgebrochen; der isolierte Nachlauf außerhalb der Sandbox ist der erfolgreiche Nachweis.
 
 
-145 tatsächlich ausgeliefert:20261026T211952Z-7d1f842, Quellcommit7d1f842e795dbb4a75608eef788f3db2b54d866e, Version1.36.33+145. Öffentliche Direct-APK137178832Bytes/SHA256f0ed8d547d6df64edf8c5f75ebc4b59633c820879eec3832c23389110415fc87 und Web-JavaScript bytegenau geprüft.17Konfigurationen erhalten, fünf Dienste aktiv, Schema0042 unverändert. Der reale künstliche Mathematik-Teilauftrag wurde in22Sekunden erfolgreich gespeichert. Die vorhandene ausdrückliche Teilfreigabe erzeugte ohne weiteren Provideraufruf die Runde; die zunächst als fragwürdig eingeschätzte Schaltfläche funktioniert wie vorgesehen. Die echte Kreis-/Balkenansicht und der Nennerfokus wurden im Browser bedient und fotografiert.
+145 tatsächlich ausgeliefert:20261026T211952Z-7d1f842, Quellcommit7d1f842e795dbb4a75608eef788f3db2b54d866e, Version1.36.33+145. Öffentliche Direct-APK 137178832 Bytes/SHA256f0ed8d547d6df64edf8c5f75ebc4b59633c820879eec3832c23389110415fc87 und Web-JavaScript bytegenau geprüft.17Konfigurationen erhalten, fünf Dienste aktiv, Schema0042 unverändert. Der reale künstliche Mathematik-Teilauftrag wurde in22 Sekunden erfolgreich gespeichert. Die vorhandene ausdrückliche Teilfreigabe erzeugte ohne weiteren Provideraufruf die Runde; die zunächst als fragwürdig eingeschätzte Schaltfläche funktioniert wie vorgesehen. Die echte Kreis-/Balkenansicht und der Nennerfokus wurden im Browser bedient und fotografiert.
 
 ## Alltagstest146 · Originalsatz-Darstellung
 
-Der getrennte Deutschauftrag erreichte die visuelle Prüfung und wurde verworfen;49,205Sekunden Anbieterzeit und0,043432USD gemeldet. Der alte genaue Modellinhalt wurde aus Datenschutzgründen nicht gespeichert. Aus dem generischen Diagnosecode darf keine bestimmte einzelne falsche Modellmarkierung als bewiesen behauptet werden. Der unveränderte eigene Payload wurde rein lesend mit gesperrtem Transport nachgebaut: Es war noch kein vorbereiteter Satzgrafik-Pfad verfügbar. Die normale Rollen-Grafik erlaubt nur ausdrücklich im Quellenzitat belegte Markierungen; ein Aufgabenheader allein belegt keine solche Zuordnung.
+Der getrennte Deutschauftrag erreichte die visuelle Prüfung und wurde verworfen;49,205 Sekunden Anbieterzeit und0,043432 USD gemeldet. Der alte genaue Modellinhalt wurde aus Datenschutzgründen nicht gespeichert. Aus dem generischen Diagnosecode darf keine bestimmte einzelne falsche Modellmarkierung als bewiesen behauptet werden. Der unveränderte eigene Payload wurde rein lesend mit gesperrtem Transport nachgebaut: Es war noch kein vorbereiteter Satzgrafik-Pfad verfügbar. Die normale Rollen-Grafik erlaubt nur ausdrücklich im Quellenzitat belegte Markierungen; ein Aufgabenheader allein belegt keine solche Zuordnung.
 
 146 ergänzt für ausdrücklich belegten deutschen Satzgliederstoff vollständige kurze Originalsatz-Zeilen als wortgetreue, unmarkierte Wortkästen im vorhandenen Renderer. Ein Wortkasten wird ausdrücklich nicht als automatisch bestimmtes Satzglied ausgegeben. Keine Rollen, Umstellungen oder zusätzlichen Quellen werden erfunden. Jede Frage nennt ihren vollständigen Originalsatz; Quelle, Referenzversion, Plan, Stufe und Frage bleiben gemeinsam gebunden. Alte Wortbaustein-/Pfeil-/Listenpfade bleiben erhalten. Geschlossene Diagnosetags für fehlende Rollenbelege und ungültige Listenfokusse enthalten keinen Originaltext und ändern keine Abrechnung.
 
 Abnahme:143betroffene Fälle auf isoliertem RAM-SQLite,30Fälle auf separatem Unix-PostgreSQL16 einschließlich Teilfreigabe, ein weiterer gesperrter Versandgrenzen-Replay des exakt betroffenen künstlichen Deutschpayloads. Der Replay prüft ausdrücklich, dass nun package-original-sentence-1 angefordert wird. Alle erfolgreich; temporäre Datenbanken entfernt, Quellmanifeste unverändert, keine externe KI durch diese Tests. Tatsächliche146-Auslieferung und Deutschwiederholung bleiben anschließend zu prüfen.
 
 
-146 tatsächlich ausgeliefert:20261026T214016Z-d938b18, Produktcommitd938b182608bc9ff96537cdd558a15d761cfbf2f, Version1.36.34+146, Schema0042. Signaturen, unabhängiger Geheimnisscan,17gesicherte Konfigurationen, fünf aktive Dienste und öffentliche Web-/APK-Bytes geprüft. Direct-APK137178832Bytes/SHA256f53a4869b59bbd529642c087eee5a6630331c15632e1720cbd16d4292da59d9e. Der erste Build wurde nach den Kompilierungen mitSignal143 beendet; kein vollständiger Abschlussbeleg, nicht ausgeliefert. Der quellgleiche vollständige Nachlauf bestand und ist der Auslieferungsnachweis. Vollständige CI40396523859 erfolgreich; auch145-CI40393795516 erfolgreich.
+146 tatsächlich ausgeliefert:20261026T214016Z-d938b18, Produktcommitd938b182608bc9ff96537cdd558a15d761cfbf2f, Version1.36.34+146, Schema0042. Signaturen, unabhängiger Geheimnisscan,17gesicherte Konfigurationen, fünf aktive Dienste und öffentliche Web-/APK-Bytes geprüft. Direct-APK 137178832 Bytes/SHA256f53a4869b59bbd529642c087eee5a6630331c15632e1720cbd16d4292da59d9e. Der erste Build wurde nach den Kompilierungen mitSignal143 beendet; kein vollständiger Abschlussbeleg, nicht ausgeliefert. Der quellgleiche vollständige Nachlauf bestand und ist der Auslieferungsnachweis. Vollständige CI40396523859 erfolgreich; auch145-CI40393795516 erfolgreich.
 
-Der eigene künstliche Deutsch-Teilauftrag wurde nach dem Fix in40Sekunden erfolgreich abgeschlossen. Die neue Fertigmeldung führte direkt zur noch offenen Deutschrunde statt zur schon abgeschlossenen Mathematik. Die erste Frage verlangt ausdrücklich das vollständige Subjekt in „Der Hund schläft.“; die absichtliche Auswahl „Hund“ wurde als unvollständig erkannt. Eine weitere gezielte Mathematikrunde entstand in31Sekunden; ihre In-App-Fertigmeldung zeigte einen ungelesenen Eintrag, wurde beim Öffnen als gelesen bestätigt und öffnete direkt die passende Einheit. Beide Mathematikrunden und Englisch wurden abgeschlossen. Eltern-GET:6Aufgaben/6Versuche,3selbstständig,2unterstützt,1unklar; bloßes Erkunden erzeugte keine zusätzlichen Antworten.
+Der eigene künstliche Deutsch-Teilauftrag wurde nach dem Fix in40 Sekunden erfolgreich abgeschlossen. Die neue Fertigmeldung führte direkt zur noch offenen Deutschrunde statt zur schon abgeschlossenen Mathematik. Die erste Frage verlangt ausdrücklich das vollständige Subjekt in „Der Hund schläft.“; die absichtliche Auswahl „Hund“ wurde als unvollständig erkannt. Eine weitere gezielte Mathematikrunde entstand in31 Sekunden; ihre In-App-Fertigmeldung zeigte einen ungelesenen Eintrag, wurde beim Öffnen als gelesen bestätigt und öffnete direkt die passende Einheit. Beide Mathematikrunden und Englisch wurden abgeschlossen. Eltern-GET:6Aufgaben/6Versuche,3selbstständig,2unterstützt,1unklar; bloßes Erkunden erzeugte keine zusätzlichen Antworten.
 
 ## Alltagstest147 · Grafik beim bewussten Erklärabruf
 
@@ -3302,11 +3302,11 @@ Die echte Deutsch-Erklärung lieferte zunächst nur Text. Der gespeicherte Grafi
 79betroffene RAM-SQLitefälle und66Unix-PostgreSQL16-Fälle bestanden. Die echten lokalen API-Fälle prüfen hint1/hint2/hint3/solution einschließlich Grafikblock, unveränderte Originalfragen, verborgene zweite Aufgabe,0neue Attempts/Usage durch Öffnen, unterstützte anschließende Antwort und Quellrevisionen. Beide Testdatenbanken wurden entfernt, Quellmanifeste blieben unverändert. Auslieferung147 und erneute Live-Abnahme folgen separat.
 
 
-147 tatsächlich ausgeliefert: `20261026T220259Z-670f1b0`, Produktcommit `670f1b09f5eea2056c2cf89bfbf456ec140ae8b3`, Version1.36.35+147, Schema0042. Die unveränderten Release-Skriptbefehle wurden mit exakter Quell-/Skriptbindung in getrennten Stufen ausgeführt; alle fünf echten Stufen-Exitcodes0, vollständiger Abschlussbeleg. Web, Direct-APK und Play-AAB unabhängig signatur-/versions-/geheimnisgeprüft. Öffentliche APK137178832Bytes/SHA256a8eaa6c0c0eb3ce670ba03dd3d6e24d2fe882a1f94f308285407e65211b8937d und Web-JavaScript bytegenau abgeglichen.17Konfigurationen erhalten, fünf Dienste aktiv, Google-Nachweise und Sicherung erhalten. Rückweg146 ohne Datenbankrestore.
+147 tatsächlich ausgeliefert: `20261026T220259Z-670f1b0`, Produktcommit `670f1b09f5eea2056c2cf89bfbf456ec140ae8b3`, Version1.36.35+147, Schema0042. Die unveränderten Release-Skriptbefehle wurden mit exakter Quell-/Skriptbindung in getrennten Stufen ausgeführt; alle fünf echten Stufen-Exitcodes0, vollständiger Abschlussbeleg. Web, Direct-APK und Play-AAB unabhängig signatur-/versions-/geheimnisgeprüft. Öffentliche APK 137178832 Bytes/SHA256a8eaa6c0c0eb3ce670ba03dd3d6e24d2fe882a1f94f308285407e65211b8937d und Web-JavaScript bytegenau abgeglichen.17Konfigurationen erhalten, fünf Dienste aktiv, Google-Nachweise und Sicherung erhalten. Rückweg146 ohne Datenbankrestore.
 
 Die laufende künstliche Deutschrunde wurde vor dem Deploy pausiert. Danach unverändert7Aufgaben/7Versuche/548Aktivsekunden; kein Zeitnachtrag. Beide gespeicherten hint1-/hint2-Grafiken erschienen anschließend beim bewussten Erklärabruf tatsächlich im Browser, ohne neuen Modellaufruf. Die erste falsche Auswahl „Hund“ und der unterstützte richtige zweite Versuch „Der Hund“ bleiben beide gespeichert. Die zweite richtige Antwort „spielt“ bleibt selbstständig, obwohl danach ihre Erklärung geöffnet wurde. Der Abschluss trotz offenem Tagesminimum funktionierte; der reguläre Rückblickauftrag wurde erfolgreich gespeichert.
 
-Abschlussbeleg:4Runden/8Aufgaben/9Versuche,4selbstständig,3unterstützt,1unklar,0laufendeRunden. Alle vier Grafiksnapshots ready.26reservierteAufträge, davon ein belegter lokaler Vorversand-Abbruch;24OpenRouter-Generierungsbelege mit insgesamt0,540366USD.0,40USD konservativ offen reserviert, nicht als tatsächliche Abbuchung ausgegeben. Endgültiger Gerätestatus:0autorisierte/0unautorisierteAndroidgeräte; keine native Zustellung behauptet. [Ausführlicher Bericht](EVERYDAY_TEST_2026_10_26.md).147-CI-Abschluss folgt im nächsten Absatz.
+Abschlussbeleg:4Runden/8Aufgaben/9Versuche,4selbstständig,3unterstützt,1unklar,0laufendeRunden. Alle vier Grafiksnapshots ready.26reservierteAufträge, davon ein belegter lokaler Vorversand-Abbruch;24OpenRouter-Generierungsbelege mit insgesamt0,540366 USD.0,40 USD konservativ offen reserviert, nicht als tatsächliche Abbuchung ausgegeben. Endgültiger Gerätestatus:0autorisierte/0unautorisierteAndroidgeräte; keine native Zustellung behauptet. [Ausführlicher Bericht](EVERYDAY_TEST_2026_10_26.md).147-CI-Abschluss folgt im nächsten Absatz.
 
 
 Vollständige147-Produkt-CI [40399816000](https://github.com/meinzeug/schulpilot/actions/runs/40399816000) für exakt670f1b09f5eea2056c2cf89bfbf456ec140ae8b3 abgeschlossen und erfolgreich. Alle Backend-/Flutter-Shards, Analyse/Webbuild und aggregierten Gates grün. Der abschließende Dokumentationsnachtrag ändert ausschließlich README, Quellen-/Statusbericht und den neuen Alltagstestbericht; kein weiterer Laufzeitcode oder Buildartefakt wird dadurch verändert. Browsergröße auf den tatsächlichen Standard1101×884zurückgesetzt; der eigene künstliche Gesamtlernstand bleibt als Ergebnis geöffnet.
@@ -3314,7 +3314,7 @@ Vollständige147-Produkt-CI [40399816000](https://github.com/meinzeug/schulpilot
 
 27.10.2026 · Lernweg-Konsistenz148: auditierte, auf den ausdrücklich genannten Haushalt begrenzte Produktionsdiagnose. Beide alten Quellenhashes ließen sich exakt aus der heutigen vollständigen sicheren Projektion rekonstruieren, wenn ausschließlich `policy_version` auf `literal-safety-1` gesetzt wurde. Kein abweichender Inhalt oder alter Quarantänestand wurde übernommen. Ursache und neue Verträge: [STUDY_PATH_RELIABILITY.md](STUDY_PATH_RELIABILITY.md). Keine neuen Modellkennungen, Anbietergrenzen oder Preisannahmen.
 
-27.10.2026 · Freigegebener Produktions-Reparaturversuch unter148: vier kgV-Aufgaben, vier gespeicherte Erklärgrafiken, Grafikstatus bereit, eine neutrale In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38Sekunden, OpenRouter-Kostenbeleg57.676Mikro-USD (0,057676USD), Reservierung250.000Mikro-USD. Antworten und gespeicherte Lernsekunden unverändert.149 begrenzt den neuen Kompaktvertrag auf2–5Aufgaben, nachdem die vollständige CI den unverändert zu unterstützenden Ein-Aufgaben-Klassenarbeitsfall aufgedeckt hatte. Kein zusätzlicher bezahlter Wiederholungsaufruf dafür. Die Browser-Abnahme im echten Kinderkonto wartet auf dessen normale Anmeldung; technische Produktionstests sind kein Ersatz für eine behauptete sichtbare Android-Zustellung.
+27.10.2026 · Freigegebener Produktions-Reparaturversuch unter148: vier kgV-Aufgaben, vier gespeicherte Erklärgrafiken, Grafikstatus bereit, eine neutrale In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38 Sekunden, OpenRouter-Kostenbeleg57.676Mikro-USD (0,057676USD), Reservierung250.000Mikro-USD. Antworten und gespeicherte Lernsekunden unverändert.149 begrenzt den neuen Kompaktvertrag auf2–5Aufgaben, nachdem die vollständige CI den unverändert zu unterstützenden Ein-Aufgaben-Klassenarbeitsfall aufgedeckt hatte. Kein zusätzlicher bezahlter Wiederholungsaufruf dafür. Die Browser-Abnahme im echten Kinderkonto wartet auf dessen normale Anmeldung; technische Produktionstests sind kein Ersatz für eine behauptete sichtbare Android-Zustellung.
 
 27.10.2026 · Gesamt-CI149: Der feste Rechenauftrag ohne Grafikvertrag muss seine bisherige Zweiblock-Darstellung behalten. Der grafische Etappenpfad erhält weiterhin einen kompakten Schritt und danach einen Schema-konformen Darstellungskatalog. Der zweite Fehler war eine vorab geplante Vorwissensprobe, die noch nicht als numerisches Ausschlussbeispiel für neue Erweiterungsaufgaben galt.150 korrigiert Material- und Heftauswahlpfad vor dem Provideraufruf, erhält die späte Wiederholungsprüfung und prüft64gesteuerte Seeds je Pfad.
 
@@ -3327,7 +3327,7 @@ Eine korrekte kgV-Bereitmeldung ist serverseitig belegt. Ihre Ausblendung nach d
 
 28.10.2026 · Fachbezogenes Lernen151: bestehende Hefte-Fachzeilen, Fachpiktogramme und optionale Cover wiederverwendet. Der vorhandene individuelle Plan bleibt die Datenquelle. Stabile Fach-IDs und bestehende Aliase filtern die neue Themenansicht; keine Ableitung neuer Fächer aus Fotos oder KI-Ausgaben. Themen vor der Seitenteilung bündeln, eine Metadatenvorschau je Karte und getrennte begrenzte Einzelrundenliste mit erhaltenem Reiter. Zufallsauswahl gleichverteilt über alle aktuell startbaren Themen, nicht über die sichtbare Seite oder die Anzahl vorhandener Runden. Normaler Rundenstart und idempotenter Etappenauftrag erhalten; reine GET-Auswahl ohne Reservierung oder Leistungsbeleg. Verträge: [LEARNING_SUBJECTS.md](LEARNING_SUBJECTS.md).
 
-79 RAM-SQLitefälle und dieselben79 Unix-PostgreSQL16-Fälle mit unveränderten Quellmanifesten bestanden; beide Wegwerfdatenbanken entfernt.94 Flutterfälle einschließlich320px/großer Schrift, Fach-/Themenwechsel, Zufallsstart, Statusnavigation, Sessionwechsel und bestehender Workspace-Navigation bestanden. Vollständige Produkt-CI [40642924278](https://github.com/meinzeug/schulpilot/actions/runs/40642924278) für `d7ef7e3776036d04327d640c1340f10029c43301` erfolgreich. Ein äußerlich unterbrochener APK-Build wurde regulär erneut abgeschlossen; nur der vollständige erfolgreiche Fünfstufenbeleg bindet die veröffentlichten Artefakte.
+79 RAM-SQLitefälle und dieselben79 Unix-PostgreSQL16-Fälle mit unveränderten Quellmanifesten bestanden; beide Wegwerfdatenbanken entfernt.94 Flutterfälle einschließlich320 px/großer Schrift, Fach-/Themenwechsel, Zufallsstart, Statusnavigation, Sessionwechsel und bestehender Workspace-Navigation bestanden. Vollständige Produkt-CI [40642924278](https://github.com/meinzeug/schulpilot/actions/runs/40642924278) für `d7ef7e3776036d04327d640c1340f10029c43301` erfolgreich. Ein äußerlich unterbrochener APK-Build wurde regulär erneut abgeschlossen; nur der vollständige erfolgreiche Fünfstufenbeleg bindet die veröffentlichten Artefakte.
 
 Release `20261028T072845Z-d7ef7e3`, Version1.37.0+151, Schema0042 tatsächlich ausgeliefert. Fünf Dienste aktiv,17 gesicherte Betriebskonfigurationen und Google-Nachweise unverändert, vorheriger Release150 erhalten. Direct-APK, Play-AAB und Web aus demselben sauberen Produktcommit; Signaturen/Manifest/Geheimnisse geprüft. Öffentliche vollständige APK und JavaScript bytegenau abgeglichen. Tatsächlicher Browser-Zufallsstart nur im künstlichen lokalen Konto,0Providerjobs/0Usage/0Antworten; regulär wieder pausiert. Produktion zusätzlich lesend bei Desktop und390×844 geprüft, einschließlich gebündeltem Verlauf und passendem Einzelrundenfilter. Temporäre künstliche Datenbank/Zugangsdaten entfernt, Screenshots nur im ignorierten lokalen Artefaktverzeichnis. Keine Kinderdaten oder privaten Fallkennungen neu im Repository; keine sichtbare native Geräteabnahme behauptet.
 
@@ -3939,8 +3939,8 @@ Grenzen, Prüfweg und tatsächliche lokale Screenshots: [DECIMAL_ADDITION.md](DE
 Der echte isolierte Uploadtest und die nachfolgende zielgebundene Übungsrunde
 wurden abgeschlossen. Die absichtlich falschen Antworten, Hilfen und späteren
 selbstständigen Erstlösungen blieben getrennt. Der Paketaufruf benötigte laut
-Anbieterbeleg14.977ms, die Anschlussvorbereitung15.570ms; verbuchte Kosten
-0,001697USD beziehungsweise0,031870USD. Diese Einzelmessungen sind keine
+Anbieterbeleg14.977 ms, die Anschlussvorbereitung15.570 ms; verbuchte Kosten
+0,001697 USD beziehungsweise0,031870 USD. Diese Einzelmessungen sind keine
 allgemeine Latenzzusage. Sichtbare In-App-Fertigmeldung und kontogebundene
 Lesemarkierungen wurden im390px-Browser geprüft; keine native Firebase-Zustellung
 behauptet.
@@ -3963,7 +3963,7 @@ Anbieteraufruf. Die reine Statusanzeige schreibt weiterhin nichts.
 
 Der künstliche Deutsch-Schultag12.11. wurde im390px-Browser über normale
 Fotoerkennung, Bestätigung und bewusste Paketvorbereitung wieder nutzbar:
-11.403ms/0,000853USD OCR und24.558ms/0,002462USD Paket laut tatsächlichen
+11.403 ms/0,000853 USD OCR und24.558 ms/0,002462 USD Paket laut tatsächlichen
 Generierungsbelegen. Der Aufgabenrückblick erhält einen direkten Zugang zu
 seiner gespeicherten Grafik; Satzwörter werden kompakt in Leserichtung dargestellt.
 Originalbelege und Grenzen: [EVERYDAY_QA_2026_10_30.md](EVERYDAY_QA_2026_10_30.md).
@@ -3975,8 +3975,8 @@ Wortgruppe; Teilwortpräfixe, widersprüchliche Rollen und verneinte Angaben wer
 nicht als Nachweis akzeptiert. Originalantworten und Modelloutput bleiben
 unverändert.171 betroffene Backendfälle und53 Flutterfälle bestanden. Nach einer
 rein lesenden Prüfung des tatsächlichen Fehloutputs gelang der reguläre bewusste
-Neuversuch: zwei zielgebundene Aufgaben g1/g2 mit belegten Rollen,27.217ms
-Anbieterzeit, gemeldete Kosten0,044196USD. Keine Änderung von Modell, Route,
+Neuversuch: zwei zielgebundene Aufgaben g1/g2 mit belegten Rollen,27.217 ms
+Anbieterzeit, gemeldete Kosten0,044196 USD. Keine Änderung von Modell, Route,
 Reservierung oder Wiederholungskontingent. Die Gesamt-CI des Zwischenstands202
 war wegen Importformatierung und veralteter UI-Erwartungen nicht grün; deren
 gezielte Korrektur wird vollständig erneut geprüft.
@@ -3996,7 +3996,7 @@ Eigene künstliche Originalseite des simulierten13.11., tatsächliche isolierte
 OpenRouter-Ausgabe und390px-Browserprüfung. Neue Quelle/Referenz
 `math.decimal.number_line_midpoint@1`; vollständige Originalaussage und
 Decimal-Mittelwertprüfung vor der Geometrie. Kein fremdes Bild oder Modellcode.
-Echter Reparaturauftrag:22.175ms,0,002125USD zunächst gemeldet,2Aufgaben,stop.
+Echter Reparaturauftrag:22.175 ms,0,002125 USD zunächst gemeldet,2Aufgaben,stop.
 221 gezielte Backend- und28 Flutterfälle erfolgreich; Details/Grenzen in
 `docs/EVERYDAY_QA_2026_10_30.md`. Releasekandidat, kein vorweggenommener
 Deployment- oder vollständiger Monats-Abnahmebeleg.
@@ -4005,8 +4005,8 @@ Deployment- oder vollständiger Monats-Abnahmebeleg.
 
 Eigene isolierte künstliche Browser-/Anbieterbelege: gezielte Mitte/Abstand-
 Anschlussrunde vollständig bearbeitet; neuer Dezimal-Paketteil des09.12.
-vollständig erzeugt und beantwortet.16.339ms/0,024816USD gemeldete Paketkosten,
-13.038ms/0,001707USD gemeldete gezielte Anschlussrunde. Kosten einer älteren
+vollständig erzeugt und beantwortet.16.339 ms/0,024816 USD gemeldete Paketkosten,
+13.038 ms/0,001707 USD gemeldete gezielte Anschlussrunde. Kosten einer älteren
 übergroßen verworfenen Antwort bleiben unbekannt; keine Nullkostenbehauptung.
 Details und lokal gehaltene Screenshots84–86 im Alltagstestbericht.
 
@@ -4023,11 +4023,31 @@ Alt-Runden rein lesend erkannt. Originale bleiben erhalten; ein klarer
 Quellen-Ausweg ersetzt das fehlerhafte Antwortformular. Keine automatische
 Neuerzeugung oder rückwirkende Änderung abgeschlossener Leistungsbelege.
 
-30.10.2026 · Tatsächlicher390px-Monatsabschluss:30bereite künstliche
+30.10.2026 · Tatsächlicher390px-Monatsabschluss:30 bereite künstliche
 Schultage/32Seiten, je Tag mindestens eine abgeschlossene quellengebundene Runde;
-29Tage mit sämtlichen ursprünglichen Einstiegsrunden abgeschlossen. Der10.12.
+29 Tage mit sämtlichen ursprünglichen Einstiegsrunden abgeschlossen. Der10.12.
 erhält eine reguläre abgeschlossene Ersatzrunde, fehlerhafte Altrunde bleibt
 pausierter Fehlerbeleg. Keine vollständige Lehrplan-, Mindestzeit- oder
 Androidabnahme. Die Heute-Empfehlung schließt konkret erkannte fehlerhafte offene
 Runden nun aus, erhält aber deren Elternpflichtauftrag.67 Plan-/Tagesfälle und
 ein ergänzender Zweierlauf bestanden, reine GETs erzeugen keine neuen Belege.
+
+### Veröffentlichung1.38.49+204 und öffentlicher Live-Nachtest
+
+Code 4d33e1094616d70509e8749c82f43b8a957d359b ist als
+`20261030T224607Z-4d33e10` aktiv. Quelle: unabhängiger öffentlicher Health-/APK-
+Manifestabruf, lokaler/entfernter Hashvergleich, Diensteprüfung und
+[vollständig erfolgreicher CI-Lauf](https://github.com/meinzeug/schulpilot/actions/runs/41131330744).
+Build 211,8s; APK 137.507.156 Bytes, SHA256
+1d669bb693ccf560f0e2618bf428e24a11be671a49511f49524ff878186ae1da.
+APK und Play-AAB mit dem festgelegten Release-Zertifikat geprüft.
+
+Zusätzliche eigene390px-Browserprüfung auf schulpilot.dorfspy.de im bestehenden
+künstlichen Konto: normaler Bildimport/Zuschnitt, gespeicherte Fotoabgabe,
+Luna-Erkennung/Sol-Gegencheck/Luna-Paket, alle vollständig.43 Sekunden gespeicherte
+Auftragskette; bestätigte Generierungskosten0,016609 USD. Glockenlink öffnete
+exakt die Runde. Originalzahlenstrahl, richtige/falsche/korrigierte Eingabe und
+Rundenabschluss mit offenem Zeitminimum geprüft; Coach-Rückblick bereit.
+Quellfoto ohne AnmeldungHTTP 401. Details, Grenzen und lokale Screenshots 93–98
+in `docs/EVERYDAY_QA_2026_10_30.md`. Keine Produktionsuhr und keine echten
+Kinderantworten für diesen Nachtest geändert; kein Android-Zustellnachweis.

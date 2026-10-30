@@ -1,28 +1,44 @@
-# Fortsetzung des Alltagstests · Releasekandidat 1.38.49+204
+# Produktionsstand · 1.38.49+204
 
-Am 30.10.2026 ist als Produktion weiterhin Release `20261030T193637Z-7df6127`
-mit Version1.38.46+201 belegt. Die nachfolgenden Änderungen werden gemeinsam
-gebaut und erst nach erfolgreicher Artefaktprüfung ausgeliefert. Der ältere
-Status152 weiter unten ist historische Dokumentation.
+Am 30.10.2026 ist Release `20261030T224607Z-4d33e10` auf
+[schulpilot.dorfspy.de](https://schulpilot.dorfspy.de) aktiv.
+Code: `4d33e1094616d70509e8749c82f43b8a957d359b`.
+[Der vollständige CI-Lauf](https://github.com/meinzeug/schulpilot/actions/runs/41131330744)
+ist mit allen Backend-/Flutterteilen erfolgreich abgeschlossen.
 
-Künstlicher Monatstest: mobile Browserführung bei390×844px, reale reservierte
-KI-Verarbeitung in einer isolierten Familien-/SQLite-Umgebung; keine Änderung
-der Produktivzeit oder echter Kinderantworten. Details und Grenzen:
+Enthalten sind Auftrags-/Kostenbeleg-Erhalt, vollständige Satzrollenbeweise,
+kompakte Lesegrafiken, direkter Zugang zu gespeicherten Aufgabenerklärungen,
+Vorrang bereiter Tagesrunden, streng gebundene Zahlenstrahlfragen und gezielte
+Anschlussübungen. Erkannte fehlerhafte Altrunden erhalten einen Quellen-Ausweg
+und verdrängen keine gültige nächste Runde oder verbindlichen Elternaufträge.
+
+Der isolierte390px-Monatstest umfasst30 Schultage und32 Materialseiten.
+Alle 30 Vorbereitungen sind bereit und jeder Tag hat eine abgeschlossene
+quellengebundene Runde.29 Tage haben sämtliche ursprünglichen Einstiegsrunden
+abgeschlossen; am 10.12. bleibt eine fehlerhafte Altrunde als Beleg pausiert und
+eine reguläre Ersatzrunde ist abgeschlossen. Dies ist keine vollständige
+Lehrplan-, tägliche Mindestzeit- oder Langzeitwirksamkeitsabnahme.
+
+Zusätzlich wurde auf dem öffentlichen Live-Server im vorhandenen künstlichen
+Konto ein eigenes Heftfoto importiert und zugeschnitten. Reguläre Erkennung,
+automatischer zweiter KI-Gegencheck und Paketerstellung waren nach 43gespeicherten
+Serversekunden fertig. Alle drei Kostenbelege sind über OpenRouter-Generierungen
+abgeglichen: zusammen 0,016609 USD. Die Fertigmeldung öffnete direkt die neue Runde;
+Zahlenstrahl, falsche Antwort, erneuter Versuch und Ergebnis wurden bei390×844 px
+bedient. Der echte Rückblick ist bereit; Originalantworten bleiben erhalten.
+
+Web, signierte Direct-APK und Play-AAB sind gebaut. APK und AAB verwenden den
+Release-Signierer; öffentliche APK-Metadaten und ausgelieferte Web-/APK-Hashes
+wurden abgeglichen. Physischer Androidtest und sichtbar beobachtete FCM-Zustellung
+bleiben ausdrücklich ausgenommen. In-App-Neuigkeiten funktionieren ohne Push.
+Details, Testergebnisse, lokale Screenshots und Grenzen:
 [Alltagstest-Fortsetzung](EVERYDAY_QA_2026_10_30.md).
 
-Bereits umgesetzt und gezielt geprüft: Erhalt offener Auftrags-/Kostenbelege,
-korrekte zusammenhängende Satzrollen, direkter Zugang zu gespeicherten
-Aufgabenerklärungen, kompakte Satz-/Lesegrafiken, Vorrang bereiter Tagesrunden,
-kanonische öffentliche Fachaliase sowie endliche Offenlegungsbelege für neue
-Rechenbeispiele. Neu hinzu kommt ein quellgebundener, rechnerisch geprüfter
-Zahlenstrahl für ausdrücklich belegte Dezimal-Mittelpunkte. Der echte
-Reparaturauftrag des künstlichen13.11. ist abgeschlossen: zwei Aufgaben,
-22.175ms gemeldete Anbieterzeit,0,002125USD bislang gemeldete Kosten.
-
-Der vollständige30-Tage-Durchlauf ist noch nicht abgenommen; ein alter
-Dezimaladditions-Testtag und mehrere begonnene Runden sind noch aufzuarbeiten.
-Physischer Androidtest bleibt ausdrücklich ausgenommen. Sichtbare
-Firebase-Zustellung wird aus einer In-App-Meldung nicht abgeleitet.
+Rückweg: vorheriges Release `20261030T193637Z-7df6127` bleibt erhalten.
+Vor einer Rückkehr Daten-/Codekompatibilität prüfen, keine blinde Symlink-Rücknahme.
+Konfigurationssicherung: `/var/backups/schulpilot/config-20261030T213101Z`;
+Wiederherstellungsschlüssel sind nicht enthalten. Der Aktivierer hat zusätzlich
+die reguläre Datenbanksicherung vor der Veröffentlichung ausgeführt.
 
 ---
 
@@ -32,11 +48,11 @@ Stand:28.10.2026. Release `20261028T144255Z-6bf8784`, Produktcommit `6bf87846fdc
 
 **Codefix:** Zu tiefe neue OpenRouter-Einzelrunden verwenden einen verlustfreien Grafik-Katalog im Transport. Der tatsächlich rekonstruierte Vertrag wird von13 auf9 verschachtelte Objekt-/Arraycontainer abgeflacht. Quellen, Antworten, Referenzen, Animationen und Offenlegungsprüfungen bleiben erhalten. Geschlossene Fehlerkategorien sowie Schemahash/Transportversion machen frühe Anbieterabbrüche nachvollziehbar. Ein alter Fehlerlink kann eine ausdrücklich bereits reservierte gleichartige Reparatur desselben Kindes lesen, ohne durch GET einen neuen Auftrag zu erzeugen. [Befund und Verträge](GRAPHIC_TRANSPORT_RELIABILITY.md).
 
-**Live-Fall weiterhin blockiert:** Der einzelne auditierte, normal mit0,25USD reservierte Reparaturaufruf wurde erneut unmittelbar mit Anbieterfehler502 beendet. Kein Erzeugungserfolg und keine neue Grafik werden behauptet. Der offizielle OpenRouter-Katalog zeigt für den fest gebundenen Sol-Endpunkt Azure0% Verfügbarkeit; Azure/EU ist verfügbar und ZDR-gelistet, aber10% teurer je Token. Die konkrete Freigabe für geprüften Wechsel ausschließlich dieser Route und genau eine weitere Vorbereitung ist angefragt. Keine Routing-, Budget- oder Datenschutzlockerung vorgenommen; unbekannte Kosten nicht auf null gesetzt. Keine Testantworten im Kindkonto.
+**Live-Fall weiterhin blockiert:** Der einzelne auditierte, normal mit0,25 USD reservierte Reparaturaufruf wurde erneut unmittelbar mit Anbieterfehler502 beendet. Kein Erzeugungserfolg und keine neue Grafik werden behauptet. Der offizielle OpenRouter-Katalog zeigt für den fest gebundenen Sol-Endpunkt Azure0% Verfügbarkeit; Azure/EU ist verfügbar und ZDR-gelistet, aber10% teurer je Token. Die konkrete Freigabe für geprüften Wechsel ausschließlich dieser Route und genau eine weitere Vorbereitung ist angefragt. Keine Routing-, Budget- oder Datenschutzlockerung vorgenommen; unbekannte Kosten nicht auf null gesetzt. Keine Testantworten im Kindkonto.
 
 **Prüfungen:**210 betroffene RAM-SQLitefälle, dieselben210 mit isoliertem Unix-PostgreSQL16 und43 Flutterfälle erfolgreich. Analyse, Webbuild, signierte APK und Play-AAB geprüft; fünf Buildstufen jeweils Exitcode0. Der vollständige [CI-Lauf40697583737](https://github.com/meinzeug/schulpilot/actions/runs/40697583737) besteht in sieben der acht Jobs. Ein einzelner kontrollierter Studien-Routingfall lieferte in seiner künstlichen HTTP-Antwort noch das alte Inline-Grafikformat. Der korrigierte Testvertrag besteht anschließend in sämtlichen32Fällen jeweils mit RAM-SQLite und Unix-PostgreSQL; der erste Gesamtlauf wird weiterhin nicht als vollständig grün ausgegeben. Ein neuer Gesamtlauf folgt für den Test-/Dokumentationsnachtrag. Ausgelieferter Produktcode bleibt davon unverändert.
 
-**Öffentliche Artefakte:** Vollständige APK und Web-JavaScript bytegleich zum geprüften Build. APK137.293.616Bytes, SHA256 `774e7166e6ccfbc52c16277724fdcecb7ebc5435cda7f84c3679dce85b30bc57`, Version1.37.1+152. Play-AAB111.011.613Bytes, SHA256 `1752ce2d8b5745ff0d4ff03672add5080ac1392417819ae025672474a19c911e`, Signierer gültig, nicht debuggbar, keine direkte APK-Installerberechtigung. Geheimnisscan:1443 Quelldateien/378Archiveinträge/19 bekannte private Quellen, kein Fund. Keine physische Android- oder sichtbare Firebase-Abnahme dieses Vorgangs.
+**Öffentliche Artefakte:** Vollständige APK und Web-JavaScript bytegleich zum geprüften Build. APK 137.293.616 Bytes, SHA256 `774e7166e6ccfbc52c16277724fdcecb7ebc5435cda7f84c3679dce85b30bc57`, Version1.37.1+152. Play-AAB 111.011.613 Bytes, SHA256 `1752ce2d8b5745ff0d4ff03672add5080ac1392417819ae025672474a19c911e`, Signierer gültig, nicht debuggbar, keine direkte APK-Installerberechtigung. Geheimnisscan:1443 Quelldateien/378Archiveinträge/19 bekannte private Quellen, kein Fund. Keine physische Android- oder sichtbare Firebase-Abnahme dieses Vorgangs.
 
 ---
 
@@ -48,9 +64,9 @@ Stand: 28.10.2026. Release `20261028T072845Z-d7ef7e3`, Produktcommit `d7ef7e3776
 
 **Prüfungen:** 79 betroffene RAM-SQLitefälle, dieselben 79 isoliert mit PostgreSQL16 und 94 Flutterfälle bestanden. Analyse, Webbuild, signierte APK und Play-AAB erfolgreich; fünf vollständig belegte Buildstufen mit tatsächlichem Exitcode0. Die vollständige [Produkt-CI40642924278](https://github.com/meinzeug/schulpilot/actions/runs/40642924278) für exakt den ausgelieferten Commit ist erfolgreich abgeschlossen: alle drei Backend-Shards, drei Flutter-Shards, Analyse/Webbuild und aggregiertes Flutter-Gate. Der Geheimnisscan fand keine bekannten Schlüssel in Quellen oder Artefakten.
 
-**Browser:** Fachübersicht und Themenansicht tatsächlich im Desktop- und Smartphone-Web-Runner geprüft, einschließlich 390×844px, Rückwegen, markiertem Lernen-Reiter und erhaltenem Verlaufsfilter. Der Zufallsbutton wurde im ausschließlich künstlichen lokalen Kinderkonto tatsächlich bedient: vorhandene Runde geöffnet, ohne Antworten wieder pausiert, keine Jobs oder Usage-Einträge. Die eigene temporäre Datenbank und Zugangsdaten wurden anschließend entfernt. Auf der Produktionsseite wurden Fachauswahl, Themenkarten, abgeschlossene Themen und sämtliche Runden eines gewählten Themas zusätzlich lesend geprüft. Dabei keine KI-Aufträge, Antworten oder Rundenstarts im echten Konto. Screenshotbelege liegen ausschließlich lokal im ignorierten `artifacts/elements151/screenshots/`.
+**Browser:** Fachübersicht und Themenansicht tatsächlich im Desktop- und Smartphone-Web-Runner geprüft, einschließlich 390×844 px, Rückwegen, markiertem Lernen-Reiter und erhaltenem Verlaufsfilter. Der Zufallsbutton wurde im ausschließlich künstlichen lokalen Kinderkonto tatsächlich bedient: vorhandene Runde geöffnet, ohne Antworten wieder pausiert, keine Jobs oder Usage-Einträge. Die eigene temporäre Datenbank und Zugangsdaten wurden anschließend entfernt. Auf der Produktionsseite wurden Fachauswahl, Themenkarten, abgeschlossene Themen und sämtliche Runden eines gewählten Themas zusätzlich lesend geprüft. Dabei keine KI-Aufträge, Antworten oder Rundenstarts im echten Konto. Screenshotbelege liegen ausschließlich lokal im ignorierten `artifacts/elements151/screenshots/`.
 
-**Öffentliche Artefakte:** Die komplette Direct-APK (137.277.228Bytes, SHA256 `379936164ecd2bb697ce9559a84d0c42360574bbd012d2b3006497190fde447c`) und Web-JavaScript wurden nach Auslieferung bytegenau gegen den signatur- und quellgebundenen Build geprüft. Play-AAB: 111.007.519Bytes, SHA256 `216845898a0b39cbddc4d88d8f1b8280bce10e9fc231476ccaa712b76606694d`, regulärer Signierer, nicht debuggbar und ohne APK-Installerberechtigung. Kein physischer Android-Gerätetest oder neuer echter Anbieter-Erzeugungstest wird aus dieser UI-Abnahme abgeleitet.
+**Öffentliche Artefakte:** Die komplette Direct-APK (137.277.228 Bytes, SHA256 `379936164ecd2bb697ce9559a84d0c42360574bbd012d2b3006497190fde447c`) und Web-JavaScript wurden nach Auslieferung bytegenau gegen den signatur- und quellgebundenen Build geprüft. Play-AAB: 111.007.519 Bytes, SHA256 `216845898a0b39cbddc4d88d8f1b8280bce10e9fc231476ccaa712b76606694d`, regulärer Signierer, nicht debuggbar und ohne APK-Installerberechtigung. Kein physischer Android-Gerätetest oder neuer echter Anbieter-Erzeugungstest wird aus dieser UI-Abnahme abgeleitet.
 
 ---
 
@@ -58,7 +74,7 @@ Stand: 28.10.2026. Release `20261028T072845Z-d7ef7e3`, Produktcommit `d7ef7e3776
 
 Stand: 27.10.2026. Release `20261027T091631Z-01644af`, Produktcommit `01644af7608129f50374de52d248d83e86488c85`, Schema `0042`. Fünf Dienste aktiv.17 unmittelbar zuvor gesicherte Konfigurationen, vorhandene Tabellen und Google-Nachweise unverändert. Web, signierte Direct-APK und Play-AAB sind an denselben sauberen Quellstand gebunden. Signaturen, Geheimnisscan und tatsächliche öffentliche Web-/APK-Bytes geprüft. Vorheriger Release149 bleibt als Rückweg erhalten.
 
-**Produktionsfall technisch geprüft:** Beide vorher fälschlich gesperrten Lernwege sind aktuell und fortsetzbar; keine `blocked_study_paths` mehr. Heute wählt die bereits gespeicherte Bruch-Anschlussrunde mit belegter Heftzuordnung. Der Lernweg zeigt diese Runde gesondert. Bestehende Antworten und gespeicherte Lernsekunden sind unverändert. Die einmal regulär reservierte und auditierte kgV-Reparatur aus148 bleibt unter150 bereit: vier Aufgaben, vier Erklärgrafiken, Grafikstatus bereit und genau eine In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38Sekunden; OpenRouter meldet0,057676USD bei0,25USD Reservierung. Für149/150 kein zusätzlicher bezahlter Wiederholungsaufruf.
+**Produktionsfall technisch geprüft:** Beide vorher fälschlich gesperrten Lernwege sind aktuell und fortsetzbar; keine `blocked_study_paths` mehr. Heute wählt die bereits gespeicherte Bruch-Anschlussrunde mit belegter Heftzuordnung. Der Lernweg zeigt diese Runde gesondert. Bestehende Antworten und gespeicherte Lernsekunden sind unverändert. Die einmal regulär reservierte und auditierte kgV-Reparatur aus148 bleibt unter150 bereit: vier Aufgaben, vier Erklärgrafiken, Grafikstatus bereit und genau eine In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38 Sekunden; OpenRouter meldet0,057676 USD bei0,25 USD Reservierung. Für149/150 kein zusätzlicher bezahlter Wiederholungsaufruf.
 
 **Ursachen gezielt korrigiert:** Die interne Richtliniennummer erzeugt bei vollständig identischer heutiger sicherer Quellenprojektion keine falsche Quellenänderung mehr. Gespeicherte Runden erhalten ihre belegte Herkunft und haben Vorrang vor neu zu erzeugenden Wiederholungen. Der vorhandene geprüfte kgV-Grafikvertrag wird auch für passende Lernweg-Etappen genutzt. Kompakte Grafik-Etappen geben der KI einen zum Schema passenden Darstellungskatalog; reine Rechenaufträge und Ein-Aufgaben-Klassenarbeitsrunden behalten ihren eigenen Vertrag. Vorwissensproben werden vor der neuen Zahlenplanung als Ausschlussbeispiele berücksichtigt, damit eine lokale Kollision nicht erst nach dem Anbieteraufruf die Runde verwirft. Die späte vollständige Wiederholungsprüfung bleibt streng. [Einzelheiten](STUDY_PATH_RELIABILITY.md).
 
@@ -76,7 +92,7 @@ Stand: 27.10.2026. Release `20261027T084618Z-a287cb9`, Produktcommit `a287cb9b84
 
 Zwei alte Heftpakete waren fälschlich als prüfbedürftig angezeigt worden: Ausschließlich die interne Quellenrichtliniennummer hatte ihren Hash geändert. Vollständige Gegenrechnung belegt identische heutige sichere Inhalte und Ausschlüsse. Die kompatible Projektion ist wieder nutzbar; echte Text-, Lesbarkeits- und Revisionsänderungen bleiben gesperrt. GETs verändern keine Pläne oder Antworten. Fertige Anschlussrunden werden über ihre eigenen Quellen dem Heftpaket zugeordnet, im Lernweg angezeigt und vor einer neu zu erzeugenden Wiederholung angeboten. Heute zeigt die Herkunft und einen direkten Lernweg-Link. [Verträge und Ursachen](STUDY_PATH_RELIABILITY.md).
 
-Ein ausdrücklich beauftragter, auditierter Produktions-Reparaturversuch über die normale Kinderberechtigung und Reservierung war erfolgreich: vier neue kgV-Aufgaben, vier Erklärgrafiken, Grafikstatus bereit und genau eine neutrale In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38Sekunden; tatsächlicher OpenRouter-Kostenbeleg0,057676USD bei0,25USD Reservierung. Keine Testantworten; vorhandene Antworten und gespeicherte Lernsekunden unverändert. Neue Grafiken und Antworten sind vor dem Modellaufruf an die vorhandene geprüfte kgV-Regel gebunden. Andere neue Etappen erhalten kurze vollständige Grafikerklärungen; keine automatische Wiederholung oder Anbietergrenzenänderung.
+Ein ausdrücklich beauftragter, auditierter Produktions-Reparaturversuch über die normale Kinderberechtigung und Reservierung war erfolgreich: vier neue kgV-Aufgaben, vier Erklärgrafiken, Grafikstatus bereit und genau eine neutrale In-App-Bereitmeldung. Serverseitige Auftragslaufzeit38 Sekunden; tatsächlicher OpenRouter-Kostenbeleg0,057676 USD bei0,25 USD Reservierung. Keine Testantworten; vorhandene Antworten und gespeicherte Lernsekunden unverändert. Neue Grafiken und Antworten sind vor dem Modellaufruf an die vorhandene geprüfte kgV-Regel gebunden. Andere neue Etappen erhalten kurze vollständige Grafikerklärungen; keine automatische Wiederholung oder Anbietergrenzenänderung.
 
 Die Gesamt-CI fand zusätzlich einen Ein-Aufgaben-Klassenarbeitsfall, der in149 ausdrücklich seinen bisherigen Vertrag behält.120 betroffene RAM-SQLitefälle und95 isolierte PostgreSQLfälle bestehen auf dem endgültigen Backendstand.69 passende Flutterfälle bestehen; der UI-Code ist seit diesem Lauf unverändert. Der vollständige [CI-Lauf149](https://github.com/meinzeug/schulpilot/actions/runs/40468246037) hat zwei weitere Randfälle gefunden: Darstellungskatalog und eingeschränktes Schema wichen ab; außerdem konnte die neue Zahlenplanung eine feste Vorwissensprobe wiederholen. Der gezielte Fix150 wird vorbereitet; ein Erfolg der Gesamt-CI wird nicht vorweggenommen.
 
@@ -98,9 +114,9 @@ Kein eigenes Androidgerät verbunden: sichtbare Firebase-Hintergrundzustellung u
 
 # Vorheriger belegter Produktionsstand · 1.36.33+145
 
-Stand:26.10.2026. Release `20261026T211952Z-7d1f842`, Produktcommit `7d1f842e795dbb4a75608eef788f3db2b54d866e`, Schema0042. Fünf Dienste aktiv,17Konfigurationen erhalten, Signaturen/Geheimnisscan und öffentliche Web-/APK-Bytes geprüft. Die feste Bruch-Vorwissensfrage ist an ihr eigenes kuratiertes Grafikbeispiel gebunden. Der vorher lokal scheiternde Mathematikteil wurde live in22Sekunden erfolgreich vorbereitet und über die vorhandene kostenlose Teilfreigabe als Runde geöffnet. Kreis-/Balkenwechsel und Nennerfokus der tatsächlichen Grafik wurden bedient. Keine automatische Veröffentlichung oder Ersatzaufgabe.
+Stand:26.10.2026. Release `20261026T211952Z-7d1f842`, Produktcommit `7d1f842e795dbb4a75608eef788f3db2b54d866e`, Schema0042. Fünf Dienste aktiv,17Konfigurationen erhalten, Signaturen/Geheimnisscan und öffentliche Web-/APK-Bytes geprüft. Die feste Bruch-Vorwissensfrage ist an ihr eigenes kuratiertes Grafikbeispiel gebunden. Der vorher lokal scheiternde Mathematikteil wurde live in22 Sekunden erfolgreich vorbereitet und über die vorhandene kostenlose Teilfreigabe als Runde geöffnet. Kreis-/Balkenwechsel und Nennerfokus der tatsächlichen Grafik wurden bedient. Keine automatische Veröffentlichung oder Ersatzaufgabe.
 
-Der getrennte Deutschauftrag wurde nach49Sekunden bei der visuellen Prüfung verworfen. Die gespeicherte inhaltsfreie Diagnose nennt nur die Phase; die genaue alte Modellantwort wurde nicht gespeichert.146 ergänzt deshalb einen eng geprüften Originalsatz-Pfad und zusätzliche geschlossene Diagnosecodes.143SQLitefälle,30Unix-PostgreSQLfälle und ein Replay des exakt betroffenen künstlichen Payloads bestanden. Eine neue146-Auslieferung oder erfolgreiche Deutschwiederholung wird hier noch nicht behauptet. Native Pushanzeige auf einem eigenen Smartphone bleibt unbeobachtet.
+Der getrennte Deutschauftrag wurde nach49 Sekunden bei der visuellen Prüfung verworfen. Die gespeicherte inhaltsfreie Diagnose nennt nur die Phase; die genaue alte Modellantwort wurde nicht gespeichert.146 ergänzt deshalb einen eng geprüften Originalsatz-Pfad und zusätzliche geschlossene Diagnosecodes.143SQLitefälle,30Unix-PostgreSQLfälle und ein Replay des exakt betroffenen künstlichen Payloads bestanden. Eine neue146-Auslieferung oder erfolgreiche Deutschwiederholung wird hier noch nicht behauptet. Native Pushanzeige auf einem eigenen Smartphone bleibt unbeobachtet.
 
 ---
 
@@ -236,7 +252,7 @@ Livebrowser: Desktop1280×800 und Quelle mobil390×844; Suche und 20px-Schrift
 bedient. Die künstliche Lernrunde erreichte nach Erklärung und erhaltenem
 Entwurf regulär 4/4; mobiler Rückblick zeigt drei selbstständige und eine
 unterstützte Aufgabe. API bestätigt vier Fragen/fünf Versuche/kein offenes
-Feedback; Testhaushalt normal gelöscht, alte Sitzung HTTP401. Der echte
+Feedback; Testhaushalt normal gelöscht, alte Sitzung HTTP 401. Der echte
 Fünfer-Wortschatzfall wurde nur auditierbar gelesen, Entwurf/Versuche unverändert.
 Keine externe KI-Anforderung oder physische Androidprüfung in dieser Abnahme.
 Nachweise und konservativer Rückweg100/99:
@@ -411,7 +427,7 @@ Genaue Buildbindung, Hashes, Sicherungen und Rückweg:
 
 Die bestehende Flutter-App in `~/schulpilot` hat eine neue gemeinsame Gestaltung
 nach der ausdrücklich beauftragten simpleclub-Referenz. Direkt im Browser wurden
-Desktop und390×844px angesehen: Home, Entdecken, Bibliothek, Fach- und
+Desktop und390×844 px angesehen: Home, Entdecken, Bibliothek, Fach- und
 Lektionsansichten. Schulpilot verwendet jetzt ruhige Anthrazitflächen, blaue
 Hauptaktionen, lokale Nunito-Überschriften, flache runde Karten,80px-Iconnavigation
 im Browser und eine schwebende mobile Navigation. Eigene dünne Canvas-Icons und
@@ -423,7 +439,7 @@ Nachgewiesen:
 
 - **255 Flutterprüfungen** aus19 betroffenen Testsammlungen bestanden. Rollen,
   Kontowechsel, reine GET-Navigation, Formular-/Providerentwürfe, Kontraste,
-  Tastaturfokus und320/390/960/1440px einschließlich200% Schrift geprüft.
+  Tastaturfokus und320/390/960/1440 px einschließlich200% Schrift geprüft.
 - Anschließend **52 gezielte Hefter-/Mobilprüfungen** bestanden, darunter zwei
   neue Rückkehrfälle für die Startseitensuche mit zuvor gemerkter Ansicht
   „Alle Seiten“. Diese52 überschneiden sich mit dem großen Lauf und werden
@@ -451,7 +467,7 @@ Live: `20261022T212319Z-12d4389`, Produktcommit
 `12d43896ce4c2fb55839eba218beb8ffce374252`, main gepusht, Schema0029.
 Gebundener Build und öffentliche APK-/JavaScript-Byteprüfung bestanden.
 Die tatsächlich noch zu hohen Eltern- und Admin-Mobilköpfe sind nachgebessert
-und im Produktionsbrowser bei320px/390px bedient.86 native UI-Fälle,91
+und im Produktionsbrowser bei320 px/390 px bedient.86 native UI-Fälle,91
 Backend-/Migrationsfälle,7 Offline-Agentfälle,13 Operator-Widgetfälle sowie
 Betriebsregressionen bestehen; diese gezielten Läufe werden nicht zu einer
 erfundenen Vollsuite addiert. Alle5Produktionsdienste sind aktiv.
@@ -575,7 +591,7 @@ Server erhalten. Keine Datenbankrücksetzung; Androidkorrektur mit höherem Code
 Vollständige317er-Liste, Artefakthashes, Recherche, Code-/Testverweise und Grenzen:
 [UX_300_ROUND2_2026_10_22.md](UX_300_ROUND2_2026_10_22.md).
 Die Tutor-Vorschauseitenbegrenzung K081 und der ungünstige Hausaufgaben-Umbruch
-bei320px bleiben ausdrücklich offen und erhöhen die Maßnahmezahl nicht.
+bei320 px bleiben ausdrücklich offen und erhöhen die Maßnahmezahl nicht.
 Keine neue physische Android-, Live-Admin-, Foto-/KI-Qualitäts-, Pushzustell-
 oder vollständige Screenreader-/WCAG-Abnahme. Nachfolgende reine
 Dokumentationsänderungen verändern den bereitgestellten Produktcode nicht.
@@ -591,7 +607,7 @@ Drei parallele Fachagenten prüften Kinderbereich, Elternbereich und Anmeldung;
 die gegenseitige Gegenprüfung ergänzte konkrete Kontowechsel-/Dialogfehler.
 Die Elternübersicht beginnt mit gespeicherten Übungsbelegen. Lernplan und
 Hausaufgabenlisten unterscheiden Laden, Fehler, leere Filter und Fortsetzung;
-keine alten Themen unter neuer Seitenwahl. Pagination auch bei 320px und
+keine alten Themen unter neuer Seitenwahl. Pagination auch bei 320 px und
 200% Schrift ohne Überlauf. „Frage schreiben“ ist im Kinderpostfach direkt
 erreichbar; Kontextlinks und Empfänger sind konkret beschriftet. Geräteaktionen
 haben gezielte Bestätigung, Rückmeldung und einen verständlichen Leerzustand.
@@ -892,7 +908,7 @@ Details: [UI_AND_PARENT_REVIEW_2026_10_21.md](UI_AND_PARENT_REVIEW_2026_10_21.md
 - Kinder-Hausaufgaben und Hefte samt Details verwenden gemeinsame Seitenköpfe,
   Reiter, Fotoaktionen und beschriftete Suche/Filter. Meine Fächer behält den
   Seitenfilter; unzugeordnete Seiten bleiben erreichbar. Kartenüberlauf mit
-  großer Schrift auf320px korrigiert; Elternabläufe erhalten.
+  großer Schrift auf320 px korrigiert; Elternabläufe erhalten.
 - Headerglocke: maximal vier Meldungen, Alle anzeigen; Lesen erst bei Eintragsklick.
   Kontoname/Avatar: Einstellungen und reguläres Abmelden. Kontowechsel und verspätete
   Abmeldeantworten einschließlich401 dürfen keine neue Sitzung löschen. Admin bleibt
@@ -903,10 +919,10 @@ Details: [UI_AND_PARENT_REVIEW_2026_10_21.md](UI_AND_PARENT_REVIEW_2026_10_21.md
   Historisch war der Anbieteraufruf erfolgreich, lokale Prüfung gescheitert; genaue
   damalige Regel mangels gespeichertem Antwortinhalt nicht rekonstruierbar.
 - Konkret beauftragte Reparatur nach Codefix einmal über bestehende berechtigte
-  Elternsitzung normal reserviert und auditiert:1Aufruf/1Jobversuch,0,001337USD.
+  Elternsitzung normal reserviert und auditiert:1Aufruf/1Jobversuch,0,001337 USD.
   Bericht ready, fachlich validiert, Elternansicht aktuell, Lernplan anwendbar.
   Alte Antworten/Fehlerberichte/Verbrauch hashgeprüft unverändert; keine neuen
-  Kinderantworten eingetragen. Frühere0,001201USD erhalten. Keine Retrykette,
+  Kinderantworten eingetragen. Frühere0,001201 USD erhalten. Keine Retrykette,
   Kontingenterhöhung oder Sitzungsreaktivierung. Privater Helper/Checkpoint entfernt.
 
 130 gemeinsame Fluttertests,33PostgreSQL- und14SQLitefälle in separaten Läufen
@@ -920,9 +936,9 @@ Web und signierte APK/AAB78 gebaut; Bundle/Paket/Version/Signierer geprüft,
 Play ohne APK-Installerberechtigung. Geheimnisprüfung652 Quellen/Assets und344
 Archiveinträge/14 bestehende Secretquellen ohne Treffer; Provider-Key/Base640.
 Vor Entfernung lokaler Testzugänge zusätzlicher Quellencheck mit deren Passwörtern
-sauber. Öffentlicher APK-Voll-Download stimmt überein. APK75400770Bytes, SHA256
+sauber. Öffentlicher APK-Voll-Download stimmt überein. APK75400770 Bytes, SHA256
 `fbc6f8eb5c8a298cd7a5ee357ce7c7f44db1b7620d8a47587dfe281e46eff7f6`;
-AAB70817705Bytes, SHA256
+AAB70817705 Bytes, SHA256
 `15494379e49c3290cf84a49b02bf6172f8277a1706bece59825ea595017142ab`.
 API/Worker/Caddy aktiv, Sicherung erfolgreich, Schema0025, Providerrevision29,
 Paid/Economy/ZDR unverändert. Rückweg:77 (`20261021T150342Z-14fe339`), gleiches
@@ -959,7 +975,7 @@ Schnittstellen: [AFTERNOON_EVALUATION_2026_10_21.md](AFTERNOON_EVALUATION_2026_1
   Addition ab und plant Verstehen→neue eigene Aufgabe→späterer Abruf; keine
   erfundene dauerhafte Beherrschung. Drei Hausaufgabenhäkchen zählen separat.
 
-Wirklicher Verbrauch:16 fertige KI-Aufrufe,0,088137USD,0 unbekannte Kosten;
+Wirklicher Verbrauch:16 fertige KI-Aufrufe,0,088137 USD,0 unbekannte Kosten;
 Luna/Sol im unveränderten Economy-Modellmix, Providerrevision29, Paid/ZDR erhalten.
 Alle Fehleraufrufe/Rückblicke enthalten.12:56 gespeicherte Aktivität;15-Minuten-
 Mindestziel korrekt noch offen, keine Warte-/Buildzeit oder Uhrverstellung.
@@ -971,9 +987,9 @@ Frühere featurebezogene Prüfungen im Bericht separat, nicht aufsummiert.
 Web und signierte APK/AAB77 gebaut, Bundle/Signer/Paket/Version geprüft;
 Play ohne APK-Installerberechtigung. Geheimnisprüfung649 Quellen/Assets und344
 Archiveinträge/16 bekannte Secretquellen ohne Treffer; Provider-Key/Base64 ebenfalls0.
-Öffentlicher APK-Voll-Download stimmt überein. APK75236762Bytes, SHA256
+Öffentlicher APK-Voll-Download stimmt überein. APK75236762 Bytes, SHA256
 `55d7cff65a4b86c6ecce83eab71e22b7ff7f990a8bf26f4234ea91ac94999238`;
-AAB70583093Bytes, SHA256
+AAB70583093 Bytes, SHA256
 `d0e5cdf0a8ee2e4b1cb55e41934a51434fb9bf37b934da9debc0703a32436d93`.
 API/Worker/Caddy aktiv, Sicherung erfolgreich, Schema0025.
 Rückweg:76 (`20261021T142904Z-d8e78c4`), gleiches Schema; keine DB-Rücksetzung.
@@ -1019,7 +1035,7 @@ nicht addieren. Keine neuen OpenRouter-Aufrufe oder Testantworten im echten Prof
 
 Browser: bestehender produktiver Kinderzugang nur lesend (Heute/Kurzplan, Lernen,
 Wörter, Hefte, Hausaufgaben). Schreibende Eltern-/Kinderprobe ausschließlich lokal
-mit künstlichen Daten,390px/1280px und hell/dunkel. Auswahl/Entwurf/Häkchen nach
+mit künstlichen Daten,390 px/1280 px und hell/dunkel. Auswahl/Entwurf/Häkchen nach
 Reload, Kontowechsel, Themenabschluss und erneutes Anzeigen tatsächlich bedient.
 Eltern sehen den ungesendeten Entwurf nicht. Screenshots unter artifacts/review73/.
 Kein Providerzugang/Worker in der lokalen Vorschau. Keine neue physische Android-
@@ -1030,9 +1046,9 @@ Version/Bundletool und Play ohne APK-Installerberechtigung separat geprüft.
 Geheimnisprüfung643 Quelldateien/Assets und344 Archiveinträge,14 bekannte Secret-
 Quellen,0 Treffer; zusätzlicher Provider-Key-/Base64-Abgleich ebenfalls0.
 Öffentlicher APK-Voll-Download stimmt mit dem lokalen Artefakt überein.
-APK75171226Bytes, SHA256
+APK75171226 Bytes, SHA256
 `41504ac7bbaf8904edd640942ee93675f8af0e15ead00a18e73524110db72195`;
-AAB70562027Bytes, SHA256
+AAB70562027 Bytes, SHA256
 `be08066956b0736295e2146fc77a3546563cf5c442e80705fc1aa86341c1ffe6`.
 Kein Play-Upload. API/Worker/Caddy aktiv, reguläre Sicherung erfolgreich,
 Schema0025; OpenRouter-Providerrevision29, Paid/ZDR/Freigaben erhalten.
@@ -1068,7 +1084,7 @@ Eigener künstlicher regulärer Produktionshaushalt: neues Thema, bestätigte
 Fotoquelle, Übernahme aus Übung, selbstständige/unterstützte Antworten,
 Elternauswertung und regulärer Worker tatsächlich mit OpenRouter getestet.
 9Aufrufe inklusive Rundenrückblicken und der ersten ungeeigneten Zusammenfassung,
-41066µUSD=0,041066USD; unbekannte Kosten0. Budget0,25USD/12Aufrufe und
+41066µUSD=0,041066 USD; unbekannte Kosten0. Budget0,25 USD/12Aufrufe und
 Providerrevision29 erhalten. Keinerlei Testantworten im echten Kinderprofil.
 Produktions-Testkonto normal gelöscht und Konten/Quellen/Runden/Berichte separat
 nachgeprüft; Verbrauch und Löschjournal erhalten. Private QA-Zugangsdaten entfernt.
@@ -1088,7 +1104,7 @@ Flutteranalyse,19Elternfälle auf PostgreSQL16 sowie Ruff sauber. Zusätzlich149
 Bewertungs- und107Adapter-/Planungsfälle bestanden, bei Integration162Backendfälle;
 überlappende Läufe nicht addieren. Migration0025 tatsächlich bis Head geprüft.
 Browser: Elternformular, einheitliche Navigation, Wochenplan, Bericht→Themenbelege,
-Hausaufgabenfilter/Originalfoto,390px/1280px und hell/dunkel. Ausschließlich lokale
+Hausaufgabenfilter/Originalfoto,390 px/1280 px und hell/dunkel. Ausschließlich lokale
 Bedienprobe mit echten künstlichen Produktionsantworten; keine zusätzliche lokale
 KI. Die kurzlebige Vorschau hat keinen Providerzugang oder Worker.
 Keine neue physische Android-, vollständige WCAG- oder Lernwirkungsabnahme.
@@ -1097,9 +1113,9 @@ Web und signierte Direct-APK/Play-AAB72 gebaut und separat validiert, kein Play-
 Upload. Aktuelle API/Worker/Caddy gesund, Schema0025, reguläre Sicherung erfolgreich.
 Rückweg: vorherige71 (`20261021T092711Z-31a1c55`), gleiches Schema0025;
 für diesen Coderückweg keine Datenbankrücksetzung. Andere Dienste nicht geändert.
-APK75072918Bytes, SHA256
+APK75072918 Bytes, SHA256
 `e6aa6c235d8549029b1838c489553a385152cfffc251ccd56136849d5d6ce9f6`;
-AAB70506697Bytes, SHA256
+AAB70506697 Bytes, SHA256
 `2d22fc25345c2ae09028e393f362ce1238920f31fd1d77dbb81fdbdfb6c9c094`.
 Signierer/Paket/Version/Bundletool geprüft, Play ohne APK-Installerberechtigung.
 Öffentlicher APK-Voll-Download entspricht dem lokalen Release.
@@ -1118,7 +1134,7 @@ Fünf tatsächlich generierte und visuell geprüfte Fotos im eigenen künstliche
 regulären Produktionshaushalt mit realem OpenRouter getestet. OCR, Aufgabenübersicht,
 Erklärungen sowie sämtliche Hilfearten und Rückfragen fachlich geprüft. Zwei dabei
 aufgedeckte Ablehnungen behoben, Fehlversuche/Kosten erhalten.26 Aufrufe über Luna,
-10856µUSD=0,010856USD, keine unbekannten Kosten, keine Kontingentlockerung.
+10856µUSD=0,010856 USD, keine unbekannten Kosten, keine Kontingentlockerung.
 Testhaushalt einschließlich Quellen/Gesprächen/Sitzungen normal gelöscht und verifiziert.
 Keine Testantworten im echten Kinderprofil. Bildprompts/Transkripte/Prüfungen liegen
 lokal unter `artifacts/homework-20261021/`; keine Zugangsdaten im Prüfmaterial.
@@ -1127,16 +1143,16 @@ Abschließend83Backendtests auf PostgreSQL16, zehn Hausaufgaben-Widgettests,
 Ruff/Flutteranalyse und Diff-/Geheimnisprüfung sauber. Bei Integration998Fluttertests
 bestanden; keine Addition überlappender Testläufe. Browserimport mit echtem Zuschnitt,
 Quellenbestätigung, Entwurf nach Reload, Aufgabenwechsel, Fotozoom und hell/dunkel
-auf390px sowie Desktop geprüft (isolierte lokale Bedienprobe mit echten künstlichen
+auf390 px sowie Desktop geprüft (isolierte lokale Bedienprobe mit echten künstlichen
 Produktionsantworten). Fünf Produktionsuploads über die normale API. Keine neue
 physische Android-/vollständige WCAG-/Lernwirkungsabnahme oder Play-Veröffentlichung.
 
 Schema0024, API/Worker/Caddy gesund, reguläre Datensicherung vor Aktivierung.
 Rückweg: vorherige68 (`20261021T071825Z-86561e6`), gleiches Schema; keine
 Datenbankrücksetzung für diesen Coderückweg. Andere Dienste unverändert.
-APK74712362Bytes, SHA256
+APK74712362 Bytes, SHA256
 `9d7074735f241c0cb48abb6f372246b9f7135cdde95c81ba68982ded120045f5`;
-AAB70286004Bytes, SHA256
+AAB70286004 Bytes, SHA256
 `359c152040551e054e79f1846dd708a88a56a9ba3dce1c47f31bf912bb8e0d0f`.
 Signierer/Paket/Version/Bundletool geprüft, Play ohne APK-Installerberechtigung.
 Öffentlicher APK-Voll-Download entspricht dem lokalen Release.
@@ -1224,8 +1240,8 @@ Medium, ZDR und unveränderten Kosten-/Token-/Systemgrenzen. Keine Astra-Freigab
 kein automatischer Fallback. Kontodatenschutz zusätzlich gespeichert und nach
 Reload geprüft: ZDR, keine Trainingsfreigabe oder Observability-Inhaltsspeicherung.
 Ein zusätzlicher künstlicher normal reservierter Entscheidungsjob erfolgreich,
-erfasste Kosten0,000514USD; gesamte bisherige künstliche Evaluation0,238013USD
-innerhalb0,25USD. Keine echte Kinderantwort oder echte Seite an einen Testanbieter.
+erfasste Kosten0,000514 USD; gesamte bisherige künstliche Evaluation0,238013 USD
+innerhalb0,25 USD. Keine echte Kinderantwort oder echte Seite an einen Testanbieter.
 
 ## Nachweise und Grenzen
 
@@ -1243,7 +1259,7 @@ kein Fehler/Skip in dieser finalen Fallabdeckung. Der vorher aufgedeckte direkte
 FastAPI-Header-Defaultfehler wurde behoben und unter anderem mit43 Tutor-/
 Adaptivregressionen nachgeprüft. Rohprotokolle/Abdeckungsnachweis unter artifacts.
 
-Browser: künstliche Kinder-/Eltern-/Adminprofile bei390px und1280px in beiden
+Browser: künstliche Kinder-/Eltern-/Adminprofile bei390 px und1280 px in beiden
 Varianten geprüft. Bruchspur1/3+1/6 →2/9 →gezielte Gleichwertigkeitsprobe →
 visuelle Erklärung →neue1/4+1/8 →3/8 tatsächlich bedient. Rückmeldung nach Reload
 erhalten; Elternprojektion zeigt3 Aufgaben/3 Versuche,2 selbstständig gelöst und1
@@ -1480,14 +1496,14 @@ Bindung, medium, ZDR/Data-Collection-Deny/Cache-Opt-out, kein automatischer Fall
 Die Kontoeinstellungen beim Anbieter wurden nicht unabhängig eingesehen.
 
 Bestehende Kosten-/Tarifgrenzen erhalten. Fotoreservierung innerhalb der ausdrücklich
-freigegebenen0,15USD; paid-Routen maximal4000Ausgabetokens, keine Kontingenterhöhung.
+freigegebenen0,15 USD; paid-Routen maximal4000Ausgabetokens, keine Kontingenterhöhung.
 Anbieteraufrufe erzeugter Pakete auf den tatsächlich geplanten Einstieg begrenzt,
 spätere Etappen bewusst einzeln;34geplante Aufgaben sind kein fertiger Aufgabensatz.
 
-Abnahme:0,224013USD gemeldete Inferenzkosten einschließlich drei fester Probeabläufe.
+Abnahme:0,224013 USD gemeldete Inferenzkosten einschließlich drei fester Probeabläufe.
 Drei400er mit unbekannter tatsächlicher Abrechnung behalten die volle Reservierung;
 aus den genauen Anfragen konservativ berechnete zusätzliche Modellkosten höchstens
-0,013486USD. Somit höchstens0,237499USD für diesen Teststand, unter0,25USD.
+0,013486 USD. Somit höchstens0,237499 USD für diesen Teststand, unter0,25 USD.
 Gebühren/Steuern sind damit nicht als null behauptet; alte unbekannte Codex-Belege
 unverändert. Aktivierung/Preise/Freigaben: [OPENROUTER_ACTIVATION_2026_10_20.md](OPENROUTER_ACTIVATION_2026_10_20.md).
 
@@ -1500,11 +1516,11 @@ auf54; danach36gezielte Tests für den Erklärungseinstieg55. Analyse/Ruff saube
 Diff- und Geheimnisprüfung ohne Treffer. Dies sind überlappende Suiten, keine
 aufsummierte Anzahl unterschiedlicher Tests.
 
-APK55:68.123.902Bytes, SHA256
+APK55:68.123.902 Bytes, SHA256
 `14b60432fa9ac73b6bf180fe92efe28ee4937e15f043451da211f14bec8beb60`.
 Vollständiger öffentlicher Download mit lokalem und serverseitigem Hash abgeglichen.
 [Direct-APK herunterladen](https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk).
-Play-AAB55:64.467.422Bytes, lokal gebaut; kein Play-Upload. Keine vollständige native
+Play-AAB55:64.467.422 Bytes, lokal gebaut; kein Play-Upload. Keine vollständige native
 Android-, Sprach-, Google-Login- oder Push-Abnahme dieser Arbeit behauptet.
 
 Rückweg: previous=`20261020T074208Z-b4e70f8`, gleiches Schema0023. Neue KI-Aufträge
@@ -1563,10 +1579,10 @@ Funktionstest behauptet. Die vorbereiteten Treiber wurden nicht mehr ausgeführt
 Eigene Testfamilie regulär gelöscht, private Zugangsdaten entfernt und dedizierten
 Emulator nach Bereinigung beendet. Keine echten Familien verändert.
 
-APK: `artifacts/schulpilot-android.apk`,68.058.366Bytes, SHA256
+APK: `artifacts/schulpilot-android.apk`,68.058.366 Bytes, SHA256
 `c25da2e7db8610ec7c54d0e1b2a1386bcec2447d20df7ee22e4c33790a93036e`.
 Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
-Play-AAB: `artifacts/schulpilot-play.aab`,64.444.596Bytes, lokal gebaut.
+Play-AAB: `artifacts/schulpilot-play.aab`,64.444.596 Bytes, lokal gebaut.
 
 Vorheriger Release `20261019T205610Z-5c3811c` (49, ebenfalls Schema0023) bleibt
 als previous verfügbar. Vor Rückweg neue KI-Aufträge anhalten und laufende
@@ -1626,7 +1642,7 @@ Architektur, zehn Controller-Szenarien und Betreiberanleitung:
   keine Addition zu einer behaupteten Zahl unterschiedlicher Tests.
 - Finaler Flutter-Gesamtlauf auf49:583 bestanden; Analyse ohne Befund.
   Ruff, Compile, Node-/Shellsyntax, Diff- und Geheimnisprüfung bestanden.
-- Öffentliche App49:24 Rollen-/Browserprüfungen bei320–1440px, keine
+- Öffentliche App49:24 Rollen-/Browserprüfungen bei320–1440 px, keine
   Laufzeitfehler oder fehlgeschlagenen authentifizierten GETs.
 - Zwei zusätzliche Agenten durchspielten Kind und Elternteil mit getrennten
   Browsern in einer eigenen künstlichen Familie:23 Kinderprüfungen sowie
@@ -1635,7 +1651,7 @@ Architektur, zehn Controller-Szenarien und Betreiberanleitung:
   Elternlesen erzeugt keine Kinderzeit/Antworten und verrät keinen Entwurf.
 - Echtes Browser-Dateifeld:249.521Byte-PDF, drei Noten übernommen, erneuter
   Import erkennt alle drei ohne Neuanlage. Mindestziele25/125 gespeichert;
-  bereits gemessene27Sekunden bleiben27. Null Provideraufrufe in dieser Familie.
+  bereits gemessene27 Sekunden bleiben27. Null Provideraufrufe in dieser Familie.
 - Die dabei gefundenen Singulartexte in Lernstand und Heute sind korrigiert;
   gezielter49-Nachtest mit unveränderten Lern-/Zeit-/Notendaten bestanden.
   [Kinderbericht](ROLE_SIMULATION_2026_10_19_CHILD.md),
@@ -1669,7 +1685,7 @@ konkrete technische Nachweise, kein weiteres allgemeines Einverständnis.
 
 25 verwertbare synthetische OpenRouter-Antworten: **0,065440USD** Inferenz erfasst;
 mit zwei ungeklärten Reservierungen **0,195440USD** gebunden, Gesamttestlimit
-0,25USD eingehalten. Gebühren/FX tatsächlich unbekannt. Azure-ZDR und medium
+0,25 USD eingehalten. Gebühren/FX tatsächlich unbekannt. Azure-ZDR und medium
 bei erfolgreichen Proben, Astra nur Katalogmetadaten. Kein vollständiger
 Fünf-Fächer-Livevergleich, kein Nachweis garantierter7€ pro Kind/Monat.
 Bereinigte Messwerte: OPENROUTER_EVALUATION_2026_10_19.json.
@@ -1684,10 +1700,10 @@ regressionsgeprüft, nicht durch ein echtes Kind als wirksam nachgewiesen.
 
 ## Artefakte und Rückweg
 
-APK: `artifacts/schulpilot-android.apk`,68.009.006Bytes, SHA256
+APK: `artifacts/schulpilot-android.apk`,68.009.006 Bytes, SHA256
 `bc62e71dbc47006e039ca2ff3c9f380b2510d496c73d9cf8118a74701ccafec8`.
 [Öffentlicher Download](https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk).
-Play: `artifacts/schulpilot-play.aab`,64.352.329Bytes, SHA256
+Play: `artifacts/schulpilot-play.aab`,64.352.329 Bytes, SHA256
 `8347b6d678a386680d348388789f216907180466efc30e6fbcd2c06169c1df23`.
 
 Vorheriger kompatibler Release: `20261019T204352Z-9c7f8f3` (48, ebenfalls0023).
@@ -1726,7 +1742,7 @@ Hilfeauswahl vor Elternnachricht, zusätzliche Problemmeldungen, Themenbündelun
 mit erhaltenen Runden und lokale Mengen-/Datumsanzeige. API-Fehler mit
 Wiederaufnahme statt automatischem Antwortretry.
 
-Nachgereichten PDF500 öffentlich mit künstlichen249.521Bytes reproduziert:
+Nachgereichten PDF500 öffentlich mit künstlichen249.521 Bytes reproduziert:
 versehentliche ungenutzte GradeImport.source_blocks-ORM-Spalte entfernt. Sie war
 in Alembic nie für grade_imports angelegt und wird nicht benötigt. Tatsächlich
 migriertes Schema gegen alle ORM-Spalten geprüft. Öffentlicher Upload danach201,
@@ -1742,7 +1758,7 @@ Warnung. Web, Direct-APK und Play-AAB gebaut; Paket, Signierer, Version und
 16-KB-Ausrichtung verifiziert. Bekannte TTS-Wasm-/Kotlin-Pluginhinweise bleiben.
 Kein Play-Upload oder Bundletool-Abnahme in dieser Arbeitseinheit.
 
-Öffentlich24 Browserprüfungen aller Rollen bei320–1440px ohne Laufzeitfehler.
+Öffentlich24 Browserprüfungen aller Rollen bei320–1440 px ohne Laufzeitfehler.
 Normale künstliche Wörterfamilie per echter Mail verifiziert; Swimming pool
 richtig, Antwort und Feedback nach Reload erhalten, je Aufgabe genau ein
 Attempt. Vorherige Wortvorlage bleibt als Unterstützung erfasst. Native Flutter-
@@ -1753,7 +1769,7 @@ künstlichen Familien normal gelöscht; private Checkpoints entfernt und eigener
 Emulator beendet. Null externe KI-Aufrufe in diesen Nachtests, keine Limits
 oder Provider-/Firebasefreigaben verändert.
 
-APK: artifacts/schulpilot-android.apk,67.664.730Bytes, SHA256
+APK: artifacts/schulpilot-android.apk,67.664.730 Bytes, SHA256
 `827b65247e17e0964670d1ca2b7e0d5e3f2352444e6e3c6101a6f8e32776dcfc`.
 Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
 Play-Artefakt: artifacts/schulpilot-play.aab.
@@ -1886,10 +1902,10 @@ nicht null. Eigenen künstlichen Haushalt regulär gelöscht, beide alten Sitzun
 401, privater Testcheckpoint und private Protokoll-Arbeitskopien entfernt.
 Downloads-Originale unverändert. Keine Passwörter/Sitzungen/Tokens übergeben.
 
-APK: artifacts/schulpilot-android.apk,66926838Bytes, SHA256
+APK: artifacts/schulpilot-android.apk,66926838 Bytes, SHA256
 3b5e857362a98bed84d8e88361e8dc87140e1a5b21c6f185ffdce341b75e00e5.
 Öffentlicher Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
-Play-AAB: artifacts/schulpilot-play.aab,63548292Bytes; nicht veröffentlicht.
+Play-AAB: artifacts/schulpilot-play.aab,63548292 Bytes; nicht veröffentlicht.
 Belege: artifacts/report-review-{web,native,parent-after,erasure}-result.json,
 artifacts/test-report-review/{public-release41-final.json,backend-final-all.log,
 native-final-regressions2.log,flutter-release-final.log,deploy41-resume-fix.log}.
@@ -1932,8 +1948,8 @@ Konfiguration gesichert. Keine fremden Dienste oder Providergrenzen geändert.
 
 „Hefte“ zeigt eine kompakte Icon-Leiste: Suche erst nach eigener Aktion,
 Meine Fächer, Kacheln/Liste, Fotoimport und weiteres Menü. Tooltips und48px-
-Trefferflächen erhalten. Auf390/529px beginnt der erste Hefter bei224px,
-auf1440px bei249px. Wörter bleiben im regulären Menü. „Meine Fächer“ filtert
+Trefferflächen erhalten. Auf390/529 px beginnt der erste Hefter bei224 px,
+auf1440 px bei249 px. Wörter bleiben im regulären Menü. „Meine Fächer“ filtert
 jetzt ausschließlich nach vorhandenen Seiten: auch persönlich ausgewählte
 leere Fächer ausgeblendet, vorhandene unzugeordnete Seiten bleiben erreichbar.
 Ohne Filter vollständiger Fachstamm. Fachsuche ohne Tastatur-Autokorrektur.
@@ -1966,7 +1982,7 @@ privater Zugang entfernt und eigener Emulator beendet. Keine neue Audio-/Push-
 Zustellung, Play-Veröffentlichung oder Lernwirksamkeitsprüfung behauptet.
 
 Öffentliche HTTPS/API/Direktlinks, Web-JavaScript und APK bytegleich geprüft.
-APK artifacts/schulpilot-android.apk: 66681078Bytes, SHA256
+APK artifacts/schulpilot-android.apk: 66681078 Bytes, SHA256
 6f3634d8c49f01182d5bcdda358ae655bcc173e0f5450507d4e9e0e57e072169.
 Web https://schulpilot.dorfspy.de ; APK /downloads/schulpilot-android.apk.
 Browser: normaler Login -> Hefte -> Filter-Icon „Meine Fächer“; mit Inhalt
@@ -2032,7 +2048,7 @@ Null Attempts/Noten. Eigenen Haushalt regulär gelöscht; beide alten Sitzungen
 401, privater QA-Checkpoint entfernt, eigener Emulator beendet.
 Keine neue physische Geräte-, Audio-, Push- oder Play-Abnahme behauptet.
 
-APK artifacts/schulpilot-android.apk:66615438Bytes, SHA256
+APK artifacts/schulpilot-android.apk:66615438 Bytes, SHA256
 18daaaa3329f8302c28d43b420760614dd2d697fa3f773d141d4da9ff54153a6.
 Web https://schulpilot.dorfspy.de ; Download /downloads/schulpilot-android.apk.
 Browser: normaler Login(/login) -> Hefte(/library/<eigene-Kind-ID>) ->
@@ -2058,7 +2074,7 @@ Web-Direktlink, APK und Web-JS bytegenau geprüft. Andere Anwendungen erhalten.
 
 „Hefte“ zeigt24 feste Fächer mit eigenen fotorealistischen A4-Papphefterbildern
 und einen neutralen Hefter für private/unzugeordnete Inhalte.25 WebP-Assets,
-784.908Bytes samt bereinigtem Promptmanifest. Belegte/ausgewählte Fächer zuerst;
+784.908 Bytes samt bereinigtem Promptmanifest. Belegte/ausgewählte Fächer zuerst;
 auch leere Fächer bleiben sichtbar und öffnbar. Fachkarten, Suche und Liste.
 Echte private Fotos im kompakten Album, Wischen/Pfeile/Tastatur, Blättereffekt
 mit reduzierter Bewegung, Zoom, Filter, Seitensprung über Metadatenseiten,
@@ -2096,7 +2112,7 @@ Web/native Berichte vor Löschung an denselben künstlichen Haushalt gebunden.
 Flutter-Textfelder im Web-QA vor nächster Aktion über Tab/Frame abschließen;
 ein DOM-inputValue allein war kein sicherer Flutter-Eingabenachweis.
 
-APK: `artifacts/schulpilot-android.apk`,66.320.086Bytes, SHA256
+APK: `artifacts/schulpilot-android.apk`,66.320.086 Bytes, SHA256
 `d1389872e092cae2e1227b42f1791d9f22214678b5f571b27aa55dffbf6751ae`.
 Download vor/nach Login unter https://schulpilot.dorfspy.de verfügbar.
 GitHub-CI39133398904 fehlgeschlagen; vorherige konkret gelesene Annotation
@@ -2122,7 +2138,7 @@ normale JSON-Endpunkte64KiB. Rechte/Bestätigung/Quoten unverändert.
 **Geprüft:**82 PostgreSQLtests83,20s inklusive normalem/gestreamtem größeren
 Upload, Dublettenschutz, großem Bestätigungspayload, alten JSON-Grenzen,
 Rechten, Noten/Migration und Fachgrundlage;17 Fluttertests, Analyse/Ruff/Diff
-sauber. Öffentlich390/1280px Dateidialog, Vorschau, manuelle Zuordnung,
+sauber. Öffentlich390/1280 px Dateidialog, Vorschau, manuelle Zuordnung,
 Übernahme und identischer Upload ohne weitere Noten bestanden. Native
 Flutter-APK35/API36 mit Systemdateidialog, ergänzter/geänderter PDF,
 bewusster Übernahme und App-Neustart erfolgreich; fünf eindeutige Noten/
@@ -2202,7 +2218,7 @@ keine echte PDF in Git/externen Modellen; private Diagnosekopien entfernt.
 **Tatsächlich öffentlich bedient:** normaler eigener künstlicher Haushalt,
 Browser-Dateiauswahl einer künstlichen A1-PDF, vorhandene manuelle Note
 zugeordnet, drei neue übernommen. Wiederholter Upload:vier bestehende,
-null zusätzliche Noten. Feedback/Reload,390/1280px und null JS-Fehler geprüft.
+null zusätzliche Noten. Feedback/Reload,390/1280 px und null JS-Fehler geprüft.
 Native Flutter-APK35/API36: Android-Systemdateiauswahl, neue fünfte Note aus
 aktualisierter PDF, geänderten Quellwert ausdrücklich übernommen, Neustart,
 Sitzungsfortsetzung und gespeicherte Noten geprüft. Exaktfünf Noten und fünf
@@ -2214,7 +2230,7 @@ Reproduzierbar: scripts/prepare_grade_smoke.py, qa/grade_pdf_web.mjs --run,
 qa/android_grade_pdf.py, qa/grade_pdf_cleanup.py. Roh-PDFs niemals an KI senden.
 
 Web/signierte Direct-APK/Play-AAB1.5.0+35 gebaut, Signatur/Zipalign/bundletool
-und Versionscode geprüft. APK65.300.445Bytes, SHA-256
+und Versionscode geprüft. APK65.300.445 Bytes, SHA-256
 `02df1d2f4279a08bd89ec9ee6d0f7910cf16f6bd22721585f5034a1bf856a667`.
 Tatsächliches OTA34->35 mit Systembestätigung, ohne adb install; danach drei
 Kalt-/Warmstartchecks bestanden. Geheimnisprüfung gegen16 tatsächliche Quellen
