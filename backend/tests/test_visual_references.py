@@ -34,6 +34,13 @@ def test_empty_visual_step_uses_saved_explanation_without_changing_snapshot():
     assert readable_single_step(original * 2, explanation) == original * 2
     assert readable_single_step([{"text": "x = 1"}], explanation)[0]["text"] == "x = 1"
     assert readable_single_step(original, "1") == original
+    caption = {"id": "two", "text": "Die belegte Pfeilfolge: play → played",
+               "reference": {"id": "general.source_relation.phases"},
+               "presentation": {"blocks": [{"source_excerpt": "play → played"}]}}
+    assert readable_single_step([caption], explanation)[0]["text"] == explanation
+    different = {**caption, "text": "Die belegte Pfeilfolge: play → played. Hier geht es um Vergangenes."}
+    assert readable_single_step([different], explanation) == [different]
+    assert caption["text"] == "Die belegte Pfeilfolge: play → played"
 
 
 def test_new_calendar_graphics_need_two_distinct_ordered_source_labels():

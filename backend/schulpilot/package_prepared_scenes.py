@@ -18,6 +18,10 @@ LANGUAGE_COMPARISON_REFERENCE = "language.forms.original_comparison"
 # Four full four-label scenes keep large original sources inside the existing
 # conservative request envelope. The complete source and topic plan stay intact.
 MAX_SOURCE_BASE_CANDIDATES = 4
+# For English, two complete candidates keep the constrained provider contract
+# smaller while still offering distinct source examples. The full source and
+# all disclosure/source validation stay unchanged.
+MAX_ENGLISH_SOURCE_BASE_CANDIDATES = 2
 RULES = """
 package-source-graphics-3: Wähle ausschließlich eine bereitgestellte Grafik-ID zum selben
 Fach, Quellenbeleg und Lernziel. presentation.blocks=[ID]. reference, source_refs und
@@ -101,13 +105,13 @@ def reference_supported(reference, contents):
     return True
 
 
-def _bounded(rows):
+def _bounded(rows, *, limit=MAX_SOURCE_BASE_CANDIDATES):
     bases, result = set(), []
     for row in rows:
         # All disclosure variants of an offered base remain available.
         key = prepared._digest({key: value for key, value in row.items() if key not in ("id", "disclosure", "block")}
             | {"block": {key: value for key, value in row["block"].items() if key != "disclosure"}})
-        if key not in bases and len(bases) >= MAX_SOURCE_BASE_CANDIDATES:
+        if key not in bases and len(bases) >= limit:
             continue
         bases.add(key)
         result.append(row)
@@ -160,7 +164,7 @@ def compile_candidates(payload):
                     result.append(row)
                     added = True
             count += added
-    return _bounded(result)
+    return _bounded(result, limit=MAX_ENGLISH_SOURCE_BASE_CANDIDATES if subject == "Englisch" else MAX_SOURCE_BASE_CANDIDATES)
 
 
 def _labels(candidate):

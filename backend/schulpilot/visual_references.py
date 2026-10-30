@@ -497,7 +497,7 @@ def public_steps(steps, *, closed=False, hints=0):
 
 
 def readable_single_step(steps, saved_explanation):
-    """Use the separately saved explanation only for a clearly empty step.
+    """Use the separately saved explanation for a clearly empty/caption-only step.
 
     This is a read projection, not a change to a model result or a new
     explanation. Restrict it to one step so earlier steps never expose later
@@ -507,7 +507,11 @@ def readable_single_step(steps, saved_explanation):
         return steps
     step = steps[0]
     value = step.get("text")
-    if (not isinstance(value, str) or any(c.isalpha() for c in value)
+    blocks = step.get("presentation", {}).get("blocks", [])
+    quote = blocks[0].get("source_excerpt") if len(blocks) == 1 and isinstance(blocks[0], dict) else None
+    caption_only = (isinstance(quote, str) and step.get("reference", {}).get("id") == "general.source_relation.phases"
+                    and value == "Die belegte Pfeilfolge: " + quote)
+    if (not isinstance(value, str) or (any(c.isalpha() for c in value) and not caption_only)
             or len(saved_explanation.strip()) < 20
             or not any(c.isalpha() for c in saved_explanation)):
         return steps
@@ -559,7 +563,7 @@ def projection(db, unit, *, show_introduction=True):
     # of some still-usable paragraph on the same material revision.
     valid = source_bindings_current(db, unit) and all(_binding_current(db, unit, ref)
         for step in [*row.steps, *[step for steps in row.question_steps.values() for step in steps]] for ref in step["source_refs"])
-    steps = readable_single_step(public_steps(row.steps), unit.explanation) if show_introduction and valid else []
+    steps = public_steps(readable_single_step(row.steps, unit.explanation)) if show_introduction and valid else []
     return {**preparation, "explanation_steps": steps,
             "explanation_visual_status": row.status if valid else "incomplete",
             "explanation_visual_reason": row.reason if valid else "source_changed"}
@@ -614,6 +618,8 @@ def question_projection(db, unit, question, *, closed=False, hints=0):
 
         closed = db.scalar(select(Activity.id).where(Activity.unit_id == unit.id,
             Activity.kind == "explanation", Activity.detail["question_id"].as_string() == question["id"]).limit(1)) is not None
-    steps = public_steps(row.question_steps.get(question["id"], []), closed=closed, hints=hints)
+    steps = row.question_steps.get(question["id"], [])
     # An unopened hint must never expose the separate full solution.
-    return readable_single_step(steps, question.get("explanation")) if closed else steps
+    if closed:
+        steps = readable_single_step(steps, question.get("explanation"))
+    return public_steps(steps, closed=closed, hints=hints)

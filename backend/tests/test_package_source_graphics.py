@@ -319,6 +319,22 @@ def test_maximum_source_scenes_measure_real_outbound_preflight_without_a_provide
     assert request["body"]["max_tokens"] == 8000
 
 
+def test_english_limits_graphic_alternatives_without_changing_source_or_stage_variants():
+    from schulpilot.package_prepared_scenes import compile_candidates
+
+    source = "play → played\nvisit → visited\nwalk → walked\nYesterday I did not play."
+    payload = payload_for(source, "Englisch")
+    original = copy.deepcopy(payload)
+    rows = compile_candidates(payload)
+    assert payload == original
+    assert len(rows) == 10
+    assert {r["block"]["source_excerpt"] for r in rows} == {"play → played", "visit → visited"}
+    for quote in {r["block"]["source_excerpt"] for r in rows}:
+        assert {r["disclosure"] for r in rows if r["block"]["source_excerpt"] == quote} == {
+            "given", "hint1", "hint2", "hint3", "solution"}
+    assert "walk → walked" in payload["materials"][0]["content"]
+
+
 def test_exact_decomposed_unicode_labels_keep_their_original_quote_through_hydration():
     source = "A\u0308hre → Blu\u0308te."
     payload, _, binding = fixture("Biologie", source)

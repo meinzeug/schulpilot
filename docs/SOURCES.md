@@ -3680,3 +3680,44 @@ bewertet. Die Grafik zerlegt den Satz aber lediglich in einzelne Wörter und
 erklärt Satzglieder damit noch nicht ausreichend. Die didaktische Qualität,
 das Erkennen unbeschrifteter Zeichnungen und der 30-Tage-Alltagstest bleiben
 offen. Ein physischer Android-Test wurde nicht durchgeführt.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 25.11.: Eine eigene englische
+Simple-past-Heftseite wurde über den mobilen Fotoassistenten abgegeben. Die
+Abschrift übernahm alle lesbaren Sätze. Zwei reguläre Paketversuche scheiterten
+mit einem OpenRouter-Fehler 502; ein gesonderter künstlicher Diagnoseaufruf
+ergab die Anbieterangabe, das Modell habe ungültigen Inhalt erzeugt. Die
+genaue interne Ursache nennt der Anbieter nicht. Für denselben künstlichen
+Stoff wurden zwei Diagnoseaufträge mit einer und zwei mit zwei angebotenen
+Grafikbasen erfolgreich validiert. Bei vier Basen scheiterte auch der dritte
+Diagnoseaufruf. Das belegt den beobachteten Fall, keine allgemeine Zusage zur
+Anbieterverfügbarkeit.
+
+Englische Paketaufträge bieten nun höchstens zwei vollständige, weiterhin an
+Quellen und Offenlegungsstufen gebundene Grafikbasen an. Der vollständige
+Quelltext und alle fachlichen Prüfungen bleiben erhalten. Der regulär
+reservierte einmalige lokale Reparaturauftrag im künstlichen Testkonto
+erstellte daraufhin den Lernweg; die zwei alten Fehler und ihre Kostenbelege
+blieben erhalten. Die erste Aufgabe wurde erst falsch, dann nach einem Hinweis
+richtig gelöst. Die zweite verlangte korrekt „visited“, verwies aber auf eine
+Grafik, die im Aufgabenraum noch nicht sichtbar war. Diese irreführende
+Formulierung bleibt ein offener Qualitätsmangel. Eine vom Modell exakt als
+„Die belegte Pfeilfolge: [Originalbeleg]“ ausgegebene bloße Bildunterschrift
+kann nun bei einem einzelnen Grafikschritt durch die separat gespeicherte
+Erklärung in der Leseprojektion ergänzt werden; Quelle, gespeicherter Schritt
+und Hilfebewertung bleiben erhalten.
+
+Während des Tests startete der isolierte lokale Server neu; seine Testuhr
+sprang unbeabsichtigt zurück. Der letzte Antwortbeleg wurde dadurch zeitlich
+vor den vorherigen Versuch sortiert und seine Rückmeldung nicht regulär
+angezeigt. Das ist kein Nachweis für einen Produktionsfehler; der synthetische
+Testablauf ist an dieser Stelle eingeschränkt. Die lokale Testuhr wurde für
+weitere Tests so angepasst, dass sie nach Neustarts vorwärts läuft. Keine
+gespeicherte Antwort wurde nachträglich umgeschrieben.
+
+Die anschließend ausdrücklich angeforderte Anschlussrunde fragte nach der
+Bedeutung von „did not“ und nach dem Vergangenheitswort „played“. Beide
+Antworten wurden im künstlichen Konto ohne neue Hilfe richtig bewertet. Bei
+dieser Runde blieb auch die letzte Rückmeldung sichtbar, bis im Browser das
+Ergebnis ausdrücklich geöffnet wurde. Die Beispiele verwenden allerdings
+weiterhin Sätze der fotografierten Seite; ein Transfer auf unbekannte Verben
+ist dadurch nicht belegt.
