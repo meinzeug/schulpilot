@@ -681,36 +681,16 @@ def public_presentation(value, *, closed=False, hints=0):
         return None
     p = Presentation.model_validate(value)
     allowed = {"given"} | {f"hint{i}" for i in range(1, min(3, hints) + 1)} | ({"solution"} if closed else set())
-    def public_block(b):
-        result = {**b.model_dump(exclude={"source_excerpt", "scene", "text_probe", "lab"}),
-            **({"photosynthesis_formation_only": True} if b.kind == "scene" and
-               re.search(r"\bDabei\s+entsteht\s+Sauerstoff\s*\.", b.source_excerpt, re.I) else {}),
-            **({"scene": learning_scenes.public_scene(b.scene)} if b.scene is not None else {}),
-            **({"text_probe": text_probes.public_probe(b.text_probe)} if b.text_probe is not None else {}),
-            **({"lab": b.lab.model_dump()} if b.lab is not None else {})}
-        if b.kind == "scene" and "{,}" in b.source_excerpt:
-            from .package_prepared_decimals import validate_decimal
-
-            try:
-                validate_decimal(b)
-            except ValueError:
-                pass
-            else:
-                def display(text):
-                    return re.sub(r"(?<=\d)\{,\}(?=\d)", ",", text)
-                result["title"] = display(result["title"])
-                result["labels"] = [display(label) for label in result["labels"]]
-                for obj in result["scene"]["objects"]:
-                    obj["label"] = display(obj["label"])
-                for step in result["scene"]["steps"]:
-                    step["caption"] = display(step["caption"])
-        return result
-
     return {
         "version": 1,
         "evidence_kind": p.evidence_kind,
         "blocks": [
-            public_block(b)
+            {**{k: v for k, v in b.model_dump(exclude={"source_excerpt", "scene", "text_probe", "lab"}).items()},
+             **({"photosynthesis_formation_only": True} if b.kind == "scene" and
+                re.search(r"\bDabei\s+entsteht\s+Sauerstoff\s*\.", b.source_excerpt, re.I) else {}),
+             **({"scene": learning_scenes.public_scene(b.scene)} if b.scene is not None else {}),
+             **({"text_probe": text_probes.public_probe(b.text_probe)} if b.text_probe is not None else {}),
+             **({"lab": b.lab.model_dump()} if b.lab is not None else {})}
             for b in p.blocks
             if b.disclosure in allowed
         ],

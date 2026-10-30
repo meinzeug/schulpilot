@@ -3911,23 +3911,13 @@ eine vollständige Antwort; diese fiel anschließend an einer anderen
 Grafik-/Frageprüfung durch. Das ist kein Beweis, dass Längenabbrüche generell
 ausgeschlossen sind.
 
-Für belegte, rechnerisch korrekte Dezimaladditionen stehen nun eigene
-versionierte Originaldarstellungen zur Verfügung. Der private Compiler prüft
-die Rechnung mit Dezimalarithmetik und verwendet nur vollständige bestätigte
-Beispiele. Er unterstützt sowohl deutsche Kommas als auch die vom Foto-Leser
-ausgegebene LaTeX-Schreibweise `{,}`; gespeicherte Originalbelege bleiben
-unverändert, die öffentliche Grafik zeigt lesbare Kommas. Mindestens zwei
-verschiedene Rechnungen sind nötig, doppelte Aufgaben werden verworfen. Frage,
-Antwort und knappe Erklärung sind vor der Anbieteranfrage an die jeweilige
-Originalrechnung gebunden; Fehlrechnungen und unbelegte Quellen werden nicht
-repariert oder ergänzt.
-
-Ein weiterer echter künstlicher Test zeigte zunächst eine Frage mit
-Modellnotizen; genau diese Ausgabe ist als negativer Test abgedeckt und darf
-nicht übernommen werden. Nach der Bindung gelang ein erneuter Foto-zu-Runde-
-Test im 390-Pixel-Browser mit zwei unterschiedlichen Originalrechnungen. Beide
-richtigen Antworten wurden nach geöffneter Erklärung als unterstützt erfasst.
-Die Grafik hebt Aufgabe und Ergebnis in zwei Schritten hervor; sie ist keine
-vollständige schriftliche Stellenwertdarstellung. Die künstliche Seite musste
-vorher bei einem Erkennungslauf an der falsch gelesenen Überschrift korrigiert
-werden. Diese Beobachtungen gelten nur für die getesteten Beispiele.
+Bei der Untersuchung zeigte ein experimenteller Dezimalzahlen-Renderer ein
+belegtes Beispiel mit lesbaren Kommas; eine echte Anbieterantwort enthielt
+jedoch interne Modellnotizen in einer Frage. Ein späterer künstlicher Test mit
+fest gebundenen Fragen und Antworten gelang technisch im 390-Pixel-Browser,
+verwendete aber bereits vorgerechnete Beispiele aus der Heftseite. Deshalb
+wurde diese experimentelle Darstellung nicht freigegeben: Neue selbstständige
+Aufgaben und die korrekte Behandlung solcher Modellnotizen bleiben offen. Die
+Sicherheitsprüfung für unbelegte Grafiken wird nicht gelockert. Bei einem der
+Tests musste die falsch gelesene Überschrift vor der Bestätigung korrigiert
+werden. Die ursprünglichen Fehlversuche und Gebühren bleiben erhalten.

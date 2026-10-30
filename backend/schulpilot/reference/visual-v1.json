@@ -324,16 +324,6 @@
       "variant": null
     },
     {
-      "id": "math.decimal.original_addition",
-      "version": 1,
-      "subjects": ["Mathematik"],
-      "kind": "scene",
-      "purpose": "Eine vollständig belegte und nachgerechnete Dezimaladdition als Aufgabe und Ergebnis in zwei Leseschritten zeigen, ohne neue Zahlen oder Beziehungen zu erfinden.",
-      "terms": ["dezimal", "komma"],
-      "interaction": "Aufgabe und Ergebnis nacheinander hervorheben.",
-      "variant": null
-    },
-    {
       "id": "general.source_relation.phases",
       "version": 1,
       "subjects": [
