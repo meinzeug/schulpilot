@@ -26,6 +26,11 @@ CASES = {
         'Eine erfundene Hafenstadt zeigt einen Handelsweg: Marktplatz → Hafen.\n'
         'Die Waren gelangen vom Marktplatz zum Hafen. Der Hafen liegt am Meer.\n'
         'Am Hafen werden Waren auf Schiffe geladen.'),
+    'history_list': ('Geschichte', 'Alltag in einer erfundenen Hafenstadt',
+        'Öffentliche künstliche Notizen\n'
+        '• Im Dorf lebten mehrere Familien.\n'
+        '• Die Menschen stellten Schalen aus Ton her.\n'
+        '• Auf dem Markt wurden Waren getauscht.'),
 }
 
 
@@ -37,7 +42,7 @@ def main():
     parser.add_argument('--schema-probe', action='store_true', help='Test one fixed artificial schema-boundary request')
     parser.add_argument('--key-file', type=Path, default=Path.home() / 'or.txt')
     args = parser.parse_args()
-    if args.study and args.case != 'history':
+    if args.study and args.case not in ('history', 'history_list'):
         parser.error('--study is available only for the fixed artificial history case')
     subject, topic, source = CASES[args.case]
     directory = args.directory.resolve()

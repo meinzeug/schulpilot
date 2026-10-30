@@ -1,3 +1,19 @@
+## 30.10.2026 · Quellgebundene Listengrafiken für Etappen · Version 1.38.22
+
+Ein weiterer ausdrücklich beauftragter Geschichtsversuch scheiterte nach der
+Modellantwort an der Referenzprüfung. Für eine bestätigte Quellliste kann die
+Etappe jetzt dieselben bereits geprüften Darstellungen und Antwortoptionen wie
+die Paketerstellung verwenden. Die KI wählt aus den eng an die jeweilige
+Quelle und Offenlegungsstufe gebundenen IDs; Aufgabenformulierung und Lösung
+bleiben Modellantworten und durchlaufen weiterhin die normalen Prüfungen.
+Ohne passende belegte Liste wird keine erfunden. Auch andere Fach-Etappen
+verwenden, soweit unterstützt, die vorhandene Referenzbindung.
+
+90 gezielte Backendfälle bestanden. Ein reservierter echter OpenRouter-Aufruf
+mit festem künstlichem Geschichtsstoff erzeugte zwei geprüfte Aufgaben in
+28,84 Sekunden, mit 0,0364694 USD Anbieterpreis. Ein einzelner erfolgreicher
+Kunsttest belegt keine allgemeine Fehlerfreiheit aller Quellen und Fächer.
+
 ## 30.10.2026 · Szenenbelege bei Lernetappen · Version 1.38.21
 
 Bei einem ausdrücklich beauftragten Geschichts-Liveversuch schlug die

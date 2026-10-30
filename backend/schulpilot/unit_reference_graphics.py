@@ -26,7 +26,7 @@ def bind_schema(schema, payload):
     subject = payload.get("required_subject") or (payload.get("material") or {}).get("subject")
     if (not context.get("required") or not isinstance(subject, str) or subject not in PROFILES
             or subject == "Mathematik" or payload.get("selected_groups")
-            or any(payload.get(key) for key in ("review", "study_block", "homework_practice",
+            or any(payload.get(key) for key in ("review", "homework_practice",
                 "exam_preparation", "exam_review_practice"))):
         return False
     _bind_references(schema, payload, unit_subject=subject)

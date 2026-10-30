@@ -30,7 +30,8 @@ def branches(schema, node):
 
 
 @pytest.mark.parametrize("count", [2, 5, 17])
-def test_ordinary_schema_pairs_recipe_kind_source_and_stage_without_changing_count(count):
+@pytest.mark.parametrize("study", [False, True])
+def test_ordinary_schema_pairs_recipe_kind_source_and_stage_without_changing_count(count, study):
     from schulpilot.graphic_schema import bind_coherent_graphics
     from schulpilot.schemas import UnitOutput
     from schulpilot.subject_content import bind_graphic_schema
@@ -40,6 +41,8 @@ def test_ordinary_schema_pairs_recipe_kind_source_and_stage_without_changing_cou
     bind_coherent_graphics(schema)
     schema["properties"]["questions"].update(minItems=count, maxItems=count)
     payload = {"material": {"subject": "Deutsch", "content": SOURCE}, "visual_context": context()}
+    if study:
+        payload["study_block"] = {"question_count": count}
     original = copy.deepcopy(payload)
     assert unit_reference_graphics.bind_schema(schema, payload)
     assert payload == original
@@ -92,7 +95,7 @@ def test_real_ordinary_adapter_round_trip_preserves_valid_output_and_rejects_fab
         assert list(db.scalars(select(Material))) == []
 
 
-@pytest.mark.parametrize("special", ["review", "study_block", "homework_practice", "exam_preparation", "exam_review_practice", "selected_groups"])
+@pytest.mark.parametrize("special", ["review", "homework_practice", "exam_preparation", "exam_review_practice", "selected_groups"])
 def test_specialized_contracts_are_not_rebound(special):
     schema = {"unchanged": True}
     assert unit_reference_graphics.bind_schema(schema, {special: True,
