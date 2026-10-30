@@ -1,7 +1,7 @@
 name: schulpilot
 description: SchuleSchlau – gemeinsam lernen, den Überblick behalten.
 publish_to: none
-version: 1.38.28+183
+version: 1.38.29+184
 environment:
   sdk: '>=3.13.5 <4.0.0'
 dependencies:

@@ -403,6 +403,8 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                       ? (index == 0
                             ? 'Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'
                             : 'Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.')
+                      : _isAtlanticBetweenScene(model)
+                      ? 'Der Atlantische Ozean liegt zwischen Amerika und Europa.'
                       : description,
                   child: ExcludeSemantics(
                     child: _isPhotosynthesisScene(model)
@@ -416,6 +418,8 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                               step: index,
                             ),
                           )
+                        : _isAtlanticBetweenScene(model)
+                        ? _AtlanticBetweenScene(scene: model, step: index)
                         : _SceneCanvas(scene: model, value: value),
                   ),
                 ),
@@ -694,6 +698,80 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+// Match the exact source-bound layout; unrelated scenes keep their renderer.
+bool _isAtlanticBetweenScene(_Scene scene) {
+  final labels = scene.objects.map((o) => o.label.toLowerCase()).toList();
+  return scene.layout == 'row' &&
+      labels.length == 3 &&
+      labels[0] == 'amerika' &&
+      {'atlantische ozean', 'der atlantische ozean'}.contains(labels[1]) &&
+      labels[2] == 'europa' &&
+      scene.objects.map((o) => o.id).join('|') == 'o0|o1|o2' &&
+      scene.steps.length == 2 &&
+      scene.steps.every(
+        (s) =>
+            s.edges.isEmpty &&
+            List.generate(3, (i) => s.placements['o$i'] == i).every((v) => v),
+      ) &&
+      scene.steps[0].highlight.length == 1 &&
+      scene.steps[0].highlight.contains('o0') &&
+      scene.steps[1].highlight.length == 1 &&
+      scene.steps[1].highlight.contains('o2');
+}
+
+class _AtlanticBetweenScene extends StatelessWidget {
+  final _Scene scene;
+  final int step;
+  const _AtlanticBetweenScene({required this.scene, required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return DecoratedBox(
+      key: const ValueKey('atlantic-between-illustration'),
+      decoration: BoxDecoration(
+        color: palette.cream,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final (i, object) in scene.objects.indexed)
+              Expanded(
+                child: Column(
+                  children: [
+                    Icon(
+                      i == 1 ? Icons.waves_rounded : Icons.landscape_rounded,
+                      size: 38,
+                      color:
+                          i == 1 ||
+                              (i == 0 && step == 0) ||
+                              (i == 2 && step == 1)
+                          ? palette.teal
+                          : palette.muted,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      object.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: palette.ink,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

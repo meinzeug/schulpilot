@@ -3512,3 +3512,21 @@ Eine spätere separate Englischprobe wurde vom Anbieter mit einem internen
 Anbieterfehler abgebrochen; ein anderer Kontrollaufruf wurde wegen eines in
 fremden Fragetext eingefügten Grafikausschnitts verworfen. Der sichere
 Englisch-Erzeugungsweg ist damit nicht für beliebige Antworten nachgewiesen.
+
+30.10.2026 · Der isolierte Alltagstest einer selbst erzeugten Geografieseite
+„Kontinente und Ozeane“ erreichte zunächst wegen fehlender geprüfter Grafik
+keinen Anbieteraufruf. Eine neue versionierte Referenz stellt den ausdrücklich
+belegten Fall „Der Atlantische Ozean liegt zwischen Amerika und Europa“ als
+schematische räumliche Anordnung dar, ohne Himmelsrichtungen oder weitere
+Beziehungen zu ergänzen. Die drei Elemente bleiben auch bei 320 Pixeln und
+doppelter Schrift nebeneinander. Das wurde mit einem Widgettest und bei
+390 Pixeln im Browser geprüft. Die Darstellung ist keine geografische Karte.
+
+Ein erster echter Modellaufruf erstellte eine geografisch zum Blatt passende
+Auswahlfrage, verknüpfte sie aber mit einer fachlich anderen Grafik. Die
+anschließend verschärfte lokale Bindung verwirft den dokumentierten Fall und
+lässt eine eindeutig auf die Lage bezogene Paarfrage zu. Ein weiterer echter
+Test wurde wegen erneut unpassender beziehungsweise unverständlicher Fragen
+abgewiesen; die erfolgreiche zuverlässige Paketgenerierung ist für diesen
+Fall deshalb noch nicht belegt. Die Sicherheitsprüfung darf kein falsches
+Lernpaket als Erfolg ausgeben. Der 30-Tage-Alltagstest bleibt offen.

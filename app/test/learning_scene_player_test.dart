@@ -76,6 +76,71 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  for (final viewport in [(320.0, 2.0), (390.0, 1.0)]) {
+    testWidgets('Atlantic remains between both regions at $viewport', (
+      tester,
+    ) async {
+      final screen = Size(viewport.$1, 844);
+      size(tester, screen);
+      final labels = ['Amerika', 'Der Atlantische Ozean', 'Europa'];
+      final block = <String, dynamic>{
+        'title': 'Der Atlantische Ozean',
+        'kind': 'scene',
+        'labels': labels,
+        'scene': {
+          'version': 1,
+          'layout': 'row',
+          'transition_ms': 0,
+          'objects': [
+            for (var i = 0; i < labels.length; i++)
+              {
+                'id': 'o$i',
+                'label': labels[i],
+                'shape': 'box',
+                'tone': 'neutral',
+              },
+          ],
+          'steps': [
+            for (var i = 0; i < 2; i++)
+              {
+                'caption': labels[i == 0 ? 0 : 2],
+                'placements': [
+                  for (var j = 0; j < labels.length; j++)
+                    {'object_id': 'o$j', 'slot': j},
+                ],
+                'highlight': [i == 0 ? 'o0' : 'o2'],
+                'edges': [],
+              },
+          ],
+        },
+      };
+      await tester.pumpWidget(
+        host(LearningScenePlayer(block), size: screen, scale: viewport.$2),
+      );
+      await tester.pumpAndSettle();
+      final diagram = find.byKey(
+        const ValueKey('atlantic-between-illustration'),
+      );
+      expect(diagram, findsOneWidget);
+      final children = [
+        for (final label in labels)
+          find.descendant(of: diagram, matching: find.text(label)),
+      ];
+      expect(children.every((finder) => finder.evaluate().length == 1), isTrue);
+      final centers = children
+          .map((finder) => tester.getCenter(finder))
+          .toList();
+      expect(centers[0].dx, lessThan(centers[1].dx));
+      expect(centers[1].dx, lessThan(centers[2].dx));
+      expect(tester.takeException(), isNull);
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('scene-direct-step-1')),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets(
     'source-bound photosynthesis has a readable two-step plant diagram',
     (tester) async {

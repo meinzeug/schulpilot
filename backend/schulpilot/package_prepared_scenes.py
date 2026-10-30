@@ -86,6 +86,10 @@ def reference_supported(reference, contents):
         from .package_prepared_photosynthesis import bases
 
         return any(next(bases(content), None) is not None for content in contents)
+    if reference.get("id") == "geography.atlantic.between":
+        from .package_prepared_geography import bases
+
+        return any(next(bases(content), None) is not None for content in contents)
     return True
 
 
@@ -201,6 +205,7 @@ class Binding(prepared.Binding):
 
 def bind_schema(schema, payload):
     from .package_prepared_focus import bind_schema as bind_focus
+    from .package_prepared_geography import bind_schema as bind_geography
     from .package_prepared_photosynthesis import bind_schema as bind_photosynthesis
     from .package_prepared_sentences import bind_schema as bind_sentences
 
@@ -234,6 +239,9 @@ def bind_schema(schema, payload):
         return prepared.bind_candidates(schema, Binding(tuple(candidates)),
             question_kinds=("scene", "sentence", "forms"), question_binding=question_binding)
     binding = bind_photosynthesis(schema, payload)
+    if binding is not None:
+        return binding
+    binding = bind_geography(schema, payload)
     if binding is not None:
         return binding
     binding = bind_sentences(schema, payload)

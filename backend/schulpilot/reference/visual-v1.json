@@ -284,6 +284,16 @@
       "variant": null
     },
     {
+      "id": "geography.atlantic.between",
+      "version": 1,
+      "subjects": ["Geographie"],
+      "kind": "scene",
+      "purpose": "Eine ausdrücklich belegte Lage des Atlantischen Ozeans zwischen Amerika und Europa mit drei Originalbegriffen darstellen; keine zusätzliche Geographie ergänzen.",
+      "terms": ["Atlantische", "Amerika", "Europa"],
+      "interaction": "Die beiden angrenzenden Gebiete nacheinander hervorheben.",
+      "variant": null
+    },
+    {
       "id": "general.source_relation.phases",
       "version": 1,
       "subjects": [
