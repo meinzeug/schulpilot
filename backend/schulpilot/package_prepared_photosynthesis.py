@@ -7,11 +7,12 @@ import copy
 import re
 
 from . import package_prepared_graphics as prepared
-from .subject_content import Graphic, PROFILES, validate_question
+from .subject_content import PROFILES, Graphic, validate_question
 
 REFERENCE = "biology.photosynthesis.exchange"
 REVISION = "photosynthesis-exchange-1"
 PROMPT_PATTERN = r"([Pp]flanzen.*(?:[Ff]oto|[Pp]hoto)synthese|(?:[Ff]oto|[Pp]hoto)synthese.*[Pp]flanzen)"
+TERM = re.compile(r"\b(?:foto|photo)synthese\b", re.IGNORECASE)
 _SOURCE = re.compile(
     r"\b(Pflanzen)\s+nehmen\s+(Wasser)\s+und\s+(Kohlenstoffdioxid)\s+auf\s*\.\s*"
     r"Mit\s+(Licht)\s+bilden\s+sie\s+(Zucker)\s+und\s+geben\s+(Sauerstoff)\s+ab\s*\.",
@@ -75,7 +76,8 @@ def compile_candidates(payload):
                     row = {"subject": "Biologie", "group_id": group,
                            "reference": {"id": REFERENCE, "version": ref["version"]}, "disclosure": stage,
                            "source_refs": [source["ref"]], "text": " ".join(base["source_excerpt"].split()),
-                           "kind": "scene", "block": block.model_dump(mode="json")}
+                           "kind": "scene", "block": block.model_dump(mode="json"),
+                           "term_in_source": bool(TERM.search(source["content"]))}
                     row["id"] = "pp_" + prepared._digest({"revision": REVISION, "plan": payload.get("package_plan_digest"),
                         "partition": payload["package_partition"], "source": source,
                         "reference_digest": ref["digest"], "candidate": row})[:24]
@@ -90,7 +92,9 @@ class Binding(prepared.Binding):
                 "Die Grafik hebt die im Original ausdrücklich aufgenommenen beziehungsweise gebildeten "
                 "oder abgegebenen Stoffe hervor. Keine neuen Stoffe oder Pfeile erfinden. "
                 "Übernimm den mitgelieferten quellengebundenen Erklärungstext unverändert; er gilt für beide Bildzustände. "
-                "Jede Frage nennt Pflanzen und Fotosynthese und prüft den belegten Zusammenhang ohne die Lösung vorwegzunehmen.")
+                "Jede Frage nennt Pflanzen und prüft den belegten Zusammenhang ohne die Lösung vorwegzunehmen. "
+                "Nur bei term_in_source=true darf und soll die Frage Fotosynthese nennen; "
+                "sonst verwende dieses nicht eingeführte Wort nicht.")
 
     def offered(self, candidate):
         return candidate["reference"]["id"] == REFERENCE
@@ -99,7 +103,11 @@ class Binding(prepared.Binding):
         prompt = question.get("prompt", "")
         return (isinstance(prompt, str)
                 and bool(re.search(r"(?<!\w)pflanzen(?!\w)", prompt, re.IGNORECASE))
-                and bool(re.search(r"(?<!\w)(?:foto|photo)synthese(?!\w)", prompt, re.IGNORECASE)))
+                and bool(TERM.search(prompt)) == candidate["term_in_source"])
+
+
+def prompt_pattern(candidate):
+    return PROMPT_PATTERN if candidate["term_in_source"] else r"[Pp]flanzen"
 
 
 def bind_schema(schema, payload):
@@ -107,7 +115,7 @@ def bind_schema(schema, payload):
     if not candidates:
         return None
     return prepared.bind_candidates(schema, Binding(tuple(candidates)), question_kinds=("scene",),
-        prompt_pattern=lambda candidate: PROMPT_PATTERN)
+        prompt_pattern=prompt_pattern)
 
 
 class UnitBinding(Binding):
@@ -136,11 +144,12 @@ def bind_followup(schema, payload):
     def question_binding(node, candidate):
         props = node["properties"]
         prompt = props["prompt"]
-        if prompt.get("pattern") and prompt["pattern"] != PROMPT_PATTERN:
+        pattern = prompt_pattern(candidate)
+        if prompt.get("pattern") and prompt["pattern"] != pattern:
             return None
-        if prompt.get("enum") and not all(re.search(PROMPT_PATTERN, value) for value in prompt["enum"]):
+        if prompt.get("enum") and not all(re.search(pattern, value) for value in prompt["enum"]):
             return None
-        prompt["pattern"] = PROMPT_PATTERN
+        prompt["pattern"] = pattern
         props["presentation"] = {"type": "null"}
         return node
 

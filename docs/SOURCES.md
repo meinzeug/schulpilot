@@ -3393,3 +3393,39 @@ reservierter künstlicher Auftrag eine validierte Satzszene und zwei Fragen
 alle zukünftigen Modellantworten gelingen. Einfache Zweischritt-Grafiken mit
 unveränderter Position und Beziehung zeigen die Schritte direkt; Wiedergabe und
 weitere Werkzeuge bleiben bei Bedarf erreichbar.
+
+30.10.2026 · Neuerkennung einer ungeprüften Tagesseite: Der mobile Alltagstest
+zeigte, dass „Mit KI neu lesen“ bisher eine separate Kopie anlegte. Die
+ursprüngliche Seite blieb dadurch im Schultag ungeprüft, obwohl die Kopie
+bestätigt wurde. Für noch unbestätigte Tagesseiten ohne verknüpfte Lernrunden
+oder Aufträge aktualisiert ein ausdrücklich gestarteter, regulär reservierter
+Leselauf nun dieselbe Seite. Die bestehende Quellenhistorie bleibt erhalten;
+Sitzung, Anbieter, Seitenrevision, vollständiger Seitenstand und neue
+Verknüpfungen werden vor und nach dem Aufruf geprüft. Bei konkurrierender
+Änderung wird keine alte Abschrift überschrieben. Bestätigte oder bereits
+verknüpfte Seiten behalten den bisherigen geschützten Kopierweg.
+
+Die erste Bruchabschrift im künstlichen Test enthielt beide lesbaren Gleichungen
+bereits; ihre Darstellung in der aufgeklappten Ansicht war beim ersten Ablesen
+noch nicht vollständig geladen. Ein erneuter echter künstlicher Leselauf
+verwendete mit der Korrektur dieselbe Tagesseiten-ID und erzeugte keine weitere
+Kopie; nach ausdrücklicher Bestätigung führte die App zurück zum Tagespaket.
+Diese Beobachtung ist kein allgemeiner Nachweis vollständiger Bilderkennung.
+
+30.10.2026 · Biologieprobe: Ein echter künstlicher Paketauftrag fragte nach
+„Fotosynthese“, obwohl der Begriff in der bestätigten Seite und der sichtbaren
+Einführung fehlte. Ursache war ein Widerspruch im vorbereiteten Grafikvertrag:
+Er verlangte das Fachwort unabhängig vom Quelltext. Für die exakt belegte
+Pflanzen-Darstellung bindet der Vertrag Fragen nun an das tatsächliche Vorkommen
+des Begriffs; ohne Beleg muss die Frage verständlich von Pflanzen sprechen.
+Eine zusätzliche Prüfung verwirft diesen konkret beobachteten unvorbereiteten
+Begriff auch außerhalb dieses Grafikvertrags. Sie ist keine allgemeine Garantie
+für die Verständlichkeit aller Fachbegriffe.
+
+Der erste separat reservierte künstliche Kontrollaufruf wurde durch die neue
+Prüfung zurückgewiesen (0,025941 USD gemeldet). Nach Beseitigung des widersprüchlichen
+Grafikvertrags lieferte ein weiterer regulär reservierter Aufruf eine validierte
+Einführung und zwei Fragen ohne das fehlende Fachwort (0,025276 USD gemeldet).
+Bestehende Aufgaben und Antworten werden nicht verändert. Zweistufige Grafiken
+ohne Abspielbewegung zeigen außerdem keine deaktivierten Wiedergabeknöpfe mehr;
+beide Schritte und weitere Werkzeuge bleiben erreichbar.

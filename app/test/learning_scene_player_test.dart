@@ -124,7 +124,11 @@ void main() {
         find.text('Pflanzen nehmen Wasser und Kohlenstoffdioxid auf.'),
         findsOneWidget,
       );
-      await tapVisible(tester, find.byTooltip('Nächster Grafikschritt'));
+      expect(find.byKey(playKey), findsNothing);
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('scene-direct-step-1')),
+      );
       expect(
         find.text('Mit Licht bilden Pflanzen Zucker und geben Sauerstoff ab.'),
         findsOneWidget,

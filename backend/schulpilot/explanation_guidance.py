@@ -14,7 +14,10 @@ explanation-Absatz ersetzt ihn nicht. Kurze Absätze und einfache Sätze statt e
 Mach zuerst greifbar, worum es geht und wozu das hilft, möglichst an einer belegten Alltagssituation.
 Erkläre ein benötigtes neues Fachwort beim ersten Vorkommen mit gewöhnlichen Wörtern; setze
 keine unerklärten Voraussetzungen voraus. Nutze ein konkretes zulässiges Beispiel in kleinen
-Schritten: Was schaue ich an, was ändere/vergleiche ich, warum? Sage ausdrücklich, was die Grafik
+Schritten. Verwende insbesondere in Fragen keine Fachwörter, die weder im bestätigten Stoff
+noch in der sichtbaren Einführung vorkommen. Zum Beispiel nicht „Fotosynthese“ voraussetzen,
+wenn das Wort zuvor nicht erklärt oder genannt wurde.
+Was schaue ich an, was ändere/vergleiche ich, warum? Sage ausdrücklich, was die Grafik
 zeigt und worauf das Kind darin achten soll. Schließe passend mit einem kurzen Merksatz.
 Keine fünf starren Überschriften, bloßen Arbeitsaufträge oder doppelte Erklärungstexte. Bei nur
 einem erlaubten Introstep passen die wichtigen Zusammenhänge in diesen vorhandenen Schritt;

@@ -611,6 +611,18 @@ def validate_question(presentation, question, sources, allowed_kinds, *, structu
             raise ValueError("Offene Reflexion oder Bewegung wird nicht als eindeutige Auswahl geprüft.")
 
 
+def validate_introduced_terms(subject, question, sources, introduction):
+    """Do not assume the observed biology term before the child can see it."""
+    if subject != "Biologie":
+        return
+    term = re.compile(r"\b(?:foto|photo)synthese\b", re.IGNORECASE)
+    asked = " ".join([str(question.get("prompt") or ""),
+                      *(str(option) for option in question.get("options") or [])])
+    available = "\n".join([*sources, *introduction])
+    if term.search(asked) and not term.search(available):
+        raise ValueError("Ein Fachbegriff der Aufgabe wurde in Quelle und sichtbarer Einführung nicht eingeführt.")
+
+
 def validate_output(data, payload, *, bounded_matching=False):
     units = data.get("units") or ([data["next_unit"]] if data.get("next_unit") else [data])
     material_items = payload.get("materials") or [payload.get("material") or {}]
@@ -619,7 +631,9 @@ def validate_output(data, payload, *, bounded_matching=False):
         subject = unit.get("subject") or payload.get("required_subject")
         group = unit.get("group_id")
         sources = [m.get("content", "") for m in material_items if group is None or m.get("group_id") == group]
+        introduction = [step.get("text", "") for step in unit.get("explanation_steps") or [] if isinstance(step, dict)]
         for question in unit.get("questions", []):
+            validate_introduced_terms(subject, question, sources, introduction)
             grouped_questions.validate_question(question, sources)
             lab_sources = learning_labs.context_sources(payload, subject, group)
             if not payload.get("labs_enabled") and any(block.get("kind") == "lab" for block in (question.get("presentation") or {}).get("blocks", [])):

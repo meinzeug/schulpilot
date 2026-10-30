@@ -12,6 +12,25 @@ SOURCE = ("Pflanzen und Photosynthese\n\nPflanzen nehmen Wasser und Kohlenstoffd
           "Mit Licht bilden sie Zucker und geben Sauerstoff ab.")
 
 
+@pytest.mark.parametrize("known", [False, True])
+def test_prepared_questions_only_require_the_term_when_it_is_in_the_source(api, known):
+    from schulpilot.package_prepared_photosynthesis import Binding, prompt_pattern
+
+    source = SOURCE if known else SOURCE.split("\n\n", 1)[1]
+    payload = payload_for(source, "Biologie")
+    with DB() as db:
+        payload["visual_context"]["references"] = visual_references.candidates(db, "Biologie", source, package_prepared=True)
+    _, binding = bind(payload)
+    assert isinstance(binding, Binding)
+    candidate = next(row for row in binding.candidates if row["disclosure"] == "solution")
+    assert candidate["term_in_source"] is known
+    term_question = {"prompt": "Was nehmen Pflanzen bei der Fotosynthese auf?"}
+    simple_question = {"prompt": "Was nehmen Pflanzen auf?"}
+    assert binding.question_bound(candidate, term_question) is known
+    assert binding.question_bound(candidate, simple_question) is not known
+    assert bool(__import__("re").search(prompt_pattern(candidate), simple_question["prompt"])) is not known
+
+
 def test_fotosynthese_uses_verified_exchange_not_unrelated_plant_anatomy():
     payload = payload_for(SOURCE, "Biologie")
     with DB() as db:

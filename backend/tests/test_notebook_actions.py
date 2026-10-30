@@ -296,6 +296,59 @@ def test_reprocess_copies_photo_once_and_keeps_original_unit_answers(api, househ
         material_actions.validate_reprocess_job(db, db.get(Job, data["id"]))
 
 
+@pytest.mark.parametrize("change", ["none", "edited", "linked"])
+def test_reprocess_unconfirmed_day_page_in_place_preserves_batch_and_checks_concurrent_edits(
+    api, household, monkeypatch, change
+):
+    from schulpilot import worker
+    from schulpilot.db import SchoolDay
+    from schulpilot.providers import Result
+
+    _, child = household
+    mid, path = photo(api, child, confirmed=False)
+    with DB.begin() as db:
+        day = SchoolDay(child_id=child["id"], school_date="2026-11-02")
+        db.add(day)
+        db.flush()
+        day_id = day.id
+        source = db.get(Material, mid)
+        source.school_day_id, source.page_number, source.content = day_id, 2, "Alte künstliche Abschrift."
+    allow_reserved(monkeypatch)
+    headers = {"Idempotency-Key": "synthetic-day-reprocess-01"}
+    response = api.post(f"/api/materials/{mid}/reprocess", json={"revision": 1}, headers=headers)
+    assert response.status_code == 202, response.text
+    result = response.json()
+    assert result["material_id"] == mid
+    assert api.post(f"/api/materials/{mid}/reprocess", json={"revision": 1}, headers=headers).json() == result
+    with DB.begin() as db:
+        job = db.get(Job, result["id"])
+        assert job.payload["reprocess_guard"]["in_place"] is True
+        job.status, job.started = "running", int(now())
+
+    def transport(*args, **kwargs):
+        if change == "edited":
+            with DB.begin() as db:
+                db.get(Material, mid).content = "Zwischenzeitlich geänderter künstlicher Text."
+        elif change == "linked":
+            saved_round(child, mid)
+        return Result({"legibility": "readable", "subject": "Mathematik", "topic": "Brüche kürzen",
+            "content": "Neue künstliche Abschrift.", "uncertainties": [], "homework": [], "source_blocks": []},
+            30, 12, 9, cost_source="reported")
+
+    monkeypatch.setattr(worker, "request_provider", transport)
+    worker.process(result["id"])
+    with DB() as db:
+        source, job = db.get(Material, mid), db.get(Job, result["id"])
+        assert db.scalar(select(func.count()).select_from(Material)) == 1
+        assert source.school_day_id == day_id and source.page_number == 2 and not source.confirmed
+        assert source.path == path.name
+        expected = {"none": "Neue künstliche Abschrift.", "edited": "Zwischenzeitlich geänderter künstlicher Text.",
+                    "linked": "Alte künstliche Abschrift."}[change]
+        assert source.content == expected
+        assert job.status == ("completed" if change == "none" else "failed")
+        assert db.scalar(select(func.count()).select_from(Usage)) == 1
+
+
 @pytest.mark.parametrize("invalid", ["revision", "missing_photo", "synthetic"])
 def test_reprocess_rejects_invalid_photo_without_job(api, household, invalid):
     _, child = household

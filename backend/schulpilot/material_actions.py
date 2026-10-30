@@ -289,6 +289,14 @@ def bulk_delete(child_id: str, data: DeleteConfirm, p=Depends(authenticated), db
     return {"deleted_count": len(rows)}
 
 
+def _has_linked_learning(db, material_id):
+    from .db import Assignment, UnitSource
+
+    return bool(db.scalar(select(LearningUnit.id).where(LearningUnit.material_id == material_id).limit(1))
+                or db.scalar(select(UnitSource.unit_id).where(UnitSource.material_id == material_id).limit(1))
+                or db.scalar(select(Assignment.id).where(Assignment.material_id == material_id).limit(1)))
+
+
 def validate_reprocess_job(db, job):
     guard = job.payload.get("reprocess_guard")
     if not guard:
@@ -301,6 +309,9 @@ def validate_reprocess_job(db, job):
     source = db.get(Material, guard.get("source_id"))
     if not source or source.child_id != child.id or source.revision != guard.get("source_revision"):
         raise ProviderError("Die ursprüngliche Heftseite wurde geändert oder gelöscht. Bitte neu starten.")
+    if guard.get("in_place") and (source.confirmed or source.school_day_id != guard.get("school_day_id")
+            or snapshot([source]) != guard.get("source_snapshot") or _has_linked_learning(db, source.id)):
+        raise ProviderError("Die zu prüfende Heftseite wurde inzwischen geändert. Bitte neu laden.")
     config = job_config(db, job, "extract")
     usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
     if not usage or (usage.provider, usage.model, usage.config_revision) != (
@@ -339,6 +350,10 @@ def reprocess(
         ):
             raise HTTPException(409, "Dieser Anfrageschlüssel gehört bereits zu einer anderen Verarbeitung.")
         return {"id": existing.id, "status": existing.status, "material_id": existing.payload["material_id"]}
+    # Serialize against confirmation and other submissions before deciding if
+    # an unconfirmed day page can be re-read in place.
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+    db.refresh(source)
     if source.revision != data.revision:
         raise HTTPException(409, "Die Seite wurde inzwischen geändert. Bitte neu laden.")
     if source.synthetic or source.fixture_id or not source.path:
@@ -347,6 +362,18 @@ def reprocess(
     if not original.is_file():
         raise HTTPException(409, "Das ursprüngliche Foto ist nicht mehr vorhanden. Bitte fotografiere die Seite neu.")
     ensure_idle(db, child.id)
+    if (source.school_day_id and not source.confirmed and source.status in ("review", "unreadable")
+            and not _has_linked_learning(db, source.id)):
+        guard = {
+            "source_id": source.id, "source_revision": source.revision,
+            "session_id": p.session.id, "user_id": p.user.id, "family_id": child.family_id,
+            "in_place": True, "school_day_id": source.school_day_id, "source_snapshot": snapshot([source]),
+        }
+        result = enqueue(db, p, child, "extract", {"material_id": source.id, "reprocess_guard": guard},
+                         idempotency, commit=False)
+        record(db, child.id, "material_reprocessed")
+        db.commit()
+        return result | {"material_id": source.id}
     directory = settings.data_dir / "uploads"
     new_path = uid() + ".jpg"
     destination = directory / new_path

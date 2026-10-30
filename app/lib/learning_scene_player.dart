@@ -702,6 +702,11 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
 // A two-state reading focus leaves positions and relationships unchanged.
 // Direct steps stay visible; playback and inspection remain available on demand.
 bool _isOriginalListFocus(_Scene scene) {
+  // Zero-duration two-step diagrams have no playable animation. Direct
+  // step controls still expose every visual state, without a disabled player.
+  if (scene.transitionMs == 0 && scene.steps.length == 2) {
+    return true;
+  }
   if (!{'grid', 'row'}.contains(scene.layout) ||
       scene.steps.length != 2 ||
       scene.objects.length < 2 ||
