@@ -717,7 +717,14 @@ class _ChildCoachingPanel extends StatelessWidget {
           _roundResultScope(
             state,
             unit,
-            RoundQuestionCards(questions: questions),
+            RoundQuestionCards(
+              questions: questions,
+              onQuestionExplanation:
+                  unit['status'] == 'completed' &&
+                      unit['supports_question_explanation'] == true
+                  ? onQuestionExplanation
+                  : null,
+            ),
           ),
         ],
         if (!pending && !practicePending)
@@ -756,7 +763,7 @@ class _ChildCoachingPanel extends StatelessWidget {
               Icons.lightbulb_outline_rounded,
               color: context.palette.teal,
             ),
-            title: Text('Erklärung ansehen'),
+            title: Text('Mehr zur Rückmeldung'),
             childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 18),
             children: [
               MathText(report['explanation']),
@@ -1191,7 +1198,12 @@ class RoundResultCounts extends StatelessWidget {
 /// behind an explicit local disclosure; opening it never sends a request.
 class RoundQuestionCards extends StatelessWidget {
   final List questions;
-  const RoundQuestionCards({super.key, required this.questions});
+  final Future<void> Function(Json)? onQuestionExplanation;
+  const RoundQuestionCards({
+    super.key,
+    required this.questions,
+    this.onQuestionExplanation,
+  });
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1252,7 +1264,10 @@ class RoundQuestionCards extends StatelessWidget {
                         if (category == 'none')
                           MathText(question['prompt'] ?? 'Gespeicherte Aufgabe')
                         else
-                          _SavedQuestionResult(question),
+                          _SavedQuestionResult(
+                            question,
+                            onQuestionExplanation: onQuestionExplanation,
+                          ),
                       ],
                     ),
                   ],
@@ -1418,7 +1433,8 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
 
 class _SavedQuestionResult extends StatelessWidget {
   final Json question;
-  const _SavedQuestionResult(this.question);
+  final Future<void> Function(Json)? onQuestionExplanation;
+  const _SavedQuestionResult(this.question, {this.onQuestionExplanation});
   @override
   Widget build(BuildContext context) {
     final attempts = question['attempts'] as List? ?? [];
@@ -1494,6 +1510,26 @@ class _SavedQuestionResult extends StatelessWidget {
             ),
           if (question['feedback_explanation'] != null)
             MathText(question['feedback_explanation']),
+          if (onQuestionExplanation != null &&
+              (attempts.length >= 3 ||
+                  attempts.any(
+                    (attempt) =>
+                        attempt is Map &&
+                        ['correct', 'uncertain'].contains(attempt['outcome']),
+                  )))
+            Builder(
+              builder: (context) {
+                final saved = Json.from(
+                  jsonDecode(jsonEncode(question)) as Map,
+                );
+                return TextButton.icon(
+                  key: ValueKey('round-card-explanation-${saved['id']}'),
+                  onPressed: () => onQuestionExplanation?.call(saved),
+                  icon: const Icon(Icons.auto_stories_outlined),
+                  label: const Text('Erklärung mit Grafik'),
+                );
+              },
+            ),
         ],
       ),
     );

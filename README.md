@@ -6,7 +6,7 @@ SchuleSchlau, bisher Schulpilot, verbindet eigene Schulmaterialien mit verständ
 
 Die reguläre signierte Direct-APK ist auf der Website vor und nach der Anmeldung erhältlich. Die App ist keine Website in einer Android-WebView. Privates Schulmaterial liegt ausschließlich im eigenen Familienbereich.
 
-> Produktions- und Prüfstand: Der zuletzt tatsächlich ausgelieferte Stand ist in [STATUS.md](docs/STATUS.md) dokumentiert; der aktuelle künstliche Alltagstest steht in [EVERYDAY_QA_2026_10_28.md](docs/EVERYDAY_QA_2026_10_28.md). Ein erfolgreicher lokaler Test oder eine FCM-Annahme belegt keine sichtbare Zustellung auf einem Smartphone.
+> Produktions- und Prüfstand: Der zuletzt tatsächlich ausgelieferte Stand ist in [STATUS.md](docs/STATUS.md) dokumentiert; die aktuelle Fortsetzung des künstlichen Alltagstests steht in [EVERYDAY_QA_2026_10_30.md](docs/EVERYDAY_QA_2026_10_30.md). Ein erfolgreicher lokaler Test oder eine FCM-Annahme belegt keine sichtbare Zustellung auf einem Smartphone.
 
 [Aktueller Alltagstest mit eigenen Heftfotos](docs/EVERYDAY_TEST_2026_10_26.md): normaler Fotoimport, unscharfe und korrigierte Stellen, Hintergrundverarbeitung, In-App-Direkteinstieg und vier abgeschlossene Testrunden. Beim bewussten Öffnen einer Aufgabenerklärung erscheinen auch die zugehörigen Hinweisgrafiken. Hardwaregrenzen sind im Prüfbericht ausgewiesen.
 

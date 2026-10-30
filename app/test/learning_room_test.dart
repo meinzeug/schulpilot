@@ -534,7 +534,10 @@ void main() {
       expect(server.acknowledgements, 1);
       expect(server.answers, 1);
       expect(find.text('Deine Runde ist bearbeitet.'), findsOneWidget);
-      expect(find.text('Selbst ausprobieren'), findsOneWidget);
+      // This saved round was independently correct; its existing check action
+      // offers another exercise, not a first unsupported attempt.
+      expect(find.text('Weitere Übung öffnen'), findsOneWidget);
+      expect(find.text('Selbst ausprobieren'), findsNothing);
       expect(find.text('Startseite'), findsNothing);
     },
   );

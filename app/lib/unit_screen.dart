@@ -2265,10 +2265,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   builder: (_) => Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Mit Zifferntasten 1–9 auswählen · geprüft wird erst mit „Antwort prüfen“.',
-                        style: TextStyle(fontSize: 13),
-                      ),
+                      if (MediaQuery.sizeOf(context).width >= 720)
+                        const Text(
+                          'Mit Zifferntasten 1–9 auswählen · geprüft wird erst mit „Antwort prüfen“.',
+                          style: TextStyle(fontSize: 13),
+                        ),
                       AnswerOptionCompare(
                         options: (q['options'] as List).cast<String>(),
                       ),
@@ -3431,7 +3432,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               else if (!correct)
                 MathText(
                   adaptiveAction != null
-                      ? 'Deine Antwort ist gespeichert. Weiter führt dich zum nächsten kleinen Schritt.'
+                      ? 'Deine Antwort ist gespeichert. Wir üben diesen Schritt weiter.'
                       : closed
                       ? 'Diese Aufgabe kommt später noch einmal dran.'
                       : 'Versuch es noch einmal. Unter Hilfe findest du einen Tipp.',

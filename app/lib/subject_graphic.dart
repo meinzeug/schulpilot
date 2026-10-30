@@ -15,6 +15,7 @@ import 'language_comparison_widget.dart';
 import 'heart_pump_graphic.dart';
 import 'shadow_size_graphic.dart';
 import 'decimal_sum_graphic.dart';
+import 'sentence_words_graphic.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
 import 'learning_graphic_scope.dart';
@@ -446,7 +447,12 @@ class SubjectGraphic extends StatelessWidget {
                     ),
                 ],
               ),
-          ] else if (!vectorKinds.contains(kind)) ...[
+          ] else if (kind == 'sentence')
+            SentenceWordsGraphic(
+              words: labels,
+              marks: block['marks'] as List? ?? [],
+            )
+          else if (!vectorKinds.contains(kind)) ...[
             for (var i = 0; i < labels.length; i++) ...[
               if (i > 0 &&
                   {
@@ -532,7 +538,7 @@ class SubjectGraphic extends StatelessWidget {
                 style: const TextStyle(fontSize: 15, height: 1.45),
               ),
             )
-          else if (kind != 'fraction')
+          else if (kind != 'fraction' && kind != 'sentence')
             MathText(text, style: const TextStyle(fontSize: 15, height: 1.45)),
           if (kind == 'timeline' && block['variant'] == 'centuries') ...[
             const SizedBox(height: 8),

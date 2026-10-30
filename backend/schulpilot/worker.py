@@ -824,7 +824,6 @@ def maintenance():
         db.execute(delete(GoogleFlow).where(GoogleFlow.expires < int(now())))
         db.execute(delete(RateBucket).where(RateBucket.expires < int(now())))
         # Operational metadata, not invoices or private learning content.
-        db.execute(delete(Usage).where(Usage.created < int(now()) - 90 * 86400))
         from .db import ChildCostBucket
 
         period_cutoff = datetime.fromtimestamp(now() - 90 * 86400, timezone.utc).strftime("%Y-%m")
@@ -923,7 +922,9 @@ def maintenance():
         db.execute(delete(CatalogRefresh).where(CatalogRefresh.child_id.is_not(None),
             CatalogRefresh.updated < int(now()) - 30 * 86400, CatalogRefresh.status != "queued"))
         db.execute(delete(SchoolDay).where(SchoolDay.created < int(now()) - 365 * 86400))
-        db.execute(delete(Job).where(Job.created < int(now()) - 30 * 86400, Job.status.in_(["failed", "completed"])))
+        from .preparation_retention import purge as purge_preparation_receipts
+
+        purge_preparation_receipts(db, int(now()))
         # Also remove interrupted export files. Uploads have independent DB
         # ownership; unfinished writes are never served from the webroot.
         exports = settings.data_dir / "exports"

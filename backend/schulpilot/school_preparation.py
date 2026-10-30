@@ -23,6 +23,7 @@ from .security import Principal, child_access, digest, rate_limit
 
 MAX_ATTEMPTS = 2
 ACTIVE = ("queued", "running")
+_MISSING_JOB = "Die Vorbereitung wurde unterbrochen. Deine Seiten und fertigen Runden sind gespeichert."
 
 
 def _state(day):
@@ -338,6 +339,9 @@ def preparation_data(db, day, child=None):
     status, error = state.get("status", "idle"), state.get("error")
     if status == "processing" and job and job.status == "failed" and not job.payload.get("material_check"):
         status, error = "failed", job.error
+    missing_job = status == "processing" and bool(state.get("job_id")) and job is None
+    if missing_job:
+        status, error = "failed", _MISSING_JOB
     current = [{"id": m.id, "revision": m.revision} for m in source_pages]
     can_retry = status in ("failed", "blocked") and bool(source_pages)
     new_part_contract = False
@@ -392,6 +396,8 @@ def preparation_data(db, day, child=None):
     blocker = generation_availability(db, db.get(Family, child.family_id), retry_kind,
         child_id=child.id, routing_features=routing_features) if can_retry and retry_kind else None
     error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
+    if missing_job:
+        error_code = "interrupted"
     if error_code == "unknown" and error:
         error_code = message_code(error)
     if error_code == "provider_busy" and error and message_code(error) == "invalid_output":
@@ -414,7 +420,7 @@ def preparation_data(db, day, child=None):
     return {
         **publication_data(db, day, child=child),
         "status": status,
-        "sources_changed": bool(state.get("package_plan") and state.get("sources") and current != state["sources"]),
+        "sources_changed": bool(state.get("sources") and current != state["sources"]),
         "error_code": error_code if error else None,
         "retry_blocker": blocker,
         "retry_kind": retry_kind,
@@ -712,6 +718,11 @@ def _advance(db, day):
     if state.get("package_plan") and not _current_plan(db, day, child, state):
         raise ProviderError("Die Quellen, Planung oder KI-Einstellungen der Teilrunden wurden geändert. Bitte erneut abgeben.")
     job = db.get(Job, state.get("job_id")) if state.get("job_id") else None
+    if state.get("job_id") and job is None:
+        # The earlier provider dispatch cannot be inferred from a missing row.
+        # Never create another paid request merely by resuming the worker.
+        _write(day, state, status="failed", error=_MISSING_JOB, error_code="interrupted")
+        return
     if job:
         if job.status in ACTIVE:
             return

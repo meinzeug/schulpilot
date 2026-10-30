@@ -3953,3 +3953,17 @@ Bereiche und Ablehnungen. Im selben Test sank die konservative Projektion von
 268.636 auf246.318MikroUSD. Anbieterroute, Modell, Ausgabelimit und Kostenfreigaben
 wurden dafür nicht erhöht. Die vollständige Monatsabnahme und frühere offene
 Testtage bleiben offen; fehlgeschlagene Läufe wurden nicht überschrieben.
+
+30.10.2026 · Version1.38.47: Die Monatsprüfung belegte fehlende Auftragsdatensätze
+nach regulärer30-Tage-Wartung trotz offener Schultage. Aktuelle eigene
+Vorbereitungs-/Teilplanbelege bleiben nun innerhalb der365-Tage-Grenze verfügbar;
+normale30/90-Tage-Fristen anderer Vorgänge und Fehlversuchszähler bleiben erhalten.
+Ein bereits fehlender laufender Beleg führt zu einer Unterbrechung ohne erneuten
+Anbieteraufruf. Die reine Statusanzeige schreibt weiterhin nichts.
+
+Der künstliche Deutsch-Schultag12.11. wurde im390px-Browser über normale
+Fotoerkennung, Bestätigung und bewusste Paketvorbereitung wieder nutzbar:
+11.403ms/0,000853USD OCR und24.558ms/0,002462USD Paket laut tatsächlichen
+Generierungsbelegen. Der Aufgabenrückblick erhält einen direkten Zugang zu
+seiner gespeicherten Grafik; Satzwörter werden kompakt in Leserichtung dargestellt.
+Originalbelege und Grenzen: [EVERYDAY_QA_2026_10_30.md](EVERYDAY_QA_2026_10_30.md).
