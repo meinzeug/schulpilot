@@ -76,7 +76,13 @@ def language_comparison_bases(content):
 
 
 def reference_supported(reference, contents):
-    from .package_prepared_focus import REFERENCE, SENTENCE_REFERENCE, focus_bases, sentence_bases
+    from .package_prepared_focus import (
+        GEOGRAPHY_SENTENCE_REFERENCE,
+        REFERENCE,
+        SENTENCE_REFERENCE,
+        focus_bases,
+        sentence_bases,
+    )
 
     if reference.get("id") == "biology.heart.pump":
         from .package_prepared_heart import bases
@@ -88,7 +94,7 @@ def reference_supported(reference, contents):
         return any(next(bases(content), None) is not None for content in contents)
     if reference.get("id") == REFERENCE:
         return any(next(focus_bases(content), None) is not None for content in contents)
-    if reference.get("id") == SENTENCE_REFERENCE:
+    if reference.get("id") in (SENTENCE_REFERENCE, GEOGRAPHY_SENTENCE_REFERENCE):
         return any(next(sentence_bases(content), None) is not None for content in contents)
     if reference.get("id") == "general.source_relation.phases":
         return any(next(prepared._scene_bases(content), None) is not None for content in contents)

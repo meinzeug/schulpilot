@@ -19,6 +19,41 @@ SOURCES = {
 }
 
 
+@pytest.mark.parametrize("subject", ["Geografie", "Geographie", "Erdkunde"])
+def test_geography_alias_uses_original_sentence_reference_without_changing_label(api, subject):
+    source = ("Sachsen-Anhalt ist ein Bundesland in Deutschland.\n\n"
+              "Die Landeshauptstadt heißt Magdeburg.\n\n"
+              "Die Elbe fließt durch Magdeburg.\n\n"
+              "Der Harz liegt im Westen des Bundeslandes.")
+    payload = payload_for(source, subject)
+    references = payload["visual_context"]["references"]
+    assert any(row["id"] == focus.GEOGRAPHY_SENTENCE_REFERENCE and row["subject"] == subject
+               for row in references)
+    schema = providers.strict_schema(PackageOutput, preserve_limits=True)
+    providers.prepare_package_schema(schema, payload, allow_matching=True, partition=True)
+    providers.indexed_choice_schema(schema, bounded_matches=True)
+    bind_graphic_schema(schema, [subject])
+    visual_references.bind_schema(schema, payload)
+    binding = package_part_output.bind_schema(schema, payload)
+    assert isinstance(binding, focus.Binding)
+    selected = next(row for row in binding.candidates if row["disclosure"] == "solution")
+    assert selected["subject"] == subject
+    assert selected["reference"]["id"] == focus.GEOGRAPHY_SENTENCE_REFERENCE
+    assert selected["block"]["labels"] == source.split("\n\n")
+    assert all(not phase["edges"] for phase in selected["block"]["scene"]["steps"])
+    assert not binding.question_bound(selected, {"type": "choice", "prompt": "Die Elbe fließt durch Magdeburg.",
+        "options": selected["block"]["labels"], "answer": "Die Elbe fließt durch Magdeburg."})
+
+
+def test_unknown_subject_never_inherits_a_public_profile(api):
+    from schulpilot.subject_content import PROFILES, canonical_profile
+
+    assert canonical_profile("Privates Fantasiefach") == "Privates Fantasiefach"
+    assert "Privates Fantasiefach" not in PROFILES
+    with DB() as db:
+        assert visual_references.candidates(db, "Privates Fantasiefach", "Eigener Text") == []
+
+
 def fixture(subject="Deutsch", *, indexed=True, source=None):
     payload = payload_for(SOURCES[subject] if source is None else source, subject)
     schema = providers.strict_schema(PackageOutput, preserve_limits=True)

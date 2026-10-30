@@ -384,6 +384,16 @@
       "variant": null
     },
     {
+      "id": "geography.original_evidence.focused_sentences",
+      "version": 1,
+      "subjects": ["Geographie"],
+      "kind": "scene",
+      "purpose": "Zwei bis vier vollständige aufeinanderfolgende geografische Originalsätze betrachten und vergleichen. Die Hervorhebung ist ein Lesefokus, keine Karte und keine neu erfundene räumliche Beziehung. Frageoptionen bleiben die Originalaussagen in Originalreihenfolge; die Frage nennt ihre Antwort nicht vorweg.",
+      "terms": [],
+      "interaction": "Vollständige Originalsätze einzeln hervorheben und vergleichen.",
+      "variant": null
+    },
+    {
       "id": "general.original_evidence.focused_sentences",
       "version": 1,
       "subjects": ["Geschichte"],

@@ -2,7 +2,7 @@
 import re
 
 from . import package_prepared_graphics as prepared
-from .subject_content import PROFILES, Graphic, validate_question
+from .subject_content import PROFILES, Graphic, canonical_profile, validate_question
 
 REFERENCE = "geography.atlantic.between"
 REVISION = "atlantic-between-1"
@@ -40,14 +40,15 @@ def validate(block, sources):
 def compile_candidates(payload):
     groups, context = payload.get("selected_groups") or [], payload.get("visual_context") or {}
     if (payload.get("package_partition") is None or not context.get("required")
-            or len(groups) != 1 or groups[0].get("subject") != "Geographie"):
+            or len(groups) != 1 or canonical_profile(groups[0].get("subject")) != "Geographie"):
         return []
     group = groups[0]["id"]
+    subject = groups[0]["subject"]
     refs = [r for r in context.get("references", []) if r.get("id") == REFERENCE
-            and r.get("subject") == "Geographie" and type(r.get("version")) is int and r.get("digest")]
+            and r.get("subject") == subject and type(r.get("version")) is int and r.get("digest")]
     rows = []
     for source in context.get("sources", []):
-        if (source.get("subject") != "Geographie" or source.get("group_id") != group
+        if (source.get("subject") != subject or source.get("group_id") != group
                 or not isinstance(source.get("content"), str)):
             continue
         for base in list(bases(source["content"]))[:2]:
@@ -57,8 +58,8 @@ def compile_candidates(payload):
                     validate(block, [source["content"]])
                     validate_question({"version": 1, "evidence_kind": "knowledge", "blocks": [block.model_dump()]},
                                       {"prompt": "", "type": "short", "answer": "", "accepted": []},
-                                      [source["content"]], PROFILES["Geographie"], structured=True, subject="Geographie")
-                    row = {"subject": "Geographie", "group_id": group,
+                                      [source["content"]], PROFILES[subject], structured=True, subject=subject)
+                    row = {"subject": subject, "group_id": group,
                            "reference": {"id": REFERENCE, "version": ref["version"]}, "disclosure": stage,
                            "source_refs": [source["ref"]], "text": " ".join(base["source_excerpt"].split()),
                            "kind": "scene", "block": block.model_dump(mode="json")}

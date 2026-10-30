@@ -4,8 +4,11 @@ Private disclosure stages/quotes remain in question snapshots. Public projection
 never contains a future hint/solution, including its alternative description.
 """
 
+import json
 import math
 import re
+import unicodedata
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_serializer, model_validator
@@ -98,6 +101,28 @@ for _subject in ("Mathematik", "Physik", "Technik"):
     PROFILES[_subject] = (*PROFILES[_subject], "function_curve")
 for _subject in ("Physik", "Technik", "Deutsch", "Deutsch als Zweitsprache"):
     PROFILES[_subject] = (*PROFILES[_subject], "lab")
+
+# Only aliases from the versioned public subject catalogue share a profile.
+# Stored material and unit labels remain their original snapshots.
+_profile_aliases = {}
+for _row in json.loads((Path(__file__).with_name("reference") / "subjects-v1.json").read_text())["subjects"]:
+    _title = _row["title"]
+    if _title not in PROFILES:
+        continue
+    for _alias in (_title, *_row["aliases"]):
+        _key = " ".join(unicodedata.normalize("NFC", _alias).casefold().split())
+        if _key in _profile_aliases and _profile_aliases[_key] != _title:
+            raise ValueError("Mehrdeutiger öffentlicher Fachalias im Profilkatalog.")
+        _profile_aliases[_key] = _title
+        PROFILES.setdefault(_alias, PROFILES[_title])
+
+
+def canonical_profile(subject):
+    if not isinstance(subject, str):
+        return subject
+    return _profile_aliases.get(" ".join(unicodedata.normalize("NFC", subject).casefold().split()), subject)
+
+
 PICTURE_WORDS = {
     "rouge",
     "rot",

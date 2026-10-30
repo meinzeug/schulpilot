@@ -3851,3 +3851,26 @@ Die ausdrücklich angeforderte Anschlussrunde griff die zuvor verwechselte
 Wasseraufnahme sowie die Sauerstoffentstehung erneut auf; beide Antworten wurden
 ohne zusätzliche Hilfe richtig bewertet. Die Fragen bleiben eng an den Sätzen
 der Quelle und belegen deshalb noch keinen breiten fachlichen Transfer.
+
+30.10.2026 · Isolierter Alltagstest, simulierter 03.12.: Eine künstliche
+Geografieseite über Sachsen-Anhalt wurde einschließlich der Kartenbeschriftungen
+erkannt. Die Skizze wurde nicht als maßstabsgerechte Karte interpretiert. Die
+Erkennung gab das Fach als „Geografie“ aus, während die Grafikprofile bisher
+„Geographie“ erwarteten. Der Anbieter lehnte das daraufhin übermittelte Schema
+zweimal als `invalid_json_schema` ab. Seine Fehlermeldung nannte keinen genaueren
+Teil des Schemas. Ein künstlicher Offline-Nachbau ergab für die konkrete Anfrage
+38.487 Bytes; nach der Profil- und Referenzkorrektur waren es 19.536 Bytes.
+Microsoft dokumentiert für Azure Structured Outputs unter anderem Grenzen für
+Objektfelder und Verschachtelungstiefe: [Azure Structured Outputs](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs).
+Ein einzelner auditierter und regulär reservierter Reparaturauftrag wurde vom
+Anbieter angenommen und erfolgreich geprüft. Daraus allein lässt sich nicht
+beweisen, welche einzelne Azure-Schemaregel vorher die Ablehnung ausgelöst hat.
+
+Öffentlich definierte Fachaliasse aus dem versionierten Fachkatalog erhalten
+nun dasselbe Darstellungsprofil; gespeicherte Fachnamen bleiben unverändert.
+Für Geografie gibt es eine eigene versionierte Originalsatz-Referenz. Sie zeigt
+zwei vollständige Quellaussagen zum bewussten Lesen, ohne eine Karte, räumliche
+Relationen oder zusätzliche Fakten zu erfinden. Der 390-Pixel-Browser zeigte
+beide wählbaren Lesefokusse. Zwei passende Auswahlfragen wurden nach Öffnen der
+Erklärung richtig und als unterstützt bewertet. Die Lesekarten sind keine
+geografische Karte und belegen keinen Transfer auf neue Orte.

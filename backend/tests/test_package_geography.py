@@ -13,10 +13,11 @@ SOURCE = ("Kontinente und Ozeane\n\nDie Erde hat sieben Kontinente.\n"
           "Der Atlantische Ozean liegt zwischen Amerika und Europa.")
 
 
-def test_anchored_atlantic_scene_survives_codec_and_real_validation(api):
-    payload = payload_for(SOURCE, "Geographie")
+@pytest.mark.parametrize("subject", ["Geographie", "Geografie", "Erdkunde"])
+def test_anchored_atlantic_scene_survives_codec_and_real_validation(api, subject):
+    payload = payload_for(SOURCE, subject)
     with DB() as db:
-        payload["visual_context"]["references"] = visual_references.candidates(db, "Geographie", SOURCE, package_prepared=True)
+        payload["visual_context"]["references"] = visual_references.candidates(db, subject, SOURCE, package_prepared=True)
     schema, binding = bind(payload)
     assert binding is not None
     intro = next(row for row in binding.candidates if row["disclosure"] == "given")
@@ -35,7 +36,7 @@ def test_anchored_atlantic_scene_survives_codec_and_real_validation(api):
                  for i, (prompt, answer) in enumerate([
                      ("Welches Gebiet liegt laut Quelle neben Europa am Atlantischen Ozean?", "Amerika"),
                      ("Welches Gebiet liegt laut Quelle neben Amerika am Atlantischen Ozean?", "Europa")])]
-    output = {"units": [{"group_id": "g1", "subject": "Geographie", "topic": "Ozeane",
+    output = {"units": [{"group_id": "g1", "subject": subject, "topic": "Ozeane",
         "explanation": SOURCE, "explanation_steps": [wire_step(intro)], "questions": questions}]}
     codec = package_output_transport.bind(package_transport.schema_projection(schema))
     result = binding.hydrate(codec.decode(codec.encode(output)))

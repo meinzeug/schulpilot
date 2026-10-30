@@ -1,3 +1,3 @@
 """SCHULPILOT API."""
 
-__version__ = "1.38.41"
+__version__ = "1.38.42"

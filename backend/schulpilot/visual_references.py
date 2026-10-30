@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sqlalchemy import or_, select
 
-from .subject_content import PROFILES, public_presentation, validate_question
+from .subject_content import PROFILES, canonical_profile, public_presentation, validate_question
 from .visual_reference_models import UnitVisualSnapshot, VisualReference
 from .visual_reference_schemas import ExplanationStep
 
@@ -61,7 +61,7 @@ def candidates(db, subject, text="", *, package_prepared=False):
         # AI exploration templates are NEVER a vetted source-bound recipe.
         if recipe.get("scope") == "exploration_only":
             continue
-        if subject not in recipe["subjects"] and "*" not in recipe["subjects"]:
+        if canonical_profile(subject) not in recipe["subjects"] and "*" not in recipe["subjects"]:
             continue
         if recipe["kind"] not in PROFILES[subject]:
             continue
@@ -325,11 +325,13 @@ def _meaningful(block, recipe, *, sources=None, question=None):
             prompt = " ".join(question.get("prompt", "").split())
             if not any(re.search(r"(?<!\w)" + re.escape(label) + r"(?!\w)", prompt) for label in labels):
                 raise ValueError("Die Frage muss mindestens einen vollständigen Originalausdruck ihres Vergleichs nennen.")
-    if recipe.get("id") in ("general.original_evidence.focused_list", "general.original_evidence.focused_sentences"):
+    if recipe.get("id") in ("general.original_evidence.focused_list", "general.original_evidence.focused_sentences",
+                            "geography.original_evidence.focused_sentences"):
         from .package_prepared_focus import validate_focus
 
         validate_focus(block, sources=sources, question=question,
-                       sentences=recipe["id"] == "general.original_evidence.focused_sentences")
+                       sentences=recipe["id"] in ("general.original_evidence.focused_sentences",
+                                                  "geography.original_evidence.focused_sentences"))
         return  # Only this immutable recipe permits a noncausal reading focus.
     if block.kind == "scene":
         scene = block.scene
@@ -522,7 +524,8 @@ def readable_single_step(steps, saved_explanation):
     caption_only = (isinstance(quote, str) and step.get("reference", {}).get("id") == "general.source_relation.phases"
                     and value == "Die belegte Pfeilfolge: " + quote)
     caption_only = caption_only or (step.get("reference", {}).get("id") in (
-        "general.original_evidence.focused_list", "general.original_evidence.focused_sentences")
+        "general.original_evidence.focused_list", "general.original_evidence.focused_sentences",
+        "geography.original_evidence.focused_sentences")
         and value == "Vergleiche die vollständig belegten Originaleinträge.")
     if (not isinstance(value, str) or (any(c.isalpha() for c in value) and not caption_only)
             or len(saved_explanation.strip()) < 20

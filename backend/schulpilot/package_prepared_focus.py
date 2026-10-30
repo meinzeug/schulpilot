@@ -8,10 +8,11 @@ import re
 import unicodedata
 
 from . import package_prepared_graphics as prepared
-from .subject_content import PROFILES, Graphic, validate_question
+from .subject_content import PROFILES, Graphic, canonical_profile, validate_question
 
 REFERENCE = "general.original_evidence.focused_list"
 SENTENCE_REFERENCE = "general.original_evidence.focused_sentences"
+GEOGRAPHY_SENTENCE_REFERENCE = "geography.original_evidence.focused_sentences"
 REVISION = "package-original-focus-1"
 SUBJECTS = ("Deutsch", "Geschichte")
 _LIST = re.compile(r"^[ \t]*(?:[0-9]{1,3}[.)]|\([0-9]{1,3}\)|[-*•])[ \t]+(.+?)[ \t]*$")
@@ -187,16 +188,17 @@ def compile_candidates(payload):
     if payload.get("package_partition") is None or not context.get("required") or len(groups) != 1:
         return []
     subject, group = groups[0].get("subject"), groups[0].get("id")
-    if subject not in SUBJECTS:
+    if subject not in SUBJECTS and canonical_profile(subject) != "Geographie":
         return []
-    references = [row for row in context.get("references", []) if row.get("id") in (REFERENCE, SENTENCE_REFERENCE)
+    sentence_reference = GEOGRAPHY_SENTENCE_REFERENCE if canonical_profile(subject) == "Geographie" else SENTENCE_REFERENCE
+    references = [row for row in context.get("references", []) if row.get("id") in (REFERENCE, sentence_reference)
                   and row.get("subject") == subject and type(row.get("version")) is int and row.get("digest")]
     result, bases = [], set()
     for source in context.get("sources", []):
         if source.get("subject") != subject or source.get("group_id") != group or not isinstance(source.get("content"), str):
             continue
         source_bases = [(REFERENCE, base) for base in focus_bases(source["content"])]
-        source_bases += [(SENTENCE_REFERENCE, base) for base in sentence_bases(source["content"])]
+        source_bases += [(sentence_reference, base) for base in sentence_bases(source["content"])]
         for reference_id, base in source_bases:
             identity = prepared._digest({"base": base, "source": source})
             if identity in bases or len(bases) >= 4:
@@ -208,7 +210,7 @@ def compile_candidates(payload):
                 for stage in prepared.STAGES:
                     try:
                         block = Graphic.model_validate({**base, "disclosure": stage})
-                        validate_focus(block, sources=[source["content"]], sentences=reference_id == SENTENCE_REFERENCE)
+                        validate_focus(block, sources=[source["content"]], sentences=reference_id == sentence_reference)
                         validate_question({"version": 1, "evidence_kind": "knowledge", "blocks": [block.model_dump()]},
                             {"prompt": "", "type": "short", "answer": "", "accepted": []},
                             [source["content"]], PROFILES[subject], structured=True, subject=subject)
@@ -242,7 +244,7 @@ class Binding(prepared.Binding):
         return RULES
 
     def offered(self, candidate):
-        return candidate["reference"]["id"] in (REFERENCE, SENTENCE_REFERENCE)
+        return candidate["reference"]["id"] in (REFERENCE, SENTENCE_REFERENCE, GEOGRAPHY_SENTENCE_REFERENCE)
 
     @property
     def context(self):
